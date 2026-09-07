@@ -107,7 +107,7 @@ sudo apt install -y tesseract-ocr tesseract-ocr-fra poppler-utils
 ## 3. Déployer le module
 
 ```bash
-sudo -u odoo git clone <URL_DU_DEPOT> /opt/odoo/19/custom-addons/expense_scan
+sudo -u odoo git clone https://github.com/Ch0c0latine/expense_scan.git /opt/odoo/19/custom-addons/expense_scan
 ```
 
 Puis, à chaque mise à jour ultérieure :
