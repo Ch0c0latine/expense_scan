@@ -120,6 +120,13 @@ travaillent sur la même liste de mots situés.
 
 ## Limites connues
 
+- **Choix du modèle de reconnaissance** : le module retient le premier jeu
+  de modèles qui relit son ticket de contrôle. Sur `rapidocr` 3.9.2, les
+  modèles `latin` se chargent mais ne reconnaissent rien ; ils sont donc
+  écartés au profit du modèle d'usine PP-OCRv6, qui lit le français
+  accentué sans difficulté. Si une version ultérieure de la bibliothèque
+  corrige les modèles latins, ils seront à nouveau candidats sans qu'il y
+  ait rien à changer.
 - **Lignes d'articles** : le module extrait l'en-tête et le total, pas le
   détail des articles. Une note de frais Odoo n'a de toute façon qu'un seul
   montant.

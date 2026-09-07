@@ -125,12 +125,18 @@ class RapidOcrEngine(ScanEngine):
     label = "RapidOCR / PP-OCR (ONNX Runtime)"
 
     # Essayés dans l'ordre, jusqu'à en trouver un qui relit réellement le
-    # ticket de contrôle. La configuration d'usine de la bibliothèque vient
-    # en dernier recours : elle fonctionne toujours.
+    # ticket de contrôle.
+    #
+    # Mesuré sur rapidocr 3.9.2 : les modèles de reconnaissance « latin »
+    # (PP-OCRv5 comme PP-OCRv3) se chargent sans erreur mais ne
+    # reconnaissent rien du tout, tandis que le modèle d'usine lit le
+    # français accentué sans faute — « SUPERMARCHÉ », « NET À PAYER » à 1,00
+    # de score. L'usine passe donc en premier ; les variantes latines
+    # restent en repli au cas où une version ultérieure les corrigerait.
     MODEL_CANDIDATES = [
+        (None, None),  # configuration d'usine de la bibliothèque
         ("PP-OCRv5", "latin"),
         ("PP-OCRv4", "latin"),
-        (None, None),  # configuration d'usine de la bibliothèque
     ]
     #: Seuils de validation d'un candidat sur le ticket de contrôle.
     WARMUP_MIN_WORDS = 3
