@@ -27,7 +27,7 @@ PostgreSQL et rien d'autre.
 | base | `greenengine` | `greenengine_dev` |
 | écoute | 8069 sur `0.0.0.0`, derrière nginx | 8070 sur `127.0.0.1` |
 | filestore | `data_dir` de production | `/opt/odoo/19/dev-data` |
-| addons custom | `/opt/odoo/19/custom-addons` | `/opt/odoo/19/dev-addons` |
+| addons custom | `/opt/odoo/19/custom-addons` | `/opt/odoo/19/dev-addons`, puis `custom-addons` en lecture |
 | accès | https://green-engine.eu | tunnel SSH vers `localhost:8070` |
 | journal | `/var/log/odoo/odoo19.log` | `/var/log/odoo/odoo19-dev.log` |
 
@@ -171,7 +171,7 @@ http_port = 8070
 http_interface = 127.0.0.1
 proxy_mode = False
 data_dir = /opt/odoo/19/dev-data
-addons_path = /opt/odoo/19/odoo/addons,/opt/odoo/19/dev-addons
+addons_path = /opt/odoo/19/odoo/addons,/opt/odoo/19/dev-addons,/opt/odoo/19/custom-addons
 logfile = /var/log/odoo/odoo19-dev.log
 gevent_port = 8073
 workers = 0
@@ -194,8 +194,13 @@ le fichier.
   une instance de développement n'a pas besoin de processus dédiés.
 - `max_cron_threads = 0` : ceinture et bretelles avec la neutralisation,
   aucune tâche planifiée ne s'exécutera.
-- `addons_path` ne contient **pas** `/opt/odoo/19/custom-addons` : le code
-  testé est celui de `dev-addons`, jamais celui qui sert la production.
+- `addons_path` place `dev-addons` **avant** `custom-addons`. Les deux sont
+  nécessaires : la base copiée a `mission_report` et `auto_backup`
+  installés, et sans leur code le registre se charge incomplet
+  (`Some modules are not loaded`), ce qui fausse tout test. L'ordre fait le
+  reste : un module présent dans les deux répertoires est chargé depuis
+  `dev-addons`, donc on teste bien sa version de développement. L'instance
+  ne fait que lire `custom-addons`, elle n'y écrit jamais.
 
 ```bash
 sudo chown odoo:odoo /etc/odoo19-dev.conf && sudo chmod 640 /etc/odoo19-dev.conf
@@ -259,19 +264,42 @@ sudo systemctl daemon-reload
 Le service n'est volontairement **pas** activé au démarrage : on le lance
 quand on en a besoin, et il ne consomme rien le reste du temps.
 
+### Démarrer, arrêter, surveiller
+
+La base `greenengine_dev` existe en permanence dans PostgreSQL ; elle ne se
+démarre pas. Ce que l'on démarre et arrête, c'est le service Odoo qui la
+sert.
+
 ```bash
 sudo systemctl start odoo19-dev
+```
+
+```bash
+sudo systemctl stop odoo19-dev
+```
+
+```bash
+sudo systemctl restart odoo19-dev
 ```
 
 ```bash
 sudo systemctl status odoo19-dev --no-pager
 ```
 
-Pour l'arrêter :
+```bash
+sudo tail -f /var/log/odoo/odoo19-dev.log
+```
+
+Pour qu'il remonte automatiquement après un redémarrage du serveur :
 
 ```bash
-sudo systemctl stop odoo19-dev
+sudo systemctl enable odoo19-dev
 ```
+
+Trois indépendances à garder en tête : arrêter `odoo19-dev` n'affecte jamais
+`odoo19`, ce sont deux services distincts ; fermer le tunnel SSH (§8)
+n'arrête pas le service ; et arrêter le service ne détruit rien, la base et
+le filestore restent en place.
 
 ### Répertoire des addons de développement
 
@@ -343,9 +371,11 @@ Puis reprendre aux étapes 3, 4 et 5.
   jour de module côté développement ralentit la production le temps qu'elle
   dure. Sur ce serveur (6 cœurs, 16 Go) c'est sans gravité, mais mieux vaut
   éviter les heures ouvrées pour les opérations longues.
-- **Ne jamais pointer `addons_path` de développement vers
-  `custom-addons`** : ce serait remettre le code de production sous le
-  couteau.
+- **Ne jamais éditer un fichier de `custom-addons` pour les besoins d'un
+  test.** L'instance de développement lit ce répertoire, mais c'est le même
+  code que sert la production : toute modification y est immédiate et non
+  testée. Le travail se fait dans `dev-addons`, qui prime dans
+  l'`addons_path`.
 - **Après chaque modification de `/etc/odoo19.conf`**, vérifier que le site
   public ouvre bien Odoo directement. La sauvegarde `odoo19.conf.bak` de
   l'étape 1 permet de revenir en arrière.
