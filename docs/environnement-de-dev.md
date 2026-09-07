@@ -318,14 +318,25 @@ dans `custom-addons`.
 
 ## 8. Accès
 
-Depuis le poste de travail, ouvrir un tunnel :
+Le serveur n'expose pas SSH sur Internet : `green-engine.eu` ne répond que
+sur 80 et 443. L'accès se fait par l'adresse locale de la machine,
+`192.168.1.35`, donc **depuis le réseau du bureau**.
 
 ```bash
-ssh -N -L 8070:127.0.0.1:8070 username@green-engine.eu
+ssh -N -L 8070:127.0.0.1:8070 <utilisateur>@192.168.1.35
 ```
 
-Puis se rendre sur `http://localhost:8070`. Tant que le tunnel est ouvert,
-l'instance de développement se comporte comme un Odoo local.
+`-N` n'ouvre pas de shell : la commande ne renvoie rien et reste bloquée,
+c'est le signe qu'elle fonctionne. Laisser la fenêtre ouverte et se rendre
+sur `http://localhost:8070` ; `Ctrl+C` referme le tunnel sans arrêter le
+service.
+
+Deux repères pour être certain de ne pas être sur la production : l'adresse
+est en `localhost:8070`, et Odoo affiche la bannière de neutralisation en
+haut de l'écran.
+
+Pour un accès depuis l'extérieur, la réponse est un VPN (Tailscale,
+WireGuard) — pas l'ouverture du port SSH ni l'exposition du port 8070.
 
 ---
 
