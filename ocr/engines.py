@@ -70,15 +70,52 @@ class ScanEngine(object):
         """Renvoie une liste d'``OcrWord`` pour l'image BGR fournie."""
         raise NotImplementedError
 
-    @staticmethod
-    def _warmup_image():
-        """Petite image de test, pour forcer le chargement des modèles."""
+    #: Lignes du ticket de contrôle servant à la chauffe et au diagnostic.
+    WARMUP_LINES = (
+        "SUPERMARCHE TEST",
+        "12 RUE DE LA PAIX",
+        "04/09/2026 14:32",
+        "TOTAL 12,34 EUR",
+    )
+    #: Polices cherchées dans cet ordre pour dessiner ce ticket.
+    WARMUP_FONTS = (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+    )
+
+    @classmethod
+    def _warmup_image(cls):
+        """Ticket de contrôle, dessiné avec une véritable police.
+
+        La police vectorielle d'OpenCV (Hershey) est un tracé au trait, sans
+        épaisseur de glyphe : les modèles PP-OCR, entraînés sur du texte
+        imprimé, n'y détectent rien. Une image de contrôle dessinée ainsi ne
+        prouve donc rien sur l'état réel du moteur.
+        """
         if np is None or cv2 is None:
             return None
-        image = np.full((120, 480, 3), 255, dtype=np.uint8)
-        cv2.putText(image, "TOTAL 12,34 EUR", (10, 75),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 2, cv2.LINE_AA)
-        return image
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+        except ImportError:
+            return None
+
+        height = 60 * len(cls.WARMUP_LINES) + 50
+        image = Image.new("RGB", (620, height), "white")
+        draw = ImageDraw.Draw(image)
+        font = None
+        for path in cls.WARMUP_FONTS:
+            try:
+                font = ImageFont.truetype(path, 34)
+                break
+            except OSError:
+                continue
+        if font is None:
+            font = ImageFont.load_default()
+        for index, line in enumerate(cls.WARMUP_LINES):
+            draw.text((30, 25 + index * 60), line, fill="black", font=font)
+        return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
 
 class RapidOcrEngine(ScanEngine):
@@ -87,13 +124,17 @@ class RapidOcrEngine(ScanEngine):
     code = "rapidocr"
     label = "RapidOCR / PP-OCR (ONNX Runtime)"
 
-    # Essayés dans l'ordre : si la combinaison langue/version n'existe pas
-    # côté modèles, on redescend d'un cran plutôt que d'échouer.
+    # Essayés dans l'ordre, jusqu'à en trouver un qui relit réellement le
+    # ticket de contrôle. La configuration d'usine de la bibliothèque vient
+    # en dernier recours : elle fonctionne toujours.
     MODEL_CANDIDATES = [
         ("PP-OCRv5", "latin"),
         ("PP-OCRv4", "latin"),
         (None, None),  # configuration d'usine de la bibliothèque
     ]
+    #: Seuils de validation d'un candidat sur le ticket de contrôle.
+    WARMUP_MIN_WORDS = 3
+    WARMUP_MIN_SCORE = 0.5
 
     def __init__(self, **options):
         super().__init__(**options)
@@ -139,29 +180,51 @@ class RapidOcrEngine(ScanEngine):
         return params
 
     def _load(self):
-        """Instancie le moteur et charge réellement les modèles.
+        """Instancie le moteur, charge les modèles et vérifie qu'ils lisent.
 
-        Le chargement des modèles est paresseux dans RapidOCR : sans passe
-        de chauffe, une combinaison langue/version inexistante n'échouerait
-        qu'au premier vrai ticket, hors de portée du repli.
+        Deux raisons de ne pas se contenter d'instancier :
+
+        * le chargement des modèles est paresseux dans RapidOCR, donc une
+          combinaison langue/version inexistante n'échouerait qu'au premier
+          vrai ticket, hors de portée du repli ;
+        * surtout, un jeu de modèles peut se charger sans erreur et ne rien
+          reconnaître du tout. C'est arrivé avec ``latin/PP-OCRv5`` : la
+          détection trouvait bien les zones de texte, la reconnaissance ne
+          rendait rien, et RapidOCR éliminait alors les boîtes — panne
+          parfaitement silencieuse. Un candidat n'est donc retenu que s'il
+          relit le ticket de contrôle.
         """
         from rapidocr import RapidOCR
 
         last_error = None
+        warmup = self._warmup_image()
         for ocr_version, lang in self.MODEL_CANDIDATES:
+            label = "PP-OCR %s / %s" % (ocr_version or "défaut", lang or "défaut")
             try:
                 engine = RapidOCR(params=self._build_params(ocr_version, lang))
-                warmup = self._warmup_image()
                 if warmup is not None:
-                    engine(warmup)
-                self._description = "PP-OCR %s / %s" % (ocr_version or "défaut", lang or "défaut")
-                _logger.info("Moteur de scan RapidOCR chargé (%s)", self._description)
+                    words = self._words_from_result(engine(warmup))
+                    if not self._warmup_ok(words):
+                        last_error = RuntimeError(
+                            "%s se charge mais ne relit pas le ticket de contrôle "
+                            "(%d mots reconnus)" % (label, len(words)))
+                        _logger.warning("%s", last_error)
+                        continue
+                self._description = label
+                _logger.info("Moteur de scan RapidOCR chargé (%s)", label)
                 return engine
             except Exception as error:  # noqa: BLE001
                 last_error = error
                 _logger.warning("Modèles RapidOCR %s/%s indisponibles : %s",
                                 ocr_version, lang, error)
         raise RuntimeError("Aucun jeu de modèles RapidOCR utilisable : %s" % last_error)
+
+    @classmethod
+    def _warmup_ok(cls, words):
+        """Le candidat relit-il assez du ticket de contrôle pour être retenu ?"""
+        if len(words) < cls.WARMUP_MIN_WORDS:
+            return False
+        return sum(word.score for word in words) / len(words) >= cls.WARMUP_MIN_SCORE
 
     def _get_engine(self):
         if self._engine is None:
@@ -175,7 +238,11 @@ class RapidOcrEngine(ScanEngine):
         return self._description or self.label
 
     def recognize(self, image):
-        result = self._get_engine()(image)
+        return self._words_from_result(self._get_engine()(image))
+
+    @staticmethod
+    def _words_from_result(result):
+        """Traduit la sortie de RapidOCR en mots situés."""
         if result is None or not getattr(result, "txts", None):
             return []
 
