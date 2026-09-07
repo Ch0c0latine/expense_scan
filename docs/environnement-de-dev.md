@@ -70,14 +70,24 @@ printf 'list_db = False\n' | sudo tee -a /etc/odoo19.conf
 Cela désactive complètement le gestionnaire de bases, y compris
 `/web/database/manager`. C'est la bonne pratique sur une instance exposée,
 mais **on perd la sauvegarde et la restauration depuis l'interface web** :
-il faut alors passer par `pg_dump` / `pg_restore` (voir §8). À n'activer
+il faut alors passer par `pg_dump` / `pg_restore` (§3 et §9). À n'activer
 que si cette contrainte est acceptée.
 
 ---
 
-## 2. Relever les paramètres du serveur
+## 2. Paramètres de ce serveur
 
-Ces trois valeurs sont nécessaires aux étapes suivantes.
+Relevés en septembre 2026, et utilisés tels quels dans la suite :
+
+| | |
+|---|---|
+| utilisateur et groupe système | `odoo:odoo` |
+| interpréteur | `/opt/odoo/19/venv/bin/python3` |
+| `data_dir` de production | `/opt/odoo/19/data` |
+| filestore de production | `/opt/odoo/19/data/filestore/greenengine` |
+| propriétaire PostgreSQL des bases | `odoo` |
+
+Pour les revérifier si l'installation a changé :
 
 ```bash
 sudo systemctl cat odoo19 | grep -iE "^User=|^Group=|^ExecStart="
@@ -91,9 +101,6 @@ sudo find /opt /var/lib /home -maxdepth 6 -type d -name filestore 2>/dev/null
 sudo -u postgres psql -At -c "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname='greenengine';"
 ```
 
-Dans la suite, `odoo` désigne l'utilisateur système du service et
-`FILESTORE` le répertoire trouvé ci-dessus.
-
 ---
 
 ## 3. Copier la base
@@ -103,7 +110,7 @@ sudo -u postgres pg_dump -Fc greenengine -f /tmp/greenengine.dump
 ```
 
 ```bash
-sudo -u postgres createdb -T template0 -O "$(sudo -u postgres psql -At -c "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname='greenengine';")" greenengine_dev
+sudo -u postgres createdb -T template0 -O odoo greenengine_dev
 ```
 
 ```bash
@@ -125,7 +132,7 @@ sudo mkdir -p /opt/odoo/19/dev-data/filestore
 ```
 
 ```bash
-sudo cp -a FILESTORE/greenengine /opt/odoo/19/dev-data/filestore/greenengine_dev
+sudo cp -a /opt/odoo/19/data/filestore/greenengine /opt/odoo/19/dev-data/filestore/greenengine_dev
 ```
 
 ```bash
@@ -134,52 +141,7 @@ sudo chown -R odoo:odoo /opt/odoo/19/dev-data
 
 ---
 
-## 5. Neutraliser la copie
-
-**Étape non facultative.** Une copie de production restaurée telle quelle
-enverrait de vrais courriels à de vrais clients dès que ses tâches
-planifiées se déclenchent.
-
-```bash
-sudo -u odoo /opt/odoo/19/venv/bin/python3 /opt/odoo/19/odoo/odoo-bin neutralize -c /etc/odoo19-dev.conf -d greenengine_dev
-```
-
-> À lancer **après** avoir écrit `/etc/odoo19-dev.conf` (§6) et **avant** le
-> premier démarrage du service de développement (§7).
-
-La commande `neutralize` d'Odoo désactive les serveurs de messagerie
-sortante et efface leurs identifiants, en insère un factice pour bloquer
-tout repli, désactive toutes les tâches planifiées sauf l'autovacuum,
-neutralise les webhooks, réinitialise `database.secret` et pose le
-marqueur `database.is_neutralized`.
-
-Trois retouches qu'elle ne fait pas :
-
-```bash
-sudo -u postgres psql -d greenengine_dev -c "UPDATE ir_config_parameter SET value='http://localhost:8070' WHERE key='web.base.url';"
-```
-
-```bash
-sudo -u postgres psql -d greenengine_dev -c "INSERT INTO ir_config_parameter(key,value) VALUES('web.base.url.freeze','True') ON CONFLICT (key) DO UPDATE SET value='True';"
-```
-
-```bash
-sudo -u postgres psql -d greenengine_dev -c "UPDATE ir_config_parameter SET value = gen_random_uuid()::text WHERE key='database.uuid';"
-```
-
-Les deux premières évitent que la copie fabrique des liens pointant vers la
-production. La troisième lui donne une identité propre (PostgreSQL 13 ou
-plus récent pour `gen_random_uuid()`).
-
-Pour voir ce que la neutralisation va exécuter sans l'appliquer :
-
-```bash
-sudo -u odoo /opt/odoo/19/venv/bin/python3 /opt/odoo/19/odoo/odoo-bin neutralize -c /etc/odoo19-dev.conf -d greenengine_dev --stdout
-```
-
----
-
-## 6. Configuration de l'instance de développement
+## 5. Configuration de l'instance de développement
 
 On part de la configuration de production — elle porte déjà les
 identifiants PostgreSQL — et on ne remplace que ce qui doit différer.
@@ -220,6 +182,49 @@ EOF
 
 ```bash
 sudo chown odoo:odoo /etc/odoo19-dev.conf && sudo chmod 640 /etc/odoo19-dev.conf
+```
+
+---
+
+## 6. Neutraliser la copie
+
+**Étape non facultative.** Une copie de production restaurée telle quelle
+enverrait de vrais courriels à de vrais clients dès que ses tâches
+planifiées se déclenchent. À lancer **avant le premier démarrage** du
+service de développement (§7) : c'est le seul moment où c'est sûr.
+
+```bash
+sudo -u odoo /opt/odoo/19/venv/bin/python3 /opt/odoo/19/odoo/odoo-bin neutralize -c /etc/odoo19-dev.conf -d greenengine_dev
+```
+
+La commande `neutralize` d'Odoo désactive les serveurs de messagerie
+sortante et efface leurs identifiants, en insère un factice pour bloquer
+tout repli, désactive toutes les tâches planifiées sauf l'autovacuum,
+neutralise les webhooks, réinitialise `database.secret` et pose le
+marqueur `database.is_neutralized`.
+
+Trois retouches qu'elle ne fait pas :
+
+```bash
+sudo -u postgres psql -d greenengine_dev -c "UPDATE ir_config_parameter SET value='http://localhost:8070' WHERE key='web.base.url';"
+```
+
+```bash
+sudo -u postgres psql -d greenengine_dev -c "INSERT INTO ir_config_parameter(key,value) VALUES('web.base.url.freeze','True') ON CONFLICT (key) DO UPDATE SET value='True';"
+```
+
+```bash
+sudo -u postgres psql -d greenengine_dev -c "UPDATE ir_config_parameter SET value = gen_random_uuid()::text WHERE key='database.uuid';"
+```
+
+Les deux premières évitent que la copie fabrique des liens pointant vers la
+production. La troisième lui donne une identité propre (PostgreSQL 13 ou
+plus récent pour `gen_random_uuid()`).
+
+Pour voir ce que la neutralisation va exécuter sans l'appliquer :
+
+```bash
+sudo -u odoo /opt/odoo/19/venv/bin/python3 /opt/odoo/19/odoo/odoo-bin neutralize -c /etc/odoo19-dev.conf -d greenengine_dev --stdout
 ```
 
 ---
