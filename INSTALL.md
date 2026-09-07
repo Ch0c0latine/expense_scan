@@ -1,7 +1,7 @@
 # Installation sur le serveur
 
 Procédure pour `green-engine.eu` (Odoo 19, service `odoo19`, addons custom
-dans `/opt/odoo/19/custom-addons/`, base `sandbox`).
+dans `/opt/odoo/19/custom-addons/`, base `greenengine`, base de production).
 
 Chaque bloc est à exécuter en SSH sur le serveur.
 
@@ -35,7 +35,7 @@ sudo systemctl stop odoo19
 ```
 
 ```bash
-sudo -u odoo /opt/odoo/19/venv/bin/python /opt/odoo/19/odoo/odoo-bin -c /etc/odoo19.conf -d sandbox --uninstall tus_odoo_ocr_ai_expense,tus_odoo_ocr_ai_base,account_ai_ocr --stop-after-init
+sudo -u odoo /opt/odoo/19/venv/bin/python /opt/odoo/19/odoo/odoo-bin -c /etc/odoo19.conf -d greenengine --uninstall tus_odoo_ocr_ai_expense,tus_odoo_ocr_ai_base,account_ai_ocr --stop-after-init
 ```
 
 > Si le chemin du virtualenv n'est pas celui-là, le retrouver avec :
