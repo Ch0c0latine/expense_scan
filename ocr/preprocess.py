@@ -1,0 +1,367 @@
+# -*- coding: utf-8 -*-
+"""Pré-traitement de la photo : détection du ticket, recadrage, redressage.
+
+C'est l'étape qui fait la plus grande différence de qualité sur une photo
+prise à main levée : un moteur OCR, aussi bon soit-il, lit mal un ticket
+photographié de biais, penché et noyé au milieu d'une table.
+
+Toutes les dépendances lourdes (OpenCV, Pillow, pdf2image) sont importées
+de façon défensive : si elles manquent, le module reste importable et la
+chaîne se rabat sur l'image brute, en le signalant.
+"""
+import io
+import logging
+
+_logger = logging.getLogger(__name__)
+
+try:
+    import numpy as np
+except ImportError:  # pragma: no cover - dépend de l'environnement serveur
+    np = None
+
+try:
+    import cv2
+except ImportError:  # pragma: no cover
+    cv2 = None
+
+try:
+    from PIL import Image, ImageOps
+except ImportError:  # pragma: no cover
+    Image = ImageOps = None
+
+from .types import PreprocessInfo
+
+# Un quadrilatère candidat doit couvrir au moins cette fraction de la photo
+# pour être considéré comme « le ticket » et non un détail du décor.
+MIN_QUAD_AREA_RATIO = 0.18
+# Au-delà, le cadrage est déjà bon : recadrer n'apporterait rien et risquerait
+# de rogner un bord du ticket.
+SKIP_CROP_AREA_RATIO = 0.97
+# Un ticket reste un objet allongé ; ces bornes écartent les faux positifs
+# (bord de table, reflet) sans exclure les tickets courts.
+MIN_ASPECT, MAX_ASPECT = 0.15, 20.0
+# Résolution de travail pour la détection des contours : inutile de chercher
+# un quadrilatère sur 12 mégapixels, et c'est 10 fois plus rapide.
+DETECTION_MAX_SIDE = 900
+# Inclinaison résiduelle corrigée (au-delà, c'est probablement une erreur
+# d'analyse plutôt qu'une photo penchée).
+MAX_DESKEW_ANGLE = 15.0
+MIN_DESKEW_ANGLE = 0.3
+
+
+def dependencies_status():
+    """Renvoie (ok, message) sur la disponibilité du pré-traitement."""
+    missing = []
+    if np is None:
+        missing.append("numpy")
+    if cv2 is None:
+        missing.append("opencv-python-headless")
+    if Image is None:
+        missing.append("Pillow")
+    if missing:
+        return False, "Modules Python manquants : %s" % ", ".join(missing)
+    return True, "OpenCV %s" % cv2.__version__
+
+
+def pdf_first_page_to_image_bytes(data, dpi=200):
+    """Convertit la première page d'un PDF en PNG. Renvoie None si impossible."""
+    try:
+        from pdf2image import convert_from_bytes
+    except ImportError:
+        _logger.info("pdf2image absent : PDF non converti")
+        return None
+    try:
+        pages = convert_from_bytes(data, dpi=dpi, first_page=1, last_page=1)
+    except Exception:
+        _logger.warning("Conversion du PDF impossible", exc_info=True)
+        return None
+    if not pages:
+        return None
+    buffer = io.BytesIO()
+    pages[0].save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def load_image(data):
+    """Décode des octets en image BGR, en appliquant l'orientation EXIF.
+
+    L'EXIF est essentiel : la plupart des téléphones enregistrent la photo
+    dans le sens du capteur et indiquent la rotation en métadonnée. Sans
+    cette correction, un ticket sur deux arrive couché.
+    """
+    if Image is None or np is None:
+        raise RuntimeError("Pillow et numpy sont requis pour lire l'image")
+    with Image.open(io.BytesIO(data)) as img:
+        img = ImageOps.exif_transpose(img)
+        img = img.convert("RGB")
+        array = np.array(img)
+    if cv2 is not None:
+        return cv2.cvtColor(array, cv2.COLOR_RGB2BGR)
+    return array[:, :, ::-1].copy()
+
+
+def encode_jpeg(image, quality=88):
+    """Encode une image BGR en JPEG."""
+    if cv2 is not None:
+        ok, buffer = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+        if ok:
+            return buffer.tobytes()
+    if Image is None:
+        raise RuntimeError("Aucun encodeur JPEG disponible")
+    pil = Image.fromarray(image[:, :, ::-1])
+    buffer = io.BytesIO()
+    pil.save(buffer, format="JPEG", quality=quality)
+    return buffer.getvalue()
+
+
+def _order_points(points):
+    """Range 4 points dans l'ordre haut-gauche, haut-droit, bas-droit, bas-gauche."""
+    ordered = np.zeros((4, 2), dtype="float32")
+    total = points.sum(axis=1)
+    ordered[0] = points[np.argmin(total)]   # somme minimale -> haut-gauche
+    ordered[2] = points[np.argmax(total)]   # somme maximale -> bas-droit
+    diff = np.diff(points, axis=1)
+    ordered[1] = points[np.argmin(diff)]    # ecart minimal -> haut-droit
+    ordered[3] = points[np.argmax(diff)]    # ecart maximal -> bas-gauche
+    return ordered
+
+
+def _quad_area(quad):
+    """Aire d'un quadrilatère par la formule du lacet."""
+    x = quad[:, 0]
+    y = quad[:, 1]
+    return 0.5 * abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
+
+
+def _find_quad_by_edges(gray, image_area):
+    """Cherche le contour rectangulaire du ticket par détection de bords."""
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(blurred, 50, 150)
+    # Ferme les interruptions du contour : sur un ticket clair posé sur un
+    # fond clair, le bord n'est jamais détecté d'un seul tenant.
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for contour in sorted(contours, key=cv2.contourArea, reverse=True)[:6]:
+        if cv2.contourArea(contour) < MIN_QUAD_AREA_RATIO * image_area:
+            break  # les suivants sont encore plus petits
+        perimeter = cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
+        if len(approx) == 4 and cv2.isContourConvex(approx):
+            return approx.reshape(4, 2).astype("float32")
+    return None
+
+
+def _find_quad_by_brightness(gray, image_area):
+    """Repli : isole la zone claire du ticket et prend son rectangle englobant.
+
+    Fonctionne là où la détection de bords échoue (ticket froissé, bord
+    partiellement dans l'ombre), au prix d'un cadrage un peu plus large.
+    """
+    blurred = cv2.GaussianBlur(gray, (7, 7), 0)
+    _, mask = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return None
+    largest = max(contours, key=cv2.contourArea)
+    if cv2.contourArea(largest) < MIN_QUAD_AREA_RATIO * image_area:
+        return None
+    box = cv2.boxPoints(cv2.minAreaRect(largest))
+    return np.array(box, dtype="float32")
+
+
+def detect_receipt_quad(image):
+    """Renvoie les 4 coins du ticket dans l'image, ou None."""
+    height, width = image.shape[:2]
+    scale = min(1.0, DETECTION_MAX_SIDE / float(max(height, width)))
+    if scale < 1.0:
+        small = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    else:
+        small = image
+    gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+    small_area = small.shape[0] * small.shape[1]
+
+    quad = _find_quad_by_edges(gray, small_area)
+    if quad is None:
+        quad = _find_quad_by_brightness(gray, small_area)
+    if quad is None:
+        return None
+
+    area_ratio = _quad_area(quad) / float(small_area)
+    if area_ratio < MIN_QUAD_AREA_RATIO or area_ratio > SKIP_CROP_AREA_RATIO:
+        return None
+    # Les coordonnées ont été trouvées sur l'image réduite : on les remet à
+    # l'échelle pour découper dans la pleine résolution.
+    return quad / scale if scale < 1.0 else quad
+
+
+def four_point_transform(image, quad):
+    """Redresse la perspective : le quadrilatère devient un rectangle."""
+    ordered = _order_points(quad)
+    (top_left, top_right, bottom_right, bottom_left) = ordered
+
+    width = int(max(np.linalg.norm(bottom_right - bottom_left),
+                    np.linalg.norm(top_right - top_left)))
+    height = int(max(np.linalg.norm(top_right - bottom_right),
+                     np.linalg.norm(top_left - bottom_left)))
+    if width < 40 or height < 40:
+        return None
+
+    aspect = height / float(width)
+    if not (MIN_ASPECT <= aspect <= MAX_ASPECT):
+        return None
+
+    destination = np.array([
+        [0, 0],
+        [width - 1, 0],
+        [width - 1, height - 1],
+        [0, height - 1],
+    ], dtype="float32")
+    matrix = cv2.getPerspectiveTransform(ordered, destination)
+    return cv2.warpPerspective(image, matrix, (width, height), flags=cv2.INTER_CUBIC,
+                               borderMode=cv2.BORDER_REPLICATE)
+
+
+def estimate_skew_angle(image):
+    """Estime l'inclinaison résiduelle des lignes de texte, en degrés."""
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    height, width = gray.shape[:2]
+    scale = min(1.0, DETECTION_MAX_SIDE / float(max(height, width)))
+    if scale < 1.0:
+        gray = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+        height, width = gray.shape[:2]
+
+    binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                   cv2.THRESH_BINARY_INV, 25, 15)
+    # Souder les caractères d'une même ligne pour raisonner sur des lignes
+    # entières plutôt que sur des lettres isolées.
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (max(width // 30, 9), 3))
+    merged = cv2.dilate(binary, kernel, iterations=1)
+
+    contours, _ = cv2.findContours(merged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    angles = []
+    for contour in contours:
+        (_, _), (rect_width, rect_height), angle = cv2.minAreaRect(contour)
+        if rect_width < 0.15 * width or min(rect_width, rect_height) < 4:
+            continue
+        if rect_width < rect_height:  # rectangle décrit « debout » par OpenCV
+            angle += 90.0
+        if -45.0 <= angle <= 45.0:
+            angles.append(angle)
+
+    if len(angles) < 3:
+        return 0.0
+    return float(np.median(angles))
+
+
+def deskew_image(image):
+    """Redresse l'image et vérifie que le résultat est meilleur.
+
+    La convention de signe de ``cv2.minAreaRect`` a changé entre les
+    versions d'OpenCV : plutôt que de parier dessus, on essaie la rotation
+    puis son opposée et on ne garde que celle qui réduit réellement
+    l'inclinaison mesurée. Si aucune n'améliore, on ne touche à rien.
+
+    Renvoie (image, angle appliqué).
+    """
+    angle = estimate_skew_angle(image)
+    if not (MIN_DESKEW_ANGLE < abs(angle) <= MAX_DESKEW_ANGLE):
+        return image, 0.0
+    for candidate in (angle, -angle):
+        corrected = rotate(image, candidate)
+        if abs(estimate_skew_angle(corrected)) < abs(angle) * 0.5:
+            return corrected, candidate
+    return image, 0.0
+
+
+def rotate(image, angle):
+    """Rotation autour du centre, fond blanc, sans rogner les coins."""
+    height, width = image.shape[:2]
+    center = (width / 2.0, height / 2.0)
+    matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+    cosine, sine = abs(matrix[0, 0]), abs(matrix[0, 1])
+    new_width = int(height * sine + width * cosine)
+    new_height = int(height * cosine + width * sine)
+    matrix[0, 2] += (new_width / 2.0) - center[0]
+    matrix[1, 2] += (new_height / 2.0) - center[1]
+    return cv2.warpAffine(image, matrix, (new_width, new_height), flags=cv2.INTER_CUBIC,
+                          borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
+
+
+def rotate_quarters(image, quarters):
+    """Rotation par quarts de tour (1 = 90° horaire)."""
+    quarters %= 4
+    if quarters == 0:
+        return image
+    codes = {
+        1: cv2.ROTATE_90_CLOCKWISE,
+        2: cv2.ROTATE_180,
+        3: cv2.ROTATE_90_COUNTERCLOCKWISE,
+    }
+    return cv2.rotate(image, codes[quarters])
+
+
+def looks_quarter_turned(words, min_words=5, threshold=0.55):
+    """Le texte reconnu semble-t-il écrit verticalement ?
+
+    Sur une image tournée d'un quart de tour, le détecteur trouve des boîtes
+    plus hautes que larges. C'est le signal le plus fiable et il ne coûte
+    rien : il se lit sur le résultat de la passe OCR déjà effectuée.
+    """
+    boxes = [w for w in words if w.width > 0 and w.height > 0]
+    if len(boxes) < min_words:
+        return False
+    vertical = sum(1 for w in boxes if w.height > 1.6 * w.width)
+    return (vertical / float(len(boxes))) >= threshold
+
+
+def limit_size(image, max_side):
+    """Réduit l'image si son plus grand côté dépasse max_side."""
+    height, width = image.shape[:2]
+    longest = max(height, width)
+    if max_side and longest > max_side:
+        scale = max_side / float(longest)
+        return cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    return image
+
+
+def prepare(data, autocrop=True, deskew=True, max_side=1800):
+    """Chaîne complète : octets -> image BGR prête pour l'OCR.
+
+    Renvoie (image, PreprocessInfo). Ne lève jamais pour une raison
+    cosmétique : si le recadrage échoue, on rend l'image d'origine et on le
+    dit dans PreprocessInfo.
+    """
+    image = load_image(data)
+    info = PreprocessInfo(original_size=(image.shape[1], image.shape[0]))
+
+    if cv2 is None:
+        info.final_size = info.original_size
+        return image, info
+
+    if autocrop:
+        try:
+            quad = detect_receipt_quad(image)
+            if quad is not None:
+                warped = four_point_transform(image, quad)
+                if warped is not None:
+                    image = warped
+                    info.cropped = True
+        except Exception:
+            _logger.warning("Recadrage automatique impossible", exc_info=True)
+
+    if deskew:
+        try:
+            image, info.deskew_angle = deskew_image(image)
+        except Exception:
+            _logger.warning("Redressage impossible", exc_info=True)
+
+    image = limit_size(image, max_side)
+    info.final_size = (image.shape[1], image.shape[0])
+    info.changed = info.cropped or bool(info.deskew_angle) or info.final_size != info.original_size
+    return image, info

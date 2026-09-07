@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!--
+        Odoo déclare le champ fichier avec accept="*". Sur téléphone, un
+        sélecteur générique propose « Fichiers » et enterre l'appareil photo.
+        En restreignant aux images et aux PDF, iOS et Android ouvrent
+        directement la feuille « Appareil photo / Photothèque / Fichiers » :
+        le scan tient alors en un seul appui.
+    -->
+    <t t-name="expense_scan.ListViewAccept" t-inherit="hr_expense.ListView" t-inherit-mode="extension">
+        <xpath expr="//input[@name='ufile']" position="attributes">
+            <attribute name="accept">image/*,application/pdf</attribute>
+        </xpath>
+    </t>
+
+    <t t-name="expense_scan.KanbanViewAccept" t-inherit="hr_expense.KanbanView" t-inherit-mode="extension">
+        <xpath expr="//input[@name='ufile']" position="attributes">
+            <attribute name="accept">image/*,application/pdf</attribute>
+        </xpath>
+    </t>
+
+</templates>

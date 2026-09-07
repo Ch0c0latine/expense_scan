@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_config_settings_view_form_scan" model="ir.ui.view">
+        <field name="name">res.config.settings.form.expense.scan</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="90"/>
+        <field name="inherit_id" ref="hr_expense.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='expenses_setting_container']" position="inside">
+
+                <setting id="expense_scan_setting" string="Scan des tickets de caisse"
+                         company_dependent="1"
+                         help="Lire les tickets photographiés en local, sans crédit ni abonnement">
+                    <field name="expense_scan_enabled"/>
+                    <div class="content-group" invisible="not expense_scan_enabled">
+                        <div class="row mt16">
+                            <label for="expense_scan_engine" class="col-lg-4 o_light_label"/>
+                            <field name="expense_scan_engine"/>
+                        </div>
+                        <div class="row" invisible="expense_scan_engine == 'rapidocr'">
+                            <label for="expense_scan_tesseract_lang" class="col-lg-4 o_light_label"/>
+                            <field name="expense_scan_tesseract_lang"/>
+                        </div>
+                        <div class="row">
+                            <label for="expense_scan_threads" class="col-lg-4 o_light_label"/>
+                            <field name="expense_scan_threads"/>
+                        </div>
+                        <div class="row">
+                            <label for="expense_scan_max_age_days" class="col-lg-4 o_light_label"/>
+                            <field name="expense_scan_max_age_days"/>
+                        </div>
+                        <div class="row" invisible="expense_scan_engine == 'tesseract'">
+                            <label for="expense_scan_model_dir" class="col-lg-4 o_light_label"/>
+                            <field name="expense_scan_model_dir"
+                                   placeholder="par défaut : répertoire de données d'Odoo"/>
+                        </div>
+                        <div class="mt8">
+                            <button name="action_expense_scan_self_test" type="object"
+                                    string="Tester et précharger le moteur"
+                                    class="btn btn-link ps-0" icon="fa-play-circle"/>
+                        </div>
+                        <field name="expense_scan_status" widget="text" readonly="1"
+                               class="text-muted small"/>
+                    </div>
+                </setting>
+
+                <setting id="expense_scan_image_setting" string="Traitement de la photo"
+                         company_dependent="1"
+                         invisible="not expense_scan_enabled"
+                         help="Détourer et redresser le ticket avant lecture">
+                    <div class="content-group">
+                        <div><field name="expense_scan_autocrop"/>
+                            <label for="expense_scan_autocrop"/></div>
+                        <div><field name="expense_scan_deskew"/>
+                            <label for="expense_scan_deskew"/></div>
+                        <div><field name="expense_scan_auto_rotate"/>
+                            <label for="expense_scan_auto_rotate"/></div>
+                        <div><field name="expense_scan_keep_original"/>
+                            <label for="expense_scan_keep_original"/></div>
+                        <div><field name="expense_scan_wide_split"/>
+                            <label for="expense_scan_wide_split"/></div>
+                    </div>
+                </setting>
+
+                <setting id="expense_scan_accounting_setting" string="Report comptable"
+                         company_dependent="1"
+                         invisible="not expense_scan_enabled"
+                         help="Ce que le scan a le droit de renseigner automatiquement">
+                    <div class="content-group">
+                        <div><field name="expense_scan_apply_tax"/>
+                            <label for="expense_scan_apply_tax"/></div>
+                        <div><field name="expense_scan_set_vendor"/>
+                            <label for="expense_scan_set_vendor"/></div>
+                    </div>
+                </setting>
+
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

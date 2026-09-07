@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="expense_scan.ReceiptPreview">
+        <div t-if="visible" class="o_expense_scan_preview"
+             t-att-class="{ 'o_expense_scan_preview_expanded': state.expanded }">
+            <img class="o_expense_scan_preview_img"
+                 t-att-src="imageUrl"
+                 t-att-alt="attachment.name"
+                 t-on-click="onOpenViewer"/>
+            <div class="o_expense_scan_preview_actions">
+                <button type="button" class="btn btn-sm btn-light"
+                        t-on-click="onToggle" t-att-title="toggleLabel">
+                    <i class="fa" t-att-class="state.expanded ? 'fa-compress' : 'fa-expand'"
+                       role="img" t-att-aria-label="toggleLabel"/>
+                </button>
+                <button type="button" class="btn btn-sm btn-light"
+                        t-on-click="onOpenViewer" title="Ouvrir en plein écran">
+                    <i class="fa fa-search-plus" role="img" aria-label="Ouvrir en plein écran"/>
+                </button>
+            </div>
+        </div>
+    </t>
+
+</templates>
