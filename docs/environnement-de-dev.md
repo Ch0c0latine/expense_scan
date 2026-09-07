@@ -151,8 +151,14 @@ sudo cp /etc/odoo19.conf /etc/odoo19-dev.conf
 ```
 
 ```bash
-sudo sed -i -E '/^\s*(db_name|dbfilter|http_port|http_interface|data_dir|logfile|addons_path|workers|list_db|proxy_mode)\s*=/d' /etc/odoo19-dev.conf
+sudo sed -i -E '/^\s*(db_name|dbfilter|list_db|http_port|http_interface|xmlrpc_port|xmlrpc_interface|gevent_port|longpolling_port|proxy_mode|data_dir|addons_path|logfile|workers|max_cron_threads)\s*=/d' /etc/odoo19-dev.conf
 ```
+
+Cette liste doit couvrir **exactement** les options réécrites plus bas, y
+compris les alias historiques `xmlrpc_port` et `longpolling_port` : le
+lecteur de configuration de Python refuse un fichier contenant deux fois la
+même option, et un alias survivant ferait écouter l'instance de
+développement sur le port de la production.
 
 ```bash
 sudo tee -a /etc/odoo19-dev.conf > /dev/null <<'EOF'
@@ -167,10 +173,21 @@ proxy_mode = False
 data_dir = /opt/odoo/19/dev-data
 addons_path = /opt/odoo/19/odoo/addons,/opt/odoo/19/dev-addons
 logfile = /var/log/odoo/odoo19-dev.log
+gevent_port = 8073
 workers = 0
 max_cron_threads = 0
 EOF
 ```
+
+Contrôle indispensable avant de démarrer quoi que ce soit — la sortie doit
+être **vide** :
+
+```bash
+sudo grep -oE "^\s*[a-z_]+\s*=" /etc/odoo19-dev.conf | tr -d ' =' | sort | uniq -d
+```
+
+Toute option affichée ici est présente deux fois et empêchera Odoo de lire
+le fichier.
 
 - `http_interface = 127.0.0.1` : injoignable hors de la machine.
 - `workers = 0` : mode multi-thread, plus léger et plus simple à déboguer ;
