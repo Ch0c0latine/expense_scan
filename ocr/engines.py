@@ -18,17 +18,38 @@ import time
 
 _logger = logging.getLogger(__name__)
 
+# Les erreurs d'import sont conservées : une dépendance absente doit
+# pouvoir être nommée à l'utilisateur, pas se traduire par un « module
+# requis » qui n'apprend rien sur ce qui manque réellement.
 try:
     import numpy as np
-except ImportError:  # pragma: no cover
+except Exception as error:  # noqa: BLE001
     np = None
+    NUMPY_IMPORT_ERROR = error
+else:
+    NUMPY_IMPORT_ERROR = None
 
 try:
     import cv2
-except ImportError:  # pragma: no cover
+except Exception as error:  # noqa: BLE001
     cv2 = None
+    CV2_IMPORT_ERROR = error
+else:
+    CV2_IMPORT_ERROR = None
 
 from .types import OcrWord
+
+
+def imaging_status():
+    """État des bibliothèques de traitement d'image, avec la cause exacte."""
+    problems = []
+    if np is None:
+        problems.append("numpy : %r" % (NUMPY_IMPORT_ERROR,))
+    if cv2 is None:
+        problems.append("cv2 (opencv-python) : %r" % (CV2_IMPORT_ERROR,))
+    if problems:
+        return False, "Import impossible — " + " / ".join(problems)
+    return True, "numpy %s, OpenCV %s" % (np.__version__, cv2.__version__)
 
 
 class ScanEngine(object):
@@ -317,7 +338,7 @@ def self_test(preferred="auto", **options):
     engine = resolve_engine(preferred, **options)
     image = ScanEngine._warmup_image()
     if image is None:
-        raise RuntimeError("numpy et OpenCV sont requis pour le test")
+        raise RuntimeError(imaging_status()[1])
     words = engine.recognize(image)
     return {
         "engine": getattr(engine, "description", engine.label),

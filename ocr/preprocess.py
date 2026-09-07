@@ -14,20 +14,28 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
+# Les erreurs d'import sont conservées plutôt qu'avalées : sur un serveur,
+# « module manquant » et « bibliothèque système absente » se soignent très
+# différemment, et seule l'exception d'origine permet de les distinguer.
+_IMPORT_ERRORS = {}
+
 try:
     import numpy as np
-except ImportError:  # pragma: no cover - dépend de l'environnement serveur
+except Exception as error:  # noqa: BLE001 - dépend de l'environnement serveur
     np = None
+    _IMPORT_ERRORS['numpy'] = error
 
 try:
     import cv2
-except ImportError:  # pragma: no cover
+except Exception as error:  # noqa: BLE001
     cv2 = None
+    _IMPORT_ERRORS['cv2 (opencv-python)'] = error
 
 try:
     from PIL import Image, ImageOps
-except ImportError:  # pragma: no cover
+except Exception as error:  # noqa: BLE001
     Image = ImageOps = None
+    _IMPORT_ERRORS['Pillow'] = error
 
 from .types import PreprocessInfo
 
@@ -51,16 +59,10 @@ MIN_DESKEW_ANGLE = 0.3
 
 def dependencies_status():
     """Renvoie (ok, message) sur la disponibilité du pré-traitement."""
-    missing = []
-    if np is None:
-        missing.append("numpy")
-    if cv2 is None:
-        missing.append("opencv-python-headless")
-    if Image is None:
-        missing.append("Pillow")
-    if missing:
-        return False, "Modules Python manquants : %s" % ", ".join(missing)
-    return True, "OpenCV %s" % cv2.__version__
+    if _IMPORT_ERRORS:
+        return False, "Import impossible — " + " / ".join(
+            "%s : %r" % (name, error) for name, error in sorted(_IMPORT_ERRORS.items()))
+    return True, "numpy %s, OpenCV %s" % (np.__version__, cv2.__version__)
 
 
 def pdf_first_page_to_image_bytes(data, dpi=200):
