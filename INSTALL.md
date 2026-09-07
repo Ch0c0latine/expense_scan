@@ -43,14 +43,40 @@ sudo -u odoo /opt/odoo/19/venv/bin/python /opt/odoo/19/odoo/odoo-bin -c /etc/odo
 
 ### 1.3 Retirer les répertoires des modules
 
-Une fois la désinstallation confirmée dans Odoo :
+**D'abord vérifier** que la désinstallation est complète, avant de toucher
+aux fichiers : Odoo ne sait désinstaller un module que s'il peut encore lire
+ses fichiers, donc supprimer trop tôt interdirait de rejouer un nettoyage.
 
 ```bash
-sudo mv /opt/odoo/19/custom-addons/account_ai_ocr /opt/odoo/19/custom-addons/tus_odoo_ocr_ai_base /opt/odoo/19/custom-addons/tus_odoo_ocr_ai_expense /root/ocr_modules_retires/
+sudo -u postgres psql -d greenengine -c "SELECT name, state FROM ir_module_module WHERE name IN ('account_ai_ocr','tus_odoo_ocr_ai_base','tus_odoo_ocr_ai_expense');"
 ```
 
-(Un `mv` plutôt qu'un `rm` : si un enregistrement résiduel réapparaît, les
-fichiers sont encore là pour rejouer une désinstallation propre.)
+Les trois lignes doivent afficher `uninstalled`.
+
+```bash
+sudo -u postgres psql -d greenengine -c "SELECT model, name FROM ir_model_fields WHERE name LIKE '%ocr%' ORDER BY model;"
+```
+
+Attendu : `(0 rows)`. Si des champs subsistent, la désinstallation n'est pas
+allée au bout — ne rien supprimer et la reprendre.
+
+Ces deux contrôles passés, la suppression est définitive sans filet côté
+serveur ; la sauvegarde utile est la copie des modules achetés conservée
+hors du serveur, pour le cas où il faudrait justifier l'achat auprès des
+éditeurs.
+
+```bash
+ls -d /opt/odoo/19/custom-addons/account_ai_ocr /opt/odoo/19/custom-addons/tus_odoo_ocr_ai_base /opt/odoo/19/custom-addons/tus_odoo_ocr_ai_expense
+```
+
+```bash
+sudo rm -rf /opt/odoo/19/custom-addons/account_ai_ocr /opt/odoo/19/custom-addons/tus_odoo_ocr_ai_base /opt/odoo/19/custom-addons/tus_odoo_ocr_ai_expense
+```
+
+Inutile d'arrêter le service : les modules étant désinstallés, Odoo n'a rien
+chargé depuis ces répertoires et ne les relit qu'au moment d'un *Update Apps
+List*. Faire ensuite `Apps` → **Update Apps List** pour qu'ils disparaissent
+de la liste des applications.
 
 ### 1.4 Paquets Python laissés en place
 
@@ -120,8 +146,23 @@ cd /opt/odoo/19/custom-addons/expense_scan && sudo -u odoo git pull
 
 ## 4. Installer dans Odoo
 
+`greenengine` est la base de production : une erreur d'import dans un module
+custom empêche Odoo de démarrer, et le service ne remonte pas tant que le
+répertoire fautif n'est pas retiré du chemin des addons. Prendre un dump
+avant la première installation :
+
+```bash
+sudo -u postgres pg_dump -Fc greenengine -f ~/prod_avant_expense_scan.dump
+```
+
 ```bash
 update-odoo-modules
+```
+
+En cas de refus de démarrage, retirer le module et redémarrer :
+
+```bash
+sudo mv /opt/odoo/19/custom-addons/expense_scan ~/ && sudo systemctl restart odoo19
 ```
 
 Puis `Apps` → **Update Apps List** → chercher *Scan de tickets de caisse* →
