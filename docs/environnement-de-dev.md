@@ -342,8 +342,19 @@ WireGuard) — pas l'ouverture du port SSH ni l'exposition du port 8070.
 
 ## 9. Utilisation courante
 
-Installer ou mettre à jour un module sur la base de développement, service
-arrêté :
+### Après chaque `git pull`
+
+**Toujours mettre à jour le module, jamais seulement redémarrer.** Un
+redémarrage recharge le code mais ne touche pas au schéma : un nouveau
+champ Python reste sans colonne en base, et toute requête sur le modèle
+échoue alors avec `UndefinedColumn`. Les vues et les données XML sont dans
+le même cas.
+
+```bash
+sudo systemctl stop odoo19-dev && sudo -u odoo /opt/odoo/19/venv/bin/python3 /opt/odoo/19/odoo/odoo-bin -c /etc/odoo19-dev.conf -d greenengine_dev -u expense_scan --stop-after-init && sudo systemctl start odoo19-dev
+```
+
+Première installation : remplacer `-u` par `-i`.
 
 ```bash
 sudo systemctl stop odoo19-dev && sudo -u odoo /opt/odoo/19/venv/bin/python3 /opt/odoo/19/odoo/odoo-bin -c /etc/odoo19-dev.conf -d greenengine_dev -i expense_scan --stop-after-init

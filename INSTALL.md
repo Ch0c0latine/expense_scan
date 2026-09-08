@@ -142,6 +142,11 @@ Puis, à chaque mise à jour ultérieure :
 cd /opt/odoo/19/custom-addons/expense_scan && sudo -u odoo git pull
 ```
 
+Un `git pull` doit **toujours** être suivi d'une mise à jour du module
+(`update-odoo-modules`), jamais d'un simple redémarrage : celui-ci recharge
+le code sans toucher au schéma, et un nouveau champ resterait sans colonne
+en base — toute requête sur le modèle échouerait alors.
+
 ---
 
 ## 4. Installer dans Odoo
@@ -180,6 +185,21 @@ Puis `Apps` → **Update Apps List** → chercher *Scan de tickets de caisse* �
    connexion. Les suivants sont instantanés.
 3. Le message doit indiquer le texte lu sur l'image de contrôle
    (`TOTAL 12,34 EUR`).
+
+### Archivage des taxes d'achat
+
+Le plan comptable français installe une douzaine de taxes au même taux
+(`20% G`, `20% S`, `20% EU G`, `20% EX`, `INC`…). Elles polluent les menus
+de sélection et rendent tout choix automatique impossible. L'archivage
+retenu en développement est à **rejouer à l'identique en production**, une
+fois la liste des taxes réellement utilisées vérifiée :
+
+```bash
+sudo -u postgres psql -d greenengine -c "SELECT t.id, t.name FROM account_tax t WHERE t.type_tax_use='purchase' AND t.active ORDER BY t.amount DESC, t.name;"
+```
+
+Archiver plutôt que supprimer : une taxe archivée disparaît des menus mais
+reste attachée aux écritures existantes, et se réactive d'un clic.
 
 Le dossier des modèles est créé automatiquement dans le répertoire de
 données d'Odoo. Pour le retrouver :
