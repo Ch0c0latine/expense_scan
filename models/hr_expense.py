@@ -5,6 +5,7 @@ import time
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.tools import format_date
 
 from ..ocr import engines, parser, preprocess
 
@@ -209,11 +210,13 @@ class HrExpense(models.Model):
                 info.changed = True
 
         if company.expense_scan_deskew:
-            # Le redressage se mesure enfin sur du texte plutôt que sur une
-            # photo pleine de table et d'ombres : c'est là qu'une inclinaison
-            # de quelques degrés devient détectable.
-            image, angle = preprocess.deskew_image(image)
-            if angle:
+            # L'inclinaison se mesure sur les lignes de texte reconnues, et
+            # non sur l'image : une fois le ticket recadré, ses bords de
+            # papier entrent dans le cadre et fausseraient l'estimation, car
+            # ils sont rarement parallèles à l'impression.
+            angle = preprocess.skew_angle_from_lines(parser.build_lines(words))
+            if preprocess.MIN_DESKEW_ANGLE < abs(angle) <= preprocess.MAX_DESKEW_ANGLE:
+                image = preprocess.rotate(image, angle)
                 info.deskew_angle = angle
                 info.changed = True
 
@@ -254,13 +257,18 @@ class HrExpense(models.Model):
         """Traduit le résultat du parseur en valeurs de champs Odoo."""
         values = {}
 
-        merchant = result.value('merchant')
-        if merchant:
-            values['name'] = merchant
-
         scan_date = result.value('date')
         if scan_date:
             values['date'] = scan_date
+
+        merchant = result.value('merchant')
+        if merchant:
+            values['name'] = merchant
+        elif scan_date:
+            # Sans enseigne lisible, le titre par défaut d'Odoo porte la date
+            # de saisie, qui n'apprend rien. Celle de la dépense, si, et elle
+            # aide à retrouver la ligne dans une liste.
+            values['name'] = _("Ticket du %s", format_date(self.env, scan_date))
 
         currency = self._expense_scan_currency(result, company)
         if currency:
@@ -298,15 +306,21 @@ class HrExpense(models.Model):
         rate = result.value('tax_rate')
         if rate is None:
             return self.env['account.tax']
+        # Pas de filtre sur `price_include` : le plan comptable français
+        # définit ses taxes d'achat hors taxe, et Odoo traite de toute façon
+        # le total d'une note de frais comme TTC (`special_mode` du moteur
+        # de taxes). Filtrer là-dessus ne retenait jamais aucune taxe.
         taxes = self.env['account.tax'].search([
             ('company_id', '=', company.id),
             ('type_tax_use', '=', 'purchase'),
             ('amount_type', '=', 'percent'),
             ('amount', '=', rate),
-            ('price_include', '=', True),
         ], limit=2)
         # Une correspondance ambiguë est pire qu'aucune : elle passerait
-        # inaperçue à la relecture.
+        # inaperçue à la relecture. Sur un plan comptable français complet,
+        # une douzaine de taxes cohabitent au même taux (biens, services,
+        # intracommunautaire...) : c'est alors la catégorie de dépense qui
+        # tranche, et ce choix-là appartient au comptable.
         return taxes if len(taxes) == 1 else self.env['account.tax']
 
     def _expense_scan_vendor(self, result, company):

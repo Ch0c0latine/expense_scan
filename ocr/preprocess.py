@@ -10,6 +10,7 @@ de façon défensive : si elles manquent, le module reste importable et la
 chaîne se rabat sur l'image brute, en le signalant.
 """
 import io
+import math
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -320,6 +321,39 @@ def looks_quarter_turned(words, min_words=5, threshold=0.55):
         return False
     vertical = sum(1 for w in boxes if w.height > 1.6 * w.width)
     return (vertical / float(len(boxes))) >= threshold
+
+
+def skew_angle_from_lines(lines, min_words=3, min_lines=2):
+    """Inclinaison des lignes de texte, mesurée sur les mots reconnus.
+
+    Bien plus fiable que :func:`estimate_skew_angle`, qui travaille sur
+    l'image : une fois le ticket recadré, ses bords de papier entrent dans
+    le cadre et sont eux aussi des droites marquées, souvent inclinées
+    autrement que l'impression. Ici on ne regarde que le texte.
+
+    L'angle renvoyé se donne tel quel à :func:`rotate` : une rotation de
+    ``a`` transforme une pente ``tan(θ)`` en ``tan(θ - a)``, donc corriger
+    revient à tourner de l'angle mesuré. Aucune ambiguïté de signe.
+    """
+    angles = []
+    for line in lines:
+        if len(line.words) < min_words:
+            continue
+        xs = [(word.left + word.right) / 2.0 for word in line.words]
+        ys = [word.center_y for word in line.words]
+        count = len(xs)
+        mean_x = sum(xs) / count
+        mean_y = sum(ys) / count
+        variance = sum((x - mean_x) ** 2 for x in xs)
+        if variance <= 0:
+            continue
+        slope = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys)) / variance
+        angles.append(math.degrees(math.atan(slope)))
+
+    if len(angles) < min_lines:
+        return 0.0
+    angles.sort()
+    return angles[len(angles) // 2]
 
 
 def crop_to_text(image, words, margin_ratio=0.05, max_kept_ratio=0.92):
