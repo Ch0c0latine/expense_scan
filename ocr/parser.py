@@ -523,8 +523,43 @@ def _extract_taxes_by_line(lines):
 READING_LABEL_RE = re.compile(
     r"\b(TOTAL|PRIX|MONTANT|TVA|PAIEMENT|REGLEMENT|NET A PAYER|ESPECES|RENDU"
     r"|SOUS-TOTAL|A PAYER|DONT TVA)\b")
+#: Mentions qui closent un ticket : elles doivent finir en bas.
+READING_FOOTER_RE = re.compile(
+    r"\b(TOTAL|NET A PAYER|A PAYER|PAIEMENT|REGLEMENT|CARTE BANCAIRE|MERCI"
+    r"|AU REVOIR|RENDU|ESPECES)\b")
+#: Mentions qui ouvrent un ticket : elles doivent rester en haut.
+READING_HEADER_RE = re.compile(
+    r"\b(SARL|SAS|SASU|EURL|SA|SIRET|SIREN|RCS|TEL|TELEPHONE|RUE|AVENUE"
+    r"|BOULEVARD|ROUTE|PLACE|CEDEX|BP)\b")
 #: Nombre de lignes concordantes exigé avant de conclure.
 READING_MIN_VOTES = 2
+
+
+def _block_votes(lines, pattern, expected_bottom):
+    """Vote de position : ces mentions tombent-elles du bon côté ?
+
+    Un ticket a une géométrie stable — coordonnées de l'enseigne en haut,
+    règlement en bas. Retourné, tout se retrouve du mauvais côté. Le vote
+    ne compte que les lignes franchement écartées du milieu : celles qui
+    l'entourent ne prouvent rien.
+    """
+    positions = [line.center_y for line in lines]
+    if len(positions) < 4:
+        return 0
+    middle = (min(positions) + max(positions)) / 2.0
+    span = max(positions) - min(positions)
+    if span <= 0:
+        return 0
+
+    votes = 0
+    for line in lines:
+        if not pattern.search(strip_accents(line.text or "").upper()):
+            continue
+        offset = (line.center_y - middle) / span
+        if abs(offset) < 0.15:
+            continue
+        votes += 1 if (offset > 0) == expected_bottom else -1
+    return votes
 
 
 def reading_direction(lines):
@@ -555,6 +590,11 @@ def reading_direction(lines):
             votes += 1
         elif min(positions) < label.start():
             votes -= 1
+
+    # Second faisceau, sur la géométrie du ticket plutôt que sur ses
+    # lignes : l'enseigne et son adresse en haut, le règlement en bas.
+    votes += _block_votes(lines, READING_FOOTER_RE, expected_bottom=True)
+    votes += _block_votes(lines, READING_HEADER_RE, expected_bottom=False)
 
     if votes <= -READING_MIN_VOTES:
         return -1

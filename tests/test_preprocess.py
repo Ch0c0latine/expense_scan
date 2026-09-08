@@ -150,3 +150,47 @@ class TestPreprocess(common.TransactionCase):
                              left=900.0, top=900.0, right=930.0, bottom=930.0))
         self.assertAlmostEqual(preprocess.skew_angle_from_words(words), 6.0, places=3)
         self.assertNotIn(words[-1], preprocess.text_inliers(words))
+
+    # -- Orientation ------------------------------------------------------
+
+    def test_horizontal_text_score_tells_lying_from_standing(self):
+        """Le seul indice fiable du quart de tour : la direction des boîtes.
+
+        Le moteur redresse chaque boîte avant de la lire, donc il lit aussi
+        bien un ticket debout qu'un ticket couché — la qualité de lecture ne
+        dit rien de l'orientation, sa géométrie si.
+        """
+        self.assertGreater(
+            preprocess.horizontal_text_score(make_words(angle=2.0)), 0.0)
+        self.assertLess(
+            preprocess.horizontal_text_score(make_words(angle=88.0)), 0.0)
+        self.assertLess(
+            preprocess.horizontal_text_score(make_words(angle=-88.0)), 0.0)
+
+    def test_quarter_turn_uprights_a_standing_receipt(self):
+        """Un quart de tour ramène les lignes debout à l'horizontale."""
+        standing = make_words(angle=90.0)
+        turned = preprocess.rotate_words_quarters(standing, 1, 300.0, 300.0)
+        self.assertGreater(preprocess.horizontal_text_score(turned), 0.0)
+
+    def test_quarter_turn_moves_the_boxes(self):
+        """Le quart de tour horaire envoie le haut de la photo à droite."""
+        word = OcrWord(text="ASF", score=0.9, angle=0.0,
+                       left=10.0, top=0.0, right=110.0, bottom=20.0)
+        turned = preprocess.rotate_words_quarters([word], 1, 200.0, 300.0)[0]
+        # (x, y) -> (hauteur - y, x) : la ligne du haut se retrouve à droite.
+        self.assertAlmostEqual(turned.left, 280.0)
+        self.assertAlmostEqual(turned.right, 300.0)
+        self.assertAlmostEqual(turned.top, 10.0)
+        self.assertAlmostEqual(turned.bottom, 110.0)
+
+    def test_half_turn_keeps_the_direction(self):
+        """Une ligne lue à l'envers a la même direction : 180° n'y change rien."""
+        turned = preprocess.rotate_words_quarters(make_words(angle=7.0), 2, 300.0, 300.0)
+        self.assertAlmostEqual(turned[0].angle, 7.0)
+
+    def test_deskew_brings_the_direction_back_to_zero(self):
+        """Redresser de 6° remet à plat des boîtes inclinées de 6°."""
+        matrix, _size = preprocess.rotation_matrix((300, 300), 6.0)
+        moved = preprocess.rotate_words(make_words(angle=6.0), matrix, 6.0)
+        self.assertAlmostEqual(moved[0].angle, 0.0)

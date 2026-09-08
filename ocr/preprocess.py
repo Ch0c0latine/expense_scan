@@ -309,7 +309,7 @@ def rotate(image, angle):
                           borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
 
 
-def rotate_words(words, matrix):
+def rotate_words(words, matrix, angle=0.0):
     """Suit les boîtes de mots à travers la même rotation que l'image.
 
     Sans ça, recadrer après un redressage se ferait sur des coordonnées
@@ -325,23 +325,67 @@ def rotate_words(words, matrix):
             xs.append(matrix[0, 0] * x + matrix[0, 1] * y + matrix[0, 2])
             ys.append(matrix[1, 0] * x + matrix[1, 1] * y + matrix[1, 2])
         moved.append(OcrWord(text=word.text, score=word.score,
-                             left=min(xs), top=min(ys), right=max(xs), bottom=max(ys)))
+                             left=min(xs), top=min(ys), right=max(xs), bottom=max(ys),
+                             angle=normalize_angle(word.angle - angle)))
     return moved
 
 
-def mirror_words(words, width, height):
-    """Fait subir aux boîtes le demi-tour qu'on applique à l'image.
+def rotate_words_quarters(words, quarters, width, height):
+    """Fait subir aux boîtes le quart de tour qu'on applique à l'image.
 
-    Le texte, lui, ne bouge pas : le classifieur d'angle du moteur a déjà
-    remis chaque ligne à l'endroit, seuls les emplacements sont restés en
-    miroir. Les retourner ici évite une seconde lecture — l'inclinaison des
-    boîtes est conservée, un demi-tour ne la change pas.
+    Le texte, lui, ne bouge pas : le moteur redresse chaque boîte détectée
+    avant de la lire, quelle que soit son orientation dans la photo. Seuls
+    les emplacements sont à corriger — ce qui permet de choisir le quart de
+    tour après la lecture, sans en payer une seconde.
+
+    L'inclinaison n'est pas touchée non plus : elle est définie modulo 90°,
+    et un quart de tour la laisse donc inchangée.
     """
-    return [OcrWord(text=word.text, score=word.score,
-                    left=width - word.right, top=height - word.bottom,
-                    right=width - word.left, bottom=height - word.top,
-                    angle=word.angle)
-            for word in words]
+    quarters %= 4
+    if not quarters:
+        return list(words)
+
+    turned = []
+    for word in words:
+        if quarters == 1:  # horaire : (x, y) -> (hauteur - y, x)
+            box = (height - word.bottom, word.left, height - word.top, word.right)
+        elif quarters == 2:
+            box = (width - word.right, height - word.bottom,
+                   width - word.left, height - word.top)
+        else:  # anti-horaire : (x, y) -> (y, largeur - x)
+            box = (word.top, width - word.right, word.bottom, width - word.left)
+        turned.append(OcrWord(text=word.text, score=word.score,
+                              left=box[0], top=box[1], right=box[2], bottom=box[3],
+                              angle=normalize_angle(word.angle + 90.0 * quarters)))
+    return turned
+
+
+def normalize_angle(angle):
+    """Ramène une direction dans (-90, 90].
+
+    Une ligne et la même ligne parcourue à l'envers pointent dans la même
+    direction : les angles de texte se comptent donc modulo 180°.
+    """
+    return ((angle + 90.0) % 180.0) - 90.0
+
+
+def horizontal_text_score(words):
+    """Positif si les lignes sont couchées, négatif si elles sont debout.
+
+    C'est le seul indice qui distingue vraiment un quart de tour : le
+    moteur redresse chaque boîte avant de la lire, donc il lit aussi bien
+    dans les quatre sens et comparer les scores de reconnaissance ne
+    tranche rien.
+
+    On lit la direction que le détecteur donne à chaque boîte, pondérée par
+    sa longueur — une ligne entière est un bien meilleur témoin qu'un
+    fragment de quelques caractères. Une ligne à 45° pile ne vote pas.
+    """
+    total = 0.0
+    for word in words:
+        length = max(word.width, word.height)
+        total += length * math.cos(math.radians(2.0 * word.angle))
+    return total
 
 
 def rotate_quarters(image, quarters):
@@ -358,6 +402,17 @@ def rotate_quarters(image, quarters):
 
 
 
+def text_angle(word):
+    """Inclinaison d'une boîte, ramenée modulo 90° dans (-45, 45].
+
+    Les boîtes portent la direction du texte dans (-90, 90], ce qui dit si
+    le ticket est couché ou debout. Pour le seul redressage, cette
+    distinction n'a pas lieu d'être — un quart de tour s'en charge — et
+    seul le résidu compte.
+    """
+    return ((word.angle + 45.0) % 90.0) - 45.0
+
+
 def text_inliers(words, tolerance=SKEW_OUTLIER_TOLERANCE):
     """Boîtes dont l'inclinaison suit celle de l'ensemble.
 
@@ -370,13 +425,12 @@ def text_inliers(words, tolerance=SKEW_OUTLIER_TOLERANCE):
     La médiane sert de repère, insensible par construction à ces intrus, et
     l'écart à cette médiane les désigne.
     """
-    oriented = [word for word in words if abs(word.angle) <= 45.0]
-    if len(oriented) < 3:
+    if len(words) < 3:
         return list(words)
-    angles = sorted(word.angle for word in oriented)
+    angles = sorted(text_angle(word) for word in words)
     median = angles[len(angles) // 2]
-    return [word for word in oriented
-            if abs(word.angle - median) <= tolerance] or list(words)
+    return [word for word in words
+            if abs(text_angle(word) - median) <= tolerance] or list(words)
 
 
 def skew_angle_from_words(words, min_width_ratio=0.25, min_boxes=2):
@@ -392,15 +446,19 @@ def skew_angle_from_words(words, min_width_ratio=0.25, min_boxes=2):
     des boîtes — une ligne entière donne un angle bien plus sûr qu'un
     fragment de quelques caractères — et débarrassée de ses intrus.
     """
-    oriented = [word for word in text_inliers(words) if abs(word.angle) <= 45.0]
+    oriented = text_inliers(words)
     if len(oriented) < min_boxes:
         return 0.0
-    widest = max(word.width for word in oriented)
-    kept = [word for word in oriented if word.width >= min_width_ratio * widest] or oriented
-    total_width = sum(word.width for word in kept)
-    if not total_width:
+    # La longueur de la boîte, mesurée le long du texte : sur une ligne
+    # penchée, la largeur du cadre englobant n'en dit plus rien.
+    lengths = {id(word): max(word.width, word.height) for word in oriented}
+    longest = max(lengths.values())
+    kept = [word for word in oriented
+            if lengths[id(word)] >= min_width_ratio * longest] or oriented
+    total = sum(lengths[id(word)] for word in kept)
+    if not total:
         return 0.0
-    return sum(word.angle * word.width for word in kept) / total_width
+    return sum(text_angle(word) * lengths[id(word)] for word in kept) / total
 
 
 def skew_angle_from_lines(lines, min_words=3, min_lines=2):

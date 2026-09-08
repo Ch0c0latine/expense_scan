@@ -18,6 +18,7 @@ ce qui signale toute régression dans les expressions de reconnaissance.
     python3 tools/check_ocr.py
 """
 import os
+import py_compile
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -116,6 +117,30 @@ def check_receipt(case):
     return failures
 
 
+def check_syntax():
+    """Compile tous les fichiers du module, y compris ceux qu'Odoo seul importe.
+
+    Les modèles ne s'importent pas hors d'Odoo, mais ils se compilent : une
+    faute de frappe dans ``hr_expense.py`` ne se manifesterait sinon qu'au
+    chargement du registre — c'est-à-dire en mettant l'instance à terre.
+    """
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    failures = []
+    for folder, _subfolders, names in os.walk(root):
+        if os.path.basename(folder) == '__pycache__':
+            continue
+        for name in sorted(names):
+            if not name.endswith('.py'):
+                continue
+            path = os.path.join(folder, name)
+            try:
+                py_compile.compile(path, cfile=os.devnull, doraise=True)
+            except py_compile.PyCompileError as error:
+                failures.append(str(error).strip())
+    print("syntaxe            : %s" % ("OK" if not failures else "ÉCHEC"))
+    return failures
+
+
 def main():
     print("imports            : OK")
 
@@ -128,7 +153,7 @@ def main():
             "%s (%s)" % ("disponible" if status['available'] else "indisponible",
                          status['message'])))
 
-    failures = []
+    failures = check_syntax()
     for case in REFERENCE_RECEIPTS:
         failures.extend(check_receipt(case))
     if not available:

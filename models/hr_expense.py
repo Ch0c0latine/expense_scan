@@ -416,10 +416,11 @@ class HrExpense(models.Model):
         words = engine.recognize(image)
         duration = time.time() - started
 
-        # Le demi-tour que l'essai n'a pas su trancher se voit maintenant
-        # sur le texte : les montants passeraient devant leur libellé.
+        # Dernier mot sur l'orientation, sur les boîtes de la lecture
+        # définitive : plus nombreuses et mieux placées que celles de
+        # l'essai, elles rattrapent un quart de tour mal choisi.
         if company.expense_scan_auto_rotate:
-            words, image = self._expense_scan_unmirror(words, image, info)
+            words, image = self._expense_scan_reorient(words, image, info)
 
         # Second passage de mise en forme, cette fois guidé par le texte
         # reconnu. La détection de contours d'avant-OCR échoue sur un ticket
@@ -447,44 +448,40 @@ class HrExpense(models.Model):
     def _expense_scan_straighten(self, engine, image, info, company):
         """Remet le ticket d'aplomb avant la lecture définitive.
 
-        Une passe d'essai à basse résolution sert à deux choses d'un coup :
-        choisir le quart de tour, et mesurer l'inclinaison résiduelle sur
-        les boîtes orientées que rend le détecteur. Toute orientation se
-        ramène ainsi à un quart de tour plus un résidu dans ±45°.
+        Une seule passe d'essai à basse résolution sert à tout : choisir le
+        quart de tour, mesurer l'inclinaison résiduelle, et délimiter le
+        ticket. Toute orientation se ramène ainsi à un quart de tour plus un
+        résidu dans ±45°.
 
-        Le classifieur d'orientation du moteur est **désactivé** pendant
-        l'essai. Il redresse chaque ligne isolément : une photo à 180° se
-        lit donc parfaitement ligne par ligne, ce qui masque le problème —
-        mais l'ordre des mots y est inversé, et le parseur, qui cherche
-        « le dernier montant de la ligne », tombe alors sur le premier.
-        Sans lui, seule la bonne orientation produit du texte lisible.
+        Le quart de tour se lit sur la **forme des boîtes**, pas sur la
+        qualité de la lecture. Le moteur redresse chaque boîte détectée
+        avant de la reconnaître : il lit donc aussi bien dans les quatre
+        sens, et comparer les scores — ce que faisait cette méthode, en
+        relisant l'image quatre fois — ne tranchait rien du tout.
         """
         if not company.expense_scan_auto_rotate:
             return image
 
         probe = preprocess.limit_size(image, self.ORIENTATION_PROBE_SIDE)
-        best_quarters, best_quality, best_words = 0, -1.0, []
-        for quarters in range(4):
-            words = engine.recognize(
-                preprocess.rotate_quarters(probe, quarters), use_cls=False)
-            quality = self._expense_scan_quality(words)
-            if quality > best_quality:
-                best_quarters, best_quality, best_words = quarters, quality, words
+        best_words = engine.recognize(probe)
 
         # L'essai et la photo suivent exactement les mêmes transformations :
         # les boîtes trouvées sur l'un restent donc transposables sur l'autre
         # par une simple homothétie.
-        probe = preprocess.rotate_quarters(probe, best_quarters)
-        if best_quarters:
-            image = preprocess.rotate_quarters(image, best_quarters)
-            info.rotated_quarters = best_quarters
+        quarters = self._expense_scan_quarters(best_words, probe)
+        if quarters:
+            best_words = preprocess.rotate_words_quarters(
+                best_words, quarters, probe.shape[1], probe.shape[0])
+            probe = preprocess.rotate_quarters(probe, quarters)
+            image = preprocess.rotate_quarters(image, quarters)
+            info.rotated_quarters = quarters
 
         if company.expense_scan_deskew:
             angle = preprocess.skew_angle_from_words(best_words)
             if preprocess.MIN_DESKEW_ANGLE < abs(angle) <= preprocess.MAX_TEXT_DESKEW_ANGLE:
                 matrix, _size = preprocess.rotation_matrix(
                     (probe.shape[1], probe.shape[0]), angle)
-                best_words = preprocess.rotate_words(best_words, matrix)
+                best_words = preprocess.rotate_words(best_words, matrix, angle)
                 probe = preprocess.rotate(probe, angle)
                 image = preprocess.rotate(image, angle)
                 info.deskew_angle = angle
@@ -504,33 +501,53 @@ class HrExpense(models.Model):
             info.cropped = info.cropped or cropped
 
         info.changed = info.changed or bool(
-            best_quarters or info.deskew_angle or info.cropped)
+            info.rotated_quarters or info.deskew_angle or info.cropped)
         return image
 
-    def _expense_scan_unmirror(self, words, image, info):
-        """Remet la photo à l'endroit quand elle a été lue à 180°.
-
-        Le choix du quart de tour se fait sur une passe d'essai à basse
-        résolution ; sur une photo en diagonale, aucune des quatre
-        orientations ne donne de texte lisible, les scores se valent et le
-        quart retenu l'est au hasard — une fois sur deux à 180° près.
-
-        Le défaut passe ensuite inaperçu : le classifieur d'angle du moteur
-        redresse chaque ligne à la lecture, les mots ressortent justes, mais
-        leurs emplacements restent en miroir. Le parseur rattache alors
-        chaque libellé au montant de la ligne voisine.
-
-        Le sens de lecture se déduit du texte, sans relire l'image, et le
-        demi-tour s'applique aux boîtes déjà reconnues : la correction ne
-        coûte rien.
-        """
-        if parser.reading_direction(parser.build_lines(words)) >= 0:
+    def _expense_scan_reorient(self, words, image, info):
+        """Applique le quart de tour manquant, sans relire l'image."""
+        quarters = self._expense_scan_quarters(words, image)
+        if not quarters:
             return words, image
         height, width = image.shape[:2]
-        info.rotated_quarters = (info.rotated_quarters + 2) % 4
+        info.rotated_quarters = (info.rotated_quarters + quarters) % 4
         info.changed = True
-        return preprocess.mirror_words(words, width, height), \
-            preprocess.rotate_quarters(image, 2)
+        return (preprocess.rotate_words_quarters(words, quarters, width, height),
+                preprocess.rotate_quarters(image, quarters))
+
+    def _expense_scan_quarters(self, words, image):
+        """Quart de tour à appliquer, déduit des seules boîtes reconnues.
+
+        Deux critères, dans cet ordre. La **direction des lignes** d'abord,
+        celle que le détecteur donne à chaque boîte : elle sépare les quarts
+        pairs des impairs, un ticket debout n'ayant pas la même que couché. Le
+        **sens de lecture** ensuite, pour départager l'endroit de l'envers :
+        un montant suit son libellé, l'enseigne est en haut, le règlement
+        en bas.
+
+        Rien de tout cela ne relit l'image : les boîtes se transposent, et
+        leur texte est déjà juste puisque le moteur redresse chaque boîte
+        avant de la lire. C'est aussi pourquoi la qualité de reconnaissance
+        ne dit rien de l'orientation, et pourquoi cette méthode a remplacé
+        quatre relectures qui ne tranchaient rien.
+        """
+        if not words:
+            return 0
+        height, width = image.shape[:2]
+        candidates = []
+        for quarters in range(4):
+            turned = preprocess.rotate_words_quarters(words, quarters, width, height)
+            if preprocess.horizontal_text_score(turned) <= 0:
+                continue  # lignes debout : ce n'est pas ce quart-là
+            candidates.append((quarters, turned))
+
+        for quarters, turned in candidates:
+            if parser.reading_direction(parser.build_lines(turned)) > 0:
+                return quarters
+        # Aucun indice de sens — un ticket sans total lisible, par exemple.
+        # On garde alors le quart le moins coûteux parmi ceux qui couchent
+        # bien le texte, faute de mieux.
+        return candidates[0][0] if candidates else 0
 
     def _expense_scan_tighten(self, image, words, info, company):
         """Redresse puis recadre, une fois l'OCR passé.
@@ -553,7 +570,7 @@ class HrExpense(models.Model):
                 matrix, _size = preprocess.rotation_matrix(
                     (image.shape[1], image.shape[0]), angle)
                 image = preprocess.rotate(image, angle)
-                words = preprocess.rotate_words(words, matrix)
+                words = preprocess.rotate_words(words, matrix, angle)
                 info.deskew_angle += angle
                 info.changed = True
 
@@ -566,19 +583,6 @@ class HrExpense(models.Model):
 
         info.final_size = (image.shape[1], image.shape[0])
         return image
-
-    @staticmethod
-    def _expense_scan_quality(words):
-        """Quantité de texte reconnu, pondérée par la confiance.
-
-        Aucun filtre sur la forme des boîtes : sur un ticket posé en
-        diagonale elles ne sont ni franchement horizontales ni verticales,
-        et écarter les unes ou les autres fausserait la comparaison. Le
-        classifieur d'orientation étant éteint pendant l'essai, c'est le
-        score de reconnaissance qui sépare les orientations — il s'effondre
-        dès que le texte est à l'envers.
-        """
-        return sum(len(word.text) * word.score for word in words)
 
     # ------------------------------------------------------------------
     # Report du résultat sur la dépense

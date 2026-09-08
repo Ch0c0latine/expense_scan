@@ -266,18 +266,25 @@ class RapidOcrEngine(ScanEngine):
                 left, top = float(box[:, 0].min()), float(box[:, 1].min())
                 right, bottom = float(box[:, 0].max()), float(box[:, 1].max())
                 # PP-OCR renvoie un quadrilatère orienté, pas un rectangle :
-                # l'inclinaison de la ligne se lit sur son arête supérieure.
-                # C'est la mesure de biais la plus directe qui soit, et elle
-                # ne coûte rien puisque la donnée est déjà là.
+                # la direction de la ligne se lit sur son plus grand côté.
+                # C'est la mesure la plus directe qui soit, et elle ne coûte
+                # rien puisque la donnée est déjà là.
                 if len(box) == 4:
-                    angle = math.degrees(math.atan2(float(box[1][1] - box[0][1]),
-                                                    float(box[1][0] - box[0][0])))
-                    # Ramené modulo 90 dans (-45, 45] : les quarts de tour
-                    # sont traités à part, seul le résidu nous intéresse.
-                    # Annuler l'angle au-delà de 45° faisait perdre son
-                    # orientation à toute boîte fortement inclinée — soit
-                    # précisément celles d'un ticket posé en diagonale.
-                    angle = ((angle + 45.0) % 90.0) - 45.0
+                    # Le détecteur ordonne ses points depuis le coin
+                    # supérieur gauche de l'image. Le premier côté est donc
+                    # la longueur pour une ligne couchée, mais l'épaisseur
+                    # pour une ligne debout : il faut prendre le plus long
+                    # des deux, seul à suivre le sens d'écriture.
+                    edges = (box[1] - box[0], box[2] - box[1])
+                    edge = max(edges, key=lambda side: float(side[0]) ** 2
+                               + float(side[1]) ** 2)
+                    angle = math.degrees(math.atan2(float(edge[1]), float(edge[0])))
+                    # Ramené dans (-90, 90] : une ligne et la même ligne
+                    # lue à l'envers ont la même direction. On garde en
+                    # revanche l'écart à l'horizontale, qui est la seule
+                    # chose distinguant un ticket couché d'un ticket debout
+                    # — le moteur, lui, lit aussi bien dans les deux sens.
+                    angle = ((angle + 90.0) % 180.0) - 90.0
             except Exception:  # noqa: BLE001
                 left = top = 0.0
                 right = bottom = 1.0
