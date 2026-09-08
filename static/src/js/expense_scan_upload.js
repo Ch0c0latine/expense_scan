@@ -17,7 +17,16 @@ import { patch } from "@web/core/utils/patch";
 import { ExpenseListController } from "@hr_expense/views/list";
 import { ExpenseKanbanController } from "@hr_expense/views/kanban";
 
-const ExpenseScanUpload = {
+/**
+ * Fabrique un correctif neuf à chaque appel — et non un objet partagé.
+ *
+ * `patch` redéfinit le prototype de l'objet qu'on lui passe pour que
+ * `super` y résolve la méthode d'origine. Réutiliser le même objet sur
+ * deux contrôleurs ferait donc pointer le `super` du premier vers la
+ * chaîne du second : la liste hériterait du kanban, et son `setup`
+ * n'y trouverait pas les mêmes informations de vue.
+ */
+const expenseScanUpload = () => ({
     setup() {
         super.setup();
         // « Scanner un autre » ramène à la liste en demandant d'ouvrir
@@ -135,7 +144,7 @@ const ExpenseScanUpload = {
             options
         );
     },
-};
+});
 
-patch(ExpenseListController.prototype, ExpenseScanUpload);
-patch(ExpenseKanbanController.prototype, ExpenseScanUpload);
+patch(ExpenseListController.prototype, expenseScanUpload());
+patch(ExpenseKanbanController.prototype, expenseScanUpload());
