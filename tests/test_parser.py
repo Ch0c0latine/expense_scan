@@ -239,11 +239,16 @@ NET A PAYER 5,50
 """ % recent.strftime("%d/%m/%Y"))
         self.assertEqual(parser.fields_to_check(result), [])
 
-    def test_empty_scan_flags_everything(self):
+    def test_empty_scan_flags_what_goes_to_accounting(self):
+        """Rien de lu : on signale la date et le total, pas l'enseigne.
+
+        L'enseigne se lit mal une fois sur deux, et la signaler à chaque
+        ticket usait l'avertissement au point qu'on ne le lisait plus.
+        """
         result = parser.parse([])
         self.assertEqual(
             sorted(parser.fields_to_check(result)),
-            sorted(["Marchand", "Date", "Total"]),
+            sorted(["Date", "Total"]),
         )
 
     # -- Tickets à points de conduite -------------------------------------

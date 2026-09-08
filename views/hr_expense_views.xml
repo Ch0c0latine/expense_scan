@@ -87,34 +87,73 @@
                 <widget name="expense_scan_receipt"/>
             </xpath>
 
-            <!-- Nos champs forment leur propre bloc, sous les champs
-                 d'origine. Insérés au milieu du groupe natif, ils se
-                 répartissaient sur les deux colonnes et encadraient
-                 « Manager », ce qui ne se lisait plus. -->
-            <xpath expr="(//sheet//field[@name='date']/ancestor::group)[1]" position="after">
-                <!-- La TVA du ticket prime sur celle que le taux
-                     produirait : c'est le montant imprimé qui doit se
-                     retrouver en comptabilité. -->
-                <group name="expense_scan_amounts" col="2"
-                       invisible="scan_state == 'none'">
-                    <field name="scan_tax_amount" widget="monetary"
-                           options="{'currency_field': 'currency_id'}"
-                           readonly="not is_editable"
-                           placeholder="laisser vide : calcul depuis le taux"/>
-                </group>
-                <group name="expense_scan_reinvoice_group" col="2"
-                       string="Refacturation"
-                       invisible="not expense_scan_reinvoice">
+            <!-- ============================================================
+                 Ordre de saisie
+                 ============================================================
+                 Le formulaire d'origine range les champs par thème. Après un
+                 scan, ce qui compte est l'ordre dans lequel on les relit :
+                 d'abord ce que la photo a rempli et qu'il faut vérifier,
+                 ensuite ce qui se décide, et enfin ce qu'on ne touche
+                 jamais. Les champs sont donc déplacés, pas dupliqués. -->
+
+            <!-- La TVA du ticket, juste sous le total dont elle fait partie.
+                 Son montant prime sur celui que le taux produirait : c'est
+                 ce qui est imprimé sur le justificatif qui doit se retrouver
+                 en comptabilité. -->
+            <xpath expr="//field[@name='total_amount_currency']/parent::div" position="after">
+                <field name="scan_tax_amount" widget="monetary"
+                       options="{'currency_field': 'currency_id'}"
+                       readonly="not is_editable"
+                       placeholder="laisser vide : calcul depuis le taux"/>
+            </xpath>
+
+            <!-- Le total portait la même TVA une deuxième fois, entre
+                 parenthèses, et la ligne des taxes une troisième. Une seule
+                 mention suffit, et c'est celle qu'on peut corriger. Le taux
+                 lui-même reste affiché : il porte les tags fiscaux. -->
+            <xpath expr="//field[@name='total_amount_currency']/parent::div/span" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='tax_amount_currency']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- La date se vérifie dans la foulée des montants. -->
+            <xpath expr="//label[@id='lo']" position="before">
+                <xpath expr="//field[@name='date']" position="move"/>
+            </xpath>
+
+            <!-- Le manager découle de la hiérarchie, pas de la saisie : il
+                 n'a rien à faire dans le parcours du salarié. -->
+            <xpath expr="//field[@name='manager_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Refacturation à la suite de « Payé par » : deux questions de
+                 même nature, qu'on tranche d'un geste chacune. Pas de
+                 section à part, qui couperait la saisie en deux. -->
+            <xpath expr="//div[@id='payment_mode']" position="after">
+                <label for="reinvoice_mode" invisible="not expense_scan_reinvoice"/>
+                <div invisible="not expense_scan_reinvoice">
                     <field name="reinvoice_mode" widget="radio"
-                           options="{'horizontal': True}"
+                           options="{'horizontal': True}" nolabel="1"
                            readonly="not is_editable"/>
-                    <field name="project_id"
-                           invisible="reinvoice_mode != 'project'"
-                           required="expense_scan_reinvoice and reinvoice_mode == 'project'"
-                           readonly="not is_editable"
-                           options="{'no_quick_create': True}"
-                           placeholder="mission sur laquelle refacturer ce frais"/>
-                </group>
+                </div>
+                <field name="project_id"
+                       invisible="not expense_scan_reinvoice or reinvoice_mode != 'project'"
+                       required="expense_scan_reinvoice and reinvoice_mode == 'project'"
+                       readonly="not is_editable"
+                       options="{'no_quick_create': True}"
+                       placeholder="mission sur laquelle refacturer ce frais"/>
+            </xpath>
+
+            <!-- L'employé ferme la marche : il est déjà rempli, et le
+                 changer relève de l'exception. -->
+            <xpath expr="//field[@name='project_id']" position="after">
+                <xpath expr="//field[@name='employee_id'][@groups='!hr.group_hr_user']"
+                       position="move"/>
+                <xpath expr="//field[@name='employee_id'][@groups='hr.group_hr_user']"
+                       position="move"/>
             </xpath>
 
             <xpath expr="//field[@name='nb_attachment']" position="after">

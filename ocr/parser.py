@@ -687,8 +687,14 @@ def parse(words, today=None, max_age_days=730, default_currency="EUR"):
     return ScanResult(lines=lines, fields=fields)
 
 
-def fields_to_check(result, names=("merchant", "date", "total")):
-    """Libellés des champs absents ou peu fiables, à faire relire."""
+def fields_to_check(result, names=("date", "total")):
+    """Libellés des champs absents ou peu fiables, à faire relire.
+
+    Le marchand n'y figure pas : l'enseigne se lit mal une fois sur deux —
+    logo stylisé, en-tête tronqué — et le signaler à chaque ticket usait
+    l'avertissement au point qu'on ne le lisait plus. Ce qui doit être juste
+    est ce qui part en comptabilité : la date et le montant.
+    """
     todo = []
     for name in names:
         field = result.fields.get(name)
