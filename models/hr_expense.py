@@ -109,22 +109,28 @@ class HrExpense(models.Model):
             expense.untaxed_amount = expense.total_amount - company_tax
 
     def _expense_scan_max_rate(self):
-        """Le plus haut taux retenu sur la dépense, en pourcentage."""
+        """Le plus haut taux retenu, ou ``None`` si aucune taxe en pourcentage.
+
+        La distinction compte : « aucune taxe » et « taxe à 0 % » sont deux
+        situations différentes. La première ne permet aucun contrôle, la
+        seconde impose un plafond de zéro.
+        """
         self.ensure_one()
         rates = self.tax_ids.filtered(
             lambda tax: tax.amount_type == 'percent').mapped('amount')
-        return max(rates) if rates else 0.0
+        return max(rates) if rates else None
 
     def _expense_scan_tax_ceiling(self):
         """TVA maximale possible : le plus haut taux appliqué au total TTC.
 
         Un ticket mêlant plusieurs taux porte forcément moins de TVA que si
         tout était au taux le plus élevé. Ce plafond attrape donc les
-        erreurs de lecture sans jamais gêner une saisie légitime.
+        erreurs de lecture sans jamais gêner une saisie légitime — et il
+        vaut zéro sur une catégorie exonérée, ce qui y interdit toute TVA.
         """
         self.ensure_one()
         rate = self._expense_scan_max_rate()
-        if rate <= 0:
+        if rate is None:
             return None
         return self.total_amount_currency * rate / (100.0 + rate)
 
@@ -146,7 +152,10 @@ class HrExpense(models.Model):
                 raise ValidationError(_(
                     "TVA du ticket impossible : %(saisi).2f dépasse le maximum "
                     "de %(plafond).2f, qui correspond au taux de %(taux).2f %% "
-                    "appliqué à la totalité des %(total).2f du ticket.",
+                    "appliqué à la totalité des %(total).2f du ticket.\n\n"
+                    "Choisissez une catégorie de dépense dont le taux couvre "
+                    "cette TVA, ou videz le champ « TVA du ticket » si cette "
+                    "dépense n'ouvre pas droit à déduction.",
                     saisi=expense.scan_tax_amount, plafond=ceiling,
                     taux=expense._expense_scan_max_rate(),
                     total=expense.total_amount_currency))
@@ -183,15 +192,16 @@ class HrExpense(models.Model):
         if not self.scan_tax_amount:
             return None
         rate = self._expense_scan_max_rate()
-        if rate <= 0:
-            # C'est ici que l'absence de taux devient bloquante : sans elle,
+        if not rate:
+            # C'est ici que l'absence de taux devient bloquante : sans lui,
             # la TVA du ticket n'a aucun moyen d'entrer dans l'écriture, et
             # la comptabiliser sans le dire serait la perdre en silence.
             raise UserError(_(
                 "La dépense « %(nom)s » porte une TVA de ticket de "
-                "%(montant).2f mais aucune taxe. Sélectionnez la taxe "
-                "correspondante sur la dépense — ou sur sa catégorie, pour "
-                "les suivantes — ou videz le champ « TVA du ticket ».",
+                "%(montant).2f, mais aucune taxe à un taux exploitable. "
+                "Sélectionnez la taxe correspondante sur la dépense — ou sur "
+                "sa catégorie, pour les suivantes — ou videz le champ "
+                "« TVA du ticket ».",
                 nom=self.name, montant=self.scan_tax_amount))
 
         line_vals = command[2]
