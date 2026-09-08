@@ -137,10 +137,11 @@ class HrExpense(models.Model):
                 raise ValidationError(_("La TVA du ticket ne peut pas être négative."))
             ceiling = expense._expense_scan_tax_ceiling()
             if ceiling is None:
-                raise ValidationError(_(
-                    "Renseignez une taxe sur la dépense avant d'y saisir une "
-                    "TVA : sans taux, la valeur saisie ne peut être ni "
-                    "contrôlée ni comptabilisée."))
+                # Aucune taxe retenue : pas de plafond à opposer. On laisse
+                # saisir — le montant reste une information du justificatif —
+                # et on s'y oppose à la validation comptable, là où l'absence
+                # de taux devient réellement bloquante.
+                continue
             if expense.currency_id.compare_amounts(expense.scan_tax_amount, ceiling) > 0:
                 raise ValidationError(_(
                     "TVA du ticket impossible : %(saisi).2f dépasse le maximum "
@@ -183,7 +184,15 @@ class HrExpense(models.Model):
             return None
         rate = self._expense_scan_max_rate()
         if rate <= 0:
-            return None
+            # C'est ici que l'absence de taux devient bloquante : sans elle,
+            # la TVA du ticket n'a aucun moyen d'entrer dans l'écriture, et
+            # la comptabiliser sans le dire serait la perdre en silence.
+            raise UserError(_(
+                "La dépense « %(nom)s » porte une TVA de ticket de "
+                "%(montant).2f mais aucune taxe. Sélectionnez la taxe "
+                "correspondante sur la dépense — ou sur sa catégorie, pour "
+                "les suivantes — ou videz le champ « TVA du ticket ».",
+                nom=self.name, montant=self.scan_tax_amount))
 
         line_vals = command[2]
         currency = self.company_currency_id
@@ -260,7 +269,14 @@ class HrExpense(models.Model):
             if not force and expense.scan_state in ('done', 'partial'):
                 continue
             try:
-                result = expense._expense_scan_process(attachment)
+                # Le report des valeurs est dans le filet, lui aussi : une
+                # contrainte du modèle ne doit pas faire échouer l'envoi de
+                # la photo, sur laquelle l'utilisateur n'a aucune prise. Le
+                # point de sauvegarde permet d'écrire l'erreur ensuite, sur
+                # un curseur redevenu sain.
+                with self.env.cr.savepoint():
+                    result = expense._expense_scan_process(attachment)
+                    expense._expense_scan_apply(result, attachment)
             except Exception as error:  # noqa: BLE001
                 _logger.exception("Analyse du ticket impossible (dépense %s)", expense.id)
                 expense.write({
@@ -268,8 +284,6 @@ class HrExpense(models.Model):
                     'scan_message': str(error)[:250],
                     'scan_todo': False,
                 })
-                continue
-            expense._expense_scan_apply(result, attachment)
 
     def _expense_scan_source_attachment(self):
         """La pièce jointe à lire : la photo d'origine si on la conserve."""
@@ -419,6 +433,11 @@ class HrExpense(models.Model):
         values = self._expense_scan_field_values(result, company)
 
         todo = parser.fields_to_check(result)
+        if values.get('scan_tax_amount') and not self.tax_ids:
+            # La TVA lue ne pourra pas être comptabilisée tant qu'aucune taxe
+            # ne porte les tags fiscaux : autant le dire tout de suite, plutôt
+            # qu'au moment de valider.
+            todo.append(_("Taxe (aucune sur la catégorie)"))
         values.update({
             'scan_state': 'partial' if todo else 'done',
             'scan_engine': result.engine,
