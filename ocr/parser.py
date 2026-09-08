@@ -515,6 +515,54 @@ def _extract_taxes_by_line(lines):
     return rate_field, amount_field, max_field
 
 
+# ---------------------------------------------------------------------------
+# Sens de lecture
+# ---------------------------------------------------------------------------
+
+#: Libellés qui, sur un ticket, précèdent toujours leur montant.
+READING_LABEL_RE = re.compile(
+    r"\b(TOTAL|PRIX|MONTANT|TVA|PAIEMENT|REGLEMENT|NET A PAYER|ESPECES|RENDU"
+    r"|SOUS-TOTAL|A PAYER|DONT TVA)\b")
+#: Nombre de lignes concordantes exigé avant de conclure.
+READING_MIN_VOTES = 2
+
+
+def reading_direction(lines):
+    """Dit si le ticket se lit à l'endroit (+1), à l'envers (-1) ou sans avis.
+
+    Une photo à 180° se lit parfaitement mot à mot — le classifieur d'angle
+    du moteur redresse chaque ligne — mais les emplacements restent en
+    miroir : les montants passent alors *devant* leur libellé, et les lignes
+    se suivent de la dernière à la première. C'est ce renversement qu'on
+    mesure, sur le seul texte, sans relire l'image.
+
+    Comparer les orientations en relisant l'image ne marche pas : suivant
+    la version du moteur, désactiver le classifieur reste sans effet, les
+    deux sens obtiennent alors le même score, et l'égalité ne tranche rien.
+    """
+    votes = 0
+    for line in lines:
+        text = strip_accents(line.text or "").upper()
+        label = READING_LABEL_RE.search(text)
+        if not label:
+            continue
+        # Positions relevées sur la même chaîne que le libellé : `normalize`
+        # compacte les séparateurs et décalerait les indices.
+        positions = [position for _value, position in find_amounts(text)]
+        if not positions:
+            continue
+        if max(positions) > label.end():
+            votes += 1
+        elif min(positions) < label.start():
+            votes -= 1
+
+    if votes <= -READING_MIN_VOTES:
+        return -1
+    if votes >= READING_MIN_VOTES:
+        return 1
+    return 0
+
+
 def extract_currency(lines, default="EUR"):
     """Devise du ticket, déduite du symbole ou du code imprimé."""
     joined = normalize(" ".join(line.text for line in lines))

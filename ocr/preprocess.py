@@ -329,6 +329,21 @@ def rotate_words(words, matrix):
     return moved
 
 
+def mirror_words(words, width, height):
+    """Fait subir aux boîtes le demi-tour qu'on applique à l'image.
+
+    Le texte, lui, ne bouge pas : le classifieur d'angle du moteur a déjà
+    remis chaque ligne à l'endroit, seuls les emplacements sont restés en
+    miroir. Les retourner ici évite une seconde lecture — l'inclinaison des
+    boîtes est conservée, un demi-tour ne la change pas.
+    """
+    return [OcrWord(text=word.text, score=word.score,
+                    left=width - word.right, top=height - word.bottom,
+                    right=width - word.left, bottom=height - word.top,
+                    angle=word.angle)
+            for word in words]
+
+
 def rotate_quarters(image, quarters):
     """Rotation par quarts de tour (1 = 90° horaire)."""
     quarters %= 4

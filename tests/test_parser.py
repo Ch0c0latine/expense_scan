@@ -351,3 +351,34 @@ DEBIT
         self.assertIsNone(result.value('tax_rate'))
         self.assertIsNone(result.value('tax_rate_max'))
         self.assertIsNone(result.value('tax_amount'))
+
+    # -- Sens de lecture --------------------------------------------------
+
+    def test_reading_direction_upright(self):
+        result = self.parse("""
+ASF Lieu-dit Gaussens BP 40037
+PRIX HT.......5,67 euros
+TVA 20,00%....1,13 euros
+PRIX TTC......6,80 euros
+""")
+        self.assertEqual(parser.reading_direction(result.lines), 1)
+
+    def test_reading_direction_upside_down(self):
+        """Photo à 180° : les mots sont justes, leurs places sont en miroir.
+
+        Le moteur redresse chaque ligne à la lecture, si bien que le texte
+        paraît correct — mais les montants passent devant leur libellé et
+        les lignes remontent de la dernière à la première.
+        """
+        result = self.parse("""
+6,80 euros PRIX TTC
+1,13 euros TVA 20,00%
+5,67 euros PRIX HT
+ASF Lieu-dit Gaussens BP 40037
+""")
+        self.assertEqual(parser.reading_direction(result.lines), -1)
+
+    def test_reading_direction_stays_neutral_without_evidence(self):
+        """Un ticket sans libellé de montant ne permet pas de trancher."""
+        result = self.parse("CREDIT AGRICOLE\nCB CONTACT\n45,00 EUR")
+        self.assertEqual(parser.reading_direction(result.lines), 0)
