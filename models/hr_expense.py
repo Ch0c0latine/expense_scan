@@ -206,11 +206,16 @@ class HrExpense(models.Model):
 
         line_vals = command[2]
         currency = self.company_currency_id
-        taxed_base = currency.round(self.tax_amount * 100.0 / rate)
-        remainder = currency.round(self.total_amount - taxed_base - self.tax_amount)
+        # Le prix d'une ligne d'écriture portant un `expense_id` est traité
+        # comme TTC par Odoo — c'est la convention des notes de frais, et
+        # elle est explicite dans hr_expense/models/account_move_line.py.
+        # On lui passe donc le TTC de la part taxée, pas sa base : lui
+        # donner la base reviendrait à en retirer la TVA une seconde fois.
+        taxed_total = currency.round(self.tax_amount * (100.0 + rate) / rate)
+        remainder = currency.round(self.total_amount - taxed_total)
 
         line_vals['quantity'] = 1
-        line_vals['price_unit'] = taxed_base
+        line_vals['price_unit'] = taxed_total
         if currency.is_zero(remainder):
             return None
 
@@ -577,6 +582,13 @@ class HrExpense(models.Model):
         # ticket redressé que l'utilisateur doit avoir sous les yeux pour
         # relire les champs, pas la photo de travers.
         self.sudo()._message_set_main_attachment_id(cropped, force=True)
+
+        # La photo d'origine devient une pièce jointe « de champ » : Odoo
+        # exclut d'office celles-ci de ses recherches, donc elle disparaît
+        # de la liste des justificatifs et n'est plus recopiée sur l'écriture
+        # comptable. Elle reste intégralement accessible par le champ
+        # « Photo d'origine », qui la désigne par son identifiant.
+        attachment.sudo().write({'res_field': 'scan_original_attachment_id'})
         return {
             'scan_original_attachment_id': attachment.id,
             'scan_cropped_attachment_id': cropped.id,
