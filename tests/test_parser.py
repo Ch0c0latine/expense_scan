@@ -132,6 +132,41 @@ ARTICLE B 3,50
         result = self.parse(text)
         self.assertEqual(result.value('date'), recent)
 
+    def test_long_month_name(self):
+        """« SEPTEMBRE » fait 9 lettres : le motif ne doit pas s'arrêter à 8."""
+        recent = date.today() - timedelta(days=4)
+        months = {1: "JANVIER", 2: "FEVRIER", 3: "MARS", 4: "AVRIL", 5: "MAI",
+                  6: "JUIN", 7: "JUILLET", 8: "AOUT", 9: "SEPTEMBRE",
+                  10: "OCTOBRE", 11: "NOVEMBRE", 12: "DECEMBRE"}
+        result = self.parse("BOUTIQUE\n%d %s %d\nTOTAL 9,00"
+                            % (recent.day, months[recent.month], recent.year))
+        self.assertEqual(result.value('date'), recent)
+
+    def test_date_without_year_is_inferred(self):
+        """Beaucoup de tickets n'impriment que le jour et le mois."""
+        recent = date.today() - timedelta(days=3)
+        result = self.parse("SUPERETTE\n%s 10:05\nTOTAL 5,00" % recent.strftime("%d/%m"))
+        self.assertEqual(result.value('date'), recent)
+        # Année devinée : le champ doit rester signalé à la relecture.
+        self.assertLess(result.confidence('date'), parser.LOW_CONFIDENCE)
+        self.assertIn("Date", parser.fields_to_check(result))
+
+    def test_old_date_without_year_is_refused(self):
+        """Un billet daté « 23 septembre » n'est pas un achat d'il y a un an.
+
+        Sans millésime, la seule inférence possible renverrait à l'année
+        précédente : mieux vaut ne rien dater et le signaler.
+        """
+        far = date.today() - timedelta(days=200)
+        result = self.parse("RESERVATION\nDepart le %d/%d\nTOTAL 35,00"
+                            % (far.day, far.month))
+        self.assertIsNone(result.value('date'))
+
+    def test_decimal_amount_is_not_a_date(self):
+        """« 5.67 » ne doit pas devenir le 5 du mois 67."""
+        result = self.parse("GARAGE\nPRIX HT 5.67\nTOTAL 6,80")
+        self.assertIsNone(result.value('date'))
+
     def test_future_date_is_rejected(self):
         """Une date de validité ne doit pas devenir la date de la dépense."""
         future = date.today() + timedelta(days=400)

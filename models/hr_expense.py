@@ -176,19 +176,27 @@ class HrExpense(models.Model):
     def _expense_scan_fix_rotation(self, engine, image, words):
         """Cherche le quart de tour qui remet le texte à l'horizontale.
 
-        On ne teste que les deux sens possibles, et on ne retient une
-        rotation que si elle produit au moins autant de texte : une image
-        déjà droite mais mal détectée ne doit pas être dégradée.
+        On ne compte surtout pas les boîtes détectées : bien orienté, le
+        détecteur fusionne chaque ligne du ticket en une seule boîte, alors
+        que couché il en produit une nuée de petites. Compter les boîtes
+        désigne donc systématiquement la mauvaise orientation. On mesure à
+        la place la quantité de texte reconnu avec confiance dans des boîtes
+        horizontales : elle s'effondre dès que l'image est de travers.
         """
-        best = (image, words, 0)
+        best = (image, words, 0, self._expense_scan_quality(words))
         for quarters in (1, 3):
             rotated = preprocess.rotate_quarters(image, quarters)
             candidate = engine.recognize(rotated)
-            if preprocess.looks_quarter_turned(candidate):
-                continue
-            if len(candidate) >= len(words):
-                return rotated, candidate, quarters
-        return best
+            quality = self._expense_scan_quality(candidate)
+            if quality > best[3]:
+                best = (rotated, candidate, quarters, quality)
+        return best[0], best[1], best[2]
+
+    @staticmethod
+    def _expense_scan_quality(words):
+        """Quantité de texte reconnu avec confiance, à l'horizontale."""
+        return sum(len(word.text) * word.score
+                   for word in words if word.width >= word.height)
 
     # ------------------------------------------------------------------
     # Report du résultat sur la dépense

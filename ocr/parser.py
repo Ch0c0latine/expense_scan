@@ -186,13 +186,40 @@ DATE_PATTERNS = [
     (re.compile(r"\b(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})\b"), "ymd", 0.90),
     # 04/09/26
     (re.compile(r"\b(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2})\b"), "dmy2", 0.75),
-    # 4 SEPT 2026
-    (re.compile(r"\b(\d{1,2})\s+([A-Z]{3,8})\.?\s+(\d{4})\b"), "dmonthy", 0.85),
+    # 4 SEPT 2026 - 23 SEPTEMBRE 2026
+    (re.compile(r"\b(\d{1,2})\s+([A-Z]{3,10})\.?\s+(\d{4})\b"), "dmonthy", 0.85),
+    # Sans millésime : « 04/09 », « 23 SEPTEMBRE ». Les lookaheads écartent
+    # les dates complètes, déjà captées par les motifs précédents.
+    (re.compile(r"\b(\d{1,2})[/.\-](\d{1,2})(?![/.\-]?\d)"), "dm", 0.50),
+    (re.compile(r"\b(\d{1,2})\s+([A-Z]{3,10})\b(?!\.?\s+\d{4})"), "dmonth", 0.50),
 ]
+#: Motifs dont l'année est devinée, et non lue.
+INFERRED_YEAR_KINDS = frozenset({"dm", "dmonth"})
+#: Un ticket qui n'imprime pas son millésime est forcément récent. Au-delà,
+#: l'inférence est refusée plutôt que de dater la dépense d'un an en arrière.
+NO_YEAR_MAX_AGE_DAYS = 120
 DATE_KEYWORD_RE = re.compile(r"\bDATE\b|\bLE\b\s|\bCAISSE\b|\bTICKET\b")
 
 
-def _build_date(kind, groups):
+def _month_number(name):
+    """Numéro du mois à partir de son nom, abrégé ou non."""
+    cleaned = strip_accents(name).upper()
+    return MONTHS_FR.get(cleaned[:4]) or MONTHS_FR.get(cleaned[:3])
+
+
+def _infer_year(day, month, today):
+    """Occurrence la plus récente de ce jour/mois déjà passée."""
+    for year in (today.year, today.year - 1):
+        try:
+            candidate = date(year, month, day)
+        except ValueError:
+            continue
+        if candidate <= today:
+            return candidate
+    return None
+
+
+def _build_date(kind, groups, today):
     try:
         if kind == "dmy":
             day, month, year = int(groups[0]), int(groups[1]), int(groups[2])
@@ -203,11 +230,15 @@ def _build_date(kind, groups):
             year = 2000 + int(groups[2])
         elif kind == "dmonthy":
             day = int(groups[0])
-            month = MONTHS_FR.get(strip_accents(groups[1]).upper()[:4]) \
-                or MONTHS_FR.get(strip_accents(groups[1]).upper()[:3])
+            month = _month_number(groups[1])
             year = int(groups[2])
             if not month:
                 return None
+        elif kind == "dm":
+            return _infer_year(int(groups[0]), int(groups[1]), today)
+        elif kind == "dmonth":
+            month = _month_number(groups[1])
+            return _infer_year(int(groups[0]), month, today) if month else None
         else:
             return None
         return date(year, month, day)
@@ -226,8 +257,12 @@ def extract_date(lines, today=None, max_age_days=730):
         text = normalize(line.text)
         for pattern, kind, weight in DATE_PATTERNS:
             for match in pattern.finditer(text):
-                found = _build_date(kind, match.groups())
+                found = _build_date(kind, match.groups(), today)
                 if not found or not (oldest <= found <= newest):
+                    continue
+                if kind in INFERRED_YEAR_KINDS and (today - found).days > NO_YEAR_MAX_AGE_DAYS:
+                    # Année devinée trop lointaine : c'est probablement une
+                    # date de voyage ou d'échéance, pas la date d'achat.
                     continue
                 confidence = weight * max(line.score, 0.4)
                 # Une date accompagnée d'une heure ou du mot « date » est
