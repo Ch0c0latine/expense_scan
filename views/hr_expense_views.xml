@@ -149,6 +149,22 @@
                 <attribute name="invisible">1</attribute>
             </xpath>
 
+            <!-- « Payé par la société » faisait apparaître deux champs de
+                 comptabilité au milieu de la saisie. Le fournisseur se
+                 déduit du justificatif quand l'option est active, et sa
+                 liste — salariés et clients mêlés — n'aide personne à le
+                 choisir à la main. -->
+            <xpath expr="//field[@name='vendor_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Le mode de paiement ne se pose que s'il y a un choix. Avec
+                 un seul mode configuré, Odoo le renseigne lui-même et le
+                 champ ne fait qu'occuper une ligne. -->
+            <xpath expr="//field[@name='payment_method_line_id']" position="attributes">
+                <attribute name="invisible">payment_mode != 'company_account' or len(selectable_payment_method_line_ids) &lt; 2</attribute>
+            </xpath>
+
             <!-- Deux boutons radio tiennent sur une ligne : empilés, ils
                  poussent le reste du formulaire vers le bas pour rien. -->
             <xpath expr="//field[@name='payment_mode']" position="attributes">
@@ -159,6 +175,7 @@
                  même nature, qu'on tranche d'un geste chacune. Pas de
                  section à part, qui couperait la saisie en deux. -->
             <xpath expr="//div[@id='payment_mode']" position="after">
+                <xpath expr="//field[@name='payment_method_line_id']" position="move"/>
                 <label for="reinvoice_mode" invisible="not expense_scan_reinvoice"/>
                 <div invisible="not expense_scan_reinvoice">
                     <field name="reinvoice_mode" widget="radio"
