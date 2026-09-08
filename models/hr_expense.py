@@ -9,6 +9,7 @@ from pytz import timezone, utc
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import format_date
+from odoo.tools.safe_eval import safe_eval
 
 from ..ocr import engines, parser, preprocess
 
@@ -278,8 +279,15 @@ class HrExpense(models.Model):
         gestes là où l'utilisateur n'en attend qu'un.
         """
         action = self._expense_scan_expense_list()
-        context = dict(action.get('context') or {}, expense_scan_start_upload=True)
-        action['context'] = context
+        # Le contexte d'une action lue en base est une **chaîne**, que le
+        # client évalue lui-même : la fusionner demande de l'évaluer ici.
+        raw_context = action.get('context') or {}
+        if isinstance(raw_context, str):
+            try:
+                raw_context = safe_eval(raw_context, {'uid': self.env.uid})
+            except Exception:  # noqa: BLE001 - contexte trop dynamique
+                raw_context = {}
+        action['context'] = dict(raw_context, expense_scan_start_upload=True)
         return action
 
     def action_expense_scan_drop(self):
@@ -289,18 +297,25 @@ class HrExpense(models.Model):
         return action
 
     def _expense_scan_expense_list(self):
-        """L'action « Mes frais », ou un équivalent si l'écran a changé."""
+        """L'action « Mes frais », ou un équivalent si l'écran a changé.
+
+        ``target: main`` remet le fil d'ariane à zéro. Sans lui, la fiche
+        qu'on vient de quitter — ou de supprimer — y reste inscrite, avec
+        un lien qui ne mène plus nulle part.
+        """
         action = self.env.ref('hr_expense.hr_expense_actions_my_all',
                               raise_if_not_found=False)
         if action:
-            return action.sudo().read()[0]
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _("Mes frais"),
-            'res_model': 'hr.expense',
-            'view_mode': 'kanban,list,form',
-            'target': 'main',
-        }
+            action = action.sudo().read()[0]
+        else:
+            action = {
+                'type': 'ir.actions.act_window',
+                'name': _("Mes frais"),
+                'res_model': 'hr.expense',
+                'view_mode': 'kanban,list,form',
+            }
+        action['target'] = 'main'
+        return action
 
     # ------------------------------------------------------------------
     # Chaîne de traitement
@@ -600,16 +615,23 @@ class HrExpense(models.Model):
             values['total_amount_currency'] = total
 
         if company.expense_scan_apply_tax:
-            # C'est le montant qu'on reporte, pas le taux : celui-ci vient de
-            # la catégorie de dépense, et sur un plan comptable français une
-            # douzaine de taxes cohabitent au même taux — ce choix appartient
-            # au comptable, pas à un OCR.
+            # Le taux lu sur le ticket prime sur celui de la catégorie —
+            # un repas à 10 % ne doit pas être déclaré à 20 % parce que la
+            # catégorie générique le prévoit. Encore faut-il qu'une seule
+            # taxe corresponde à ce taux : sur un plan comptable chargé, le
+            # choix entre biens et services appartient au comptable.
+            effective_rate = self._expense_scan_max_rate()
+            tax = self._expense_scan_tax(result.value('tax_rate'), company)
+            if tax:
+                values['tax_ids'] = [Command.set(tax.ids)]
+                effective_rate = tax.amount
+
             tax_amount = result.value('tax_amount')
             # Une TVA lue de travers ne doit jamais faire échouer tout le
             # scan sur ma propre contrainte : on la laisse alors de côté et
             # on la signale, plutôt que d'écrire une valeur inenregistrable.
             if tax_amount and self._expense_scan_tax_fits(
-                    tax_amount, values.get('total_amount_currency')):
+                    tax_amount, values.get('total_amount_currency'), effective_rate):
                 values['scan_tax_amount'] = tax_amount
             elif not tax_amount:
                 # Le justificatif ne porte aucune TVA — un ticket de carte
@@ -643,15 +665,30 @@ class HrExpense(models.Model):
             _logger.warning("Fuseau horaire inutilisable : %s", zone)
             return moment
 
-    def _expense_scan_tax_fits(self, amount, total=None):
+    def _expense_scan_tax(self, rate, company):
+        """Taxe d'achat au taux lu, si une seule y correspond."""
+        if rate is None:
+            return self.env['account.tax']
+        taxes = self.env['account.tax'].search([
+            ('company_id', '=', company.id),
+            ('type_tax_use', '=', 'purchase'),
+            ('amount_type', '=', 'percent'),
+            ('amount', '=', rate),
+        ], limit=2)
+        # Une correspondance ambiguë est pire qu'aucune : elle passerait
+        # inaperçue à la relecture. On garde alors celle de la catégorie.
+        return taxes if len(taxes) == 1 else self.env['account.tax']
+
+    def _expense_scan_tax_fits(self, amount, total=None, rate=None):
         """La TVA lue tient-elle sous le plafond du taux de la dépense ?
 
-        Le total est passé en argument : au moment où l'on décide, il n'est
-        pas encore écrit sur la dépense, et le plafond calculé sur l'ancien
-        total serait faux.
+        Le total et le taux sont passés en argument : au moment où l'on
+        décide, ni l'un ni l'autre n'est encore écrit sur la dépense, et un
+        plafond calculé sur les anciennes valeurs serait faux.
         """
         self.ensure_one()
-        rate = self._expense_scan_max_rate()
+        if rate is None:
+            rate = self._expense_scan_max_rate()
         if rate is None:
             return True  # aucun taux : on bloquera à la validation, pas ici
         total = self.total_amount_currency if total is None else total

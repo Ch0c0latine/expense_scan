@@ -7,29 +7,44 @@
         <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
         <field name="arch" type="xml">
 
-            <!-- Sert d'ancrage aux règles de style du module : c'est le
-                 seul moyen de viser le formulaire des notes de frais sans
-                 toucher aux autres. -->
-            <xpath expr="//form" position="attributes">
-                <attribute name="class" add="o_expense_scan_form" separator=" "/>
-            </xpath>
-
-            <!-- Suite d'un scan : les gestes qu'on veut enchaîner sans
-                 repasser par la liste. -->
-            <xpath expr="//header" position="inside">
+            <!-- Suite d'un scan, en tête : ce sont les gestes qu'on
+                 enchaîne, « Terminé » étant celui qu'on cherche neuf fois
+                 sur dix une fois les champs relus. -->
+            <xpath expr="//header/button[1]" position="before">
                 <button name="action_expense_scan_done" type="object"
-                        string="Terminé" class="btn-secondary"
+                        string="Terminé" class="oe_highlight"
                         invisible="scan_state == 'none' or state != 'draft'"/>
                 <button name="action_expense_scan_again" type="object"
-                        string="Scanner un autre" class="btn-secondary"
+                        string="Scanner un autre"
                         invisible="scan_state == 'none' or state != 'draft'"/>
-                <button name="action_expense_scan_rescan" type="object"
-                        string="Relancer l'analyse" class="btn-secondary"
-                        invisible="scan_state == 'none' or not is_editable"/>
                 <button name="action_expense_scan_drop" type="object"
-                        string="Supprimer" class="btn-secondary text-danger"
+                        string="Supprimer" class="text-danger"
                         confirm="Supprimer définitivement cette dépense et son justificatif ?"
                         invisible="scan_state == 'none' or state != 'draft'"/>
+            </xpath>
+
+            <!-- Joindre le reçu fait doublon avec le volet des pièces
+                 jointes, qu'on ouvre d'office juste en dessous. -->
+            <xpath expr="(//widget[@name='attach_document'])[1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="(//widget[@name='attach_document'])[2]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Fractionner reste accessible par le menu d'actions ; en
+                 tête, il encombre un parcours de scan. -->
+            <xpath expr="(//button[@name='action_split_wizard'])[1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="(//button[@name='action_split_wizard'])[2]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Le compilateur d'Odoo lit cet attribut : le volet des
+                 pièces jointes s'ouvre alors sans qu'on ait à le déplier. -->
+            <xpath expr="//chatter" position="attributes">
+                <attribute name="open_attachments">1</attribute>
             </xpath>
 
             <!-- Bandeau de relecture, au même niveau que l'alerte de doublon -->
@@ -95,6 +110,12 @@
                     <field name="scan_engine" invisible="1"/>
                     <field name="scan_duration" invisible="1"/>
                     <field name="scan_score" invisible="1"/>
+                    <div colspan="2">
+                        <button name="action_expense_scan_rescan" type="object"
+                                string="Relancer l'analyse" icon="fa-refresh"
+                                class="btn btn-secondary btn-sm"
+                                invisible="not is_editable"/>
+                    </div>
                     <field name="scan_raw_text" readonly="1" colspan="2"
                            widget="text" invisible="not scan_raw_text"
                            class="o_expense_scan_raw_text"/>

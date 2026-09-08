@@ -7,7 +7,7 @@
  * bandeau collé en haut de la fiche : le ticket reste visible pendant que
  * l'on fait défiler les champs, et un appui l'ouvre en plein écran.
  */
-import { Component, onWillDestroy, useState } from "@odoo/owl";
+import { Component, onMounted, onWillDestroy, onWillUnmount, useState } from "@odoo/owl";
 
 import { browser } from "@web/core/browser/browser";
 import { FileModel } from "@web/core/file_viewer/file_model";
@@ -33,6 +33,22 @@ export class ExpenseScanReceipt extends Component {
         }, 200);
         browser.addEventListener("resize", this.onResize);
         onWillDestroy(() => browser.removeEventListener("resize", this.onResize));
+
+        // Marque le formulaire pour les règles de style du module. Odoo ne
+        // propage pas au DOM la classe posée sur la balise <form> de la vue
+        // — le compilateur n'y reprend qu'une prop du composant — et le fil
+        // de discussion est un frère de la feuille, hors de portée de toute
+        // classe posée à l'intérieur. Ce widget, lui, n'existe que dans le
+        // formulaire des notes de frais : il est donc le bon porteur.
+        onMounted(() => this.markForm(true));
+        onWillUnmount(() => this.markForm(false));
+    }
+
+    markForm(active) {
+        const form = document.querySelector(".o_form_renderer");
+        if (form) {
+            form.classList.toggle("o_expense_scan_form", active);
+        }
     }
 
     /**
