@@ -350,6 +350,26 @@ def looks_quarter_turned(words, min_words=5, threshold=0.55):
     return (vertical / float(len(boxes))) >= threshold
 
 
+def skew_angle_from_words(words, min_width_ratio=0.25, min_boxes=2):
+    """Inclinaison médiane lue directement sur les boîtes du détecteur.
+
+    À préférer à :func:`skew_angle_from_lines` : PP-OCR ne détecte souvent
+    qu'**une seule boîte par ligne de ticket**, ce qui ne laisse rien à
+    régresser et faisait très largement sous-estimer l'angle. L'orientation
+    de chaque boîte, elle, est une donnée du détecteur.
+
+    Les boîtes trop courtes sont écartées : sur quelques caractères,
+    l'orientation est bruitée.
+    """
+    oriented = [word for word in words if 1e-6 < abs(word.angle) <= 45.0]
+    if len(oriented) < min_boxes:
+        return 0.0
+    widest = max(word.width for word in oriented)
+    kept = [word for word in oriented if word.width >= min_width_ratio * widest] or oriented
+    angles = sorted(word.angle for word in kept)
+    return angles[len(angles) // 2]
+
+
 def skew_angle_from_lines(lines, min_words=3, min_lines=2):
     """Inclinaison des lignes de texte, mesurée sur les mots reconnus.
 

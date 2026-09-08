@@ -13,6 +13,7 @@ Ajouter un moteur revient à écrire une sous-classe de :class:`ScanEngine` et
 à l'enregistrer dans ``ENGINE_CLASSES``.
 """
 import logging
+import math
 import threading
 import time
 
@@ -259,15 +260,25 @@ class RapidOcrEngine(ScanEngine):
             text = (text or "").strip()
             if not text:
                 continue
+            angle = 0.0
             try:
                 box = np.asarray(boxes[index], dtype="float32")
                 left, top = float(box[:, 0].min()), float(box[:, 1].min())
                 right, bottom = float(box[:, 0].max()), float(box[:, 1].max())
+                # PP-OCR renvoie un quadrilatère orienté, pas un rectangle :
+                # l'inclinaison de la ligne se lit sur son arête supérieure.
+                # C'est la mesure de biais la plus directe qui soit, et elle
+                # ne coûte rien puisque la donnée est déjà là.
+                if len(box) == 4:
+                    angle = math.degrees(math.atan2(float(box[1][1] - box[0][1]),
+                                                    float(box[1][0] - box[0][0])))
+                    if abs(angle) > 45.0:
+                        angle = 0.0
             except Exception:  # noqa: BLE001
                 left = top = 0.0
                 right = bottom = 1.0
             score = float(scores[index]) if index < len(scores) else 0.0
-            words.append(OcrWord(text=text, score=score,
+            words.append(OcrWord(text=text, score=score, angle=angle,
                                  left=left, top=top, right=right, bottom=bottom))
         return words
 

@@ -67,11 +67,13 @@ class ResCompany(models.Model):
              "presque toujours une date de garantie ou de carte de fidélité.",
     )
     expense_scan_apply_tax = fields.Boolean(
-        string="Appliquer la TVA détectée",
+        string="Reporter la TVA lue sur le ticket",
         default=False,
-        help="Remplace les taxes par défaut de la catégorie de dépense par "
-             "la taxe correspondant au taux lu sur le ticket. Désactivé par "
-             "défaut : une lecture erronée fausserait la comptabilité.",
+        help="Renseigne le champ « TVA du ticket » avec le montant lu sur le "
+             "justificatif. Ce montant prime alors sur celui que produirait "
+             "le taux, jusque dans l'écriture comptable — c'est ce qui permet "
+             "à un ticket mêlant plusieurs taux de porter sa TVA exacte. Le "
+             "taux, lui, reste celui de la catégorie de dépense.",
     )
     expense_scan_set_vendor = fields.Boolean(
         string="Rechercher le fournisseur",

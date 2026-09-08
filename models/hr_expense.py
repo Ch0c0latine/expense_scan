@@ -6,8 +6,8 @@ from datetime import datetime, time as dtime
 
 from pytz import timezone, utc
 
-from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo import Command, _, api, fields, models
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools import format_date
 
 from ..ocr import engines, parser, preprocess
@@ -40,6 +40,17 @@ class HrExpense(models.Model):
     scan_score = fields.Float(string="Confiance de lecture", readonly=True, copy=False,
                               help="Score moyen de reconnaissance des caractères, en pourcentage.")
     scan_detected_tax = fields.Char(string="TVA lue sur le ticket", readonly=True, copy=False)
+    scan_tax_amount = fields.Monetary(
+        string="TVA du ticket",
+        currency_field='currency_id',
+        copy=False,
+        help="Montant de TVA imprimé sur le justificatif. Renseigné, il fait "
+             "foi : la TVA de la dépense et celle de l'écriture comptable "
+             "prennent cette valeur, quel que soit le taux retenu. C'est ce "
+             "qui permet à un ticket mêlant 5,5 %, 10 % et 20 % de produire "
+             "exactement sa TVA. Laisser à zéro pour qu'Odoo la calcule "
+             "depuis le taux, comme d'habitude.",
+    )
     scan_time = fields.Char(string="Heure du ticket", readonly=True, copy=False)
     scan_datetime = fields.Datetime(
         string="Horodatage du ticket",
@@ -65,6 +76,149 @@ class HrExpense(models.Model):
         copy=False,
         ondelete='set null',
     )
+
+    # ------------------------------------------------------------------
+    # TVA du ticket : le montant prime sur le taux
+    #
+    # Odoo dérive la TVA du taux appliqué au total. Un ticket de caisse fait
+    # l'inverse : il imprime un montant, souvent issu de plusieurs taux
+    # mêlés, et c'est ce montant qui doit se retrouver en comptabilité. Le
+    # taux reste sélectionné — il porte les tags fiscaux — mais il ne
+    # commande plus le montant.
+    # ------------------------------------------------------------------
+
+    @api.depends('total_amount_currency', 'tax_ids', 'scan_tax_amount')
+    def _compute_tax_amount_currency(self):
+        super()._compute_tax_amount_currency()
+        for expense in self:
+            if expense.scan_tax_amount:
+                expense.tax_amount_currency = expense.scan_tax_amount
+                expense.untaxed_amount_currency = (
+                    expense.total_amount_currency - expense.scan_tax_amount)
+
+    @api.depends('total_amount', 'currency_rate', 'tax_ids', 'is_multiple_currency',
+                 'scan_tax_amount')
+    def _compute_tax_amount(self):
+        super()._compute_tax_amount()
+        for expense in self:
+            if not expense.scan_tax_amount:
+                continue
+            rate = expense.currency_rate or 1.0
+            company_tax = expense.company_currency_id.round(expense.scan_tax_amount / rate)
+            expense.tax_amount = company_tax
+            expense.untaxed_amount = expense.total_amount - company_tax
+
+    def _expense_scan_max_rate(self):
+        """Le plus haut taux retenu sur la dépense, en pourcentage."""
+        self.ensure_one()
+        rates = self.tax_ids.filtered(
+            lambda tax: tax.amount_type == 'percent').mapped('amount')
+        return max(rates) if rates else 0.0
+
+    def _expense_scan_tax_ceiling(self):
+        """TVA maximale possible : le plus haut taux appliqué au total TTC.
+
+        Un ticket mêlant plusieurs taux porte forcément moins de TVA que si
+        tout était au taux le plus élevé. Ce plafond attrape donc les
+        erreurs de lecture sans jamais gêner une saisie légitime.
+        """
+        self.ensure_one()
+        rate = self._expense_scan_max_rate()
+        if rate <= 0:
+            return None
+        return self.total_amount_currency * rate / (100.0 + rate)
+
+    @api.constrains('scan_tax_amount', 'total_amount_currency', 'tax_ids')
+    def _check_scan_tax_amount(self):
+        for expense in self:
+            if not expense.scan_tax_amount:
+                continue
+            if expense.scan_tax_amount < 0:
+                raise ValidationError(_("La TVA du ticket ne peut pas être négative."))
+            ceiling = expense._expense_scan_tax_ceiling()
+            if ceiling is None:
+                raise ValidationError(_(
+                    "Renseignez une taxe sur la dépense avant d'y saisir une "
+                    "TVA : sans taux, la valeur saisie ne peut être ni "
+                    "contrôlée ni comptabilisée."))
+            if expense.currency_id.compare_amounts(expense.scan_tax_amount, ceiling) > 0:
+                raise ValidationError(_(
+                    "TVA du ticket impossible : %(saisi).2f dépasse le maximum "
+                    "de %(plafond).2f, qui correspond au taux de %(taux).2f %% "
+                    "appliqué à la totalité des %(total).2f du ticket.",
+                    saisi=expense.scan_tax_amount, plafond=ceiling,
+                    taux=expense._expense_scan_max_rate(),
+                    total=expense.total_amount_currency))
+
+    def _prepare_receipts_vals(self):
+        """Ventile la base pour que l'écriture porte la TVA du ticket.
+
+        Odoo bâtit l'écriture en appliquant le taux au total : le montant lu
+        sur le justificatif n'y arriverait jamais. Plutôt que de retoucher
+        la ligne de taxe après coup — fragile, et recalculée à la moindre
+        écriture —, on scinde la base en deux : la part qui, au taux retenu,
+        produit exactement le montant voulu, et le reste hors taxe.
+
+        L'écriture reste équilibrée, la TVA déductible est celle du ticket,
+        et les tags fiscaux sont posés par le moteur de taxes habituel.
+        """
+        vals_list = super()._prepare_receipts_vals()
+        # `_prepare_receipts_vals` regroupe par employé et crée une ligne par
+        # dépense, dans cet ordre : on refait le même groupement pour
+        # retrouver quelle ligne appartient à quelle dépense.
+        for vals, expenses in zip(vals_list, self.sudo().grouped('employee_id').values()):
+            extra_lines = []
+            for command, expense in zip(vals.get('line_ids') or [], expenses):
+                remainder = expense._expense_scan_split_base(command)
+                if remainder is not None:
+                    extra_lines.append(remainder)
+            if extra_lines:
+                vals['line_ids'] = list(vals['line_ids']) + extra_lines
+        return vals_list
+
+    def _expense_scan_split_base(self, command):
+        """Ajuste la ligne de base, et renvoie la ligne du reliquat s'il y en a."""
+        self.ensure_one()
+        if not self.scan_tax_amount:
+            return None
+        rate = self._expense_scan_max_rate()
+        if rate <= 0:
+            return None
+
+        line_vals = command[2]
+        currency = self.company_currency_id
+        taxed_base = currency.round(self.tax_amount * 100.0 / rate)
+        remainder = currency.round(self.total_amount - taxed_base - self.tax_amount)
+
+        line_vals['quantity'] = 1
+        line_vals['price_unit'] = taxed_base
+        if currency.is_zero(remainder):
+            return None
+
+        untaxed = dict(line_vals)
+        untaxed['quantity'] = 1
+        untaxed['price_unit'] = remainder
+        untaxed['tax_ids'] = [Command.set([])]
+        untaxed['tax_tag_ids'] = [Command.set([])]
+        untaxed['name'] = _("%s (hors taxe)", line_vals.get('name') or self.name)
+        return Command.create(untaxed)
+
+    def _prepare_payments_vals(self):
+        """Refuse de comptabiliser une TVA de ticket qu'on ne sait pas porter.
+
+        Le chemin « payé par la société » construit ses lignes d'écriture
+        avec des soldes explicites, sans passer par la ventilation de base
+        ci-dessus. Plutôt que d'y comptabiliser silencieusement la TVA du
+        taux à la place de celle du ticket, on s'arrête net.
+        """
+        if self.scan_tax_amount:
+            raise UserError(_(
+                "La TVA du ticket (%(montant).2f) ne peut pas encore être "
+                "reportée sur une dépense payée par la société. Repassez la "
+                "dépense en « Employé (à rembourser) », ou videz le champ "
+                "« TVA du ticket » pour laisser Odoo la calculer depuis le "
+                "taux.", montant=self.scan_tax_amount))
+        return super()._prepare_payments_vals()
 
     # ------------------------------------------------------------------
     # Point d'entrée : dépôt d'un justificatif depuis la liste des frais
@@ -226,7 +380,11 @@ class HrExpense(models.Model):
             # L'inclinaison se mesure sur les lignes de texte reconnues, et
             # non sur l'image : les bords du papier sont des droites bien
             # plus marquées que l'impression, et rarement parallèles à elle.
-            angle = preprocess.skew_angle_from_lines(parser.build_lines(words))
+            # L'orientation des boîtes du détecteur d'abord ; la régression
+            # sur les mots ne sert que de repli, pour un moteur comme
+            # Tesseract qui ne rend que des rectangles droits.
+            angle = preprocess.skew_angle_from_words(words) \
+                or preprocess.skew_angle_from_lines(parser.build_lines(words))
             if preprocess.MIN_DESKEW_ANGLE < abs(angle) <= preprocess.MAX_DESKEW_ANGLE:
                 matrix, _size = preprocess.rotation_matrix(
                     (image.shape[1], image.shape[0]), angle)
@@ -308,9 +466,13 @@ class HrExpense(models.Model):
             values['total_amount_currency'] = total
 
         if company.expense_scan_apply_tax:
-            tax = self._expense_scan_tax(result, company)
-            if tax:
-                values['tax_ids'] = [(6, 0, tax.ids)]
+            # C'est le montant qu'on reporte, pas le taux : celui-ci vient de
+            # la catégorie de dépense, et sur un plan comptable français une
+            # douzaine de taxes cohabitent au même taux — ce choix appartient
+            # au comptable, pas à un OCR.
+            tax_amount = result.value('tax_amount')
+            if tax_amount:
+                values['scan_tax_amount'] = tax_amount
 
         if company.expense_scan_set_vendor:
             vendor = self._expense_scan_vendor(result, company)
@@ -343,28 +505,6 @@ class HrExpense(models.Model):
         if company.currency_id.name == code:
             return self.env['res.currency']  # déjà la devise par défaut
         return self.env['res.currency'].search([('name', '=', code)], limit=1)
-
-    def _expense_scan_tax(self, result, company):
-        """Taxe d'achat TTC correspondant au taux lu, si elle est unique."""
-        rate = result.value('tax_rate')
-        if rate is None:
-            return self.env['account.tax']
-        # Pas de filtre sur `price_include` : le plan comptable français
-        # définit ses taxes d'achat hors taxe, et Odoo traite de toute façon
-        # le total d'une note de frais comme TTC (`special_mode` du moteur
-        # de taxes). Filtrer là-dessus ne retenait jamais aucune taxe.
-        taxes = self.env['account.tax'].search([
-            ('company_id', '=', company.id),
-            ('type_tax_use', '=', 'purchase'),
-            ('amount_type', '=', 'percent'),
-            ('amount', '=', rate),
-        ], limit=2)
-        # Une correspondance ambiguë est pire qu'aucune : elle passerait
-        # inaperçue à la relecture. Sur un plan comptable français complet,
-        # une douzaine de taxes cohabitent au même taux (biens, services,
-        # intracommunautaire...) : c'est alors la catégorie de dépense qui
-        # tranche, et ce choix-là appartient au comptable.
-        return taxes if len(taxes) == 1 else self.env['account.tax']
 
     def _expense_scan_vendor(self, result, company):
         """Contact fournisseur dont le nom correspond à l'enseigne lue."""
