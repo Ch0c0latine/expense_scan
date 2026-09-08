@@ -438,6 +438,10 @@ class HrExpense(models.Model):
 
     #: Côté maximal de l'image d'essai servant à choisir l'orientation.
     ORIENTATION_PROBE_SIDE = 800
+    #: Inclinaison au-delà de laquelle le quart de tour se rejoue une fois
+    #: la photo redressée. En deçà, le premier essai portait déjà sur du
+    #: texte à peu près horizontal : son verdict est fiable.
+    REORIENT_SKEW_ANGLE = 5.0
 
     def _expense_scan_straighten(self, engine, image, info, company):
         """Remet le ticket d'aplomb avant la lecture définitive.
@@ -484,6 +488,10 @@ class HrExpense(models.Model):
                 image = preprocess.rotate(image, angle)
                 info.deskew_angle = angle
 
+        if abs(info.deskew_angle) > self.REORIENT_SKEW_ANGLE:
+            probe, image, best_words = self._expense_scan_reorient(
+                engine, probe, image, best_words, info)
+
         # Recadrer sur le ticket avant la lecture définitive. Le moteur
         # ramène de toute façon l'image à sa taille de travail : autant que
         # ce budget de résolution se dépense sur le ticket plutôt que sur la
@@ -501,6 +509,31 @@ class HrExpense(models.Model):
         info.changed = info.changed or bool(
             best_quarters or info.deskew_angle or info.cropped)
         return image
+
+    def _expense_scan_reorient(self, engine, probe, image, words, info):
+        """Rejoue le choix endroit / 180° sur la photo redressée.
+
+        Le premier essai a comparé quatre quarts de tour sur une photo en
+        diagonale : à 45°, aucune des quatre orientations ne donne du texte
+        lisible, les quatre scores se valent, et le quart retenu l'est au
+        hasard — une fois sur deux à 180° de la vérité. Le défaut passe
+        ensuite inaperçu, car le classifieur d'angle du moteur redresse
+        chaque ligne à la lecture définitive : les mots sont alors justes,
+        mais leurs positions restent en miroir, et le parseur rattache
+        chaque libellé au montant de la ligne voisine.
+
+        Une fois les lignes horizontales, la question se tranche vraiment :
+        sans classifieur, seule la bonne orientation produit du texte.
+        """
+        upright = engine.recognize(probe, use_cls=False)
+        turned = preprocess.rotate_quarters(probe, 2)
+        flipped = engine.recognize(turned, use_cls=False)
+        if self._expense_scan_quality(flipped) <= self._expense_scan_quality(upright):
+            return probe, image, upright or words
+
+        info.rotated_quarters = (info.rotated_quarters + 2) % 4
+        info.changed = True
+        return turned, preprocess.rotate_quarters(image, 2), flipped
 
     def _expense_scan_tighten(self, image, words, info, company):
         """Redresse puis recadre, une fois l'OCR passé.
