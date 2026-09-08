@@ -410,6 +410,10 @@ class HrExpense(models.Model):
             if quality > best_quality:
                 best_quarters, best_quality, best_words = quarters, quality, words
 
+        # L'essai et la photo suivent exactement les mêmes transformations :
+        # les boîtes trouvées sur l'un restent donc transposables sur l'autre
+        # par une simple homothétie.
+        probe = preprocess.rotate_quarters(probe, best_quarters)
         if best_quarters:
             image = preprocess.rotate_quarters(image, best_quarters)
             info.rotated_quarters = best_quarters
@@ -417,10 +421,26 @@ class HrExpense(models.Model):
         if company.expense_scan_deskew:
             angle = preprocess.skew_angle_from_words(best_words)
             if preprocess.MIN_DESKEW_ANGLE < abs(angle) <= preprocess.MAX_TEXT_DESKEW_ANGLE:
+                matrix, _size = preprocess.rotation_matrix(
+                    (probe.shape[1], probe.shape[0]), angle)
+                best_words = preprocess.rotate_words(best_words, matrix)
+                probe = preprocess.rotate(probe, angle)
                 image = preprocess.rotate(image, angle)
                 info.deskew_angle = angle
 
-        info.changed = info.changed or bool(best_quarters or info.deskew_angle)
+        # Recadrer sur le ticket avant la lecture définitive. Le moteur
+        # ramène de toute façon l'image à sa taille de travail : autant que
+        # ce budget de résolution se dépense sur le ticket plutôt que sur la
+        # table qui l'entoure. Marge large, car l'essai est basse
+        # définition et peut avoir manqué une ligne en bord de ticket.
+        if company.expense_scan_autocrop and probe.shape[1]:
+            scaled = preprocess.scale_words(
+                best_words, image.shape[1] / float(probe.shape[1]))
+            image, cropped = preprocess.crop_to_text(image, scaled, margin_ratio=0.08)
+            info.cropped = info.cropped or cropped
+
+        info.changed = info.changed or bool(
+            best_quarters or info.deskew_angle or info.cropped)
         return image
 
     def _expense_scan_tighten(self, image, words, info, company):

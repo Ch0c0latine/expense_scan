@@ -393,6 +393,22 @@ def skew_angle_from_lines(lines, min_words=3, min_lines=2):
     return angles[len(angles) // 2]
 
 
+def scale_words(words, factor):
+    """Transpose des boîtes mesurées sur une image réduite vers la grande.
+
+    L'orientation, elle, ne change pas : une homothétie ne fait pas pencher
+    le texte.
+    """
+    if factor == 1.0:
+        return words
+    return [
+        OcrWord(text=word.text, score=word.score, angle=word.angle,
+                left=word.left * factor, top=word.top * factor,
+                right=word.right * factor, bottom=word.bottom * factor)
+        for word in words
+    ]
+
+
 def crop_to_text(image, words, margin_ratio=0.035, max_kept_ratio=0.94):
     """Recadre sur l'enveloppe du texte reconnu, avec une marge.
 
@@ -438,12 +454,17 @@ def limit_size(image, max_side):
     return image
 
 
-def prepare(data, autocrop=True, deskew=True, max_side=1800):
+def prepare(data, autocrop=True, deskew=True, max_side=0):
     """Chaîne complète : octets -> image BGR prête pour l'OCR.
 
     Renvoie (image, PreprocessInfo). Ne lève jamais pour une raison
     cosmétique : si le recadrage échoue, on rend l'image d'origine et on le
     dit dans PreprocessInfo.
+
+    ``max_side`` vaut zéro par défaut, donc aucune réduction : le moteur
+    ramène lui-même l'image à sa taille de travail, et réduire ici avant de
+    faire pivoter la photo ajouterait un rééchantillonnage qui coûte cher
+    sur une impression thermique déjà pâle.
     """
     image = load_image(data)
     info = PreprocessInfo(original_size=(image.shape[1], image.shape[0]))
