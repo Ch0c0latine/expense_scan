@@ -244,3 +244,23 @@ NET A PAYER 5,50
             sorted(parser.fields_to_check(result)),
             sorted(["Marchand", "Date", "Total"]),
         )
+
+    # -- Tickets à points de conduite -------------------------------------
+
+    def test_amount_after_leader_dots(self):
+        """« PRIX TTC......6,80 » : le point de conduite précède le montant."""
+        self.assertEqual(parser.find_amounts("PRIX TTC......6,80 euros")[0][0], 6.80)
+
+    def test_toll_receipt(self):
+        """Ticket de péage réel : libellés en PRIX HT / PRIX TTC."""
+        result = self.parse("""
+ASF Lieu-dit Gaussens BP 40037
+Date .07/09/26 .PAMIERS
+PRIX HT.......5,67 euros TVA 20,00%....1,13 euros
+PRIX TTC......6,80 euros
+Paiement....6,80 E ..CB
+""")
+        self.assertEqual(result.value('total'), 6.80)
+        self.assertGreater(result.confidence('total'), parser.LOW_CONFIDENCE)
+        self.assertEqual(result.value('tax_rate'), 20.0)
+        self.assertEqual(result.value('tax_amount'), 1.13)

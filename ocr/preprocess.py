@@ -322,6 +322,41 @@ def looks_quarter_turned(words, min_words=5, threshold=0.55):
     return (vertical / float(len(boxes))) >= threshold
 
 
+def crop_to_text(image, words, margin_ratio=0.05, max_kept_ratio=0.92):
+    """Recadre sur l'enveloppe du texte reconnu, avec une marge.
+
+    Complète la détection de contours plutôt qu'elle ne la remplace : un
+    ticket blanc posé sur une table claire n'a pas de bord détectable, mais
+    la position du texte, elle, est connue sans ambiguïté une fois l'OCR
+    passé. Et recadrer sur le texte ne peut pas couper une information
+    utile, par construction.
+
+    Renvoie (image, recadrée ou non).
+    """
+    boxes = [word for word in words if word.text.strip()]
+    if cv2 is None or len(boxes) < 3:
+        return image, False
+
+    height, width = image.shape[:2]
+    left = min(word.left for word in boxes)
+    right = max(word.right for word in boxes)
+    top = min(word.top for word in boxes)
+    bottom = max(word.bottom for word in boxes)
+
+    margin_x = (right - left) * margin_ratio + 8
+    margin_y = (bottom - top) * margin_ratio + 8
+    x0 = max(int(left - margin_x), 0)
+    y0 = max(int(top - margin_y), 0)
+    x1 = min(int(right + margin_x), width)
+    y1 = min(int(bottom + margin_y), height)
+
+    if x1 - x0 < 40 or y1 - y0 < 40:
+        return image, False
+    if (x1 - x0) * (y1 - y0) > max_kept_ratio * width * height:
+        return image, False  # déjà cadré au plus juste
+    return image[y0:y1, x0:x1], True
+
+
 def limit_size(image, max_side):
     """Réduit l'image si son plus grand côté dépasse max_side."""
     height, width = image.shape[:2]

@@ -20,10 +20,17 @@ from .types import ExtractedField, OcrLine, ScanResult
 # ---------------------------------------------------------------------------
 
 # Un montant a toujours deux décimales sur un ticket. On accepte le point et
-# la virgule, et les séparateurs de milliers usuels (espace, espace insécable,
-# point). Le lookahead écarte « 20,00 % » qui est un taux, pas un montant.
+# la virgule, ainsi que les séparateurs de milliers usuels (espace, espace
+# insécable, point). Le lookahead final écarte « 20,00 % », qui est un taux.
+#
+# Le lookbehind ne rejette qu'un chiffre ou une virgule, surtout pas un
+# point : d'innombrables tickets alignent leurs colonnes avec des points de
+# conduite — « PRIX TTC......6,80 » — et interdire le point précédent
+# revenait à n'y reconnaître aucun montant. Le cas « 1.234,56 » reste
+# couvert : l'alternative des milliers est tentée en premier et consomme le
+# nombre entier avant qu'on puisse en attaquer la fin.
 AMOUNT_RE = re.compile(
-    r"(?<![\d.,])(\d{1,3}(?:[  .]\d{3})+|\d+)[.,](\d{2})(?![\d])(?!\s*%)"
+    r"(?<![\d,])(\d{1,3}(?:[  .]\d{3})+|\d+)[.,](\d{2})(?![\d])(?!\s*%)"
 )
 # Un taux de TVA : « 20 % », « 5,50% », « TVA 10.0 »
 RATE_RE = re.compile(r"(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
@@ -108,17 +115,22 @@ def build_lines(words, tolerance_ratio=0.6):
 TOTAL_KEYWORDS = [
     (re.compile(r"\bNET\s*A\s*PAYER\b"), 0.95),
     (re.compile(r"\bTOTAL\s*T\.?\s*T\.?\s*C\b"), 0.93),
+    # « PRIX TTC » est le libellé des tickets de péage, de carburant et de
+    # nombreux automates : aussi décisif qu'un « TOTAL TTC ».
+    (re.compile(r"\bPRIX\s*T\.?\s*T\.?\s*C\b"), 0.92),
     (re.compile(r"\bMONTANT\s*(?:DU|A\s*PAYER)\b"), 0.90),
     (re.compile(r"\bRESTE\s*A\s*PAYER\b"), 0.88),
     (re.compile(r"\bA\s*PAYER\b"), 0.86),
     (re.compile(r"\bTOTAL\b"), 0.80),
     (re.compile(r"\bMONTANT\b"), 0.70),
+    (re.compile(r"\bPAIEMENT\b|\bREGLEMENT\b"), 0.65),
     (re.compile(r"\bCARTE\s*BANCAIRE\b|\bCB\b|\bSANS\s*CONTACT\b"), 0.60),
     (re.compile(r"\bESPECES\b|\bCHEQUE\b"), 0.55),
 ]
 # Une ligne contenant l'un de ces termes n'est jamais le total à retenir.
 TOTAL_EXCLUDE_RE = re.compile(
-    r"\bSOUS\s*[- ]?\s*TOTAL\b|\bTOTAL\s*H\.?\s*T\b|\bTVA\b|\bT\.V\.A\b|"
+    r"\bSOUS\s*[- ]?\s*TOTAL\b|\bTOTAL\s*H\.?\s*T\b|\bPRIX\s*H\.?\s*T\b|"
+    r"\bMONTANT\s*H\.?\s*T\b|\bTVA\b|\bT\.V\.A\b|"
     r"\bRENDU\b|\bMONNAIE\b|\bRECU\b|\bREMISE\b|\bECONOMIE\b|\bAVANTAGE\b|"
     r"\bCAGNOTTE\b|\bFIDELITE\b|\bPOINTS?\b|\bSOLDE\b|\bDONT\b|\bACOMPTE\b"
 )

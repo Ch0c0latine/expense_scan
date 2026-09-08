@@ -161,6 +161,14 @@ class HrExpense(models.Model):
                 engine, image, words)
         duration = time.time() - started
 
+        # Second passage de mise en forme, cette fois guidé par le texte
+        # reconnu. La détection de contours d'avant-OCR échoue sur un ticket
+        # clair posé sur un fond clair ; la position du texte, elle, est
+        # désormais connue. On ne relance pas l'OCR pour autant : la lecture
+        # est déjà faite, il s'agit d'obtenir l'image que l'utilisateur aura
+        # sous les yeux pour vérifier les champs.
+        image = self._expense_scan_tighten(image, words, info, company)
+
         result = parser.parse(
             words,
             max_age_days=company.expense_scan_max_age_days or 730,
@@ -191,6 +199,26 @@ class HrExpense(models.Model):
             if quality > best[3]:
                 best = (rotated, candidate, quarters, quality)
         return best[0], best[1], best[2]
+
+    def _expense_scan_tighten(self, image, words, info, company):
+        """Recadre sur le texte puis redresse, une fois l'OCR passé."""
+        if company.expense_scan_autocrop:
+            image, tightened = preprocess.crop_to_text(image, words)
+            if tightened:
+                info.cropped = True
+                info.changed = True
+
+        if company.expense_scan_deskew:
+            # Le redressage se mesure enfin sur du texte plutôt que sur une
+            # photo pleine de table et d'ombres : c'est là qu'une inclinaison
+            # de quelques degrés devient détectable.
+            image, angle = preprocess.deskew_image(image)
+            if angle:
+                info.deskew_angle = angle
+                info.changed = True
+
+        info.final_size = (image.shape[1], image.shape[0])
+        return image
 
     @staticmethod
     def _expense_scan_quality(words):
