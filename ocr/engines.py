@@ -67,7 +67,7 @@ class ScanEngine(object):
         """Renvoie (disponible, message lisible)."""
         raise NotImplementedError
 
-    def recognize(self, image):
+    def recognize(self, image, use_cls=None):
         """Renvoie une liste d'``OcrWord`` pour l'image BGR fournie."""
         raise NotImplementedError
 
@@ -244,8 +244,8 @@ class RapidOcrEngine(ScanEngine):
     def description(self):
         return self._description or self.label
 
-    def recognize(self, image):
-        return self._words_from_result(self._get_engine()(image))
+    def recognize(self, image, use_cls=None):
+        return self._words_from_result(self._get_engine()(image, use_cls=use_cls))
 
     @staticmethod
     def _words_from_result(result):
@@ -305,7 +305,7 @@ class TesseractEngine(ScanEngine):
     def description(self):
         return self.label
 
-    def recognize(self, image):
+    def recognize(self, image, use_cls=None):
         import pytesseract
         from PIL import Image
 

@@ -13,8 +13,13 @@ from ..ocr import preprocess
 from ..ocr.types import OcrWord
 
 
-def make_word(left, top, right, bottom):
-    return OcrWord(text="X", score=0.9, left=left, top=top, right=right, bottom=bottom)
+def make_words(angle=0.0, count=5):
+    """Cinq lignes de texte, toutes inclinées du même angle."""
+    return [
+        OcrWord(text="ligne", score=0.9, angle=angle,
+                left=0.0, top=index * 30.0, right=200.0, bottom=index * 30.0 + 20.0)
+        for index in range(count)
+    ]
 
 
 @tagged('post_install', '-at_install')
@@ -115,13 +120,21 @@ class TestPreprocess(common.TransactionCase):
         self.assertTrue(applied, "aucune correction n'a été appliquée")
         self.assertLess(abs(preprocess.estimate_skew_angle(corrected)), 1.5)
 
-    def test_quarter_turn_detection(self):
-        upright = [make_word(0, 0, 100, 20) for _ in range(10)]
-        self.assertFalse(preprocess.looks_quarter_turned(upright))
+    def test_skew_angle_from_words(self):
+        """L'angle se lit sur l'orientation des boîtes du détecteur.
 
-        sideways = [make_word(0, 0, 20, 100) for _ in range(10)]
-        self.assertTrue(preprocess.looks_quarter_turned(sideways))
+        C'est la mesure principale : PP-OCR ne rend souvent qu'une boîte par
+        ligne de ticket, ce qui ne laisse rien à régresser.
+        """
+        self.assertAlmostEqual(
+            preprocess.skew_angle_from_words(make_words(angle=6.0)), 6.0, places=3)
+        self.assertAlmostEqual(
+            preprocess.skew_angle_from_words(make_words(angle=-4.5)), -4.5, places=3)
 
-        # Trop peu de mots : on ne conclut pas, et donc on ne fait pas
-        # tourner l'image sur la foi de deux boîtes.
-        self.assertFalse(preprocess.looks_quarter_turned(sideways[:3]))
+    def test_skew_angle_without_orientation(self):
+        """Un moteur qui ne rend que des rectangles droits ne conclut rien.
+
+        Mieux vaut ne pas tourner l'image que la tourner au hasard ; c'est
+        alors la régression sur les lignes qui prend le relais.
+        """
+        self.assertEqual(preprocess.skew_angle_from_words(make_words(angle=0.0)), 0.0)

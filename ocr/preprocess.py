@@ -336,19 +336,6 @@ def rotate_quarters(image, quarters):
     return cv2.rotate(image, codes[quarters])
 
 
-def looks_quarter_turned(words, min_words=5, threshold=0.55):
-    """Le texte reconnu semble-t-il écrit verticalement ?
-
-    Sur une image tournée d'un quart de tour, le détecteur trouve des boîtes
-    plus hautes que larges. C'est le signal le plus fiable et il ne coûte
-    rien : il se lit sur le résultat de la passe OCR déjà effectuée.
-    """
-    boxes = [w for w in words if w.width > 0 and w.height > 0]
-    if len(boxes) < min_words:
-        return False
-    vertical = sum(1 for w in boxes if w.height > 1.6 * w.width)
-    return (vertical / float(len(boxes))) >= threshold
-
 
 def skew_angle_from_words(words, min_width_ratio=0.25, min_boxes=2):
     """Inclinaison médiane lue directement sur les boîtes du détecteur.

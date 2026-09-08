@@ -352,10 +352,9 @@ class HrExpense(models.Model):
             company.expense_scan_engine, **company._expense_scan_engine_options())
 
         started = time.time()
+        if company.expense_scan_auto_rotate:
+            image, info.rotated_quarters = self._expense_scan_orient(engine, image)
         words = engine.recognize(image)
-        if company.expense_scan_auto_rotate and preprocess.looks_quarter_turned(words):
-            image, words, info.rotated_quarters = self._expense_scan_fix_rotation(
-                engine, image, words)
         duration = time.time() - started
 
         # Second passage de mise en forme, cette fois guidé par le texte
@@ -378,24 +377,38 @@ class HrExpense(models.Model):
             result.image_bytes = preprocess.encode_jpeg(image)
         return result
 
-    def _expense_scan_fix_rotation(self, engine, image, words):
-        """Cherche le quart de tour qui remet le texte à l'horizontale.
+    #: Côté maximal de l'image d'essai servant à choisir l'orientation.
+    ORIENTATION_PROBE_SIDE = 800
 
-        On ne compte surtout pas les boîtes détectées : bien orienté, le
-        détecteur fusionne chaque ligne du ticket en une seule boîte, alors
-        que couché il en produit une nuée de petites. Compter les boîtes
-        désigne donc systématiquement la mauvaise orientation. On mesure à
-        la place la quantité de texte reconnu avec confiance dans des boîtes
-        horizontales : elle s'effondre dès que l'image est de travers.
+    def _expense_scan_orient(self, engine, image):
+        """Choisit, parmi les quatre quarts de tour, celui qui remet le
+        ticket à l'endroit.
+
+        Deux choix méritent d'être expliqués.
+
+        Le classifieur d'orientation du moteur est **désactivé** pendant
+        cette recherche. Il redresse chaque ligne isolément : une photo à
+        180° se lit donc parfaitement ligne par ligne, ce qui masque le
+        problème — mais l'ordre des mots y est inversé, et le parseur, qui
+        cherche « le dernier montant de la ligne », tombe alors sur le
+        premier. Sans ce classifieur, seule la bonne orientation produit du
+        texte reconnaissable, ce qui la désigne sans ambiguïté.
+
+        L'essai se fait sur une image réduite : choisir une orientation ne
+        demande pas la pleine résolution, et quatre passes complètes
+        coûteraient bien plus cher que le scan lui-même.
         """
-        best = (image, words, 0, self._expense_scan_quality(words))
-        for quarters in (1, 3):
-            rotated = preprocess.rotate_quarters(image, quarters)
-            candidate = engine.recognize(rotated)
-            quality = self._expense_scan_quality(candidate)
-            if quality > best[3]:
-                best = (rotated, candidate, quarters, quality)
-        return best[0], best[1], best[2]
+        probe = preprocess.limit_size(image, self.ORIENTATION_PROBE_SIDE)
+        best_quarters, best_quality = 0, -1.0
+        for quarters in range(4):
+            candidate = preprocess.rotate_quarters(probe, quarters)
+            quality = self._expense_scan_quality(
+                engine.recognize(candidate, use_cls=False))
+            if quality > best_quality:
+                best_quarters, best_quality = quarters, quality
+        if not best_quarters:
+            return image, 0
+        return preprocess.rotate_quarters(image, best_quarters), best_quarters
 
     def _expense_scan_tighten(self, image, words, info, company):
         """Redresse puis recadre, une fois l'OCR passé.
@@ -448,11 +461,16 @@ class HrExpense(models.Model):
         values = self._expense_scan_field_values(result, company)
 
         todo = parser.fields_to_check(result)
-        if values.get('scan_tax_amount') and not self.tax_ids:
-            # La TVA lue ne pourra pas être comptabilisée tant qu'aucune taxe
-            # ne porte les tags fiscaux : autant le dire tout de suite, plutôt
-            # qu'au moment de valider.
-            todo.append(_("Taxe (aucune sur la catégorie)"))
+        if company.expense_scan_apply_tax and result.value('tax_amount'):
+            if not values.get('scan_tax_amount'):
+                # Lecture écartée parce qu'elle dépasse le plafond du taux :
+                # c'est presque toujours un montant pris pour un autre.
+                todo.append(_("TVA (lecture incompatible avec le taux)"))
+            elif not self.tax_ids:
+                # La TVA lue ne pourra pas être comptabilisée tant qu'aucune
+                # taxe ne porte les tags fiscaux : autant le dire tout de
+                # suite, plutôt qu'au moment de valider.
+                todo.append(_("Taxe (aucune sur la catégorie)"))
         values.update({
             'scan_state': 'partial' if todo else 'done',
             'scan_engine': result.engine,
@@ -505,7 +523,11 @@ class HrExpense(models.Model):
             # douzaine de taxes cohabitent au même taux — ce choix appartient
             # au comptable, pas à un OCR.
             tax_amount = result.value('tax_amount')
-            if tax_amount:
+            # Une TVA lue de travers ne doit jamais faire échouer tout le
+            # scan sur ma propre contrainte : on la laisse alors de côté et
+            # on la signale, plutôt que d'écrire une valeur inenregistrable.
+            if tax_amount and self._expense_scan_tax_fits(
+                    tax_amount, values.get('total_amount_currency')):
                 values['scan_tax_amount'] = tax_amount
 
         if company.expense_scan_set_vendor:
@@ -530,6 +552,21 @@ class HrExpense(models.Model):
         except Exception:  # noqa: BLE001 - fuseau inconnu côté serveur
             _logger.warning("Fuseau horaire inutilisable : %s", zone)
             return moment
+
+    def _expense_scan_tax_fits(self, amount, total=None):
+        """La TVA lue tient-elle sous le plafond du taux de la dépense ?
+
+        Le total est passé en argument : au moment où l'on décide, il n'est
+        pas encore écrit sur la dépense, et le plafond calculé sur l'ancien
+        total serait faux.
+        """
+        self.ensure_one()
+        rate = self._expense_scan_max_rate()
+        if rate is None:
+            return True  # aucun taux : on bloquera à la validation, pas ici
+        total = self.total_amount_currency if total is None else total
+        ceiling = total * rate / (100.0 + rate)
+        return self.currency_id.compare_amounts(amount, ceiling) <= 0
 
     def _expense_scan_currency(self, result, company):
         """Devise correspondant au code lu, si elle est active dans Odoo."""

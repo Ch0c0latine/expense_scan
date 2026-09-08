@@ -35,6 +35,7 @@ const ExpenseScanUpload = {
         try {
             await this._onChangeFileInput([...this.fileInput.el.files]);
             const created = this.createdExpenseIds.slice(alreadyCreated);
+            await this._expenseScanReport(created);
             if (this.uploadsProcessing === 1) {
                 if (created.length === 1) {
                     await this.actionService.doAction({
@@ -53,6 +54,46 @@ const ExpenseScanUpload = {
         } finally {
             closeNotification();
             this.uploadsProcessing--;
+        }
+    },
+
+    /**
+     * Dit ce que l'analyse a donné, y compris quand elle a échoué.
+     *
+     * Sans ça, un ticket illisible se traduisait par une fiche vide sans
+     * un mot d'explication : l'erreur n'était visible que dans le bandeau
+     * du formulaire, qu'on ne voit pas si l'on est resté sur la liste.
+     */
+    async _expenseScanReport(expenseIds) {
+        if (!expenseIds.length) {
+            return;
+        }
+        let records;
+        try {
+            records = await this.orm.read("hr.expense", expenseIds, [
+                "scan_state",
+                "scan_message",
+                "scan_todo",
+            ]);
+        } catch {
+            return; // un compte rendu ne doit jamais faire échouer l'envoi
+        }
+
+        const failed = records.filter((record) => record.scan_state === "error");
+        if (failed.length) {
+            this.notification.add(
+                _t("Le ticket n'a pas pu être analysé : %s", failed[0].scan_message || ""),
+                { type: "danger", sticky: true }
+            );
+            return;
+        }
+        const toCheck = records.map((record) => record.scan_todo).filter(Boolean);
+        if (toCheck.length) {
+            this.notification.add(_t("Ticket analysé. À vérifier : %s", toCheck.join(" · ")), {
+                type: "warning",
+            });
+        } else {
+            this.notification.add(_t("Ticket analysé."), { type: "success" });
         }
     },
 
