@@ -17,8 +17,11 @@ class OcrWord:
     left: float
     top: float
     right: float
-    angle: float = 0.0  # inclinaison de la ligne, en degrés, si le moteur la donne
     bottom: float
+    #: Inclinaison de la ligne en degrés, quand le moteur la donne. PP-OCR
+    #: détecte des quadrilatères orientés ; Tesseract, lui, ne rend que des
+    #: rectangles droits et laisse donc cette valeur à zéro.
+    angle: float = 0.0
 
     @property
     def height(self) -> float:

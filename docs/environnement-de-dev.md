@@ -342,6 +342,21 @@ WireGuard) — pas l'ouverture du port SSH ni l'exposition du port 8070.
 
 ## 9. Utilisation courante
 
+### Avant chaque mise à jour : le contrôle du paquet `ocr`
+
+```bash
+cd /opt/odoo/19/dev-addons/expense_scan && sudo -u odoo /opt/odoo/19/venv/bin/python3 tools/check_ocr.py
+```
+
+Une seconde, aucune base de données touchée. Il attrape les erreurs
+d'import et de syntaxe, celles qui ne se voient qu'à l'exécution (un champ
+de dataclass mal placé, par exemple), et vérifie que le parseur lit encore
+correctement un ticket de référence.
+
+Sans ce contrôle, ces erreurs ne se manifestent qu'au chargement du
+registre Odoo — et laissent alors l'instance entière hors service, avec un
+« Internal Server Error » sur toutes les pages.
+
 ### Après chaque `git pull`
 
 **Toujours mettre à jour le module, jamais seulement redémarrer.** Un
