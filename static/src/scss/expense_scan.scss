@@ -126,22 +126,39 @@
     border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-// Un montant de ticket tient en cinq caractères : les champs pleine largeur
-// étirent le formulaire et éloignent le montant de sa devise.
-.o_expense_scan_amount {
-    max-width: 7rem;
 
-    input {
-        text-align: right;
+// Montants du ticket : couper la croissance, pas seulement la largeur.
+//
+// Dans une ligne `o_row`, Odoo laisse ses champs occuper l'espace
+// disponible. Un `max-width` ne suffit donc pas : le champ atteint sa borne
+// mais son conteneur, lui, continue de s'étirer, et le voisin part à
+// l'autre bout de la ligne. Il faut lui interdire de grandir — un montant
+// de ticket tient en cinq caractères, et sa devise doit rester collée.
+.o_form_view .o_inner_group .o_row {
+    .o_expense_scan_amount,
+    .o_expense_scan_currency,
+    .o_expense_scan_taxes {
+        flex: 0 0 auto;
     }
-}
 
-.o_expense_scan_currency {
-    max-width: 5rem;
-}
+    .o_expense_scan_amount {
+        width: 7rem;
+        max-width: 7rem;
 
-// Le taux se choisit dans une courte liste : inutile de lui réserver la
-// largeur d'un champ de saisie libre.
-.o_expense_scan_taxes {
-    max-width: 12rem;
+        input {
+            text-align: right;
+        }
+    }
+
+    .o_expense_scan_currency {
+        width: 5rem;
+        max-width: 5rem;
+    }
+
+    // Le taux se choisit dans une courte liste : inutile de lui réserver la
+    // largeur d'un champ de saisie libre.
+    .o_expense_scan_taxes {
+        min-width: 8rem;
+        max-width: 14rem;
+    }
 }
