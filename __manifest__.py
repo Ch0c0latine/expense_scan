@@ -33,7 +33,7 @@ Aucun document ne quitte le serveur.
     'website': "https://green-engine.eu",
     'category': 'Human Resources/Expenses',
     'license': 'LGPL-3',
-    'depends': ['hr_expense'],
+    'depends': ['hr_expense', 'project'],
     'data': [
         'views/hr_expense_views.xml',
         'views/res_config_settings_views.xml',

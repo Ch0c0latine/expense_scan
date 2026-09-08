@@ -72,6 +72,8 @@
                             <label for="expense_scan_apply_tax"/></div>
                         <div><field name="expense_scan_set_vendor"/>
                             <label for="expense_scan_set_vendor"/></div>
+                        <div><field name="expense_scan_reinvoice"/>
+                            <label for="expense_scan_reinvoice"/></div>
                     </div>
                 </setting>
 

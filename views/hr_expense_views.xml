@@ -94,6 +94,12 @@
                        options="{'currency_field': 'currency_id'}"
                        readonly="not is_editable"
                        placeholder="laisser vide : calcul depuis le taux"/>
+                <field name="expense_scan_reinvoice" invisible="1"/>
+                <field name="project_id"
+                       invisible="not expense_scan_reinvoice"
+                       readonly="not is_editable"
+                       options="{'no_quick_create': True}"
+                       placeholder="mission sur laquelle refacturer ce frais"/>
             </xpath>
 
             <xpath expr="//field[@name='nb_attachment']" position="after">

@@ -561,6 +561,10 @@ class HrExpense(models.Model):
         values = self._expense_scan_field_values(result, company)
 
         todo = parser.fields_to_check(result)
+        if company.expense_scan_reinvoice and not values.get('project_id'):
+            # Aucune mission ne couvre cette date, ou plusieurs : dans les
+            # deux cas c'est au salarié de trancher.
+            todo.append(_("Mission à refacturer"))
         if company.expense_scan_apply_tax:
             if not result.value('tax_amount'):
                 todo.append(_("TVA (aucune sur le justificatif)"))
@@ -646,6 +650,13 @@ class HrExpense(models.Model):
                 # l'utilisateur de la remettre s'il dispose d'un autre
                 # justificatif. Le bandeau le lui signale.
                 values['tax_ids'] = [Command.clear()]
+
+        if company.expense_scan_reinvoice:
+            # La mission se cherche à la date du ticket, pas à celle de la
+            # saisie : un frais scanné le lundi peut dater du vendredi, sur
+            # une autre mission.
+            values.update(self._expense_scan_project_values(
+                self._expense_scan_find_project(scan_date)))
 
         if company.expense_scan_set_vendor:
             vendor = self._expense_scan_vendor(result, company)

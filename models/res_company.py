@@ -75,6 +75,17 @@ class ResCompany(models.Model):
              "à un ticket mêlant plusieurs taux de porter sa TVA exacte. Le "
              "taux, lui, reste celui de la catégorie de dépense.",
     )
+    expense_scan_reinvoice = fields.Boolean(
+        string="Rattacher les frais à une mission",
+        default=False,
+        help="Ajoute un champ « À refacturer » sur les notes de frais et y "
+             "propose la mission du salarié en cours à la date du ticket. Le "
+             "frais est alors imputé sur l'analytique de la mission et porté "
+             "sur sa commande à refacturer, pour ressortir sur la prochaine "
+             "facture du projet.\n\n"
+             "Désactivé par défaut : toutes les organisations ne travaillent "
+             "pas par mission.",
+    )
     expense_scan_set_vendor = fields.Boolean(
         string="Rechercher le fournisseur",
         default=False,
