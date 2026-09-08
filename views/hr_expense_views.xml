@@ -162,7 +162,7 @@
                  un seul mode configuré, Odoo le renseigne lui-même et le
                  champ ne fait qu'occuper une ligne. -->
             <xpath expr="//field[@name='payment_method_line_id']" position="attributes">
-                <attribute name="invisible">payment_mode != 'company_account' or len(selectable_payment_method_line_ids) &lt; 2</attribute>
+                <attribute name="invisible">payment_mode != 'company_account' or expense_scan_one_payment_method</attribute>
             </xpath>
 
             <!-- Deux boutons radio tiennent sur une ligne : empilés, ils
@@ -213,6 +213,7 @@
                 <field name="scan_state" invisible="1"/>
                 <field name="expense_scan_reinvoice" invisible="1"/>
                 <field name="expense_scan_own" invisible="1"/>
+                <field name="expense_scan_one_payment_method" invisible="1"/>
                 <field name="message_main_attachment_id" invisible="1"/>
             </xpath>
 

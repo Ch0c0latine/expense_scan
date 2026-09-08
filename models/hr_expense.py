@@ -85,6 +85,13 @@ class HrExpense(models.Model):
              "« Employé », qui n'a d'intérêt que lorsqu'un gestionnaire "
              "saisit pour quelqu'un d'autre.",
     )
+    expense_scan_one_payment_method = fields.Boolean(
+        string="Mode de paiement unique",
+        compute='_compute_expense_scan_one_payment_method',
+        help="Vrai quand la société n'a qu'un mode de paiement possible. Le "
+             "formulaire masque alors le champ, qu'Odoo renseigne de "
+             "lui-même : un choix à une seule option n'est pas un choix.",
+    )
     scan_cropped_attachment_id = fields.Many2one(
         comodel_name='ir.attachment',
         string="Ticket recadré",
@@ -131,6 +138,17 @@ class HrExpense(models.Model):
         mine = self.env.user.employee_ids
         for expense in self:
             expense.expense_scan_own = expense.employee_id in mine
+
+    @api.depends('selectable_payment_method_line_ids')
+    def _compute_expense_scan_one_payment_method(self):
+        """Y a-t-il vraiment un mode de paiement à choisir ?
+
+        Le calcul se fait ici et non dans la vue : l'évaluateur d'expressions
+        du client ne connaît pas ``len``.
+        """
+        for expense in self:
+            expense.expense_scan_one_payment_method = (
+                len(expense.selectable_payment_method_line_ids) < 2)
 
     def _expense_scan_max_rate(self):
         """Le plus haut taux retenu, ou ``None`` si aucune taxe en pourcentage.
