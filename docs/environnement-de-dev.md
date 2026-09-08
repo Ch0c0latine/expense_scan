@@ -338,6 +338,40 @@ haut de l'écran.
 Pour un accès depuis l'extérieur, la réponse est un VPN (Tailscale,
 WireGuard) — pas l'ouverture du port SSH ni l'exposition du port 8070.
 
+### Tester depuis un téléphone
+
+Le parcours de scan — bouton unique, appareil photo, bandeau d'aperçu — ne
+s'éprouve que sur un vrai téléphone, qui ne peut pas emprunter le tunnel
+SSH. Il faut exposer l'instance au réseau local, le temps du test.
+
+```bash
+sudo sed -i 's/^http_interface = 127.0.0.1/http_interface = 0.0.0.0/' /etc/odoo19-dev.conf && sudo systemctl restart odoo19-dev
+```
+
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 8070 proto tcp
+```
+
+Le pare-feu n'ouvre par défaut que le 8069, celui de la production : sans
+cette règle, le téléphone attend indéfiniment. Elle est restreinte au sous-
+réseau local, comme la règle existante.
+
+Le téléphone, sur le même Wi-Fi, se rend alors sur `http://192.168.1.35:8070`.
+Le HTTP simple suffit : Odoo ouvre l'appareil photo par un champ fichier
+classique, qui n'exige pas de contexte sécurisé — c'est `getUserMedia`, le
+flux vidéo en direct, qui réclamerait du HTTPS.
+
+**À défaire dès le test terminé.** Pendant ce temps, n'importe quel appareil
+du réseau atteint une base contenant de vraies données clients.
+
+```bash
+sudo ufw delete allow from 192.168.1.0/24 to any port 8070 proto tcp
+```
+
+```bash
+sudo sed -i 's/^http_interface = 0.0.0.0/http_interface = 127.0.0.1/' /etc/odoo19-dev.conf && sudo systemctl restart odoo19-dev
+```
+
 ---
 
 ## 9. Utilisation courante
