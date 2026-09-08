@@ -373,7 +373,10 @@ def _closest_known_rate(value):
 # titre — elle en exige exactement deux pour ne pas confondre un prix avec
 # un numéro. On en utilise donc une autre, cantonnée au tableau.
 TAX_TABLE_HEADER_RE = re.compile(r"\bH\.?\s*T\b.{0,24}\bT\.?\s*V\.?\s*A\b")
-TAX_TABLE_ROW_RE = re.compile(r"^\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
+# Une ligne de tableau commence par son taux, que certains tickets font
+# précéder du mot TVA : « 10%(C) ... » comme « TVA 10 % ... ».
+TAX_TABLE_ROW_RE = re.compile(
+    r"^\s*(?:T\.?\s*V\.?\s*A\.?\s*)?(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
 TAX_TABLE_AMOUNT_RE = re.compile(r"(?<![\d,])(\d+)[.,](\d{2,4})(?![\d])")
 #: Nombre de lignes examinées après l'en-tête avant d'abandonner.
 TAX_TABLE_DEPTH = 8
@@ -428,19 +431,26 @@ def extract_tax_table(lines):
 
 
 def extract_taxes(lines):
-    """Taux et montant de TVA, quand le ticket les détaille."""
+    """Taux, montant de TVA et taux le plus élevé lu sur le ticket.
+
+    Le troisième champ ne se reporte jamais sur la dépense : il ne sert
+    qu'à borner la vérification. Sur un ticket à plusieurs taux, aucun ne
+    vaut pour la dépense entière — mais le plus élevé donne le plafond
+    au-delà duquel la TVA lue serait forcément fausse.
+    """
     table = extract_tax_table(lines)
     if table:
         source = " | ".join(row for _rate, _amount, row in table)
-        rates = {rate for rate, _amount, _row in table}
+        rates = sorted({rate for rate, _amount, _row in table})
         total = round(sum(amount for _rate, amount, _row in table), 2)
-        # Plusieurs taux dans le tableau : aucun ne peut représenter la
-        # dépense à lui seul, mais leur somme reste la TVA du ticket.
-        rate_field = ExtractedField(
-            value=next(iter(rates)) if len(rates) == 1 else None,
-            confidence=0.9 if len(rates) == 1 else 0.0,
-            source=source)
-        return rate_field, ExtractedField(value=total, confidence=0.9, source=source)
+        single = rates[0] if len(rates) == 1 else None
+        return (
+            ExtractedField(value=single,
+                           confidence=0.9 if single is not None else 0.0,
+                           source=source),
+            ExtractedField(value=total, confidence=0.9, source=source),
+            ExtractedField(value=rates[-1], confidence=0.9, source=source),
+        )
     return _extract_taxes_by_line(lines)
 
 
@@ -455,16 +465,28 @@ def _extract_taxes_by_line(lines):
         rate = None
         if rate_match:
             rate = _closest_known_rate(float(rate_match.group(1).replace(",", ".")))
-        amounts = find_amounts(line.text)
-        # Format courant : « TVA 20,00% <base> <montant> ». Le montant de
-        # taxe est le dernier de la ligne.
-        amount = amounts[-1][0] if amounts else None
+        amounts = [value for value, _position in find_amounts(line.text)]
+        # Le rang du montant de taxe dépend du nombre de colonnes :
+        #
+        #   « TVA 20,00%....1,13 »              -> le seul montant
+        #   « TVA 10,00 % 4,55 0,45 »           -> base puis taxe
+        #   « TVA 10 % 26,39 2,64 29,03 »       -> HT, taxe, TTC
+        #
+        # Prendre systématiquement le dernier revenait, sur trois colonnes,
+        # à retenir le TTC — et donc à additionner les totaux du ticket au
+        # lieu de ses taxes.
+        amount = None
+        if len(amounts) >= 3:
+            amount = amounts[1]
+        elif amounts:
+            amount = amounts[-1]
         if rate is None and amount is None:
             continue
         entries.append((rate, amount, line.text, line.score))
 
     if not entries:
-        return ExtractedField(value=None, confidence=0.0), ExtractedField(value=None, confidence=0.0)
+        empty = ExtractedField(value=None, confidence=0.0)
+        return empty, empty, empty
 
     rates = [entry[0] for entry in entries if entry[0] is not None]
     amounts = [entry[1] for entry in entries if entry[1] is not None]
@@ -485,7 +507,12 @@ def _extract_taxes_by_line(lines):
         amount_field = ExtractedField(value=round(sum(amounts), 2),
                                       confidence=min(0.8 * max(score, 0.4), 0.9),
                                       source=source)
-    return rate_field, amount_field
+
+    # Plafond de contrôle : le taux le plus élevé effectivement lu.
+    max_field = ExtractedField(value=None, confidence=0.0)
+    if rates:
+        max_field = ExtractedField(value=max(rates), confidence=0.9, source=source)
+    return rate_field, amount_field, max_field
 
 
 def extract_currency(lines, default="EUR"):
@@ -556,7 +583,7 @@ LOW_CONFIDENCE = 0.65
 def parse(words, today=None, max_age_days=730, default_currency="EUR"):
     """Analyse une liste de mots situés et renvoie un :class:`ScanResult`."""
     lines = build_lines(words)
-    tax_rate, tax_amount = extract_taxes(lines)
+    tax_rate, tax_amount, tax_rate_max = extract_taxes(lines)
     scan_date = extract_date(lines, today=today, max_age_days=max_age_days)
     fields = {
         "merchant": extract_merchant(lines),
@@ -566,6 +593,7 @@ def parse(words, today=None, max_age_days=730, default_currency="EUR"):
         "currency": extract_currency(lines, default=default_currency),
         "tax_rate": tax_rate,
         "tax_amount": tax_amount,
+        "tax_rate_max": tax_rate_max,
         "vat_number": extract_vat_number(lines),
     }
     return ScanResult(lines=lines, fields=fields)

@@ -87,23 +87,45 @@
                 <widget name="expense_scan_receipt"/>
             </xpath>
 
-            <!-- La TVA du ticket prime sur celle que le taux produirait :
-                 c'est le montant imprimé qui doit se retrouver en compta. -->
-            <xpath expr="//sheet//field[@name='date']" position="after">
-                <field name="scan_tax_amount" widget="monetary"
-                       options="{'currency_field': 'currency_id'}"
-                       readonly="not is_editable"
-                       placeholder="laisser vide : calcul depuis le taux"/>
-                <field name="expense_scan_reinvoice" invisible="1"/>
-                <field name="project_id"
-                       invisible="not expense_scan_reinvoice"
-                       readonly="not is_editable"
-                       options="{'no_quick_create': True}"
-                       placeholder="mission sur laquelle refacturer ce frais"/>
+            <!-- Nos champs forment leur propre bloc, sous les champs
+                 d'origine. Insérés au milieu du groupe natif, ils se
+                 répartissaient sur les deux colonnes et encadraient
+                 « Manager », ce qui ne se lisait plus. -->
+            <xpath expr="(//sheet//field[@name='date']/ancestor::group)[1]" position="after">
+                <!-- La TVA du ticket prime sur celle que le taux
+                     produirait : c'est le montant imprimé qui doit se
+                     retrouver en comptabilité. -->
+                <group name="expense_scan_amounts" col="2"
+                       invisible="scan_state == 'none'">
+                    <field name="scan_tax_amount" widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           readonly="not is_editable"
+                           placeholder="laisser vide : calcul depuis le taux"/>
+                </group>
+                <group name="expense_scan_reinvoice_group" col="2"
+                       string="Refacturation"
+                       invisible="not expense_scan_reinvoice">
+                    <field name="reinvoice_mode" widget="radio"
+                           options="{'horizontal': True}"
+                           readonly="not is_editable"/>
+                    <field name="project_id"
+                           invisible="reinvoice_mode != 'project'"
+                           required="expense_scan_reinvoice and reinvoice_mode == 'project'"
+                           readonly="not is_editable"
+                           options="{'no_quick_create': True}"
+                           placeholder="mission sur laquelle refacturer ce frais"/>
+                </group>
+            </xpath>
+
+            <!-- La commande à refacturer découle de la mission : la laisser
+                 modifiable ici invite à la désynchroniser du projet. -->
+            <xpath expr="//sheet//field[@name='sale_order_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
 
             <xpath expr="//field[@name='nb_attachment']" position="after">
                 <field name="scan_state" invisible="1"/>
+                <field name="expense_scan_reinvoice" invisible="1"/>
                 <field name="message_main_attachment_id" invisible="1"/>
             </xpath>
 

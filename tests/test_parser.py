@@ -220,6 +220,7 @@ TOTAL 22,55
 """)
         self.assertIsNone(result.value('tax_rate'))
         self.assertEqual(result.value('tax_amount'), 2.55)
+        self.assertEqual(result.value('tax_rate_max'), 20.0)
 
     def test_currency_detection(self):
         result = self.parse("BAR DU PORT\nTOTAL 8,40 EUR")
@@ -297,3 +298,56 @@ HT TVA TTC
 """)
         self.assertIsNone(result.value('tax_rate'))
         self.assertEqual(result.value('tax_amount'), 13.10)
+        self.assertEqual(result.value('tax_rate_max'), 20.0)
+
+    def test_vat_table_rows_prefixed_by_tva(self):
+        """« TVA 10 % 26,39 2,64 29,03 » : le taux suit le mot TVA.
+
+        Trois colonnes : prendre le dernier montant reviendrait à retenir
+        le TTC, donc à additionner les totaux du ticket au lieu des taxes.
+        """
+        result = self.parse("""
+LES 3 BRASSEURS
+1 x Repas complet 33,10
+HT TVA TTC
+TVA 10 % 26,39 2,64 29,03
+TVA 20 % 3,39 0,68 4,07
+TOTAL 33,10 EUR
+""")
+        self.assertEqual(result.value('total'), 33.10)
+        self.assertEqual(result.value('tax_amount'), 3.32)
+        # Aucun taux ne vaut pour la dépense entière ; le plus élevé sert
+        # uniquement de plafond au contrôle de cohérence.
+        self.assertIsNone(result.value('tax_rate'))
+        self.assertEqual(result.value('tax_rate_max'), 20.0)
+
+    def test_vat_rows_without_table_header(self):
+        """Mêmes lignes, sans l'en-tête HT/TVA/TTC : le repli doit tenir.
+
+        Le tableau ne se reconnaît alors plus, et c'est la lecture ligne à
+        ligne qui doit choisir la deuxième colonne — la taxe — au lieu du
+        TTC de fin de ligne.
+        """
+        result = self.parse("""
+LES 3 BRASSEURS
+1 x Formule du jour 29,03
+TOTAL 33,10 EUR
+TVA 10 % 26,39 2,64 29,03
+TVA 20 % 3,39 0,68 4,07
+""")
+        self.assertEqual(result.value('total'), 33.10)
+        self.assertEqual(result.value('tax_amount'), 3.32)
+        self.assertIsNone(result.value('tax_rate'))
+        self.assertEqual(result.value('tax_rate_max'), 20.0)
+
+    def test_no_vat_leaves_every_tax_field_empty(self):
+        """Ticket de carte bancaire : rien à déduire, donc rien à proposer."""
+        result = self.parse("""
+CREDIT AGRICOLE
+CB CONTACT A0000000031010
+MONTANT 45,00 EUR
+DEBIT
+""")
+        self.assertIsNone(result.value('tax_rate'))
+        self.assertIsNone(result.value('tax_rate_max'))
+        self.assertIsNone(result.value('tax_amount'))

@@ -563,8 +563,9 @@ class HrExpense(models.Model):
         todo = parser.fields_to_check(result)
         if company.expense_scan_reinvoice and not values.get('project_id'):
             # Aucune mission ne couvre cette date, ou plusieurs : dans les
-            # deux cas c'est au salarié de trancher.
-            todo.append(_("Mission à refacturer"))
+            # deux cas c'est au salarié de trancher — y compris pour dire
+            # que le frais n'est pas refacturable.
+            todo.append(_("À refacturer"))
         if company.expense_scan_apply_tax:
             if not result.value('tax_amount'):
                 todo.append(_("TVA (aucune sur le justificatif)"))
@@ -629,11 +630,19 @@ class HrExpense(models.Model):
             # catégorie générique le prévoit. Encore faut-il qu'une seule
             # taxe corresponde à ce taux : sur un plan comptable chargé, le
             # choix entre biens et services appartient au comptable.
-            effective_rate = self._expense_scan_max_rate()
             tax = self._expense_scan_tax(result.value('tax_rate'), company)
             if tax:
                 values['tax_ids'] = [Command.set(tax.ids)]
                 effective_rate = tax.amount
+            else:
+                # Ticket à plusieurs taux, ou taux introuvable au plan
+                # comptable : la dépense garde la taxe de sa catégorie, qui
+                # portera l'écriture. Pour juger de la TVA lue, en revanche,
+                # le plafond du ticket vaut mieux que celui de la catégorie —
+                # un repas à 10 % + 20 % dépasse le plafond d'une catégorie
+                # à 10 % sans être faux pour autant.
+                effective_rate = (result.value('tax_rate_max')
+                                  or self._expense_scan_max_rate())
 
             tax_amount = result.value('tax_amount')
             # Une TVA lue de travers ne doit jamais faire échouer tout le
@@ -642,14 +651,15 @@ class HrExpense(models.Model):
             if tax_amount and self._expense_scan_tax_fits(
                     tax_amount, values.get('total_amount_currency'), effective_rate):
                 values['scan_tax_amount'] = tax_amount
-            elif not tax_amount:
-                # Le justificatif ne porte aucune TVA — un ticket de carte
-                # bancaire n'en mentionne jamais. Laisser le taux par défaut
-                # de la catégorie ferait apparaître une TVA déductible que
-                # rien ne justifie : on retire la taxe, à charge pour
-                # l'utilisateur de la remettre s'il dispose d'un autre
-                # justificatif. Le bandeau le lui signale.
+            else:
+                # Aucune TVA exploitable — le justificatif n'en porte pas,
+                # comme un ticket de carte bancaire, ou la lecture est
+                # incohérente. Dans les deux cas, laisser la taxe de la
+                # catégorie ferait apparaître une TVA déductible calculée
+                # depuis un taux, que rien dans le justificatif ne fonde.
+                # Pas de TVA lisible, donc pas de TVA : zéro.
                 values['tax_ids'] = [Command.clear()]
+                values['scan_tax_amount'] = 0.0
 
         if company.expense_scan_reinvoice:
             # La mission se cherche à la date du ticket, pas à celle de la
@@ -797,13 +807,24 @@ class HrExpense(models.Model):
         return " · ".join(part for part in parts if part)[:250]
 
     def _expense_scan_tax_label(self, result):
-        """Résumé de la TVA lue, à titre indicatif."""
+        """Résumé de la TVA lue, à titre indicatif.
+
+        Un ticket à plusieurs taux n'en fournit aucun pour la dépense, mais
+        il faut le dire : sans cette mention, la TVA du ticket paraîtrait
+        incohérente avec le taux affiché sur la fiche.
+        """
         rate = result.value('tax_rate')
         amount = result.value('tax_amount')
-        if rate is None and amount is None:
+        if rate is None and result.value('tax_rate_max') is not None:
+            rate_text = _("plusieurs taux, jusqu'à %s %%", result.value('tax_rate_max'))
+        elif rate is not None:
+            rate_text = _("%s %%", rate)
+        else:
+            rate_text = False
+        if not rate_text and amount is None:
             return False
-        if rate is not None and amount is not None:
-            return _("%(rate)s %% — %(amount).2f", rate=rate, amount=amount)
-        if rate is not None:
-            return _("%s %%", rate)
+        if rate_text and amount is not None:
+            return _("%(rate)s — %(amount).2f", rate=rate_text, amount=amount)
+        if rate_text:
+            return rate_text
         return _("%.2f", amount)

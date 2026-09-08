@@ -15,9 +15,23 @@ _logger = logging.getLogger(__name__)
 class HrExpense(models.Model):
     _inherit = 'hr.expense'
 
+    reinvoice_mode = fields.Selection(
+        selection=[
+            ('todo', "À déterminer"),
+            ('project', "Oui, sur une mission"),
+            ('none', "Non"),
+        ],
+        string="À refacturer",
+        default='todo',
+        required=True,
+        help="« À déterminer » signale un frais dont le sort n'est pas "
+             "tranché, et le bandeau de relecture le rappelle. « Non » est "
+             "une décision, pas un oubli : le frais reste à la charge de la "
+             "société.",
+    )
     project_id = fields.Many2one(
         comodel_name='project.project',
-        string="À refacturer",
+        string="Mission",
         ondelete='restrict',
         help="Mission à laquelle rattacher ce frais. Le renseigner impute la "
              "dépense sur l'analytique de la mission et la porte sur la "
@@ -28,6 +42,13 @@ class HrExpense(models.Model):
         related='company_id.expense_scan_reinvoice',
         string="Rattachement aux missions actif",
     )
+
+    @api.onchange('reinvoice_mode')
+    def _onchange_expense_scan_reinvoice_mode(self):
+        """Choisir « Non » ou « À déterminer » libère la mission."""
+        for expense in self:
+            if expense.reinvoice_mode != 'project':
+                expense.project_id = False
 
     @api.onchange('project_id')
     def _onchange_expense_scan_project(self):
@@ -50,7 +71,7 @@ class HrExpense(models.Model):
         if not project:
             return {}
 
-        values = {'project_id': project.id}
+        values = {'project_id': project.id, 'reinvoice_mode': 'project'}
         if project.account_id:
             values['analytic_distribution'] = {str(project.account_id.id): 100.0}
 
