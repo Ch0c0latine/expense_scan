@@ -3,6 +3,7 @@ import logging
 import os
 import time
 from datetime import datetime, time as dtime
+from uuid import uuid4
 
 from pytz import timezone, utc
 
@@ -287,7 +288,11 @@ class HrExpense(models.Model):
                 raw_context = safe_eval(raw_context, {'uid': self.env.uid})
             except Exception:  # noqa: BLE001 - contexte trop dynamique
                 raw_context = {}
-        action['context'] = dict(raw_context, expense_scan_start_upload=True)
+        # Un jeton, et non un simple drapeau : le contexte d'une action
+        # survit dans le fil d'ariane, et un booléen rouvrait le sélecteur
+        # de photo à chaque retour à la liste — y compris après une
+        # suppression. Le client note le jeton comme consommé.
+        action['context'] = dict(raw_context, expense_scan_start_upload=uuid4().hex)
         return action
 
     def action_expense_scan_drop(self):

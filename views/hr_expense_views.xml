@@ -17,6 +17,11 @@
                 <button name="action_expense_scan_again" type="object"
                         string="Scanner un autre"
                         invisible="scan_state == 'none' or state != 'draft'"/>
+            </xpath>
+
+            <!-- Supprimer ferme la marche : c'est l'action qu'on veut le
+                 plus loin possible du pouce. -->
+            <xpath expr="//header" position="inside">
                 <button name="action_expense_scan_drop" type="object"
                         string="Supprimer" class="text-danger"
                         confirm="Supprimer définitivement cette dépense et son justificatif ?"

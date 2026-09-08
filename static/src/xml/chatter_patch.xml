@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!--
+        Sur une note de frais scannée, le fil de discussion n'a aucun usage :
+        on vient y relire trois champs, pas converser. Ses trois boutons et
+        son historique détournent le regard de la seule chose à faire.
+
+        Deux tentatives ont échoué avant celle-ci, et pour la même raison :
+        le compilateur de formulaire d'Odoo ne propage pas au DOM la classe
+        posée sur la balise <form> — il n'y reprend qu'une propriété du
+        composant — et le chatter est de toute façon compilé comme un frère
+        de la feuille, hors de portée de toute classe posée à l'intérieur.
+
+        On agit donc là où l'information existe : dans le chatter, qui
+        reçoit le modèle qu'il accompagne. Les autres modèles ne voient
+        aucune différence.
+    -->
+    <t t-name="expense_scan.ChatterSlim" t-inherit="mail.Chatter" t-inherit-mode="extension">
+        <xpath expr="//button[hasclass('o-mail-Chatter-sendMessage')]" position="attributes">
+            <attribute name="t-if">props.threadModel !== 'hr.expense'</attribute>
+        </xpath>
+        <xpath expr="//button[hasclass('o-mail-Chatter-logNote')]" position="attributes">
+            <attribute name="t-if">props.threadModel !== 'hr.expense'</attribute>
+        </xpath>
+        <!-- Ce bouton porte déjà une condition : on la complète, on ne la
+             remplace pas. -->
+        <xpath expr="//button[hasclass('o-mail-Chatter-activity')]" position="attributes">
+            <attribute name="t-if">props.has_activities and props.threadModel !== 'hr.expense'</attribute>
+        </xpath>
+        <!-- L'historique est rendu par un composant en `t-else` : on ne peut
+             pas y ajouter de condition. On marque son conteneur, et la
+             feuille de style s'en charge. -->
+        <xpath expr="//div[hasclass('o-mail-Chatter-content')]" position="attributes">
+            <attribute name="t-att-class">props.threadModel === 'hr.expense' ? 'o_expense_scan_slim' : ''</attribute>
+        </xpath>
+    </t>
+
+</templates>

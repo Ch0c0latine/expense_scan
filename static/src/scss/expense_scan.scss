@@ -102,18 +102,15 @@
 }
 
 // ---------------------------------------------------------------------------
-// Formulaire de note de frais : alléger ce qui n'a pas lieu d'être ici
+// Historique du fil de discussion sur une note de frais
 //
-// Le fil de discussion d'Odoo — envoyer un message, journaliser une note,
-// planifier une activité, et l'historique complet — n'a aucun usage sur une
-// dépense scannée, et détourne le regard de la seule chose à faire : relire
-// les champs. Le reste du chatter (suiveurs, pièces jointes) est conservé.
+// Les trois boutons sont retirés par héritage de gabarit (voir
+// static/src/xml/chatter_patch.xml). L'historique, lui, est rendu par un
+// composant placé en `t-else` : impossible d'y ajouter une condition. Son
+// conteneur porte donc une classe, posée par le même héritage.
 // ---------------------------------------------------------------------------
-.o_expense_scan_form {
-    .o-mail-Chatter-topbar,
-    .o-mail-Thread {
-        display: none;
-    }
+.o_expense_scan_slim .o-mail-Thread {
+    display: none;
 }
 
 // ---------------------------------------------------------------------------

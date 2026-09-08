@@ -26,6 +26,16 @@ import { ExpenseKanbanController } from "@hr_expense/views/kanban";
  * chaîne du second : la liste hériterait du kanban, et son `setup`
  * n'y trouverait pas les mêmes informations de vue.
  */
+/**
+ * Jetons d'ouverture de sélecteur déjà honorés.
+ *
+ * Le contexte d'une action survit dans le fil d'ariane : un simple drapeau
+ * rouvrait le sélecteur de photo à chaque retour à la liste, y compris
+ * après une suppression. Le serveur envoie donc un jeton unique, qu'on note
+ * ici comme consommé.
+ */
+const consumedUploadTokens = new Set();
+
 const expenseScanUpload = () => ({
     setup() {
         super.setup();
@@ -33,7 +43,9 @@ const expenseScanUpload = () => ({
         // aussitôt le sélecteur de photo : enchaîner plusieurs tickets est
         // le cas courant, et revenir à la liste puis viser le bouton Scan
         // ferait deux gestes là où l'on n'en attend qu'un.
-        if (this.props.context?.expense_scan_start_upload) {
+        const token = this.props.context?.expense_scan_start_upload;
+        if (token && !consumedUploadTokens.has(token)) {
+            consumedUploadTokens.add(token);
             onMounted(() => this.uploadDocument());
         }
     },
