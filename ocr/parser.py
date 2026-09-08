@@ -367,8 +367,85 @@ def _closest_known_rate(value):
     return closest if abs(closest - value) <= 0.35 else None
 
 
+# Un tableau de TVA se reconnaît à son en-tête, puis à des lignes qui
+# commencent par un taux. Ses montants portent souvent quatre décimales
+# (« 56,8182 »), ce que l'expression des montants courants refuse à juste
+# titre — elle en exige exactement deux pour ne pas confondre un prix avec
+# un numéro. On en utilise donc une autre, cantonnée au tableau.
+TAX_TABLE_HEADER_RE = re.compile(r"\bH\.?\s*T\b.{0,24}\bT\.?\s*V\.?\s*A\b")
+TAX_TABLE_ROW_RE = re.compile(r"^\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
+TAX_TABLE_AMOUNT_RE = re.compile(r"(?<![\d,])(\d+)[.,](\d{2,4})(?![\d])")
+#: Nombre de lignes examinées après l'en-tête avant d'abandonner.
+TAX_TABLE_DEPTH = 8
+
+
+def _table_amounts(text):
+    """Montants d'une ligne de tableau, décimales longues acceptées."""
+    values = []
+    for match in TAX_TABLE_AMOUNT_RE.finditer(text):
+        try:
+            values.append(float("%s.%s" % (match.group(1), match.group(2))))
+        except ValueError:
+            continue
+    return values
+
+
+def extract_tax_table(lines):
+    """Lit le tableau de TVA du ticket, s'il en porte un.
+
+    Format très répandu sur les tickets de caisse :
+
+    ::
+
+                     HT       TVA      TTC
+        10%(A)   0,0000    0,0000     0,00
+        20%(B)   0,0000    0,0000     0,00
+        10%(C)  56,8182    5,6818    62,50
+
+    Renvoie les triplets (taux, montant, ligne) dont la TVA est non nulle.
+    La ligne de totaux, qui ne commence pas par un taux, est ignorée — sans
+    quoi la TVA serait comptée deux fois.
+    """
+    for index, line in enumerate(lines):
+        if not TAX_TABLE_HEADER_RE.search(normalize(line.text)):
+            continue
+        entries = []
+        for row in lines[index + 1:index + 1 + TAX_TABLE_DEPTH]:
+            match = TAX_TABLE_ROW_RE.match(normalize(row.text))
+            if not match:
+                continue
+            rate = _closest_known_rate(float(match.group(1).replace(",", ".")))
+            amounts = _table_amounts(row.text)
+            if rate is None or len(amounts) < 2:
+                continue
+            # Colonnes HT, TVA, TTC : la taxe est la deuxième.
+            amount = round(amounts[1], 2)
+            if amount > 0:
+                entries.append((rate, amount, row.text))
+        if entries:
+            return entries
+    return []
+
+
 def extract_taxes(lines):
     """Taux et montant de TVA, quand le ticket les détaille."""
+    table = extract_tax_table(lines)
+    if table:
+        source = " | ".join(row for _rate, _amount, row in table)
+        rates = {rate for rate, _amount, _row in table}
+        total = round(sum(amount for _rate, amount, _row in table), 2)
+        # Plusieurs taux dans le tableau : aucun ne peut représenter la
+        # dépense à lui seul, mais leur somme reste la TVA du ticket.
+        rate_field = ExtractedField(
+            value=next(iter(rates)) if len(rates) == 1 else None,
+            confidence=0.9 if len(rates) == 1 else 0.0,
+            source=source)
+        return rate_field, ExtractedField(value=total, confidence=0.9, source=source)
+    return _extract_taxes_by_line(lines)
+
+
+def _extract_taxes_by_line(lines):
+    """Repli : tickets qui impriment leur TVA sur une ligne étiquetée."""
     entries = []
     for line in lines:
         text = normalize(line.text)

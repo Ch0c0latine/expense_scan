@@ -8,6 +8,8 @@
  * On signale aussi l'attente : la lecture du ticket prend une à deux
  * secondes côté serveur, pendant lesquelles l'interface ne montre rien.
  */
+import { onMounted } from "@odoo/owl";
+
 import { _t } from "@web/core/l10n/translation";
 import { Domain } from "@web/core/domain";
 import { patch } from "@web/core/utils/patch";
@@ -16,6 +18,17 @@ import { ExpenseListController } from "@hr_expense/views/list";
 import { ExpenseKanbanController } from "@hr_expense/views/kanban";
 
 const ExpenseScanUpload = {
+    setup() {
+        super.setup();
+        // « Scanner un autre » ramène à la liste en demandant d'ouvrir
+        // aussitôt le sélecteur de photo : enchaîner plusieurs tickets est
+        // le cas courant, et revenir à la liste puis viser le bouton Scan
+        // ferait deux gestes là où l'on n'en attend qu'un.
+        if (this.props.context?.expense_scan_start_upload) {
+            onMounted(() => this.uploadDocument());
+        }
+    },
+
     /**
      * Reprend la logique du mixin d'Odoo (hr_expense/mixins/document_upload)
      * en changeant uniquement la destination finale. On ne peut pas

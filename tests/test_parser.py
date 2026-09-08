@@ -264,3 +264,36 @@ Paiement....6,80 E ..CB
         self.assertGreater(result.confidence('total'), parser.LOW_CONFIDENCE)
         self.assertEqual(result.value('tax_rate'), 20.0)
         self.assertEqual(result.value('tax_amount'), 1.13)
+
+    # -- Tableau de TVA ---------------------------------------------------
+
+    def test_vat_table(self):
+        """Tableau HT / TVA / TTC, format très répandu en caisse.
+
+        Les montants y portent quatre décimales, et la ligne de totaux, qui
+        ne commence pas par un taux, ne doit pas être comptée deux fois.
+        """
+        result = self.parse("""
+SAS DERSIM GRILL
+TOTAL: 62,50
+HT TVA TTC
+10%(A) 0,0000 0,0000 0,00
+20%(B) 0,0000 0,0000 0,00
+10%(C) 56,8182 5,6818 62,50
+56,82 5,68 62,50
+""")
+        self.assertEqual(result.value('total'), 62.50)
+        self.assertEqual(result.value('tax_rate'), 10.0)
+        self.assertEqual(result.value('tax_amount'), 5.68)
+
+    def test_vat_table_with_several_rates(self):
+        """Deux taux actifs : la somme fait foi, aucun taux ne s'impose."""
+        result = self.parse("""
+SUPERMARCHE
+TOTAL 100,00
+HT TVA TTC
+5,5%(A) 20,0000 1,1000 21,10
+20%(B) 60,0000 12,0000 72,00
+""")
+        self.assertIsNone(result.value('tax_rate'))
+        self.assertEqual(result.value('tax_amount'), 13.10)

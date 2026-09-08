@@ -100,3 +100,31 @@
     max-height: 240px;
     overflow: auto;
 }
+
+// ---------------------------------------------------------------------------
+// Formulaire de note de frais : alléger ce qui n'a pas lieu d'être ici
+//
+// Le fil de discussion d'Odoo — envoyer un message, journaliser une note,
+// planifier une activité, et l'historique complet — n'a aucun usage sur une
+// dépense scannée, et détourne le regard de la seule chose à faire : relire
+// les champs. Le reste du chatter (suiveurs, pièces jointes) est conservé.
+// ---------------------------------------------------------------------------
+.o_expense_scan_form {
+    .o-mail-Chatter-topbar,
+    .o-mail-Thread {
+        display: none;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Aperçu du justificatif sur les tuiles kanban
+// ---------------------------------------------------------------------------
+.o_expense_scan_card_thumb {
+    display: block;
+    width: 100%;
+    max-height: 140px;
+    object-fit: cover;
+    object-position: top;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}

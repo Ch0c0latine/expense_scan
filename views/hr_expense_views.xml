@@ -7,6 +7,31 @@
         <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
         <field name="arch" type="xml">
 
+            <!-- Sert d'ancrage aux règles de style du module : c'est le
+                 seul moyen de viser le formulaire des notes de frais sans
+                 toucher aux autres. -->
+            <xpath expr="//form" position="attributes">
+                <attribute name="class" add="o_expense_scan_form" separator=" "/>
+            </xpath>
+
+            <!-- Suite d'un scan : les gestes qu'on veut enchaîner sans
+                 repasser par la liste. -->
+            <xpath expr="//header" position="inside">
+                <button name="action_expense_scan_done" type="object"
+                        string="Terminé" class="btn-secondary"
+                        invisible="scan_state == 'none' or state != 'draft'"/>
+                <button name="action_expense_scan_again" type="object"
+                        string="Scanner un autre" class="btn-secondary"
+                        invisible="scan_state == 'none' or state != 'draft'"/>
+                <button name="action_expense_scan_rescan" type="object"
+                        string="Relancer l'analyse" class="btn-secondary"
+                        invisible="scan_state == 'none' or not is_editable"/>
+                <button name="action_expense_scan_drop" type="object"
+                        string="Supprimer" class="btn-secondary text-danger"
+                        confirm="Supprimer définitivement cette dépense et son justificatif ?"
+                        invisible="scan_state == 'none' or state != 'draft'"/>
+            </xpath>
+
             <!-- Bandeau de relecture, au même niveau que l'alerte de doublon -->
             <xpath expr="//div[@name='warning_duplicate_receipt_expense']" position="after">
                 <div class="alert alert-warning d-flex align-items-center gap-2"
@@ -14,7 +39,7 @@
                      invisible="scan_state != 'partial'">
                     <i class="fa fa-search" role="img" aria-label="Analyse"/>
                     <span>
-                        Ticket analysé. Vérifiez ces champs avant de valider :
+                        Ticket analysé. Vérifiez ces champs avant de soumettre :
                         <field name="scan_todo" class="fw-bold" nolabel="1" readonly="1"/>
                     </span>
                 </div>
@@ -22,7 +47,7 @@
                      role="status" name="expense_scan_done"
                      invisible="scan_state != 'done'">
                     <i class="fa fa-check" role="img" aria-label="Analyse"/>
-                    <span>Ticket analysé et champs pré-remplis. Relisez-les avant de valider.</span>
+                    <span>Ticket analysé et champs pré-remplis. Relisez-les avant de soumettre.</span>
                 </div>
                 <div class="alert alert-danger d-flex align-items-center gap-2"
                      role="alert" name="expense_scan_error"
@@ -70,18 +95,31 @@
                     <field name="scan_engine" invisible="1"/>
                     <field name="scan_duration" invisible="1"/>
                     <field name="scan_score" invisible="1"/>
-                    <div colspan="2">
-                        <button name="action_expense_scan_rescan" type="object"
-                                string="Relancer l'analyse" icon="fa-refresh"
-                                class="btn btn-secondary btn-sm"
-                                invisible="not is_editable"/>
-                    </div>
                     <field name="scan_raw_text" readonly="1" colspan="2"
                            widget="text" invisible="not scan_raw_text"
                            class="o_expense_scan_raw_text"/>
                 </group>
             </xpath>
 
+        </field>
+    </record>
+
+    <!-- Aperçu du justificatif sur les tuiles : reconnaître un ticket d'un
+         coup d'œil vaut mieux que lire quatre lignes de texte. -->
+    <record id="hr_expense_view_kanban_scan" model="ir.ui.view">
+        <field name="name">hr.expense.kanban.scan</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_expenses_analysis_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban/field[@name='currency_id']" position="after">
+                <field name="message_main_attachment_id"/>
+            </xpath>
+            <xpath expr="//templates//t[@t-name='card']" position="inside">
+                <img t-if="record.message_main_attachment_id.raw_value"
+                     t-att-src="'/web/image/' + record.message_main_attachment_id.raw_value"
+                     class="o_expense_scan_card_thumb mt-2"
+                     alt="Justificatif"/>
+            </xpath>
         </field>
     </record>
 

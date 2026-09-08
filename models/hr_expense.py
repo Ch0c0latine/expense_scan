@@ -266,6 +266,42 @@ class HrExpense(models.Model):
         self._expense_scan_run(force=True)
         return True
 
+    def action_expense_scan_done(self):
+        """Vérification terminée : on rend la main à la liste."""
+        return self._expense_scan_expense_list()
+
+    def action_expense_scan_again(self):
+        """Retour à la liste, sélecteur de photo déjà ouvert.
+
+        Enchaîner plusieurs tickets est le cas courant. Sans ce raccourci,
+        il faudrait revenir à la liste puis viser le bouton Scan : deux
+        gestes là où l'utilisateur n'en attend qu'un.
+        """
+        action = self._expense_scan_expense_list()
+        context = dict(action.get('context') or {}, expense_scan_start_upload=True)
+        action['context'] = context
+        return action
+
+    def action_expense_scan_drop(self):
+        """Supprime la dépense scannée et revient à la liste."""
+        action = self._expense_scan_expense_list()
+        self.unlink()
+        return action
+
+    def _expense_scan_expense_list(self):
+        """L'action « Mes frais », ou un équivalent si l'écran a changé."""
+        action = self.env.ref('hr_expense.hr_expense_actions_my_all',
+                              raise_if_not_found=False)
+        if action:
+            return action.sudo().read()[0]
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Mes frais"),
+            'res_model': 'hr.expense',
+            'view_mode': 'kanban,list,form',
+            'target': 'main',
+        }
+
     # ------------------------------------------------------------------
     # Chaîne de traitement
     # ------------------------------------------------------------------
