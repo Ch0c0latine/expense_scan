@@ -59,6 +59,9 @@ MAX_DESKEW_ANGLE = 15.0
 # l estimation morphologique : il peut viser un ticket posé en diagonale.
 MAX_TEXT_DESKEW_ANGLE = 45.0
 MIN_DESKEW_ANGLE = 0.3
+# Écart maximal à l inclinaison médiane pour qu une boîte compte dans la
+# moyenne. Au-delà, c est du texte d arrière-plan, pas une ligne du ticket.
+SKEW_OUTLIER_TOLERANCE = 8.0
 
 
 def dependencies_status():
@@ -340,24 +343,49 @@ def rotate_quarters(image, quarters):
 
 
 
+def text_inliers(words, tolerance=SKEW_OUTLIER_TOLERANCE):
+    """Boîtes dont l'inclinaison suit celle de l'ensemble.
+
+    Deux usages : calculer un angle de redressage, et délimiter le ticket.
+    Dans les deux cas, les intrus faussent tout — texte imprimé au dos du
+    ticket et vu par transparence, caractères du décor, lecture douteuse.
+    Ils penchent n'importe comment, là où les lignes d'un même ticket
+    partagent une inclinaison à quelques degrés près.
+
+    La médiane sert de repère, insensible par construction à ces intrus, et
+    l'écart à cette médiane les désigne.
+    """
+    oriented = [word for word in words if abs(word.angle) <= 45.0]
+    if len(oriented) < 3:
+        return list(words)
+    angles = sorted(word.angle for word in oriented)
+    median = angles[len(angles) // 2]
+    return [word for word in oriented
+            if abs(word.angle - median) <= tolerance] or list(words)
+
+
 def skew_angle_from_words(words, min_width_ratio=0.25, min_boxes=2):
-    """Inclinaison médiane lue directement sur les boîtes du détecteur.
+    """Inclinaison moyenne des lignes, lue sur les boîtes du détecteur.
 
     À préférer à :func:`skew_angle_from_lines` : PP-OCR ne détecte souvent
     qu'**une seule boîte par ligne de ticket**, ce qui ne laisse rien à
     régresser et faisait très largement sous-estimer l'angle. L'orientation
     de chaque boîte, elle, est une donnée du détecteur.
 
-    Les boîtes trop courtes sont écartées : sur quelques caractères,
-    l'orientation est bruitée.
+    La perspective fait varier l'angle d'une ligne à l'autre : on prend
+    donc une moyenne plutôt qu'une valeur unique, pondérée par la longueur
+    des boîtes — une ligne entière donne un angle bien plus sûr qu'un
+    fragment de quelques caractères — et débarrassée de ses intrus.
     """
-    oriented = [word for word in words if 1e-6 < abs(word.angle) <= 45.0]
+    oriented = [word for word in text_inliers(words) if abs(word.angle) <= 45.0]
     if len(oriented) < min_boxes:
         return 0.0
     widest = max(word.width for word in oriented)
     kept = [word for word in oriented if word.width >= min_width_ratio * widest] or oriented
-    angles = sorted(word.angle for word in kept)
-    return angles[len(angles) // 2]
+    total_width = sum(word.width for word in kept)
+    if not total_width:
+        return 0.0
+    return sum(word.angle * word.width for word in kept) / total_width
 
 
 def skew_angle_from_lines(lines, min_words=3, min_lines=2):

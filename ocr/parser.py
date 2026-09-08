@@ -305,7 +305,11 @@ MERCHANT_STOP_RE = re.compile(
     # Champs d'un ticket de transport ou de péage : ils occupent le haut du
     # ticket et se feraient volontiers passer pour une enseigne.
     r"\bSORTIE\b|\bENTREE\b|\bDEPART\b|\bARRIVEE\b|\bCLASSE\b|\bTARIF\b|"
-    r"\bPAIEMENT\b|\bREGLEMENT\b|\bCARTE\b|\bMONTANT\b|\bTOTAL\b"
+    r"\bPAIEMENT\b|\bREGLEMENT\b|\bCARTE\b|\bMONTANT\b|\bTOTAL\b|"
+    # En-tête d'un ticket de carte bancaire : l'enseigne y figure bien plus
+    # bas, après le bloc de la banque et du terminal.
+    r"\bCONTACT\b|\bBANQUE\b|\bBANCAIRE\b|\bMASTERCARD\b|\bVISA\b|"
+    r"\bDEBIT\b|\bCREDIT\b|\bAUTO\b|\bCONSERVER\b|\bTERMINAL\b"
 )
 ADDRESS_RE = re.compile(
     r"\b(RUE|AVENUE|AV|BOULEVARD|BD|PLACE|PL|CHEMIN|ROUTE|RTE|IMPASSE|ALLEE|"
@@ -313,7 +317,7 @@ ADDRESS_RE = re.compile(
 )
 
 
-def extract_merchant(lines, max_lines=6):
+def extract_merchant(lines, max_lines=10):
     """Le nom de l'enseigne, cherché dans l'en-tête du ticket."""
     best = None
     for position, line in enumerate(lines[:max_lines]):

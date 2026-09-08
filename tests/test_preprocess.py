@@ -138,3 +138,15 @@ class TestPreprocess(common.TransactionCase):
         alors la régression sur les lignes qui prend le relais.
         """
         self.assertEqual(preprocess.skew_angle_from_words(make_words(angle=0.0)), 0.0)
+
+    def test_skew_ignores_outliers(self):
+        """Un caractère du décor ne doit pas emporter la moyenne.
+
+        Quatre lignes du ticket à 6°, un intrus à 40° : la médiane le
+        désigne, et la moyenne pondérée n'en tient plus compte.
+        """
+        words = make_words(angle=6.0, count=4)
+        words.append(OcrWord(text="X", score=0.9, angle=40.0,
+                             left=900.0, top=900.0, right=930.0, bottom=930.0))
+        self.assertAlmostEqual(preprocess.skew_angle_from_words(words), 6.0, places=3)
+        self.assertNotIn(words[-1], preprocess.text_inliers(words))

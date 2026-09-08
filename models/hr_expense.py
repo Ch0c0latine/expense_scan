@@ -434,8 +434,11 @@ class HrExpense(models.Model):
         # table qui l'entoure. Marge large, car l'essai est basse
         # définition et peut avoir manqué une ligne en bord de ticket.
         if company.expense_scan_autocrop and probe.shape[1]:
+            # Sur les mêmes boîtes retenues pour l'angle : un caractère du
+            # décor étirerait le cadre bien au-delà du ticket.
             scaled = preprocess.scale_words(
-                best_words, image.shape[1] / float(probe.shape[1]))
+                preprocess.text_inliers(best_words),
+                image.shape[1] / float(probe.shape[1]))
             image, cropped = preprocess.crop_to_text(image, scaled, margin_ratio=0.08)
             info.cropped = info.cropped or cropped
 
@@ -469,7 +472,8 @@ class HrExpense(models.Model):
                 info.changed = True
 
         if company.expense_scan_autocrop:
-            image, tightened = preprocess.crop_to_text(image, words)
+            image, tightened = preprocess.crop_to_text(
+                image, preprocess.text_inliers(words))
             if tightened:
                 info.cropped = True
                 info.changed = True
@@ -501,8 +505,10 @@ class HrExpense(models.Model):
         values = self._expense_scan_field_values(result, company)
 
         todo = parser.fields_to_check(result)
-        if company.expense_scan_apply_tax and result.value('tax_amount'):
-            if not values.get('scan_tax_amount'):
+        if company.expense_scan_apply_tax:
+            if not result.value('tax_amount'):
+                todo.append(_("TVA (aucune sur le justificatif)"))
+            elif not values.get('scan_tax_amount'):
                 # Lecture écartée parce qu'elle dépasse le plafond du taux :
                 # c'est presque toujours un montant pris pour un autre.
                 todo.append(_("TVA (lecture incompatible avec le taux)"))
@@ -569,6 +575,14 @@ class HrExpense(models.Model):
             if tax_amount and self._expense_scan_tax_fits(
                     tax_amount, values.get('total_amount_currency')):
                 values['scan_tax_amount'] = tax_amount
+            elif not tax_amount:
+                # Le justificatif ne porte aucune TVA — un ticket de carte
+                # bancaire n'en mentionne jamais. Laisser le taux par défaut
+                # de la catégorie ferait apparaître une TVA déductible que
+                # rien ne justifie : on retire la taxe, à charge pour
+                # l'utilisateur de la remettre s'il dispose d'un autre
+                # justificatif. Le bandeau le lui signale.
+                values['tax_ids'] = [Command.clear()]
 
         if company.expense_scan_set_vendor:
             vendor = self._expense_scan_vendor(result, company)
