@@ -43,6 +43,23 @@ class HrExpense(models.Model):
         string="Rattachement aux missions actif",
     )
 
+    @api.model
+    def _get_view(self, view_id=None, view_type='form', **options):
+        """Masque « Client à refacturer » : il découle de la mission.
+
+        Ce champ vient de ``sale_expense``, par une vue sœur de la mienne :
+        un xpath ne peut pas l'atteindre, puisqu'il n'est pas encore posé
+        quand ma vue s'applique — et il ferait échouer la mise à jour sur
+        une base où ``sale_expense`` n'est pas installé. Le retoucher ici,
+        sur l'arbre déjà assemblé, marche dans les deux cas et n'impose
+        aucune dépendance.
+        """
+        arch, view = super()._get_view(view_id, view_type, **options)
+        if view_type == 'form' and self.env.company.expense_scan_reinvoice:
+            for node in arch.xpath("//field[@name='sale_order_id']"):
+                node.set('invisible', '1')
+        return arch, view
+
     @api.onchange('reinvoice_mode')
     def _onchange_expense_scan_reinvoice_mode(self):
         """Choisir « Non » ou « À déterminer » libère la mission."""

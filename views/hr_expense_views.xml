@@ -117,12 +117,6 @@
                 </group>
             </xpath>
 
-            <!-- La commande à refacturer découle de la mission : la laisser
-                 modifiable ici invite à la désynchroniser du projet. -->
-            <xpath expr="//sheet//field[@name='sale_order_id']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-
             <xpath expr="//field[@name='nb_attachment']" position="after">
                 <field name="scan_state" invisible="1"/>
                 <field name="expense_scan_reinvoice" invisible="1"/>
