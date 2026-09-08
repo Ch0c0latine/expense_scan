@@ -55,6 +55,9 @@ DETECTION_MAX_SIDE = 900
 # Inclinaison résiduelle corrigée (au-delà, c'est probablement une erreur
 # d'analyse plutôt qu'une photo penchée).
 MAX_DESKEW_ANGLE = 15.0
+# Le redressage mesuré sur le texte reconnu est bien plus fiable que
+# l estimation morphologique : il peut viser un ticket posé en diagonale.
+MAX_TEXT_DESKEW_ANGLE = 45.0
 MIN_DESKEW_ANGLE = 0.3
 
 

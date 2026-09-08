@@ -272,8 +272,12 @@ class RapidOcrEngine(ScanEngine):
                 if len(box) == 4:
                     angle = math.degrees(math.atan2(float(box[1][1] - box[0][1]),
                                                     float(box[1][0] - box[0][0])))
-                    if abs(angle) > 45.0:
-                        angle = 0.0
+                    # Ramené modulo 90 dans (-45, 45] : les quarts de tour
+                    # sont traités à part, seul le résidu nous intéresse.
+                    # Annuler l'angle au-delà de 45° faisait perdre son
+                    # orientation à toute boîte fortement inclinée — soit
+                    # précisément celles d'un ticket posé en diagonale.
+                    angle = ((angle + 45.0) % 90.0) - 45.0
             except Exception:  # noqa: BLE001
                 left = top = 0.0
                 right = bottom = 1.0

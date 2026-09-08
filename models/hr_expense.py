@@ -352,8 +352,11 @@ class HrExpense(models.Model):
             company.expense_scan_engine, **company._expense_scan_engine_options())
 
         started = time.time()
-        if company.expense_scan_auto_rotate:
-            image, info.rotated_quarters = self._expense_scan_orient(engine, image)
+        # Redresser avant de lire, et non après : la reconstruction des
+        # lignes suppose du texte horizontal. Sur un ticket posé en
+        # diagonale, elle assemble des colonnes, et le parseur y cherche en
+        # vain « le dernier montant de la ligne ».
+        image = self._expense_scan_straighten(engine, image, info, company)
         words = engine.recognize(image)
         duration = time.time() - started
 
@@ -380,35 +383,45 @@ class HrExpense(models.Model):
     #: Côté maximal de l'image d'essai servant à choisir l'orientation.
     ORIENTATION_PROBE_SIDE = 800
 
-    def _expense_scan_orient(self, engine, image):
-        """Choisit, parmi les quatre quarts de tour, celui qui remet le
-        ticket à l'endroit.
+    def _expense_scan_straighten(self, engine, image, info, company):
+        """Remet le ticket d'aplomb avant la lecture définitive.
 
-        Deux choix méritent d'être expliqués.
+        Une passe d'essai à basse résolution sert à deux choses d'un coup :
+        choisir le quart de tour, et mesurer l'inclinaison résiduelle sur
+        les boîtes orientées que rend le détecteur. Toute orientation se
+        ramène ainsi à un quart de tour plus un résidu dans ±45°.
 
         Le classifieur d'orientation du moteur est **désactivé** pendant
-        cette recherche. Il redresse chaque ligne isolément : une photo à
-        180° se lit donc parfaitement ligne par ligne, ce qui masque le
-        problème — mais l'ordre des mots y est inversé, et le parseur, qui
-        cherche « le dernier montant de la ligne », tombe alors sur le
-        premier. Sans ce classifieur, seule la bonne orientation produit du
-        texte reconnaissable, ce qui la désigne sans ambiguïté.
-
-        L'essai se fait sur une image réduite : choisir une orientation ne
-        demande pas la pleine résolution, et quatre passes complètes
-        coûteraient bien plus cher que le scan lui-même.
+        l'essai. Il redresse chaque ligne isolément : une photo à 180° se
+        lit donc parfaitement ligne par ligne, ce qui masque le problème —
+        mais l'ordre des mots y est inversé, et le parseur, qui cherche
+        « le dernier montant de la ligne », tombe alors sur le premier.
+        Sans lui, seule la bonne orientation produit du texte lisible.
         """
+        if not company.expense_scan_auto_rotate:
+            return image
+
         probe = preprocess.limit_size(image, self.ORIENTATION_PROBE_SIDE)
-        best_quarters, best_quality = 0, -1.0
+        best_quarters, best_quality, best_words = 0, -1.0, []
         for quarters in range(4):
-            candidate = preprocess.rotate_quarters(probe, quarters)
-            quality = self._expense_scan_quality(
-                engine.recognize(candidate, use_cls=False))
+            words = engine.recognize(
+                preprocess.rotate_quarters(probe, quarters), use_cls=False)
+            quality = self._expense_scan_quality(words)
             if quality > best_quality:
-                best_quarters, best_quality = quarters, quality
-        if not best_quarters:
-            return image, 0
-        return preprocess.rotate_quarters(image, best_quarters), best_quarters
+                best_quarters, best_quality, best_words = quarters, quality, words
+
+        if best_quarters:
+            image = preprocess.rotate_quarters(image, best_quarters)
+            info.rotated_quarters = best_quarters
+
+        if company.expense_scan_deskew:
+            angle = preprocess.skew_angle_from_words(best_words)
+            if preprocess.MIN_DESKEW_ANGLE < abs(angle) <= preprocess.MAX_TEXT_DESKEW_ANGLE:
+                image = preprocess.rotate(image, angle)
+                info.deskew_angle = angle
+
+        info.changed = info.changed or bool(best_quarters or info.deskew_angle)
+        return image
 
     def _expense_scan_tighten(self, image, words, info, company):
         """Redresse puis recadre, une fois l'OCR passé.
@@ -432,7 +445,7 @@ class HrExpense(models.Model):
                     (image.shape[1], image.shape[0]), angle)
                 image = preprocess.rotate(image, angle)
                 words = preprocess.rotate_words(words, matrix)
-                info.deskew_angle = angle
+                info.deskew_angle += angle
                 info.changed = True
 
         if company.expense_scan_autocrop:
@@ -446,9 +459,16 @@ class HrExpense(models.Model):
 
     @staticmethod
     def _expense_scan_quality(words):
-        """Quantité de texte reconnu avec confiance, à l'horizontale."""
-        return sum(len(word.text) * word.score
-                   for word in words if word.width >= word.height)
+        """Quantité de texte reconnu, pondérée par la confiance.
+
+        Aucun filtre sur la forme des boîtes : sur un ticket posé en
+        diagonale elles ne sont ni franchement horizontales ni verticales,
+        et écarter les unes ou les autres fausserait la comparaison. Le
+        classifieur d'orientation étant éteint pendant l'essai, c'est le
+        score de reconnaissance qui sépare les orientations — il s'effondre
+        dès que le texte est à l'envers.
+        """
+        return sum(len(word.text) * word.score for word in words)
 
     # ------------------------------------------------------------------
     # Report du résultat sur la dépense
