@@ -71,6 +71,14 @@ class HrExpense(models.Model):
         copy=False,
         ondelete='set null',
     )
+    expense_scan_own = fields.Boolean(
+        string="Dépense personnelle",
+        compute='_compute_expense_scan_own',
+        help="Vrai quand la dépense appartient à l'utilisateur qui la "
+             "consulte. Le formulaire s'en sert pour masquer le champ "
+             "« Employé », qui n'a d'intérêt que lorsqu'un gestionnaire "
+             "saisit pour quelqu'un d'autre.",
+    )
     scan_cropped_attachment_id = fields.Many2one(
         comodel_name='ir.attachment',
         string="Ticket recadré",
@@ -109,6 +117,14 @@ class HrExpense(models.Model):
             company_tax = expense.company_currency_id.round(expense.scan_tax_amount / rate)
             expense.tax_amount = company_tax
             expense.untaxed_amount = expense.total_amount - company_tax
+
+    @api.depends('employee_id')
+    @api.depends_context('uid')
+    def _compute_expense_scan_own(self):
+        """La dépense est-elle celle de l'utilisateur qui la regarde ?"""
+        mine = self.env.user.employee_ids
+        for expense in self:
+            expense.expense_scan_own = expense.employee_id in mine
 
     def _expense_scan_max_rate(self):
         """Le plus haut taux retenu, ou ``None`` si aucune taxe en pourcentage.
@@ -264,8 +280,13 @@ class HrExpense(models.Model):
         return expense_ids
 
     def action_expense_scan_rescan(self):
-        """Relance l'analyse, en repartant de la photo d'origine."""
-        self._expense_scan_run(force=True)
+        """Relance l'analyse sur le justificatif courant.
+
+        Volontairement pas sur la photo d'origine : si l'utilisateur relance,
+        c'est le plus souvent qu'il a retouché ou remplacé le ticket recadré,
+        et repartir de l'original perdrait sa correction.
+        """
+        self._expense_scan_run(force=True, from_original=False)
         return True
 
     def action_expense_scan_done(self):
@@ -326,7 +347,7 @@ class HrExpense(models.Model):
     # Chaîne de traitement
     # ------------------------------------------------------------------
 
-    def _expense_scan_run(self, force=False):
+    def _expense_scan_run(self, force=False, from_original=True):
         """Analyse les dépenses du recordset, sans jamais interrompre l'import.
 
         Un ticket illisible ou une dépendance manquante ne doit pas faire
@@ -334,7 +355,7 @@ class HrExpense(models.Model):
         dépense et l'utilisateur saisit à la main.
         """
         for expense in self:
-            attachment = expense._expense_scan_source_attachment()
+            attachment = expense._expense_scan_source_attachment(from_original)
             if not attachment:
                 continue
             if not force and expense.scan_state in ('done', 'partial'):
@@ -356,10 +377,19 @@ class HrExpense(models.Model):
                     'scan_todo': False,
                 })
 
-    def _expense_scan_source_attachment(self):
-        """La pièce jointe à lire : la photo d'origine si on la conserve."""
+    def _expense_scan_source_attachment(self, from_original=True):
+        """La pièce jointe à lire.
+
+        Au premier passage, la photo d'origine : elle a toute la résolution,
+        et le module se charge de la redresser. À la relance en revanche, on
+        repart du justificatif courant — c'est celui que l'utilisateur a
+        éventuellement retouché ou remplacé, et relire l'original reviendrait
+        à effacer sa correction.
+        """
         self.ensure_one()
-        attachment = self.scan_original_attachment_id or self.message_main_attachment_id
+        attachment = self.message_main_attachment_id
+        if from_original:
+            attachment = self.scan_original_attachment_id or attachment
         if not attachment:
             attachment = self.attachment_ids[:1]
         if not attachment:
@@ -786,6 +816,14 @@ class HrExpense(models.Model):
                 'raw': result.image_bytes,
                 'mimetype': 'image/jpeg',
             })
+            return {}
+
+        # Relance sur le justificatif courant : l'image lue est déjà celle
+        # que le formulaire affiche. On la corrige sur place — en créer une
+        # autre en ferait la « photo d'origine » à la place de la vraie, et
+        # celle-ci disparaîtrait pour de bon.
+        if attachment == self.scan_cropped_attachment_id:
+            attachment.write({'raw': result.image_bytes, 'mimetype': 'image/jpeg'})
             return {}
 
         # Une relance d'analyse produit une nouvelle image : on remplace la

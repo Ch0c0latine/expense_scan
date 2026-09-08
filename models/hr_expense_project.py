@@ -17,9 +17,11 @@ class HrExpense(models.Model):
 
     reinvoice_mode = fields.Selection(
         selection=[
-            ('todo', "À déterminer"),
-            ('project', "Oui, sur une mission"),
+            # « Oui » d'abord : c'est la réponse la plus fréquente sur un
+            # frais de mission, et celle qu'on veut atteindre sans lire.
+            ('project', "Oui"),
             ('none', "Non"),
+            ('todo', "À déterminer"),
         ],
         string="À refacturer",
         default='todo',

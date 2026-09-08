@@ -18,7 +18,6 @@ ce qui signale toute régression dans les expressions de reconnaissance.
     python3 tools/check_ocr.py
 """
 import os
-import py_compile
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -133,10 +132,15 @@ def check_syntax():
             if not name.endswith('.py'):
                 continue
             path = os.path.join(folder, name)
+            # Compilation en mémoire : `py_compile` veut écrire un fichier
+            # de bytecode, et refuse `/dev/null` depuis Python 3.14.
+            with open(path, encoding='utf-8') as handle:
+                source = handle.read()
             try:
-                py_compile.compile(path, cfile=os.devnull, doraise=True)
-            except py_compile.PyCompileError as error:
-                failures.append(str(error).strip())
+                compile(source, path, 'exec')
+            except SyntaxError as error:
+                failures.append("%s ligne %s : %s" % (
+                    os.path.relpath(path, root), error.lineno, error.msg))
     print("syntaxe            : %s" % ("OK" if not failures else "ÉCHEC"))
     return failures
 

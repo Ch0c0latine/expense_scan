@@ -125,3 +125,23 @@
     border-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.08);
 }
+
+// Un montant de ticket tient en cinq caractères : les champs pleine largeur
+// étirent le formulaire et éloignent le montant de sa devise.
+.o_expense_scan_amount {
+    max-width: 7rem;
+
+    input {
+        text-align: right;
+    }
+}
+
+.o_expense_scan_currency {
+    max-width: 5rem;
+}
+
+// Le taux se choisit dans une courte liste : inutile de lui réserver la
+// largeur d'un champ de saisie libre.
+.o_expense_scan_taxes {
+    max-width: 12rem;
+}
