@@ -11,7 +11,7 @@ Python, ce qui rend les réglages de mots-clés faciles à faire évoluer.
 """
 import re
 import unicodedata
-from datetime import date, timedelta
+from datetime import date, time as dtime, timedelta
 
 from .types import ExtractedField, OcrLine, ScanResult
 
@@ -413,6 +413,31 @@ def extract_currency(lines, default="EUR"):
     return ExtractedField(value=default, confidence=0.3)
 
 
+def extract_time(lines, date_source=""):
+    """Heure d'achat imprimée sur le ticket.
+
+    Sert à ordonner plusieurs justificatifs d'une même journée, ce que la
+    seule date ne permet pas. On privilégie l'heure imprimée sur la ligne
+    qui porte déjà la date : c'est presque toujours l'horodatage de la
+    caisse, et non une heure de vol ou d'ouverture du magasin.
+    """
+    best = None
+    for line in lines:
+        text = normalize(line.text)
+        for match in TIME_RE.finditer(text):
+            hour, minute = int(match.group(1)), int(match.group(2))
+            if not (0 <= hour <= 23 and 0 <= minute <= 59):
+                continue
+            weight = 0.9 if date_source and line.text == date_source else 0.7
+            confidence = weight * max(line.score, 0.4)
+            if best is None or confidence > best[0]:
+                best = (confidence, dtime(hour, minute), line.text)
+
+    if best is None:
+        return ExtractedField(value=None, confidence=0.0)
+    return ExtractedField(value=best[1], confidence=min(best[0], 0.95), source=best[2])
+
+
 def extract_vat_number(lines):
     """Numéro de TVA intracommunautaire, utile pour retrouver le fournisseur."""
     for line in lines:
@@ -430,8 +455,9 @@ def extract_vat_number(lines):
 
 #: Libellés affichés à l'utilisateur pour les champs à revérifier.
 FIELD_LABELS = {
-    "merchant": "Marchand",
+    "merchant": "Description (marchand)",
     "date": "Date",
+    "time": "Heure",
     "total": "Total",
     "currency": "Devise",
     "tax_rate": "Taux de TVA",
@@ -446,9 +472,11 @@ def parse(words, today=None, max_age_days=730, default_currency="EUR"):
     """Analyse une liste de mots situés et renvoie un :class:`ScanResult`."""
     lines = build_lines(words)
     tax_rate, tax_amount = extract_taxes(lines)
+    scan_date = extract_date(lines, today=today, max_age_days=max_age_days)
     fields = {
         "merchant": extract_merchant(lines),
-        "date": extract_date(lines, today=today, max_age_days=max_age_days),
+        "date": scan_date,
+        "time": extract_time(lines, date_source=scan_date.source),
         "total": extract_total(lines),
         "currency": extract_currency(lines, default=default_currency),
         "tax_rate": tax_rate,

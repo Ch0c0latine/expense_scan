@@ -2,6 +2,9 @@
 import logging
 import os
 import time
+from datetime import datetime, time as dtime
+
+from pytz import timezone, utc
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -37,6 +40,16 @@ class HrExpense(models.Model):
     scan_score = fields.Float(string="Confiance de lecture", readonly=True, copy=False,
                               help="Score moyen de reconnaissance des caractères, en pourcentage.")
     scan_detected_tax = fields.Char(string="TVA lue sur le ticket", readonly=True, copy=False)
+    scan_time = fields.Char(string="Heure du ticket", readonly=True, copy=False)
+    scan_datetime = fields.Datetime(
+        string="Horodatage du ticket",
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Date et heure imprimées sur le justificatif. La date d'une "
+             "dépense ne porte pas l'heure : ce champ permet d'ordonner "
+             "plusieurs tickets d'une même journée.",
+    )
     scan_raw_text = fields.Text(string="Texte reconnu", readonly=True, copy=False)
     scan_original_attachment_id = fields.Many2one(
         comodel_name='ir.attachment',
@@ -202,22 +215,30 @@ class HrExpense(models.Model):
         return best[0], best[1], best[2]
 
     def _expense_scan_tighten(self, image, words, info, company):
-        """Recadre sur le texte puis redresse, une fois l'OCR passé."""
+        """Redresse puis recadre, une fois l'OCR passé.
+
+        Cet ordre est important : la rotation agrandit le cadre pour ne rien
+        rogner, donc recadrer avant elle laisse forcément de la marge. On
+        redresse d'abord, en faisant suivre les boîtes de mots, et on
+        recadre sur leur nouvelle position.
+        """
+        if company.expense_scan_deskew:
+            # L'inclinaison se mesure sur les lignes de texte reconnues, et
+            # non sur l'image : les bords du papier sont des droites bien
+            # plus marquées que l'impression, et rarement parallèles à elle.
+            angle = preprocess.skew_angle_from_lines(parser.build_lines(words))
+            if preprocess.MIN_DESKEW_ANGLE < abs(angle) <= preprocess.MAX_DESKEW_ANGLE:
+                matrix, _size = preprocess.rotation_matrix(
+                    (image.shape[1], image.shape[0]), angle)
+                image = preprocess.rotate(image, angle)
+                words = preprocess.rotate_words(words, matrix)
+                info.deskew_angle = angle
+                info.changed = True
+
         if company.expense_scan_autocrop:
             image, tightened = preprocess.crop_to_text(image, words)
             if tightened:
                 info.cropped = True
-                info.changed = True
-
-        if company.expense_scan_deskew:
-            # L'inclinaison se mesure sur les lignes de texte reconnues, et
-            # non sur l'image : une fois le ticket recadré, ses bords de
-            # papier entrent dans le cadre et fausseraient l'estimation, car
-            # ils sont rarement parallèles à l'impression.
-            angle = preprocess.skew_angle_from_lines(parser.build_lines(words))
-            if preprocess.MIN_DESKEW_ANGLE < abs(angle) <= preprocess.MAX_DESKEW_ANGLE:
-                image = preprocess.rotate(image, angle)
-                info.deskew_angle = angle
                 info.changed = True
 
         info.final_size = (image.shape[1], image.shape[0])
@@ -261,6 +282,12 @@ class HrExpense(models.Model):
         if scan_date:
             values['date'] = scan_date
 
+        scan_time = result.value('time')
+        if scan_time:
+            values['scan_time'] = scan_time.strftime('%H:%M')
+        if scan_date:
+            values['scan_datetime'] = self._expense_scan_moment(scan_date, scan_time)
+
         merchant = result.value('merchant')
         if merchant:
             values['name'] = merchant
@@ -291,6 +318,22 @@ class HrExpense(models.Model):
                 values['vendor_id'] = vendor.id
 
         return values
+
+    def _expense_scan_moment(self, scan_date, scan_time):
+        """Horodatage du ticket, converti en UTC comme le stocke Odoo.
+
+        L'heure imprimée sur un ticket est une heure locale ; la stocker
+        telle quelle décalerait l'affichage de deux heures en été.
+        """
+        moment = datetime.combine(scan_date, scan_time or dtime(0, 0))
+        zone = self.env.user.tz or self.env.context.get('tz')
+        if not zone:
+            return moment
+        try:
+            return timezone(zone).localize(moment).astimezone(utc).replace(tzinfo=None)
+        except Exception:  # noqa: BLE001 - fuseau inconnu côté serveur
+            _logger.warning("Fuseau horaire inutilisable : %s", zone)
+            return moment
 
     def _expense_scan_currency(self, result, company):
         """Devise correspondant au code lu, si elle est active dans Odoo."""

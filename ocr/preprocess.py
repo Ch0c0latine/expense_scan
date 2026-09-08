@@ -38,7 +38,7 @@ except Exception as error:  # noqa: BLE001
     Image = ImageOps = None
     _IMPORT_ERRORS['Pillow'] = error
 
-from .types import PreprocessInfo
+from .types import OcrWord, PreprocessInfo
 
 # Un quadrilatère candidat doit couvrir au moins cette fraction de la photo
 # pour être considéré comme « le ticket » et non un détail du décor.
@@ -282,9 +282,9 @@ def deskew_image(image):
     return image, 0.0
 
 
-def rotate(image, angle):
-    """Rotation autour du centre, fond blanc, sans rogner les coins."""
-    height, width = image.shape[:2]
+def rotation_matrix(size, angle):
+    """Matrice de rotation et taille du cadre agrandi pour ne rien rogner."""
+    width, height = size
     center = (width / 2.0, height / 2.0)
     matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
     cosine, sine = abs(matrix[0, 0]), abs(matrix[0, 1])
@@ -292,8 +292,35 @@ def rotate(image, angle):
     new_height = int(height * cosine + width * sine)
     matrix[0, 2] += (new_width / 2.0) - center[0]
     matrix[1, 2] += (new_height / 2.0) - center[1]
-    return cv2.warpAffine(image, matrix, (new_width, new_height), flags=cv2.INTER_CUBIC,
+    return matrix, (new_width, new_height)
+
+
+def rotate(image, angle):
+    """Rotation autour du centre, fond blanc, sans rogner les coins."""
+    height, width = image.shape[:2]
+    matrix, new_size = rotation_matrix((width, height), angle)
+    return cv2.warpAffine(image, matrix, new_size, flags=cv2.INTER_CUBIC,
                           borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
+
+
+def rotate_words(words, matrix):
+    """Suit les boîtes de mots à travers la même rotation que l'image.
+
+    Sans ça, recadrer après un redressage se ferait sur des coordonnées
+    périmées — et c'est bien après le redressage qu'il faut recadrer, la
+    rotation agrandissant le cadre pour ne rien couper.
+    """
+    moved = []
+    for word in words:
+        corners = ((word.left, word.top), (word.right, word.top),
+                   (word.right, word.bottom), (word.left, word.bottom))
+        xs, ys = [], []
+        for x, y in corners:
+            xs.append(matrix[0, 0] * x + matrix[0, 1] * y + matrix[0, 2])
+            ys.append(matrix[1, 0] * x + matrix[1, 1] * y + matrix[1, 2])
+        moved.append(OcrWord(text=word.text, score=word.score,
+                             left=min(xs), top=min(ys), right=max(xs), bottom=max(ys)))
+    return moved
 
 
 def rotate_quarters(image, quarters):
@@ -356,7 +383,7 @@ def skew_angle_from_lines(lines, min_words=3, min_lines=2):
     return angles[len(angles) // 2]
 
 
-def crop_to_text(image, words, margin_ratio=0.05, max_kept_ratio=0.92):
+def crop_to_text(image, words, margin_ratio=0.035, max_kept_ratio=0.94):
     """Recadre sur l'enveloppe du texte reconnu, avec une marge.
 
     Complète la détection de contours plutôt qu'elle ne la remplace : un

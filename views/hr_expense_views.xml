@@ -54,6 +54,8 @@
                     <field name="scan_message" readonly="1"/>
                     <field name="scan_detected_tax" readonly="1"
                            invisible="not scan_detected_tax"/>
+                    <field name="scan_datetime" readonly="1"
+                           invisible="not scan_datetime"/>
                     <field name="scan_original_attachment_id" readonly="1"
                            invisible="not scan_original_attachment_id"/>
                     <field name="scan_engine" invisible="1"/>
