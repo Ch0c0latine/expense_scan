@@ -128,31 +128,3 @@
 
 
 
-// Montants du ticket : borner sans imposer.
-//
-// Dans une ligne `o_row`, Odoo laisse ses champs occuper l'espace
-// disponible, d'où les fossés entre un montant et sa devise. Il suffit de
-// leur interdire de grandir et de poser une borne : leur imposer une
-// largeur fixe, en revanche, fait déborder le contenu par-dessus le voisin
-// dès que celui-ci est plus long que prévu.
-.o_form_view .o_inner_group .o_row {
-    .o_expense_scan_amount,
-    .o_expense_scan_currency,
-    .o_expense_scan_taxes {
-        flex: 0 1 auto;
-    }
-
-    .o_expense_scan_amount {
-        max-width: 8rem;
-    }
-
-    .o_expense_scan_currency {
-        max-width: 6rem;
-    }
-
-    // Le taux se choisit dans une courte liste : inutile de lui réserver la
-    // largeur d'un champ de saisie libre.
-    .o_expense_scan_taxes {
-        max-width: 14rem;
-    }
-}

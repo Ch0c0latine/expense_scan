@@ -179,6 +179,29 @@ class HrExpense(models.Model):
             if expense.currency_id.compare_amounts(expense.scan_tax_amount, ceiling) > 0:
                 expense.scan_tax_amount = expense.currency_id.round(ceiling)
 
+    @api.constrains('tax_ids', 'scan_state')
+    def _check_expense_scan_single_tax(self):
+        """Un seul taux sur une dépense scannée.
+
+        La ventilation qui porte la TVA du ticket dans l'écriture n'en
+        connaît qu'un : avec deux taxes, elles s'appliqueraient toutes deux
+        à la même base et le montant comptabilisé ne serait plus celui du
+        justificatif. Mieux vaut le refuser que le produire faux.
+
+        Un ticket à plusieurs taux se traite justement ainsi : un seul taux
+        retenu, et le montant exact saisi à côté.
+        """
+        for expense in self:
+            if expense.scan_state == 'none':
+                continue
+            if len(expense.tax_ids) > 1:
+                raise ValidationError(_(
+                    "Une dépense scannée ne peut porter qu'une seule taxe : "
+                    "c'est le montant du champ « TVA du ticket » qui fait "
+                    "foi, et le taux ne sert qu'à porter les tags fiscaux.\n\n"
+                    "Pour un ticket mêlant plusieurs taux, gardez le plus "
+                    "élevé et laissez le montant lu sur le justificatif."))
+
     @api.constrains('scan_tax_amount', 'total_amount_currency', 'tax_ids')
     def _check_scan_tax_amount(self):
         for expense in self:

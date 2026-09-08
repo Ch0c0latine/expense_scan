@@ -100,11 +100,11 @@
                  l'un de l'autre : ce sont deux nombres courts, pas deux
                  paragraphes. -->
             <xpath expr="//field[@name='total_amount_currency']" position="attributes">
-                <attribute name="class">oe_inline me-0 o_expense_scan_amount</attribute>
+                <attribute name="class">oe_inline me-0</attribute>
             </xpath>
             <xpath expr="//field[@name='total_amount_currency']/parent::div/field[@name='currency_id']"
                    position="attributes">
-                <attribute name="class">ms-0 o_expense_scan_currency</attribute>
+                <attribute name="class">oe_inline ms-0</attribute>
             </xpath>
 
             <!-- Le total portait la même TVA une deuxième fois, entre
@@ -125,13 +125,9 @@
                 <field name="scan_tax_amount" widget="monetary"
                        options="{'currency_field': 'currency_id'}"
                        readonly="not is_editable" nolabel="1"
-                       class="oe_inline me-2 o_expense_scan_amount"
+                       class="oe_inline me-2"
                        placeholder="TVA du ticket"/>
             </xpath>
-            <xpath expr="//field[@name='tax_ids']" position="attributes">
-                <attribute name="class">o_expense_scan_taxes</attribute>
-            </xpath>
-
             <!-- Cette ligne remonte sous le total, dont elle fait partie. -->
             <xpath expr="//field[@name='total_amount_currency']/parent::div" position="after">
                 <xpath expr="//label[@for='tax_ids']" position="move"/>
