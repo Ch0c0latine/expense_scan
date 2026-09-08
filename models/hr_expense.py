@@ -46,12 +46,18 @@ class HrExpense(models.Model):
         string="TVA du ticket",
         currency_field='currency_id',
         copy=False,
-        help="Montant de TVA imprimé sur le justificatif. Renseigné, il fait "
+        help="Montant de TVA imprimé sur le justificatif. C'est lui qui fait "
              "foi : la TVA de la dépense et celle de l'écriture comptable "
-             "prennent cette valeur, quel que soit le taux retenu. C'est ce "
-             "qui permet à un ticket mêlant 5,5 %, 10 % et 20 % de produire "
-             "exactement sa TVA. Laisser à zéro pour qu'Odoo la calcule "
-             "depuis le taux, comme d'habitude.",
+             "prennent cette valeur, quel que soit le taux affiché à côté. "
+             "C'est ce qui permet à un ticket mêlant 5,5 %, 10 % et 20 % de "
+             "produire exactement sa TVA.\n\n"
+             "Zéro veut dire zéro : aucune TVA déductible, ce qui est le cas "
+             "d'un ticket de carte bancaire ou d'un justificatif où aucune "
+             "TVA n'a pu être lue.\n\n"
+             "Le taux ne sert qu'à deux choses : porter les tags fiscaux de "
+             "l'écriture, et plafonner ce montant — une TVA supérieure au "
+             "taux appliqué au total du ticket est forcément une erreur, et "
+             "choisir un taux plus bas rabote le montant d'autant.",
     )
     scan_time = fields.Char(string="Heure du ticket", readonly=True, copy=False)
     scan_datetime = fields.Datetime(
@@ -151,6 +157,27 @@ class HrExpense(models.Model):
         if rate is None:
             return None
         return self.total_amount_currency * rate / (100.0 + rate)
+
+    @api.onchange('tax_ids', 'total_amount_currency')
+    def _onchange_expense_scan_tax_ceiling(self):
+        """Choisir un taux plus bas rabote la TVA du ticket.
+
+        Sans quoi passer la dépense en « 0 % EX » laissait le montant lu
+        intact, donc une TVA déductible que le taux retenu ne justifie plus.
+        Le rabotage ne joue que dans ce sens : remonter le taux n'invente
+        pas de TVA, seul le justificatif dit combien a réellement été payé.
+        """
+        for expense in self:
+            if not expense.scan_tax_amount or not expense.currency_id:
+                continue
+            ceiling = expense._expense_scan_tax_ceiling()
+            if ceiling is None:
+                # Aucune taxe en pourcentage : rien à opposer ici. Le blocage
+                # vient à la comptabilisation, là où l'absence de taux
+                # empêche vraiment de porter la TVA dans l'écriture.
+                continue
+            if expense.currency_id.compare_amounts(expense.scan_tax_amount, ceiling) > 0:
+                expense.scan_tax_amount = expense.currency_id.round(ceiling)
 
     @api.constrains('scan_tax_amount', 'total_amount_currency', 'tax_ids')
     def _check_scan_tax_amount(self):
