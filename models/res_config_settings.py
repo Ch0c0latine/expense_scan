@@ -33,6 +33,8 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.expense_scan_reinvoice', readonly=False)
     expense_scan_set_vendor = fields.Boolean(
         related='company_id.expense_scan_set_vendor', readonly=False)
+    expense_scan_product_id = fields.Many2one(
+        related='company_id.expense_scan_product_id', readonly=False)
     expense_scan_wide_split = fields.Boolean(
         related='company_id.expense_scan_wide_split', readonly=False)
 

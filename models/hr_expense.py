@@ -343,8 +343,19 @@ class HrExpense(models.Model):
         """
         expense_ids = super().create_expense_from_attachments(
             attachment_ids=attachment_ids, view_type=view_type)
-        if self.env.company.expense_scan_enabled:
-            self.browse(expense_ids)._expense_scan_run()
+        expenses = self.browse(expense_ids)
+        company = self.env.company
+
+        # Odoo choisit la catégorie en cherchant la référence interne
+        # « EXP_GEN », puis, faute de la trouver, la première catégorie venue
+        # par ordre alphabétique — « Cadeau » par exemple. Renommer cette
+        # référence suffit donc à envoyer tous les tickets ailleurs. Le
+        # réglage de la société, lui, ne dépend d'aucune référence.
+        if company.expense_scan_product_id:
+            expenses.product_id = company.expense_scan_product_id
+
+        if company.expense_scan_enabled:
+            expenses._expense_scan_run()
         return expense_ids
 
     def action_expense_scan_rescan(self):

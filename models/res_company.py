@@ -88,6 +88,17 @@ class ResCompany(models.Model):
              "Désactivé par défaut : toutes les organisations ne travaillent "
              "pas par mission.",
     )
+    expense_scan_product_id = fields.Many2one(
+        comodel_name='product.product',
+        string="Catégorie par défaut",
+        domain="[('can_be_expensed', '=', True)]",
+        help="Catégorie affectée aux dépenses créées par un scan.\n\n"
+             "Laissé vide, c'est Odoo qui choisit : il cherche la référence "
+             "interne « EXP_GEN », et à défaut prend la première catégorie "
+             "venue par ordre alphabétique. Renommer cette référence suffit "
+             "donc à faire arriver les tickets sur n'importe quoi — d'où ce "
+             "réglage, qui ne dépend d'aucune référence.",
+    )
     expense_scan_set_vendor = fields.Boolean(
         string="Rechercher le fournisseur",
         default=False,

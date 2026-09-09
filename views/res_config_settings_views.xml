@@ -74,6 +74,12 @@
                             <label for="expense_scan_set_vendor"/></div>
                         <div><field name="expense_scan_reinvoice"/>
                             <label for="expense_scan_reinvoice"/></div>
+                        <div class="mt-2">
+                            <label for="expense_scan_product_id" class="o_light_label"/>
+                            <field name="expense_scan_product_id"
+                                   options="{'no_create': True}"
+                                   placeholder="par défaut : choix d'Odoo (référence EXP_GEN)"/>
+                        </div>
                     </div>
                 </setting>
 
