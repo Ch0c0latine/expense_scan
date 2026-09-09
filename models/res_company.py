@@ -76,7 +76,9 @@ class ResCompany(models.Model):
              "taux, lui, reste celui de la catégorie de dépense.",
     )
     expense_scan_reinvoice = fields.Boolean(
-        string="Rattacher les frais à une mission",
+        # Le libellé nomme la refacturation, faute de quoi on cherche en vain
+        # ce mot-là dans les paramètres : c'est bien ce qu'on vient y activer.
+        string="Refacturer les frais sur une mission",
         default=False,
         help="Ajoute un champ « À refacturer » sur les notes de frais et y "
              "propose la mission du salarié en cours à la date du ticket. Le "
