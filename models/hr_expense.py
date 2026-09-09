@@ -9,7 +9,7 @@ from pytz import timezone, utc
 
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools import format_date
+from odoo.tools import email_normalize, format_date
 from odoo.tools.safe_eval import safe_eval
 
 from ..ocr import engines, parser, preprocess
@@ -357,6 +357,33 @@ class HrExpense(models.Model):
         if company.expense_scan_enabled:
             expenses._expense_scan_run()
         return expense_ids
+
+    def _get_employee_from_email(self, email_address):
+        """Étend la reconnaissance de l'expéditeur aux adresses déclarées.
+
+        Odoo ne regarde que l'e-mail professionnel et celui du compte
+        utilisateur. Un salarié qui transfère un justificatif depuis son
+        téléphone personnel n'est donc pas reconnu, et Odoo crée alors une
+        dépense sans employé — un enregistrement qu'il faut rattraper à la
+        main, sans que personne ne soit prévenu.
+
+        La comparaison se fait sur l'adresse entière : le ``ilike`` ne sert
+        qu'à réduire la recherche, un fragment ne suffit pas à identifier
+        quelqu'un.
+        """
+        employee = super()._get_employee_from_email(email_address)
+        if employee:
+            return employee
+
+        normalized = email_normalize(email_address) or (email_address or '').strip().lower()
+        if not normalized:
+            return employee
+
+        Employee = self.env['hr.employee']
+        for candidate in Employee.search([('expense_scan_emails', 'ilike', normalized)]):
+            if normalized in candidate._expense_scan_email_set():
+                return candidate
+        return employee
 
     def action_expense_scan_rescan(self):
         """Relance l'analyse sur le justificatif courant.

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="hr_employee_view_form_scan" model="ir.ui.view">
+        <field name="name">hr.employee.form.scan</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Au plus près de l'e-mail professionnel : ce sont les mêmes
+                 adresses, vues sous le même angle — celles depuis lesquelles
+                 ce salarié peut nous écrire. -->
+            <xpath expr="(//field[@name='work_email'])[1]" position="after">
+                <field name="expense_scan_emails"
+                       placeholder="une par ligne : perso@exemple.fr"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>
