@@ -80,7 +80,7 @@ class HrExpense(models.Model):
         return self.attachment_ids.filtered(
             lambda attachment: self._expense_scan_readable(attachment))
 
-    def _expense_scan_run_pieces(self):
+    def _expense_scan_run_pieces(self, force=False, from_original=True):
         """Lit chaque justificatif, puis regroupe ceux qui n'en font qu'un.
 
         Le premier groupe reste sur cette dépense ; chacun des suivants part
@@ -93,7 +93,7 @@ class HrExpense(models.Model):
         attachments = self._expense_scan_image_attachments()
         if len(attachments) < 2:
             # Un seul justificatif : rien à comparer, chemin ordinaire.
-            return self._expense_scan_run()
+            return self._expense_scan_run(force=force, from_original=from_original)
 
         pieces = []
         for attachment in attachments:

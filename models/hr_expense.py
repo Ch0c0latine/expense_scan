@@ -396,13 +396,18 @@ class HrExpense(models.Model):
         return employee
 
     def action_expense_scan_rescan(self):
-        """Relance l'analyse sur le justificatif courant.
+        """Relance l'analyse sur le ou les justificatifs courants.
 
         Volontairement pas sur la photo d'origine : si l'utilisateur relance,
         c'est le plus souvent qu'il a retouché ou remplacé le ticket recadré,
         et repartir de l'original perdrait sa correction.
+
+        Passe par la comparaison des morceaux dès qu'il y en a plusieurs :
+        ajouter une seconde photo à une dépense puis relancer est la façon
+        naturelle de dire « ces deux-là vont ensemble ».
         """
-        self._expense_scan_run(force=True, from_original=False)
+        for expense in self:
+            expense._expense_scan_run_pieces(force=True, from_original=False)
         return True
 
     def action_expense_scan_done(self):
