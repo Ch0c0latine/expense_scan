@@ -697,6 +697,11 @@ class HrExpense(models.Model):
     # Report du résultat sur la dépense
     # ------------------------------------------------------------------
 
+    #: Champs déduits de la mission, réservés aux groupes Ventes et
+    #: Analytique. Écrits séparément, en droits élevés.
+    REINVOICE_FIELDS = ('project_id', 'reinvoice_mode',
+                        'analytic_distribution', 'sale_order_id')
+
     def _expense_scan_apply(self, result, attachment):
         """Écrit les champs lus et prépare le message de vérification."""
         self.ensure_one()
@@ -732,7 +737,18 @@ class HrExpense(models.Model):
             'scan_detected_tax': self._expense_scan_tax_label(result),
         })
         values.update(self._expense_scan_store_image(result, attachment, company))
+
+        # Les champs déduits de la mission s'écrivent en droits élevés, pour
+        # la même raison qu'ils se lisent ainsi : ils appartiennent aux
+        # groupes Ventes et Analytique, dont le salarié qui photographie son
+        # ticket ne fait pas partie. Ce ne sont pas des valeurs qu'il
+        # choisit — le module les déduit — et elles atterrissent sur sa
+        # propre dépense, en brouillon.
+        reinvoice_values = {name: values.pop(name)
+                            for name in self.REINVOICE_FIELDS if name in values}
         self.write(values)
+        if reinvoice_values:
+            self.sudo().write(reinvoice_values)
 
     def _expense_scan_field_values(self, result, company):
         """Traduit le résultat du parseur en valeurs de champs Odoo."""

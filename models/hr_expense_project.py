@@ -91,6 +91,18 @@ class HrExpense(models.Model):
             return {}
 
         values = {'project_id': project.id, 'reinvoice_mode': 'project'}
+
+        # Lecture en droits élevés, et c'est indispensable : le compte
+        # analytique d'un projet et sa commande à refacturer sont réservés
+        # aux groupes Analytique et Ventes. Un salarié ordinaire qui
+        # photographie son ticket n'en fait partie d'aucun, et l'analyse
+        # échouait pour lui seul — « vous ne disposez pas des droits
+        # suffisants pour accéder au champ reinvoiced_sale_order_id ».
+        #
+        # Rien n'est divulgué au passage : on ne retient que des
+        # identifiants, portés sur la dépense de ce salarié, et déduits de
+        # la mission sur laquelle il se trouvait ce jour-là.
+        project = project.sudo()
         if project.account_id:
             values['analytic_distribution'] = {str(project.account_id.id): 100.0}
 
