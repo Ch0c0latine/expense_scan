@@ -45,6 +45,61 @@ class HrExpense(models.Model):
         string="Rattachement aux missions actif",
     )
 
+    expense_scan_project_domain = fields.Char(
+        string="Missions proposées",
+        compute='_compute_expense_scan_project_domain',
+        help="Domaine appliqué au champ « Mission ». Il restreint le choix "
+             "d'un salarié à ses propres missions ; un chef de projet ou un "
+             "administrateur garde la liste entière.",
+    )
+
+    @api.depends_context('uid')
+    def _compute_expense_scan_project_domain(self):
+        """Restreint le choix de mission à celles du salarié.
+
+        Sans cela, n'importe qui rattachait son frais à n'importe quel
+        projet, y compris ceux auxquels il n'a jamais participé — et cette
+        imputation remonte dans la rentabilité du projet et sur la facture
+        du client. Un chef de projet ou un administrateur, lui, a de bonnes
+        raisons de voir toute la liste.
+
+        Ce domaine borne ce qui est **proposé**, ce qui n'est pas une
+        barrière de sécurité : il filtre l'interface, pas les écritures.
+        """
+        user = self.env.user
+        if user.has_group('project.group_project_manager') \
+                or user.has_group('base.group_system'):
+            domain = "[]"
+        else:
+            # Le salarié garde la possibilité d'en créer une : c'est le
+            # second terme, qui rattrape aussitôt le projet qu'il vient de
+            # créer, Odoo l'en désignant responsable par défaut.
+            domain = str(['|', ('id', 'in', self._expense_scan_user_project_ids()),
+                          ('user_id', '=', user.id)])
+        for expense in self:
+            expense.expense_scan_project_domain = domain
+
+    def _expense_scan_user_project_ids(self):
+        """Les missions de l'utilisateur courant, au sens large.
+
+        Trois sources, réunies : les projets dont il est responsable, ceux
+        où une tâche lui est assignée — le critère de ``mission_report`` —
+        et ceux de ses missions passées ou à venir.
+        """
+        user = self.env.user
+        projects = self.env['project.project'].search([('user_id', '=', user.id)])
+        tasks = self.env['project.task'].search([('user_ids', 'in', user.id)])
+        projects |= tasks.project_id
+
+        Leave = self.env['hr.leave']
+        if user.employee_ids and 'project_id' in Leave._fields:
+            missions = Leave.search([
+                ('employee_id', 'in', user.employee_ids.ids),
+                ('project_id', '!=', False),
+            ])
+            projects |= missions.project_id
+        return projects.ids
+
     @api.model
     def _get_view(self, view_id=None, view_type='form', **options):
         """Masque « Client à refacturer » : il découle de la mission.
