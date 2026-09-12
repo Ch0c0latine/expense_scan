@@ -508,14 +508,17 @@ class HrExpense(models.Model):
             attachment = self.scan_original_attachment_id or attachment
         if not attachment:
             attachment = self.attachment_ids[:1]
-        if not attachment:
+        if not attachment or not self._expense_scan_readable(attachment):
             return self.env['ir.attachment']
+        return attachment
+
+    @staticmethod
+    def _expense_scan_readable(attachment):
+        """Cette pièce jointe se laisse-t-elle lire par le moteur ?"""
         mimetype = (attachment.mimetype or '').lower()
         name = (attachment.name or '').lower()
-        if mimetype.startswith(SUPPORTED_IMAGE_PREFIX) or mimetype == PDF_MIMETYPE \
-                or name.endswith('.pdf'):
-            return attachment
-        return self.env['ir.attachment']
+        return bool(mimetype.startswith(SUPPORTED_IMAGE_PREFIX)
+                    or mimetype == PDF_MIMETYPE or name.endswith('.pdf'))
 
     def _expense_scan_image_bytes(self, attachment):
         """Octets d'image exploitables, en convertissant le PDF si besoin."""
