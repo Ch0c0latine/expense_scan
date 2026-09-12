@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!--
+        Odoo garde un seul bouton visible sur petit écran et pousse le reste
+        dans un menu « … ». On en laisse passer autant que l'annonce
+        `expenseScanMaxSlots`, soit trois sur une dépense et un partout
+        ailleurs, ce qui laisse le comportement d'origine hors de ce module.
+
+        La branche est réécrite plutôt qu'ajustée : le gabarit d'Odoo tire
+        un seul nom de slot, là où il en faut désormais une liste. Le menu
+        qui recueille les suivants reprend son balisage à l'identique.
+    -->
+    <t t-name="expense_scan.StatusBarButtonsWide"
+       t-inherit="web.StatusBarButtons" t-inherit-mode="extension">
+        <xpath expr="//t[@t-if='env.isSmall']" position="replace">
+            <t t-if="env.isSmall">
+                <t t-set="shownSlots"
+                   t-value="visibleSlotNames.slice(0, expenseScanMaxSlots)"/>
+                <t t-set="otherSlots"
+                   t-value="visibleSlotNames.slice(expenseScanMaxSlots)"/>
+                <t t-foreach="shownSlots" t-as="slot" t-key="slot">
+                    <t t-slot="{{ slot }}"/>
+                </t>
+                <Dropdown t-if="otherSlots.length">
+                    <button class="btn btn-secondary" title="More">
+                        <i class="oi oi-fw oi-ellipsis-v"/>
+                    </button>
+                    <t t-set-slot="content">
+                        <t t-foreach="otherSlots" t-as="slot" t-key="slot">
+                            <DropdownItem class="'o-dropdown-item-unstyled-button'">
+                                <t t-slot="{{ slot }}"/>
+                            </DropdownItem>
+                        </t>
+                    </t>
+                </Dropdown>
+            </t>
+        </xpath>
+    </t>
+
+</templates>
