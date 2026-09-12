@@ -184,12 +184,15 @@
                 </div>
                 <!-- Le domaine vient d'un champ calculé : il dépend de qui
                      regarde, pas de la dépense. Un salarié n'y voit que ses
-                     missions, et peut en créer une. -->
+                     missions. Sans mission qui convienne, il dispose déjà de
+                     « À déterminer » : proposer d'en créer une ouvrirait un
+                     bouton que ses droits ne lui permettent pas d'aboutir. -->
                 <field name="project_id"
                        invisible="not expense_scan_reinvoice or reinvoice_mode != 'project'"
                        required="expense_scan_reinvoice and reinvoice_mode == 'project'"
                        readonly="not is_editable"
                        domain="expense_scan_project_domain"
+                       options="{'no_quick_create': True}"
                        placeholder="mission sur laquelle refacturer ce frais"/>
             </xpath>
 

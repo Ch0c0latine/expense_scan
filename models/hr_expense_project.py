@@ -71,9 +71,8 @@ class HrExpense(models.Model):
                 or user.has_group('base.group_system'):
             domain = "[]"
         else:
-            # Le salarié garde la possibilité d'en créer une : c'est le
-            # second terme, qui rattrape aussitôt le projet qu'il vient de
-            # créer, Odoo l'en désignant responsable par défaut.
+            # Le second terme couvre les projets dont il est responsable :
+            # il peut n'y avoir aucune tâche ni aucune mission dessus.
             domain = str(['|', ('id', 'in', self._expense_scan_user_project_ids()),
                           ('user_id', '=', user.id)])
         for expense in self:

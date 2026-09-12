@@ -17,7 +17,7 @@ class TestExpenseScanMailGateway(common.TransactionCase):
         cls.employee = cls.env['hr.employee'].create({
             'name': "Camille Test",
             'work_email': "camille@societe.example",
-            'expense_scan_emails': "camille.perso@exemple.fr\ncam@mobile.example",
+            'private_email': "camille.perso@exemple.fr",
         })
         cls.other = cls.env['hr.employee'].create({
             'name': "Dominique Test",
@@ -31,12 +31,8 @@ class TestExpenseScanMailGateway(common.TransactionCase):
         """Le comportement d'Odoo reste premier servi."""
         self.assertEqual(self.sender("camille@societe.example"), self.employee)
 
-    def test_additional_address_is_recognised(self):
+    def test_private_email_is_recognised(self):
         self.assertEqual(self.sender("camille.perso@exemple.fr"), self.employee)
-
-    def test_second_additional_address(self):
-        """La liste en accepte plusieurs, séparées comme on veut."""
-        self.assertEqual(self.sender("cam@mobile.example"), self.employee)
 
     def test_address_is_matched_whole(self):
         """Un fragment ne désigne personne.
@@ -47,14 +43,13 @@ class TestExpenseScanMailGateway(common.TransactionCase):
         """
         self.assertFalse(self.sender("perso@exemple.fr"))
 
+    def test_case_and_display_name_are_ignored(self):
+        """« Camille <CAMILLE.PERSO@Exemple.FR> » désigne bien Camille."""
+        self.assertEqual(
+            self.sender("Camille <CAMILLE.PERSO@Exemple.FR>"), self.employee)
+
     def test_unknown_sender_stays_unknown(self):
         self.assertFalse(self.sender("inconnu@ailleurs.example"))
 
     def test_no_address_at_all(self):
         self.assertFalse(self.sender(""))
-
-    def test_case_and_spacing_are_ignored(self):
-        """Une adresse se lit sans égard à la casse ni aux espaces."""
-        self.employee.expense_scan_emails = "  Camille.PERSO@Exemple.FR , autre@x.example "
-        self.assertEqual(self.sender("camille.perso@exemple.fr"), self.employee)
-        self.assertEqual(self.sender("autre@x.example"), self.employee)

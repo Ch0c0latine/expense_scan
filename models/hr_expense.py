@@ -359,7 +359,7 @@ class HrExpense(models.Model):
         return expense_ids
 
     def _get_employee_from_email(self, email_address):
-        """Étend la reconnaissance de l'expéditeur aux adresses déclarées.
+        """Reconnaît aussi l'expéditeur à son adresse privée.
 
         Odoo ne regarde que l'e-mail professionnel et celui du compte
         utilisateur. Un salarié qui transfère un justificatif depuis son
@@ -367,21 +367,31 @@ class HrExpense(models.Model):
         dépense sans employé — un enregistrement qu'il faut rattraper à la
         main, sans que personne ne soit prévenu.
 
-        La comparaison se fait sur l'adresse entière : le ``ilike`` ne sert
-        qu'à réduire la recherche, un fragment ne suffit pas à identifier
-        quelqu'un.
+        L'adresse privée de la fiche employé suffit à couvrir ce cas, et
+        elle existe déjà : un champ de plus sur ``hr.employee`` se serait
+        heurté au profil public des employés, qui ne le connaîtrait pas et
+        refuserait dès lors toute lecture aux utilisateurs non-RH.
+
+        Lecture en droits élevés, car l'adresse privée est réservée au
+        groupe RH : l'appelant, lui, est la passerelle de messagerie.
         """
         employee = super()._get_employee_from_email(email_address)
         if employee:
             return employee
 
-        normalized = email_normalize(email_address) or (email_address or '').strip().lower()
+        normalized = email_normalize(email_address)
         if not normalized:
             return employee
 
-        Employee = self.env['hr.employee']
-        for candidate in Employee.search([('expense_scan_emails', 'ilike', normalized)]):
-            if normalized in candidate._expense_scan_email_set():
+        Employee = self.env['hr.employee'].sudo()
+        if 'private_email' not in Employee._fields:
+            return employee
+
+        # Le « ilike » ne sert qu'à réduire la recherche ; la comparaison
+        # qui tranche porte sur l'adresse entière, normalisée de part et
+        # d'autre — un fragment ne désigne personne.
+        for candidate in Employee.search([('private_email', 'ilike', normalized)]):
+            if email_normalize(candidate.private_email) == normalized:
                 return candidate
         return employee
 

@@ -36,7 +36,6 @@ Aucun document ne quitte le serveur.
     'depends': ['hr_expense', 'project'],
     'data': [
         'views/hr_expense_views.xml',
-        'views/hr_employee_views.xml',
         'views/res_config_settings_views.xml',
     ],
     'assets': {
