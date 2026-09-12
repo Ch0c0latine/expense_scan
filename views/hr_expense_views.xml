@@ -11,9 +11,14 @@
                  enchaîne, « Terminé » étant celui qu'on cherche neuf fois
                  sur dix une fois les champs relus. -->
             <xpath expr="//header/button[1]" position="before">
+                <!-- « Terminé » et « Supprimer » ne dépendent pas du scan :
+                     une dépense saisie à la main se termine et s'abandonne
+                     de la même façon, et devoir alors chercher la sortie
+                     dans un autre menu n'a aucun sens. Seul « Scanner un
+                     autre » suppose qu'on vient d'en scanner un. -->
                 <button name="action_expense_scan_done" type="object"
                         string="Terminé" class="oe_highlight"
-                        invisible="scan_state == 'none' or state != 'draft'"/>
+                        invisible="state != 'draft'"/>
                 <button name="action_expense_scan_again" type="object"
                         string="Scanner un autre"
                         invisible="scan_state == 'none' or state != 'draft'"/>
@@ -25,7 +30,7 @@
                 <button name="action_expense_scan_drop" type="object"
                         string="Supprimer" class="text-danger"
                         confirm="Supprimer définitivement cette dépense et son justificatif ?"
-                        invisible="scan_state == 'none' or state != 'draft'"/>
+                        invisible="state != 'draft'"/>
             </xpath>
 
             <!-- Joindre le reçu fait doublon avec le volet des pièces

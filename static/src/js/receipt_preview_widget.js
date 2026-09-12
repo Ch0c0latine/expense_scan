@@ -40,7 +40,7 @@ export class ExpenseScanReceipt extends Component {
      * Elle suit le réglage de société exposé dans la session.
      */
     get splitThreshold() {
-        return session.expense_scan_wide_split ? SIZES.LG : SIZES.XXL;
+        return session.expense_scan_wide_split ? SIZES.MD : SIZES.XXL;
     }
 
     /** L'aperçu ne sert que là où le volet natif est absent. */

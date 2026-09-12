@@ -3,12 +3,12 @@
 //
 // mail/core/common/attachment_view.scss ne met en forme le volet
 // `.o_attachment_preview` qu'à partir du point de rupture XXL (1400 px).
-// Le contrôleur, lui, sait afficher ce volet dès LG grâce au correctif
+// Le contrôleur, lui, sait afficher ce volet dès MD grâce au correctif
 // JavaScript ; il ne lui manque donc que la mise en forme sur cette plage.
 // On la réécrit ici plutôt que de réutiliser le mixin d'Odoo, dont dépendrait
 // alors la compilation de tout le paquet d'assets.
 // ---------------------------------------------------------------------------
-@media (min-width: 992px) and (max-width: 1399.98px) {
+@media (min-width: 768px) and (max-width: 1399.98px) {
     .o_attachment_preview {
         display: block;
         flex: auto;

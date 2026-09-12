@@ -4,8 +4,16 @@
  * donc jamais droit, alors que c'est précisément l'écran sur lequel on
  * relit une note de frais.
  *
- * On abaisse ce seuil à LG (992 px) pour les seules dépenses, sans toucher
- * au comportement des autres modèles.
+ * On abaisse ce seuil à MD (768 px) pour les seules dépenses, sans toucher
+ * au comportement des autres modèles. Le seuil porte sur la largeur seule,
+ * jamais sur le rapport largeur/hauteur : une fenêtre étroite et haute —
+ * un navigateur en demi-écran, une tablette à la verticale — reste bien
+ * assez large pour deux colonnes, et c'est une disposition courante pour
+ * relire un ticket.
+ *
+ * En deçà de 768 px, c'est le widget `expense_scan_receipt` qui prend le
+ * relais et pose l'aperçu en bandeau au-dessus des champs : sur un
+ * téléphone, deux colonnes ne seraient lisibles ni l'une ni l'autre.
  */
 import { patch } from "@web/core/utils/patch";
 import { session } from "@web/session";
@@ -21,7 +29,7 @@ patch(FormRenderer.prototype, {
             hasAttachmentContainer &&
             this.mailStore &&
             !this.mailPopoutService.externalWindow &&
-            this.uiService.size >= SIZES.LG &&
+            this.uiService.size >= SIZES.MD &&
             this.uiService.size < SIZES.XXL &&
             this.hasFile()
         ) {

@@ -106,11 +106,15 @@ class ResCompany(models.Model):
              "uniquement en cas de correspondance unique.",
     )
     expense_scan_wide_split = fields.Boolean(
-        string="Vue scindée dès 992 px",
+        string="Vue scindée dès 768 px",
         default=True,
         help="Odoo n'affiche le justificatif à côté du formulaire qu'à "
              "partir de 1400 px de large. Cette option abaisse le seuil aux "
-             "écrans d'ordinateur portable et aux tablettes en paysage.",
+             "écrans d'ordinateur portable, aux fenêtres en demi-écran et "
+             "aux tablettes, quelle que soit leur orientation.\n\n"
+             "Le seuil porte sur la largeur seule : une fenêtre plus haute "
+             "que large reste assez large pour deux colonnes. En deçà, "
+             "l'aperçu passe en bandeau au-dessus des champs.",
     )
 
     expense_scan_model_dir = fields.Char(
