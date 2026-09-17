@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Yves Vallée
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<odoo>
+
+    <!-- Modèles d'export Excel -->
+
+    <record id="expense_scan_export_template_view_list" model="ir.ui.view">
+        <field name="name">expense.scan.export.template.list</field>
+        <field name="model">expense.scan.export.template</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="filename"/>
+                <field name="reinvoice_only"/>
+                <field name="single_project"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="expense_scan_export_template_view_form" model="ir.ui.view">
+        <field name="name">expense.scan.export.template.form</field>
+        <field name="model">expense.scan.export.template</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_expense_scan_generate_file" type="object"
+                            string="Classeur vierge" icon="fa-file-excel-o"
+                            confirm="Remplacer le classeur actuel par un classeur vierge, construit d'après les correspondances ?"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Archivé" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Suivi mensuel des frais"/></h1>
+                    </div>
+                    <group>
+                        <group string="Classeur">
+                            <field name="file" filename="filename"/>
+                            <field name="filename" invisible="1"/>
+                            <field name="sheet_name" placeholder="Première feuille"/>
+                            <field name="first_row"/>
+                            <field name="last_row"/>
+                        </group>
+                        <group string="Contrôles avant export">
+                            <field name="reinvoice_only"/>
+                            <field name="single_project"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <field name="column_ids">
+                        <!-- Une cellule et une valeur : le type se déduit de
+                             la cellule (B = colonne, K4 = en-tête). -->
+                        <list editable="bottom">
+                            <field name="cell" placeholder="B ou K4"/>
+                            <field name="value" required="1"/>
+                            <field name="kind" readonly="1"/>
+                        </list>
+                    </field>
+                    <field name="note" placeholder="Remarques sur ce modèle…"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="expense_scan_export_template_view_search" model="ir.ui.view">
+        <field name="name">expense.scan.export.template.search</field>
+        <field name="model">expense.scan.export.template</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <filter string="Archivés" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="expense_scan_export_template_action" model="ir.actions.act_window">
+        <field name="name">Modèles d'export</field>
+        <field name="res_model">expense.scan.export.template</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="expense_scan_export_template_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Déposez un classeur Excel de frais</p>
+            <p>Partez du « modèle de base » livré avec le module : téléchargez
+               son classeur, adaptez-le, redéposez-le. Indiquez les lignes
+               réservées aux dépenses, puis quelle colonne reçoit quelle
+               valeur ; les anciennes données du classeur sont remplacées à
+               chaque export.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_expense_scan_export_templates"
+              name="Modèles d'export"
+              parent="hr_expense.menu_hr_expense_configuration"
+              action="expense_scan_export_template_action"
+              groups="hr_expense.group_hr_expense_manager"
+              sequence="30"/>
+
+    <!-- Assistant « Fiche de frais » -->
+
+    <record id="expense_scan_sheet_wizard_view_form" model="ir.ui.view">
+        <field name="name">expense.scan.sheet.wizard.form</field>
+        <field name="model">expense.scan.sheet.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <field name="expense_ids" invisible="1"/>
+                <field name="available_project_ids" invisible="1"/>
+                <div class="alert alert-info fs-5 fw-bold mb-2" role="status">
+                    <i class="fa fa-file-text-o me-2"/>
+                    <field name="selected_summary" readonly="1" class="d-inline"/>
+                </div>
+                <group>
+                    <group string="Frais">
+                        <field name="scope" widget="radio"/>
+                        <field name="project_ids" widget="many2many_tags"
+                               domain="[('id', 'in', available_project_ids)]"
+                               options="{'no_create': True}"/>
+                    </group>
+                    <group string="Sorties">
+                        <field name="summary"/>
+                        <field name="excel"/>
+                        <field name="template_id" invisible="not excel" required="excel"
+                               options="{'no_create': True}"/>
+                        <field name="receipts"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_generate" type="object" string="Générer"
+                            class="btn-primary" data-hotkey="q"/>
+                    <button special="cancel" string="Annuler" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="expense_scan_sheet_wizard_action" model="ir.actions.act_window">
+        <field name="name">Fiche de frais</field>
+        <field name="res_model">expense.scan.sheet.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="hr_expense.model_hr_expense"/>
+        <field name="binding_view_types">list</field>
+    </record>
+
+</odoo>

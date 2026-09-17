@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Yves Vallée
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<odoo>
+
+    <!-- L'ordre des catégories se règle par glisser-déposer dans leur liste :
+         c'est celui que suit la liste déroulante d'une dépense. Les favoris
+         ne passent plus devant, sans quoi l'ordre choisi ne tiendrait pas. -->
+    <record id="product_product_expense_categories_tree_view_scan" model="ir.ui.view">
+        <field name="name">product.product.expense.categories.list.scan</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="hr_expense.product_product_expense_categories_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="default_order">sequence, default_code, name, id</attribute>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="before">
+                <field name="sequence" widget="handle"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_product_expense_form_view_scan" model="ir.ui.view">
+        <field name="name">product.product.expense.form.scan</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="hr_expense.product_product_expense_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='default_code']" position="after">
+                <field name="sequence" string="Ordre d'affichage" class="w-50"
+                       help="Rang de la catégorie dans la liste déroulante des dépenses. Se règle aussi par glisser-déposer dans la liste des catégories."/>
+            </xpath>
+            <!-- À côté des taxes, qu'il rend sans objet : cocher la case les
+                 efface et les fige. -->
+            <xpath expr="//field[@name='supplier_taxes_id']" position="attributes">
+                <attribute name="invisible">expense_scan_no_vat</attribute>
+            </xpath>
+            <xpath expr="//field[@name='supplier_taxes_id']" position="after">
+                <field name="expense_scan_no_vat"/>
+                <field name="expense_scan_keywords"
+                       placeholder="Un mot par ligne : hôtel, nocleg, Ibis…"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Yves Vallée
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<odoo>
+
+    <!-- Tarif kilométrique, à côté de l'approbateur des notes de frais
+         qu'hr_expense place déjà dans le groupe « managers ». Réservé aux
+         RH, comme le champ lui-même : un nœud visible par tous obligerait
+         Odoo à lire le champ pour des utilisateurs qui n'y ont pas droit. -->
+    <record id="hr_employee_view_form_expense_scan" model="ir.ui.view">
+        <field name="name">hr.employee.form.expense.scan</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr_expense.hr_employee_view_form_inherit_expense"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='expense_manager_id']" position="after">
+                <field name="expense_mileage_rate" groups="hr.group_hr_user"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
