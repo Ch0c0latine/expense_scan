@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Yves Vallée
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<templates xml:space="preserve">
+
+    <!-- Sur les dépenses, un bouton « Fiche de frais » à la place du menu
+         « Imprimer » ; ailleurs, rien ne change. -->
+    <t t-name="expense_scan.ActionMenus" t-inherit="web.ActionMenus" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_cp_action_menus')]/div[1]" position="attributes">
+            <attribute name="t-if">props.items.print?.length and !expenseSheetAction</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('o_cp_action_menus')]/div[1]" position="before">
+            <div t-if="expenseSheetAction" class="d-inline-block">
+                <button class="btn btn-secondary o_expense_scan_sheet_button"
+                        data-hotkey="shift+u" t-on-click="onExpenseSheet"
+                        title="Fiche de frais : récapitulatif, export Excel, justificatifs">
+                    <i class="fa fa-file-text-o me-1"/>
+                    <span class="o_dropdown_title">Fiche de frais</span>
+                </button>
+            </div>
+        </xpath>
+    </t>
+
+</templates>

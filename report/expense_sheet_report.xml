@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Yves Vallée
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<odoo>
+
+    <record id="paperformat_expense_sheet" model="report.paperformat">
+        <field name="name">Fiche de frais (A4 paysage)</field>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">12</field>
+        <field name="margin_bottom">8</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_spacing">7</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!-- Appelé par l'assistant « Fiche de frais », jamais depuis le menu
+         Imprimer : la numérotation dépend de la sélection entière. -->
+    <record id="action_report_expense_sheet" model="ir.actions.report">
+        <field name="name">Fiche de frais</field>
+        <field name="model">hr.expense</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">expense_scan.report_expense_sheet</field>
+        <field name="report_file">expense_scan.report_expense_sheet</field>
+        <field name="paperformat_id" ref="paperformat_expense_sheet"/>
+    </record>
+
+    <template id="report_expense_sheet">
+        <t t-call="web.html_container">
+            <!-- En-tête interne d'une ligne (date, société, page), sans pied de
+                 page : le tableau a besoin de toute la hauteur. -->
+            <t t-call="web.internal_layout">
+                <div class="page o_expense_sheet">
+                    <h5 class="mb-1">Fiche de frais — <t t-out="header['salarie']"/></h5>
+                    <p class="mb-1" style="font-size: 9pt;">
+                        <t t-out="header['prestation']"/>
+                        <t t-if="header['periode']"> · Période <t t-out="header['periode']"/></t>
+                    </p>
+                    <table class="table table-sm o_main_table" style="font-size: 9pt;">
+                        <thead>
+                            <tr>
+                                <th>N°</th>
+                                <th>Date</th>
+                                <th>Catégorie</th>
+                                <th>Description</th>
+                                <th>Enseigne</th>
+                                <th>Mission</th>
+                                <th class="text-end">Qté</th>
+                                <th class="text-end">HT</th>
+                                <th class="text-end">Taux TVA</th>
+                                <th class="text-end">TVA</th>
+                                <th class="text-end">TTC</th>
+                                <th>Payé par</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="lines" t-as="line">
+                                <td><t t-out="line['n']"/><t t-if="line['flat_rate']"> <em>(forfait)</em></t></td>
+                                <td><t t-out="format_date(line['date'])"/></td>
+                                <td><t t-out="line['categorie']"/></td>
+                                <td><t t-out="line['description']"/></td>
+                                <td><t t-out="line['enseigne']"/></td>
+                                <td><t t-out="line['mission']"/></td>
+                                <td class="text-end"><t t-out="line['quantite_label']"/></td>
+                                <td class="text-end"><t t-out="line['total_ht']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                <td class="text-end"><t t-out="line['taux_label']"/></td>
+                                <td class="text-end"><t t-out="line['total_tva']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                <td class="text-end"><t t-out="line['total_ttc']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                <td><t t-out="line['mode_paiement']"/></td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td colspan="7">Total</td>
+                                <td class="text-end"><t t-out="header['total_ht']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                <td/>
+                                <td class="text-end"><t t-out="header['total_tva']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                <td class="text-end"><t t-out="header['total_ttc']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                <td/>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <h6 class="mt-2 mb-1">TVA récupérable par taux</h6>
+                    <table class="table table-sm" style="font-size: 9pt; width: auto;">
+                        <thead>
+                            <tr>
+                                <th>Taux</th>
+                                <th class="text-end">Dépenses</th>
+                                <th class="text-end">Base HT</th>
+                                <th class="text-end">TVA</th>
+                                <th class="text-end">TTC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="header['vat_rows']" t-as="row">
+                                <td><t t-out="row['label']"/></td>
+                                <td class="text-end"><t t-out="row['count']"/></td>
+                                <td class="text-end"><t t-out="row['total_ht']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                <td class="text-end"><t t-out="row['total_tva']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                <td class="text-end"><t t-out="row['total_ttc']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p style="font-size: 8pt;">
+                        Les justificatifs suivent, dans l'ordre et sous le même numéro.
+                        Les forfaits (kilométrage, barèmes) n'en ont pas.
+                    </p>
+                </div>
+            </t>
+        </t>
+    </template>
+
+</odoo>

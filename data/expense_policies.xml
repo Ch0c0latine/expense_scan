@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Yves Vallée
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<odoo noupdate="1">
+
+    <!-- Règles de bonne conduite générales, valables pour toutes les
+         dépenses. Les plafonds reprennent les barèmes URSSAF des frais
+         professionnels : au-delà, le remboursement reste possible sur
+         justificatif, mais doit pouvoir s'expliquer. Archivez l'ensemble
+         pour le suspendre, dupliquez-le pour l'adapter. -->
+    <record id="policy_good_practice" model="expense.scan.policy"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="name">Bonnes pratiques (barèmes URSSAF)</field>
+        <field name="apply_to_all" eval="True"/>
+        <field name="note">Montants indicatifs, repris des barèmes URSSAF des frais professionnels de 2026 : repas au restaurant en déplacement 21,40 € ; logement et petit-déjeuner en grand déplacement 76,60 € à Paris et dans les Hauts-de-Seine, la Seine-Saint-Denis et le Val-de-Marne, 56,80 € ailleurs (trois premiers mois). À vérifier chaque 1er janvier sur urssaf.fr ou boss.gouv.fr.
+
+Au-delà d'un plafond, un frais réel reste remboursable s'il est justifié. Les amendes et les dépenses personnelles ne sont ni des frais professionnels ni déductibles. Côté TVA, rappel : elle ne se récupère ni sur l'hébergement des salariés, ni sur le transport de personnes, et seulement sur facture au nom de l'entreprise.</field>
+    </record>
+
+    <record id="policy_good_practice_meal" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="policy_good_practice"/>
+        <field name="sequence">1</field>
+        <field name="name">Repas au restaurant : 21,40 € (barème URSSAF), au-delà à justifier</field>
+        <field name="family">meal</field>
+        <field name="rule_type">max_amount</field>
+        <field name="amount">21.40</field>
+    </record>
+    <record id="policy_good_practice_meal_day" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="policy_good_practice"/>
+        <field name="sequence">2</field>
+        <field name="name">Repas d'une journée : deux repas au barème, 42,80 € (petit-déjeuner compris dans l'hôtel)</field>
+        <field name="family">meal</field>
+        <field name="rule_type">daily_max</field>
+        <field name="meal_period">day</field>
+        <field name="amount">42.80</field>
+    </record>
+    <record id="policy_good_practice_lodging" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="policy_good_practice"/>
+        <field name="sequence">3</field>
+        <field name="name">Hôtel et petit-déjeuner : 56,80 € la nuit, 76,60 € à Paris et en petite couronne</field>
+        <field name="family">lodging</field>
+        <field name="rule_type">max_amount</field>
+        <field name="amount">56.80</field>
+        <field name="per_night" eval="True"/>
+        <field name="extra_amount">19.80</field>
+        <field name="extra_cities">Paris, Boulogne-Billancourt, Nanterre, Courbevoie, Puteaux, Issy-les-Moulineaux, Levallois-Perret, Neuilly-sur-Seine, Rueil-Malmaison, Saint-Denis, Montreuil, Aubervilliers, Pantin, Noisy-le-Grand, Créteil, Vincennes, Ivry-sur-Seine, Vitry-sur-Seine, Rungis</field>
+    </record>
+    <record id="policy_good_practice_personal" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="policy_good_practice"/>
+        <field name="sequence">4</field>
+        <field name="name">Amendes et dépenses personnelles : ni frais professionnels, ni déductibles</field>
+        <field name="rule_type">forbidden_words</field>
+        <field name="words">amende
+contravention
+avis de contravention
+amende forfaitaire
+cigarettes
+loto
+française des jeux
+pmu
+casino
+pari sportif</field>
+    </record>
+    <record id="policy_good_practice_hotel_extras" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="policy_good_practice"/>
+        <field name="sequence">5</field>
+        <field name="name">Extras d'hôtel personnels (minibar, films, pressing) : à la charge du salarié</field>
+        <field name="family">lodging</field>
+        <field name="rule_type">forbidden_words</field>
+        <field name="words">minibar
+mini bar
+pay tv
+vod
+film
+pressing
+blanchisserie
+spa</field>
+    </record>
+    <record id="policy_good_practice_alcohol" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="policy_good_practice"/>
+        <field name="sequence">6</field>
+        <field name="name">Alcool sur une note de repas : consommation modérée, à justifier</field>
+        <field name="family">meal</field>
+        <field name="rule_type">forbidden_words</field>
+        <field name="words">vin
+bière
+champagne
+whisky
+cocktail
+apéritif
+digestif
+vodka
+rhum</field>
+    </record>
+    <record id="policy_good_practice_travel_class" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="policy_good_practice"/>
+        <field name="sequence">7</field>
+        <field name="name">Train en 2de classe, avion en classe économique, sauf accord préalable</field>
+        <field name="family">train_air</field>
+        <field name="rule_type">forbidden_words</field>
+        <field name="words">1ère classe
+1re classe
+première classe
+1st class
+first class
+business
+classe affaires</field>
+    </record>
+    <record id="policy_good_practice_rental" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="policy_good_practice"/>
+        <field name="sequence">8</field>
+        <field name="name">Location de véhicule : catégorie économique</field>
+        <field name="family">car_rental</field>
+        <field name="rule_type">rental_class</field>
+    </record>
+
+    <function model="expense.scan.policy" name="_expense_scan_recheck_all"/>
+
+</odoo>

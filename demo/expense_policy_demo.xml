@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Yves Vallée
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<odoo>
+
+    <!-- Démonstration : un client qui impose ses propres règles sur les
+         missions qu'il confie, plus strictes que les bonnes pratiques. -->
+    <record id="demo_client" model="res.partner">
+        <field name="name">Industries Exemple SA</field>
+        <field name="is_company" eval="True"/>
+        <field name="city">Lyon</field>
+    </record>
+    <record id="demo_client_site" model="res.partner">
+        <field name="name">Site de production</field>
+        <field name="parent_id" ref="demo_client"/>
+        <field name="type">other</field>
+    </record>
+    <record id="demo_project" model="project.project">
+        <field name="name">Mission de démonstration</field>
+        <field name="partner_id" ref="demo_client_site"/>
+    </record>
+    <record id="demo_task_audit" model="project.task">
+        <field name="name">Audit sur site</field>
+        <field name="project_id" ref="demo_project"/>
+        <field name="sequence">1</field>
+    </record>
+    <record id="demo_task_report" model="project.task">
+        <field name="name">Rapport final</field>
+        <field name="project_id" ref="demo_project"/>
+        <field name="sequence">2</field>
+    </record>
+
+    <record id="demo_policy" model="expense.scan.policy"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="name">Exemple : exigences d'un client</field>
+        <field name="partner_ids" eval="[(6, 0, [ref('demo_client')])]"/>
+        <field name="note">Règles fictives, fixées par contrat avec le client : elles s'appliquent aux missions de ses sites, en plus des bonnes pratiques de l'entreprise.</field>
+    </record>
+
+    <record id="demo_policy_travel_class" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="demo_policy"/>
+        <field name="sequence">1</field>
+        <field name="name">Train en 2de classe, avion en classe économique, sans exception</field>
+        <field name="family">train_air</field>
+        <field name="rule_type">forbidden_words</field>
+        <field name="words">1ère classe
+première classe
+first class
+business
+premium economy</field>
+    </record>
+    <record id="demo_policy_breakfast" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="demo_policy"/>
+        <field name="sequence">2</field>
+        <field name="name">Petit-déjeuner : 15 € au plus</field>
+        <field name="family">meal</field>
+        <field name="meal_period">breakfast</field>
+        <field name="amount">15</field>
+    </record>
+    <record id="demo_policy_lunch" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="demo_policy"/>
+        <field name="sequence">3</field>
+        <field name="name">Déjeuner : 25 € au plus</field>
+        <field name="family">meal</field>
+        <field name="meal_period">lunch</field>
+        <field name="amount">25</field>
+    </record>
+    <record id="demo_policy_dinner" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="demo_policy"/>
+        <field name="sequence">4</field>
+        <field name="name">Dîner : 35 € au plus</field>
+        <field name="family">meal</field>
+        <field name="meal_period">dinner</field>
+        <field name="amount">35</field>
+    </record>
+    <record id="demo_policy_daily_meals" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="demo_policy"/>
+        <field name="sequence">5</field>
+        <field name="name">Repas du jour : 55 € au total (un repas plus cher reste admis dans cette limite)</field>
+        <field name="family">meal</field>
+        <field name="rule_type">daily_max</field>
+        <field name="meal_period">day</field>
+        <field name="amount">55</field>
+    </record>
+    <record id="demo_policy_hotel" model="expense.scan.policy.rule"
+            context="{'expense_scan_no_recheck': True}">
+        <field name="policy_id" ref="demo_policy"/>
+        <field name="sequence">6</field>
+        <field name="name">Hôtel : 110 € la nuit, 140 € dans les grandes villes</field>
+        <field name="family">lodging</field>
+        <field name="amount">110</field>
+        <field name="per_night" eval="True"/>
+        <field name="extra_amount">30</field>
+        <field name="extra_cities">Paris, Lyon, Marseille, Nice, Bordeaux</field>
+    </record>
+
+    <function model="expense.scan.policy" name="_expense_scan_recheck_all"/>
+
+</odoo>

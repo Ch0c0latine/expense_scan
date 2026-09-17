@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_expense_scan_sirene_system,expense.scan.sirene.system,model_expense_scan_sirene,base.group_system,1,1,1,1
+access_expense_scan_export_template_user,expense.scan.export.template.user,model_expense_scan_export_template,base.group_user,1,0,0,0
+access_expense_scan_export_template_manager,expense.scan.export.template.manager,model_expense_scan_export_template,hr_expense.group_hr_expense_manager,1,1,1,1
+access_expense_scan_export_column_user,expense.scan.export.column.user,model_expense_scan_export_column,base.group_user,1,0,0,0
+access_expense_scan_export_column_manager,expense.scan.export.column.manager,model_expense_scan_export_column,hr_expense.group_hr_expense_manager,1,1,1,1
+access_expense_scan_sheet_wizard_user,expense.scan.sheet.wizard.user,model_expense_scan_sheet_wizard,base.group_user,1,1,1,1
+access_expense_scan_policy_user,expense.scan.policy.user,model_expense_scan_policy,base.group_user,1,0,0,0
+access_expense_scan_policy_manager,expense.scan.policy.manager,model_expense_scan_policy,hr_expense.group_hr_expense_manager,1,1,1,1
+access_expense_scan_policy_rule_user,expense.scan.policy.rule.user,model_expense_scan_policy_rule,base.group_user,1,0,0,0
+access_expense_scan_policy_rule_manager,expense.scan.policy.rule.manager,model_expense_scan_policy_rule,hr_expense.group_hr_expense_manager,1,1,1,1

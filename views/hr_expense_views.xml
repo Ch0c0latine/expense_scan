@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Yves Vallée
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<odoo>
+
+    <record id="hr_expense_view_form_scan" model="ir.ui.view">
+        <field name="name">hr.expense.form.scan</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Suite d'un scan, en tête : ce sont les gestes qu'on
+                 enchaîne, « Terminé » étant celui qu'on cherche neuf fois
+                 sur dix une fois les champs relus. -->
+            <xpath expr="//header/button[1]" position="before">
+                <!-- « Terminé » et « Supprimer » ne dépendent pas du scan :
+                     une dépense saisie à la main se termine et s'abandonne
+                     de la même façon, et devoir alors chercher la sortie
+                     dans un autre menu n'a aucun sens. Pas de « Scanner un
+                     autre » : il n'épargnait qu'un clic sur la liste. -->
+                <button name="action_expense_scan_done" type="object"
+                        string="Terminé" class="oe_highlight"
+                        invisible="state != 'draft'"/>
+            </xpath>
+
+            <!-- Supprimer ferme la marche : c'est l'action qu'on veut le
+                 plus loin possible du pouce. Réduit à sa corbeille sur
+                 téléphone, il reste protégé par sa confirmation. -->
+            <xpath expr="//header" position="inside">
+                <button name="action_expense_scan_drop" type="object"
+                        icon="fa-trash" title="Supprimer" class="text-danger"
+                        confirm="Supprimer définitivement cette dépense et son justificatif ?"
+                        invisible="state != 'draft'">
+                    <span class="d-none d-md-inline ms-1">Supprimer</span>
+                </button>
+            </xpath>
+
+            <!-- Joindre le reçu fait doublon avec le volet des pièces
+                 jointes, qu'on ouvre d'office juste en dessous. -->
+            <xpath expr="(//widget[@name='attach_document'])[1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="(//widget[@name='attach_document'])[2]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Fractionner reste accessible par le menu d'actions ; en
+                 tête, il encombre un parcours de scan. -->
+            <xpath expr="(//button[@name='action_split_wizard'])[1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="(//button[@name='action_split_wizard'])[2]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Le compilateur d'Odoo lit cet attribut : le volet des
+                 pièces jointes s'ouvre alors sans qu'on ait à le déplier. -->
+            <xpath expr="//chatter" position="attributes">
+                <attribute name="open_attachments">1</attribute>
+            </xpath>
+
+            <!-- Bandeau de relecture, au même niveau que l'alerte de doublon -->
+            <xpath expr="//div[@name='warning_duplicate_receipt_expense']" position="after">
+                <div class="alert alert-warning d-flex align-items-center gap-2"
+                     role="alert" name="expense_scan_todo"
+                     invisible="scan_state != 'partial'">
+                    <i class="fa fa-search" role="img" aria-label="Analyse"/>
+                    <span>
+                        Ticket analysé. Vérifiez ces champs avant de soumettre :
+                        <field name="scan_todo" class="fw-bold" nolabel="1" readonly="1"/>
+                    </span>
+                </div>
+                <div class="alert alert-info d-flex align-items-center gap-2"
+                     role="status" name="expense_scan_done"
+                     invisible="scan_state != 'done'">
+                    <i class="fa fa-check" role="img" aria-label="Analyse"/>
+                    <span>Ticket analysé et champs pré-remplis. Relisez-les avant de soumettre.</span>
+                </div>
+                <div class="alert alert-danger d-flex align-items-center gap-2"
+                     role="alert" name="expense_scan_error"
+                     invisible="scan_state != 'error'">
+                    <i class="fa fa-exclamation-triangle" role="img" aria-label="Erreur"/>
+                    <span>
+                        L'analyse du ticket a échoué, saisissez la dépense manuellement.
+                        <field name="scan_message" nolabel="1" readonly="1"/>
+                    </span>
+                </div>
+            </xpath>
+
+            <!-- Aperçu du ticket au-dessus des champs sur écran étroit.
+                 Sur grand écran, c'est le volet natif d'Odoo qui l'affiche
+                 à gauche : le widget ne rend alors rien. -->
+            <xpath expr="//sheet/div[hasclass('oe_title')]" position="before">
+                <widget name="expense_scan_receipt"/>
+            </xpath>
+
+            <!-- ============================================================
+                 Ordre de saisie
+                 ============================================================
+                 Le formulaire d'origine range les champs par thème. Après un
+                 scan, ce qui compte est l'ordre dans lequel on les relit :
+                 d'abord ce que la photo a rempli et qu'il faut vérifier,
+                 ensuite ce qui se décide, et enfin ce qu'on ne touche
+                 jamais. Les champs sont donc déplacés, pas dupliqués. -->
+
+            <!-- Montant et TVA du ticket sur une ligne chacun, au plus près
+                 l'un de l'autre : ce sont deux nombres courts, pas deux
+                 paragraphes. -->
+            <xpath expr="//field[@name='total_amount_currency']" position="attributes">
+                <attribute name="class">oe_inline me-2 o_expense_scan_amount</attribute>
+            </xpath>
+            <xpath expr="//field[@name='total_amount_currency']/parent::div/field[@name='currency_id']"
+                   position="attributes">
+                <attribute name="class">oe_inline ms-0 o_expense_scan_currency</attribute>
+            </xpath>
+
+            <!-- Une catégorie à coût fixe — le kilométrage — figeait le prix
+                 unitaire : Odoo le déclare en lecture seule en dur. Or le
+                 barème kilométrique dépend du véhicule et de la distance
+                 annuelle, et un salarié doit pouvoir y porter le sien. Le
+                 champ suit désormais les droits d'édition de la dépense. -->
+            <xpath expr="//field[@name='price_unit'][@widget='monetary']" position="attributes">
+                <attribute name="readonly">not is_editable</attribute>
+            </xpath>
+
+            <!-- Le total portait la même TVA une deuxième fois, entre
+                 parenthèses, et la ligne des taxes une troisième. Une seule
+                 mention suffit, et c'est celle qu'on peut corriger. Le taux
+                 lui-même reste affiché : il porte les tags fiscaux. -->
+            <xpath expr="//field[@name='total_amount_currency']/parent::div/span" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='tax_amount_currency']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Montant de TVA et taux partagent une ligne : le taux ne vaut
+                 pas un libellé à lui seul, et les deux se relisent d'un
+                 coup d'œil. Le montant a une largeur fixe, sans quoi il
+                 s'étirait sur la moitié de la ligne et repoussait le taux
+                 contre le bord droit de la fenêtre. -->
+            <xpath expr="//field[@name='tax_ids']" position="before">
+                <field name="scan_tax_amount" widget="monetary"
+                       options="{'currency_field': 'currency_id'}"
+                       readonly="not is_editable" nolabel="1"
+                       class="oe_inline me-2 o_expense_scan_amount"
+                       placeholder="TVA du ticket"/>
+            </xpath>
+
+            <!-- Un forfait — kilométrage, barème Urssaf — n'a pas de TVA :
+                 la ligne entière disparaît, libellé compris, et ce qui y
+                 avait été saisi est vidé au changement de catégorie. -->
+            <xpath expr="//field[@name='tax_ids']/parent::div" position="attributes">
+                <attribute name="invisible">expense_scan_no_vat</attribute>
+            </xpath>
+            <!-- Un montant de TVA sans taux ne se comptabilise pas : le taux
+                 devient obligatoire dès qu'un montant est saisi. -->
+            <xpath expr="//field[@name='tax_ids']" position="attributes">
+                <attribute name="required">scan_tax_amount and not expense_scan_no_vat</attribute>
+            </xpath>
+
+            <!-- Les catégories suivent l'ordre fixé dans leur liste, et la
+                 liste déroulante les montre toutes : il fallait passer par
+                 « Rechercher plus » pour atteindre les dernières. Le contexte
+                 d'origine est repris à l'identique, le drapeau en plus. -->
+            <xpath expr="//field[@name='product_id']" position="attributes">
+                <attribute name="context">{
+                    'default_type': 'service',
+                    'default_can_be_expensed': 1,
+                    'list_view_ref': 'hr_expense.product_product_expense_tree_view',
+                    'form_view_ref': 'hr_expense.product_product_expense_form_view',
+                    'expense_scan_category_order': True,
+                }</attribute>
+            </xpath>
+            <!-- Cette ligne remonte sous le total, dont elle fait partie. -->
+            <xpath expr="//field[@name='total_amount_currency']/parent::div" position="after">
+                <xpath expr="//label[@for='tax_ids']" position="move"/>
+                <xpath expr="//field[@name='tax_ids']/parent::div" position="move"/>
+            </xpath>
+            <xpath expr="//label[@for='tax_ids']" position="attributes">
+                <attribute name="for">scan_tax_amount</attribute>
+                <attribute name="string">TVA du ticket</attribute>
+                <attribute name="invisible">expense_scan_no_vat</attribute>
+            </xpath>
+
+            <!-- La date se vérifie dans la foulée des montants. -->
+            <xpath expr="//label[@id='lo']" position="before">
+                <xpath expr="//field[@name='date']" position="move"/>
+            </xpath>
+
+            <!-- Les nuitées suivent la date : ensemble, elles disent quand et
+                 combien de temps. Seulement pour l'hôtel, reconnu au nom
+                 de sa catégorie. -->
+            <xpath expr="//field[@name='date']" position="after">
+                <field name="expense_scan_nights"
+                       invisible="not expense_scan_nights_required"
+                       required="expense_scan_nights_required"
+                       readonly="not is_editable"
+                       class="o_expense_scan_nights"/>
+            </xpath>
+
+            <!-- Le manager découle de la hiérarchie, pas de la saisie : il
+                 n'a rien à faire dans le parcours du salarié. -->
+            <xpath expr="//field[@name='manager_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- « Payé par la société » faisait apparaître deux champs de
+                 comptabilité au milieu de la saisie. Le fournisseur se
+                 déduit du justificatif quand l'option est active, et sa
+                 liste — salariés et clients mêlés — n'aide personne à le
+                 choisir à la main. -->
+            <xpath expr="//field[@name='vendor_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Le mode de paiement ne se pose que s'il y a un choix. Avec
+                 un seul mode configuré, Odoo le renseigne lui-même et le
+                 champ ne fait qu'occuper une ligne. -->
+            <xpath expr="//field[@name='payment_method_line_id']" position="attributes">
+                <attribute name="invisible">payment_mode != 'company_account' or expense_scan_one_payment_method</attribute>
+            </xpath>
+
+            <!-- Deux boutons radio tiennent sur une ligne : empilés, ils
+                 poussent le reste du formulaire vers le bas pour rien. -->
+            <xpath expr="//field[@name='payment_mode']" position="attributes">
+                <attribute name="options">{'horizontal': True}</attribute>
+            </xpath>
+
+            <!-- Refacturation à la suite de « Payé par » : deux questions de
+                 même nature, qu'on tranche d'un geste chacune. Pas de
+                 section à part, qui couperait la saisie en deux. -->
+            <xpath expr="//div[@id='payment_mode']" position="after">
+                <xpath expr="//field[@name='payment_method_line_id']" position="move"/>
+                <label for="reinvoice_mode" invisible="not expense_scan_reinvoice"/>
+                <div invisible="not expense_scan_reinvoice">
+                    <field name="reinvoice_mode" widget="radio"
+                           options="{'horizontal': True}" nolabel="1"
+                           readonly="not is_editable"/>
+                </div>
+                <!-- Le domaine vient d'un champ calculé : il dépend de qui
+                     regarde, pas de la dépense. Un salarié n'y voit que ses
+                     missions. Sans mission qui convienne, il dispose déjà de
+                     « À déterminer » : proposer d'en créer une ouvrirait un
+                     bouton que ses droits ne lui permettent pas d'aboutir. -->
+                <!-- « Non » garde la mission, facultative : le coût remonte
+                     alors dans le budget de la mission sans être facturé. -->
+                <field name="project_id"
+                       invisible="not expense_scan_reinvoice or reinvoice_mode == 'todo'"
+                       required="expense_scan_reinvoice and reinvoice_mode == 'project'"
+                       readonly="not is_editable"
+                       domain="expense_scan_project_domain"
+                       options="{'no_quick_create': True}"
+                       placeholder="mission (facturation ou suivi du budget)"/>
+                <field name="expense_scan_task_id"
+                       groups="project.group_project_user"
+                       invisible="not expense_scan_has_tasks"
+                       readonly="not is_editable"
+                       options="{'no_create': True}"
+                       placeholder="tâche, pour le suivi"/>
+            </xpath>
+
+            <!-- L'employé ferme la marche, et disparaît quand la dépense est
+                 celle de celui qui la saisit — soit le cas courant. Il reste
+                 là pour un gestionnaire saisissant au nom d'un autre, à qui
+                 il est alors indispensable. -->
+            <xpath expr="//field[@name='expense_scan_task_id']" position="after">
+                <xpath expr="//field[@name='employee_id'][@groups='!hr.group_hr_user']"
+                       position="move"/>
+                <xpath expr="//field[@name='employee_id'][@groups='hr.group_hr_user']"
+                       position="move"/>
+            </xpath>
+            <xpath expr="//field[@name='employee_id'][@groups='!hr.group_hr_user']"
+                   position="attributes">
+                <attribute name="invisible">expense_scan_own</attribute>
+            </xpath>
+            <xpath expr="//field[@name='employee_id'][@groups='hr.group_hr_user']"
+                   position="attributes">
+                <attribute name="invisible">expense_scan_own</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='nb_attachment']" position="after">
+                <field name="scan_state" invisible="1"/>
+                <field name="expense_scan_reinvoice" invisible="1"/>
+                <field name="expense_scan_own" invisible="1"/>
+                <field name="expense_scan_one_payment_method" invisible="1"/>
+                <field name="expense_scan_project_domain" invisible="1"/>
+                <field name="expense_scan_no_vat" invisible="1"/>
+                <field name="expense_scan_nights_required" invisible="1"/>
+                <field name="expense_scan_has_tasks" invisible="1"/>
+                <field name="message_main_attachment_id" invisible="1"/>
+            </xpath>
+
+            <!-- Détail de l'analyse, replié en bas de la fiche -->
+            <xpath expr="//sheet" position="inside">
+                <group string="Analyse du ticket" name="expense_scan_details"
+                       invisible="scan_state == 'none'" col="2">
+                    <field name="scan_message" readonly="1"/>
+                    <field name="expense_scan_merchant" readonly="not is_editable"
+                           placeholder="Enseigne du ticket"/>
+                    <field name="expense_scan_category_reason" readonly="1"
+                           invisible="not expense_scan_category_reason"/>
+                    <field name="scan_detected_tax" readonly="1"
+                           invisible="not scan_detected_tax"/>
+                    <field name="scan_datetime" readonly="1"
+                           invisible="not scan_datetime"/>
+                    <field name="scan_original_attachment_id" readonly="1"
+                           invisible="not scan_original_attachment_id"/>
+                    <field name="scan_engine" invisible="1"/>
+                    <field name="scan_duration" invisible="1"/>
+                    <field name="scan_score" invisible="1"/>
+                    <div colspan="2">
+                        <button name="action_expense_scan_rescan" type="object"
+                                string="Relancer l'analyse" icon="fa-refresh"
+                                class="btn btn-secondary btn-sm"
+                                invisible="not is_editable"/>
+                    </div>
+                    <field name="scan_raw_text" readonly="1" colspan="2"
+                           widget="text" invisible="not scan_raw_text"
+                           class="o_expense_scan_raw_text"/>
+                </group>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- Aperçu du justificatif sur les tuiles : reconnaître un ticket d'un
+         coup d'œil vaut mieux que lire quatre lignes de texte. -->
+    <record id="hr_expense_view_kanban_scan" model="ir.ui.view">
+        <field name="name">hr.expense.kanban.scan</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_expenses_analysis_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban/field[@name='currency_id']" position="after">
+                <field name="message_main_attachment_id"/>
+            </xpath>
+            <xpath expr="//templates//t[@t-name='card']" position="inside">
+                <img t-if="record.message_main_attachment_id.raw_value"
+                     t-att-src="'/web/image/' + record.message_main_attachment_id.raw_value"
+                     class="o_expense_scan_card_thumb mt-2"
+                     alt="Justificatif"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

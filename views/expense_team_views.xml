@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Yves Vallée
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<odoo>
+
+    <!-- Les membres de l'équipe, pour choisir pour qui l'on saisit.
+         Profil public des employés : un chef d'équipe n'a pas forcément
+         accès aux fiches complètes, et n'en a pas besoin ici. Un appui sur
+         la carte ouvre les dépenses du salarié. -->
+    <record id="hr_employee_public_view_kanban_expense_team" model="ir.ui.view">
+        <field name="name">hr.employee.public.kanban.expense.team</field>
+        <field name="model">hr.employee.public</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <kanban action="action_expense_scan_open_expenses" type="object"
+                    create="0" delete="0" edit="0">
+                <templates>
+                    <t t-name="card" class="flex-row align-items-center">
+                        <!-- Petit avatar : sur un écran étroit, l'image
+                             étirée sur toute la hauteur de la carte ne
+                             montrait plus qu'une initiale géante. -->
+                        <aside>
+                            <field name="avatar_128" widget="image"
+                                   options="{'size': [48, 48]}" class="rounded"/>
+                        </aside>
+                        <main class="ms-2">
+                            <field name="name" class="fw-bolder"/>
+                            <field t-if="record.job_title.raw_value" name="job_title"/>
+                            <field t-if="record.department_id.raw_value" name="department_id"
+                                   class="text-muted"/>
+                        </main>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Un chemin, pour que la page se recharge ou que le fil d'Ariane y
+         revienne : sans lui, Odoo ne sait pas reconstruire l'action et lève
+         « Attempted to restore a virtual controller whose state is invalid ». -->
+    <record id="action_expense_scan_team" model="ir.actions.server">
+        <field name="name">Dépenses de mon équipe</field>
+        <field name="path">my-team-expenses</field>
+        <field name="model_id" ref="hr_expense.model_hr_expense"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_expense_scan_team()</field>
+    </record>
+
+    <!-- Les dépenses d'un salarié de l'équipe : le salarié est l'active_id,
+         que l'adresse de la page conserve. -->
+    <record id="action_expense_scan_employee_expenses" model="ir.actions.act_window">
+        <field name="name">Dépenses du salarié</field>
+        <field name="path">team-expenses</field>
+        <field name="res_model">hr.expense</field>
+        <field name="view_mode">list,kanban,form,graph,pivot,activity</field>
+        <field name="search_view_id" ref="hr_expense.hr_expense_view_search"/>
+        <field name="domain">[('employee_id', '=', active_id)]</field>
+        <field name="context">{'default_employee_id': active_id, 'expense_scan_acting_for': active_id}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucune dépense pour ce salarié</p>
+            <p>Scannez un ticket ou créez une dépense : elle sera à son nom.</p>
+        </field>
+    </record>
+    <record id="action_expense_scan_employee_expenses_list" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="hr_expense.view_my_expenses_tree"/>
+        <field name="act_window_id" ref="action_expense_scan_employee_expenses"/>
+    </record>
+    <record id="action_expense_scan_employee_expenses_kanban" model="ir.actions.act_window.view">
+        <field name="sequence">2</field>
+        <field name="view_mode">kanban</field>
+        <field name="view_id" ref="hr_expense.hr_expense_kanban_view_header"/>
+        <field name="act_window_id" ref="action_expense_scan_employee_expenses"/>
+    </record>
+
+    <!-- Sous « Mes dépenses », à la suite de « Dépenses à traiter ».
+         Réservé aux approbateurs : un salarié ordinaire n'a pas d'équipe. -->
+    <menuitem id="menu_expense_scan_team"
+              name="Dépenses de mon équipe"
+              parent="hr_expense.menu_hr_expense_my_expenses"
+              action="action_expense_scan_team"
+              groups="hr_expense.group_hr_expense_team_approver"
+              sequence="2"/>
+
+</odoo>

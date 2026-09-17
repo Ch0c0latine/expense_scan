@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.idea/
+.vscode/
+*.swp
+.DS_Store
+icone-source*
+
+# Fichiers de frais réels (données personnelles) : jamais dans le dépôt.
+*.xlsx
+*.xls
