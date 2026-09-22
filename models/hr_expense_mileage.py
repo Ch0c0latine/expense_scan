@@ -58,6 +58,21 @@ class HrExpense(models.Model):
             if expense._expense_scan_no_vat():
                 expense.tax_ids = [Command.clear()]
 
+    @api.depends('product_id')
+    def _compute_from_product(self):
+        """Une distance se saisit toujours en quantité fois tarif.
+
+        Odoo ne propose quantité et prix unitaire qu'aux catégories dotées
+        d'un coût. Une catégorie kilométrique laissée à 0 €, parce que le
+        tarif est porté par chaque salarié, n'affichait plus qu'un total :
+        plus de kilomètres à saisir, ni de tarif proposé.
+        """
+        super()._compute_from_product()
+        for expense in self:
+            if not expense.product_has_cost and expense.product_id \
+                    and expense._expense_scan_is_distance():
+                expense.product_has_cost = True
+
     @api.depends('total_amount', 'total_amount_currency')
     def _compute_price_unit(self):
         fixed = self.filtered(lambda expense: expense.product_has_cost
@@ -103,7 +118,7 @@ class HrExpense(models.Model):
                 # d'objet : on la vide, taux et montant.
                 expense.tax_ids = [Command.clear()]
                 expense.scan_tax_amount = 0.0
-            if expense.company_currency_id.is_zero(expense.product_id.standard_price):
+            if not expense.product_has_cost:
                 continue  # pas une catégorie à coût fixe
             expense.price_unit = expense._expense_scan_default_unit_price()
 

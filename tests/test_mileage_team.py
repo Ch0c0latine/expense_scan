@@ -34,6 +34,20 @@ class TestExpenseScanMileage(common.TransactionCase):
         self.employee.expense_mileage_rate = 0.0
         self.assertAlmostEqual(self.expense().price_unit, 1.0)
 
+    def test_distance_category_without_cost_still_takes_a_rate(self):
+        """Catégorie kilométrique à 0 € : quantité et tarif du salarié restent."""
+        self.mileage.standard_price = 0.0
+        expense = self.expense()
+        self.assertTrue(expense.product_has_cost)
+        self.assertAlmostEqual(expense.price_unit, 0.636)
+        self.assertAlmostEqual(expense.total_amount_currency, 63.6)
+        with Form(self.env['hr.expense']) as form:
+            form.employee_id = self.employee
+            form.product_id = self.mileage
+            form.quantity = 10
+            self.assertAlmostEqual(form.price_unit, 0.636)
+            self.assertAlmostEqual(form.total_amount_currency, 6.36)
+
     def test_typed_price_survives_a_one_km_quantity(self):
         """Le cas signalé : un kilomètre ramenait le prix à celui de la catégorie."""
         expense = self.expense()
