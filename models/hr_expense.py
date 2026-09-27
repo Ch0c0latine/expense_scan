@@ -687,7 +687,14 @@ class HrExpense(models.Model):
         return result
 
     #: Côté maximal de l'image d'essai servant à choisir l'orientation.
-    ORIENTATION_PROBE_SIDE = 800
+    #:
+    #: Convient à un ticket, déjà cadré serré par la photo. Un justificatif
+    #: édité en PDF — une page A4 entière, texte dense et petit — y devient
+    #: illisible : l'essai n'attrape plus que les gros titres, perd les
+    #: repères de bas de page (SIRET, adresse) qui trancheraient le sens de
+    #: lecture, et un faux-semblant l'emporte. Le double, encore loin de la
+    #: pleine résolution, suffit à les retrouver.
+    ORIENTATION_PROBE_SIDE = 1600
 
     def _expense_scan_straighten(self, engine, image, info, company):
         """Remet le ticket d'aplomb avant la lecture définitive.
