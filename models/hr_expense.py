@@ -615,15 +615,19 @@ class HrExpense(models.Model):
         return bool(mimetype.startswith(SUPPORTED_IMAGE_PREFIX)
                     or mimetype == PDF_MIMETYPE or name.endswith('.pdf'))
 
+    @staticmethod
+    def _expense_scan_is_pdf(attachment):
+        mimetype = (attachment.mimetype or '').lower()
+        name = (attachment.name or '').lower()
+        return mimetype == PDF_MIMETYPE or name.endswith('.pdf')
+
     def _expense_scan_image_bytes(self, attachment):
         """Octets d'image exploitables, en convertissant le PDF si besoin."""
         self.ensure_one()
         data = attachment.raw
         if not data:
             raise UserError(_("Le justificatif est vide."))
-        mimetype = (attachment.mimetype or '').lower()
-        name = (attachment.name or '').lower()
-        if mimetype == PDF_MIMETYPE or name.endswith('.pdf'):
+        if self._expense_scan_is_pdf(attachment):
             converted = preprocess.pdf_first_page_to_image_bytes(data)
             if not converted:
                 raise UserError(_(
@@ -663,8 +667,16 @@ class HrExpense(models.Model):
         # Dernier mot sur l'orientation, sur les boîtes de la lecture
         # définitive : plus nombreuses et mieux placées que celles de
         # l'essai, elles rattrapent un quart de tour mal choisi.
+        #
+        # Sauf pour l'endroit/l'envers d'un PDF : contrairement à une
+        # photo, dont le téléphone ne dit pas toujours le sens, une page
+        # PDF est rendue telle que le document la déclare — vérifié sur ce
+        # point précis. Deviner quand même, sur un texte dense où l'OCR
+        # varie d'une lecture à l'autre, retournait parfois une page qui
+        # n'en avait pas besoin.
         if company.expense_scan_auto_rotate:
-            words, image = self._expense_scan_reorient(words, image, info)
+            words, image = self._expense_scan_reorient(
+                words, image, info, decide_180=not self._expense_scan_is_pdf(attachment))
 
         # Second passage de mise en forme, cette fois guidé par le texte
         # reconnu. La détection de contours d'avant-OCR échoue sur un ticket
@@ -763,15 +775,15 @@ class HrExpense(models.Model):
             info.rotated_quarters or info.deskew_angle or info.cropped)
         return image
 
-    def _expense_scan_reorient(self, words, image, info):
+    def _expense_scan_reorient(self, words, image, info, decide_180=True):
         """Applique le quart de tour manquant, sans relire l'image.
 
-        Seul endroit qui tranche l'endroit/l'envers : sur les boîtes de la
-        lecture définitive, bien plus nombreuses et mieux placées que
-        celles de l'essai. Une seule décision, jamais recroisée avec une
-        précédente — voir _expense_scan_quarters.
+        Seul endroit qui tranche l'endroit/l'envers (``decide_180``) : sur
+        les boîtes de la lecture définitive, bien plus nombreuses et mieux
+        placées que celles de l'essai. Une seule décision, jamais
+        recroisée avec une précédente — voir _expense_scan_quarters.
         """
-        quarters = self._expense_scan_quarters(words, image)
+        quarters = self._expense_scan_quarters(words, image, decide_180=decide_180)
         if not quarters:
             return words, image
         height, width = image.shape[:2]

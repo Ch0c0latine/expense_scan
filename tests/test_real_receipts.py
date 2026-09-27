@@ -230,6 +230,44 @@ class TestOrientationFallback(common.TransactionCase):
         Expense = self.env['hr.expense']
         self.assertEqual(Expense._expense_scan_pick_quarter([(0, -1), (2, -1)]), 0)
 
+    class _FakeImage:
+        """De quoi satisfaire `image.shape[:2]`, sans dépendre d'OpenCV."""
+        def __init__(self, width, height):
+            self.shape = (height, width, 3)
+
+    def test_decide_180_false_never_flips_upside_down_or_not(self):
+        """L'essai basse résolution ne corrige que debout/couché.
+
+        Sur le même texte qui fait pencher `reading_direction` vers -1 à
+        l'endroit (voir test_reading_direction_upside_down dans
+        test_parser.py), l'appeler avec ``decide_180=False`` ne bouge pas
+        le quart — c'est tout l'objet du repli introduit pour les PDF.
+        """
+        upside_down_text = words_from_text("""
+6,80 euros PRIX TTC
+1,13 euros TVA 20,00%
+5,67 euros PRIX HT
+ASF Lieu-dit Les Pins BP 10017
+""")
+        image = self._FakeImage(300, 100)
+        Expense = self.env['hr.expense']
+        self.assertEqual(
+            Expense._expense_scan_quarters(upside_down_text, image, decide_180=False), 0)
+        # À décider (le comportement d'une photo), le même texte tranche
+        # bien pour le quart 2 : le repli n'aveugle pas la méthode, il la
+        # rend seulement muette à ce stade.
+        self.assertEqual(
+            Expense._expense_scan_quarters(upside_down_text, image, decide_180=True), 2)
+
+    def test_pdf_attachments_are_recognised(self):
+        Expense = self.env['hr.expense']
+        pdf = self.env['ir.attachment'].create(
+            {'name': "x.pdf", 'raw': b'%PDF-1.4', 'mimetype': 'application/pdf'})
+        photo = self.env['ir.attachment'].create(
+            {'name': "x.jpg", 'raw': b'\xff\xd8', 'mimetype': 'image/jpeg'})
+        self.assertTrue(Expense._expense_scan_is_pdf(pdf))
+        self.assertFalse(Expense._expense_scan_is_pdf(photo))
+
 
 # Devis PDF mis en colonnes : le total HT et la TVA partagent des lignes,
 # et le taux n'est écrit que dans le détail, sans le mot « TVA ».
