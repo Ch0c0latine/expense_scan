@@ -789,9 +789,11 @@ class HrExpense(models.Model):
         # toutes : -1 (envers), 0 (aucun avis), 1 (endroit).
         verdicts = [(quarters, parser.reading_direction(parser.build_lines(turned)))
                     for quarters, turned in candidates]
-        if _logger.isEnabledFor(logging.DEBUG):
-            _logger.debug("expense_scan : quarts candidats et sens de lecture %s", verdicts)
-        return self._expense_scan_pick_quarter(verdicts)
+        chosen = self._expense_scan_pick_quarter(verdicts)
+        # Une ligne par scan, pas plus : assez pour rejouer une décision
+        # d'orientation contestée sans avoir à relancer le scan en debug.
+        _logger.info("expense_scan : orientation candidats=%s retenu=%s", verdicts, chosen)
+        return chosen
 
     @api.model
     def _expense_scan_pick_quarter(self, verdicts):

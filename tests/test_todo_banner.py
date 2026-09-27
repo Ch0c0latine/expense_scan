@@ -44,7 +44,13 @@ class TestTodoBanner(common.TransactionCase):
             ('amount_type', '=', 'percent')], limit=1) or self.env['account.tax'].create({
                 'name': "Achat bandeau", 'amount': 20.0,
                 'amount_type': 'percent', 'type_tax_use': 'purchase'})
+        # Sans taxe par défaut sur la catégorie : c'est justement le cas
+        # que le code « tax_category » signale.
+        bare = self.env['product.product'].create({
+            'name': "Sans taxe bandeau", 'can_be_expensed': True,
+            'supplier_taxes_id': [(5, 0, 0)]})
         expense = self.expense(
+            product_id=bare.id, tax_ids=[(5, 0, 0)],
             scan_state='partial', scan_todo="Taxe (aucune sur la catégorie)",
             expense_scan_todo_codes='tax_category')
         self.assertTrue(expense.expense_scan_todo_pending)
