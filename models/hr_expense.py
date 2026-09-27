@@ -39,6 +39,19 @@ class HrExpense(models.Model):
     )
     scan_message = fields.Char(string="Détail de l'analyse", readonly=True, copy=False)
     scan_todo = fields.Char(string="Champs à vérifier", readonly=True, copy=False)
+    #: Un code par point listé dans ``scan_todo``, dans le même ordre —
+    #: « à refacturer,tax_incompatible » — pour savoir lesquels sont encore
+    #: d'actualité une fois la dépense modifiée. ``static`` marque les
+    #: points qu'on ne sait pas rouvrir automatiquement (date, catégorie…) :
+    #: ils comptent comme toujours d'actualité, comme avant ce champ.
+    expense_scan_todo_codes = fields.Char(readonly=True, copy=False)
+    expense_scan_todo_pending = fields.Boolean(
+        string="Points à vérifier encore ouverts",
+        compute='_compute_expense_scan_todo_pending', store=True,
+        help="Faux dès que chaque point listé dans « Champs à vérifier » "
+             "est résolu — le bandeau de relecture s'appuie dessus pour "
+             "disparaître sans attendre un nouveau scan.",
+    )
     scan_engine = fields.Char(string="Moteur", readonly=True, copy=False)
     scan_duration = fields.Float(string="Durée (s)", readonly=True, copy=False)
     scan_score = fields.Float(string="Confiance de lecture", readonly=True, copy=False,
@@ -101,6 +114,38 @@ class HrExpense(models.Model):
         copy=False,
         ondelete='set null',
     )
+
+    # ------------------------------------------------------------------
+    # Bandeau de relecture : disparaît au fil de l'eau
+    #
+    # « Ticket analysé, vérifiez : À refacturer » restait affiché même une
+    # fois le champ renseigné — rien ne le recalculait avant un nouveau
+    # scan. expense_scan_todo_codes retient, à côté du texte affiché, un
+    # code par point ; ce calcul rouvre ou referme le bandeau à chaque
+    # changement d'un champ qu'il surveille, y compris avant tout
+    # enregistrement.
+    # ------------------------------------------------------------------
+
+    #: Un point est résolu quand son champ surveillé prend une valeur qui
+    #: lève le doute que le scan avait signalé. « static » (voir
+    #: _expense_scan_apply) n'y figure pas : il ne se résout jamais seul.
+    TODO_RESOLVED_WHEN = {
+        'reinvoice': lambda expense: expense.reinvoice_mode != 'todo',
+        'tax_category': lambda expense: bool(expense.tax_ids),
+        # Foreign/none/incompatible : les trois se corrigent de la même
+        # façon, en saisissant soi-même le montant de TVA du ticket.
+        'tax_amount': lambda expense: bool(expense.scan_tax_amount),
+        'tax_total': lambda expense: bool(expense.total_amount_currency),
+    }
+
+    @api.depends('expense_scan_todo_codes', 'reinvoice_mode', 'tax_ids',
+                 'scan_tax_amount', 'total_amount_currency')
+    def _compute_expense_scan_todo_pending(self):
+        for expense in self:
+            codes = (expense.expense_scan_todo_codes or '').split(',')
+            expense.expense_scan_todo_pending = any(
+                not expense.TODO_RESOLVED_WHEN.get(code, lambda e: False)(expense)
+                for code in codes if code)
 
     # ------------------------------------------------------------------
     # TVA du ticket : le montant prime sur le taux
@@ -540,6 +585,7 @@ class HrExpense(models.Model):
                     'scan_state': 'error',
                     'scan_message': str(error)[:250],
                     'scan_todo': False,
+                    'expense_scan_todo_codes': False,
                 })
 
     def _expense_scan_source_attachment(self, from_original=True):
@@ -739,13 +785,34 @@ class HrExpense(models.Model):
                 continue  # lignes debout : ce n'est pas ce quart-là
             candidates.append((quarters, turned))
 
-        for quarters, turned in candidates:
-            if parser.reading_direction(parser.build_lines(turned)) > 0:
+        # Le sens de lecture de chaque candidat couché, une fois pour
+        # toutes : -1 (envers), 0 (aucun avis), 1 (endroit).
+        verdicts = [(quarters, parser.reading_direction(parser.build_lines(turned)))
+                    for quarters, turned in candidates]
+        if _logger.isEnabledFor(logging.DEBUG):
+            _logger.debug("expense_scan : quarts candidats et sens de lecture %s", verdicts)
+        return self._expense_scan_pick_quarter(verdicts)
+
+    @api.model
+    def _expense_scan_pick_quarter(self, verdicts):
+        """Choisit le quart à partir du sens de lecture de chaque candidat.
+
+        ``verdicts`` : ``[(quart, -1|0|1), ...]``, dans l'ordre où les
+        quarts ont été essayés (0 d'abord). Un avis franc (+1) l'emporte
+        aussitôt. À défaut, le premier quart qui n'inspire pas lui-même une
+        franche méfiance (-1) est gardé — jamais, en revanche, le premier
+        de la liste sans regarder son propre avis : un ticket dont le sens
+        ne se lit qu'à moitié (un péage, par exemple) ne doit pas se
+        retourner sur un solde à peine négatif quand l'orientation d'origine
+        n'en inspire aucun.
+        """
+        for quarters, verdict in verdicts:
+            if verdict > 0:
                 return quarters
-        # Aucun indice de sens — un ticket sans total lisible, par exemple.
-        # On garde alors le quart le moins coûteux parmi ceux qui couchent
-        # bien le texte, faute de mieux.
-        return candidates[0][0] if candidates else 0
+        neutral_or_better = [quarters for quarters, verdict in verdicts if verdict >= 0]
+        if neutral_or_better:
+            return neutral_or_better[0]
+        return verdicts[0][0] if verdicts else 0
 
     def _expense_scan_tighten(self, image, words, info, company):
         """Redresse puis recadre, une fois l'OCR passé.
@@ -798,49 +865,56 @@ class HrExpense(models.Model):
         foreign = self._expense_scan_foreign_tax(result, company)
         values = self._expense_scan_field_values(result, company, foreign=foreign)
 
-        todo = parser.fields_to_check(result)
+        # (texte, code) par point à vérifier — le code, gardé à part du
+        # texte affiché, dit quand le rouvrir une fois résolu (voir
+        # TODO_RESOLVED_WHEN et _compute_expense_scan_todo_pending).
+        # « static » marque les points qu'on ne sait pas rouvrir tout
+        # seuls : ils restent affichés tant que personne ne relance
+        # l'analyse, comme avant ce mécanisme.
+        items = [(text, 'static') for text in parser.fields_to_check(result)]
         if not values.get('expense_scan_guessed_product_id') \
                 and self._expense_scan_category_is_free(company):
             # Rien de sûr sur le ticket : la catégorie par défaut n'est
             # qu'un point de départ.
-            todo.append(_("Catégorie"))
+            items.append((_("Catégorie"), 'static'))
         code = result.value('currency')
         if code and code != company.currency_id.name and not values.get('currency_id') \
                 and result.confidence('currency') >= 0.5:
             # Ticket en zlotys, devise inactive : le montant serait compté
             # en euros sans que personne ne le voie.
-            todo.append(_("Devise (%s à activer dans Odoo)", code))
+            items.append((_("Devise (%s à activer dans Odoo)", code), 'static'))
         if company.expense_scan_reinvoice and not values.get('project_id'):
             # Aucune mission ne couvre cette date, ou plusieurs : dans les
             # deux cas c'est au salarié de trancher — y compris pour dire
-            # que le frais n'est pas refacturable.
-            todo.append(_("À refacturer"))
+            # que le frais n'est pas refacturable. Résolu dès qu'il choisit.
+            items.append((_("À refacturer"), 'reinvoice'))
         check_category_tax = False
         target = self._expense_scan_target_product(values)
         if company.expense_scan_apply_tax and not self._expense_scan_product_no_vat(target):
             if foreign:
-                todo.append(_("TVA étrangère (%s), non déduite", foreign))
+                items.append((_("TVA étrangère (%s), non déduite", foreign), 'tax_amount'))
             elif not result.value('tax_amount'):
-                todo.append(_("TVA (aucune sur le justificatif)"))
+                items.append((_("TVA (aucune sur le justificatif)"), 'tax_amount'))
             elif not (values.get('total_amount_currency') or self.total_amount_currency):
-                todo.append(_("TVA (%.2f lue, à reporter avec le total)",
-                              result.value('tax_amount')))
+                items.append((_("TVA (%.2f lue, à reporter avec le total)",
+                              result.value('tax_amount')), 'tax_total'))
             elif not values.get('scan_tax_amount'):
                 # Lecture écartée parce qu'elle dépasse le plafond du taux :
                 # c'est presque toujours un montant pris pour un autre.
-                todo.append(_("TVA (lecture incompatible avec le taux)"))
+                items.append((_("TVA (lecture incompatible avec le taux)"), 'tax_amount'))
             else:
                 # La TVA lue ne pourra pas être comptabilisée tant qu'aucune
                 # taxe ne porte les tags fiscaux : vérifié après écriture,
                 # la catégorie reconnue pouvant apporter la sienne.
                 check_category_tax = True
         values.update({
-            'scan_state': 'partial' if todo else 'done',
+            'scan_state': 'partial' if items else 'done',
             'scan_engine': result.engine,
             'scan_duration': result.duration,
             'scan_score': round(result.mean_score * 100.0, 1),
             'scan_raw_text': result.raw_text,
-            'scan_todo': ", ".join(todo) if todo else False,
+            'scan_todo': ", ".join(text for text, _code in items) if items else False,
+            'expense_scan_todo_codes': ",".join(code for _text, code in items) or False,
             'scan_message': self._expense_scan_summary(result),
             'scan_detected_tax': self._expense_scan_tax_label(result),
         })
@@ -858,8 +932,14 @@ class HrExpense(models.Model):
         if reinvoice_values:
             self.sudo().write(reinvoice_values)
         if check_category_tax and not self.tax_ids:
-            todo.append(_("Taxe (aucune sur la catégorie)"))
-            self.write({'scan_state': 'partial', 'scan_todo': ", ".join(todo)})
+            # Résolu dès qu'une taxe est posée, à la main ou par un
+            # changement de catégorie qui en apporte une.
+            items.append((_("Taxe (aucune sur la catégorie)"), 'tax_category'))
+            self.write({
+                'scan_state': 'partial',
+                'scan_todo': ", ".join(text for text, _code in items),
+                'expense_scan_todo_codes': ",".join(code for _text, code in items),
+            })
 
     def _expense_scan_foreign_tax(self, result, company):
         """Nom de la taxe si le ticket vient de l'étranger, sinon ``False``.

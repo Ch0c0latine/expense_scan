@@ -63,7 +63,7 @@
             <xpath expr="//div[@name='warning_duplicate_receipt_expense']" position="after">
                 <div class="alert alert-warning d-flex align-items-center gap-2"
                      role="alert" name="expense_scan_todo"
-                     invisible="scan_state != 'partial'">
+                     invisible="not expense_scan_todo_pending">
                     <i class="fa fa-search" role="img" aria-label="Analyse"/>
                     <span>
                         Ticket analysé. Vérifiez ces champs avant de soumettre :
@@ -281,6 +281,7 @@
 
             <xpath expr="//field[@name='nb_attachment']" position="after">
                 <field name="scan_state" invisible="1"/>
+                <field name="expense_scan_todo_pending" invisible="1"/>
                 <field name="expense_scan_reinvoice" invisible="1"/>
                 <field name="expense_scan_own" invisible="1"/>
                 <field name="expense_scan_one_payment_method" invisible="1"/>

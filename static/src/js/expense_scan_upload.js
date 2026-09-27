@@ -46,20 +46,25 @@ const expenseScanUpload = () => ({
         try {
             await this._onChangeFileInput([...this.fileInput.el.files]);
             const created = this.createdExpenseIds.slice(alreadyCreated);
+            if (this.uploadsProcessing === 1 && created.length === 1) {
+                // La fiche qui s'ouvre porte déjà son propre bandeau — un
+                // succès ou un point à vérifier n'a rien à ajouter. Une
+                // erreur reste utile : elle ne dépend pas du scan_state
+                // affiché sur la fiche vide qui s'ouvrira quand même.
+                await this._expenseScanReport(created, { onlyErrors: true });
+                await this.actionService.doAction({
+                    type: "ir.actions.act_window",
+                    name: _t("Vérification du ticket"),
+                    res_model: "hr.expense",
+                    res_id: created[0],
+                    views: [[false, "form"]],
+                    view_mode: "form",
+                    context: this.props.context,
+                });
+                return;
+            }
             await this._expenseScanReport(created);
             if (this.uploadsProcessing === 1) {
-                if (created.length === 1) {
-                    await this.actionService.doAction({
-                        type: "ir.actions.act_window",
-                        name: _t("Vérification du ticket"),
-                        res_model: "hr.expense",
-                        res_id: created[0],
-                        views: [[false, "form"]],
-                        view_mode: "form",
-                        context: this.props.context,
-                    });
-                    return;
-                }
                 await this._expenseScanOpenList();
             }
         } finally {
@@ -75,7 +80,7 @@ const expenseScanUpload = () => ({
      * un mot d'explication : l'erreur n'était visible que dans le bandeau
      * du formulaire, qu'on ne voit pas si l'on est resté sur la liste.
      */
-    async _expenseScanReport(expenseIds) {
+    async _expenseScanReport(expenseIds, { onlyErrors = false } = {}) {
         if (!expenseIds.length) {
             return;
         }
@@ -96,6 +101,9 @@ const expenseScanUpload = () => ({
                 _t("Le ticket n'a pas pu être analysé : %s", failed[0].scan_message || ""),
                 { type: "danger", sticky: true }
             );
+            return;
+        }
+        if (onlyErrors) {
             return;
         }
         const toCheck = records.map((record) => record.scan_todo).filter(Boolean);

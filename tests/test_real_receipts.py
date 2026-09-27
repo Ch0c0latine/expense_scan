@@ -197,6 +197,40 @@ class TestRescanAfterApproval(common.TransactionCase):
         self.assertNotIn("nombre", merchant)
 
 
+@tagged('post_install', '-at_install')
+class TestOrientationFallback(common.TransactionCase):
+    """Choix du quart de tour quand aucun sens de lecture ne s'impose.
+
+    Cas réel : un justificatif de train édité en PDF (SNCF Connect), mis en
+    page comme une facture plutôt qu'un ticket de caisse — l'enseigne en
+    logo (pas en texte) et un pied de page légal (SIRET, adresse) en bas de
+    page plutôt qu'en en-tête. Le solde de vote y est franchement négatif à
+    l'endroit (le pied de page fait illusion en en-tête) sans jamais devenir
+    franchement positif à l'envers, et l'ancien repli — le premier quart qui
+    couche bien le texte, sans regarder son propre avis — le retournait.
+    """
+
+    def test_a_slightly_negative_original_orientation_is_kept(self):
+        Expense = self.env['hr.expense']
+        self.assertEqual(Expense._expense_scan_pick_quarter([(0, -1), (2, 0)]), 2)
+
+    def test_a_clean_positive_verdict_wins_immediately(self):
+        Expense = self.env['hr.expense']
+        self.assertEqual(Expense._expense_scan_pick_quarter([(0, 1), (2, -1)]), 0)
+        # L'ordre des candidats ne joue pas : un avis franc l'emporte
+        # toujours, même s'il n'est pas testé en premier.
+        self.assertEqual(Expense._expense_scan_pick_quarter([(0, -1), (2, 1)]), 2)
+
+    def test_no_opinion_anywhere_keeps_the_first_candidate(self):
+        Expense = self.env['hr.expense']
+        self.assertEqual(Expense._expense_scan_pick_quarter([(0, 0), (2, 0)]), 0)
+
+    def test_every_candidate_negative_keeps_the_first_by_default(self):
+        """Cas dégénéré : aucune orientation n'est crédible. Faute de mieux."""
+        Expense = self.env['hr.expense']
+        self.assertEqual(Expense._expense_scan_pick_quarter([(0, -1), (2, -1)]), 0)
+
+
 # Devis PDF mis en colonnes : le total HT et la TVA partagent des lignes,
 # et le taux n'est écrit que dans le détail, sans le mot « TVA ».
 DEVIS = """DOMICILIATION EXEMPLE

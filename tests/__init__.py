@@ -12,3 +12,4 @@ from . import test_real_receipts
 from . import test_batch
 from . import test_sheet
 from . import test_policy
+from . import test_todo_banner

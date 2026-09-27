@@ -9,16 +9,22 @@
         En restreignant aux images et aux PDF, iOS et Android ouvrent
         directement la feuille « Appareil photo / Photothèque / Fichiers » :
         le scan tient alors en un seul appui.
+
+        Sur petit écran seulement, l'accept se limite aux images : mélanger
+        un type non-image (le PDF) fait basculer Android sur son sélecteur
+        de fichiers générique, sans l'onglet Photos — la galerie disparaît,
+        justement ce qu'on cherche à éviter. Le bureau, sans ce travers,
+        garde le PDF : c'est là qu'arrive le justificatif reçu par mail.
     -->
     <t t-name="expense_scan.ListViewAccept" t-inherit="hr_expense.ListView" t-inherit-mode="extension">
         <xpath expr="//input[@name='ufile']" position="attributes">
-            <attribute name="accept">image/*,application/pdf</attribute>
+            <attribute name="t-att-accept">env.isSmall ? 'image/*' : 'image/*,application/pdf'</attribute>
         </xpath>
     </t>
 
     <t t-name="expense_scan.KanbanViewAccept" t-inherit="hr_expense.KanbanView" t-inherit-mode="extension">
         <xpath expr="//input[@name='ufile']" position="attributes">
-            <attribute name="accept">image/*,application/pdf</attribute>
+            <attribute name="t-att-accept">env.isSmall ? 'image/*' : 'image/*,application/pdf'</attribute>
         </xpath>
     </t>
 
