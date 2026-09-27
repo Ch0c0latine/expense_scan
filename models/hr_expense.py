@@ -719,7 +719,15 @@ class HrExpense(models.Model):
         # L'essai et la photo suivent exactement les mêmes transformations :
         # les boîtes trouvées sur l'un restent donc transposables sur l'autre
         # par une simple homothétie.
-        quarters = self._expense_scan_quarters(best_words, probe)
+        #
+        # L'endroit/l'envers n'est volontairement pas tranché ici (voir
+        # _expense_scan_quarters) : sur un essai en basse résolution, une
+        # page dense se relit mal, et la relecture complète qui suit
+        # confirmait parfois — sur les mêmes indices, tout aussi trompeurs
+        # dans le nouveau sens — une décision prise à tort. Un ticket
+        # couché de travers reste corrigé ici : lire des colonnes non
+        # redressées assemblerait n'importe quoi.
+        quarters = self._expense_scan_quarters(best_words, probe, decide_180=False)
         if quarters:
             best_words = preprocess.rotate_words_quarters(
                 best_words, quarters, probe.shape[1], probe.shape[0])
@@ -756,7 +764,13 @@ class HrExpense(models.Model):
         return image
 
     def _expense_scan_reorient(self, words, image, info):
-        """Applique le quart de tour manquant, sans relire l'image."""
+        """Applique le quart de tour manquant, sans relire l'image.
+
+        Seul endroit qui tranche l'endroit/l'envers : sur les boîtes de la
+        lecture définitive, bien plus nombreuses et mieux placées que
+        celles de l'essai. Une seule décision, jamais recroisée avec une
+        précédente — voir _expense_scan_quarters.
+        """
         quarters = self._expense_scan_quarters(words, image)
         if not quarters:
             return words, image
@@ -766,7 +780,7 @@ class HrExpense(models.Model):
         return (preprocess.rotate_words_quarters(words, quarters, width, height),
                 preprocess.rotate_quarters(image, quarters))
 
-    def _expense_scan_quarters(self, words, image):
+    def _expense_scan_quarters(self, words, image, decide_180=True):
         """Quart de tour à appliquer, déduit des seules boîtes reconnues.
 
         Deux critères, dans cet ordre. La **direction des lignes** d'abord,
@@ -781,6 +795,15 @@ class HrExpense(models.Model):
         avant de la lire. C'est aussi pourquoi la qualité de reconnaissance
         ne dit rien de l'orientation, et pourquoi cette méthode a remplacé
         quatre relectures qui ne tranchaient rien.
+
+        ``decide_180`` : à faux, ne corrige que le premier critère — debout
+        devient couché — et laisse le second à un appel ultérieur sur de
+        meilleures boîtes. Basculer l'endroit/l'envers ne sert à rien avant
+        la lecture définitive (une ligne couchée se lit aussi bien dans les
+        deux sens) ; l'ignorer ici évite qu'une décision prise sur un essai
+        en basse résolution — une page dense s'y relit mal — soit
+        « confirmée » par une seconde décision prise sur les mêmes indices,
+        tout aussi trompeurs une fois qu'elle a elle-même tourné la page.
         """
         if not words:
             return 0
@@ -792,6 +815,11 @@ class HrExpense(models.Model):
                 continue  # lignes debout : ce n'est pas ce quart-là
             candidates.append((quarters, turned))
 
+        if not decide_180 and any(quarters == 0 for quarters, _turned in candidates):
+            # Déjà couché dans son orientation d'origine : rien à faire,
+            # l'endroit/l'envers se tranchera une fois pour toutes plus tard.
+            return 0
+
         # Le sens de lecture de chaque candidat couché, une fois pour
         # toutes : -1 (envers), 0 (aucun avis), 1 (endroit).
         verdicts = [(quarters, parser.reading_direction(parser.build_lines(turned)))
@@ -799,7 +827,8 @@ class HrExpense(models.Model):
         chosen = self._expense_scan_pick_quarter(verdicts)
         # Une ligne par scan, pas plus : assez pour rejouer une décision
         # d'orientation contestée sans avoir à relancer le scan en debug.
-        _logger.info("expense_scan : orientation candidats=%s retenu=%s", verdicts, chosen)
+        _logger.info("expense_scan : orientation (decide_180=%s) candidats=%s retenu=%s",
+                     decide_180, verdicts, chosen)
         return chosen
 
     @api.model
