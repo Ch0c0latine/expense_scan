@@ -85,6 +85,8 @@ class ProductProduct(models.Model):
         found.sort(key=lambda pair: rank[pair[0]])
         return found[:limit] if limit else found
 
+    @api.model
+    @api.readonly
     def web_search_read(self, domain, specification, offset=0, limit=None,
                         order=None, count_limit=None):
         """Même ordre pour la fenêtre de recherche complète, sur mobile.

@@ -227,11 +227,15 @@ class TestExpenseScanCategories(common.TransactionCase):
             'name': "Âne", 'default_code': 'AAA', 'can_be_expensed': True, 'sequence': 999,
         })
         domain = [('id', 'in', (first | last).ids)]
-        ordered = self.env['product.product'].with_context(
-            expense_scan_category_order=True,
-        ).web_search_read(domain, {'display_name': {}})
+        # Par l'appel RPC, comme le client : sans @api.model, le domaine
+        # y était pris pour des identifiants.
+        from odoo.service.model import call_kw
+        ordered = call_kw(
+            self.env['product.product'].with_context(expense_scan_category_order=True),
+            'web_search_read', [domain, {'display_name': {}}], {})
         self.assertEqual([r['id'] for r in ordered['records']], [first.id, last.id])
-        unordered = self.env['product.product'].web_search_read(domain, {'display_name': {}})
+        unordered = call_kw(
+            self.env['product.product'], 'web_search_read', [domain, {'display_name': {}}], {})
         self.assertEqual([r['id'] for r in unordered['records']], [last.id, first.id])
 
     def test_flat_rate_category_carries_no_tax(self):
