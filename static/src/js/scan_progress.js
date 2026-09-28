@@ -27,7 +27,8 @@ const STEPS = [
         ends: ["relecture", "redressement", "recadrage"],
     },
     { key: "values", label: _t("Date, montant et TVA"), ends: ["analyse", "valeurs"] },
-    { key: "category", label: _t("Catégorie et mission"), ends: ["écriture"] },
+    { key: "category", label: _t("Catégorie et mission"), ends: ["catégorie"] },
+    { key: "save", label: _t("Enregistrement"), ends: ["écriture"] },
 ];
 
 export class ScanProgress extends Component {

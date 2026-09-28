@@ -1189,6 +1189,8 @@ class HrExpense(models.Model):
         company = self.company_id or self.env.company
         foreign = self._expense_scan_foreign_tax(result, company)
         values = self._expense_scan_field_values(result, company, foreign=foreign)
+        if result.timer:
+            result.timer.lap('catégorie')
 
         # (texte, code) par point à vérifier — le code, gardé à part du
         # texte affiché, dit quand le rouvrir une fois résolu (voir
@@ -1266,6 +1268,8 @@ class HrExpense(models.Model):
             'scan_detected_tax': self._expense_scan_tax_label(result),
         })
         values.update(self._expense_scan_store_image(result, attachment, company))
+        if result.timer:
+            result.timer.lap('image')
 
         # Les champs déduits de la mission s'écrivent en droits élevés, pour
         # la même raison qu'ils se lisent ainsi : ils appartiennent aux
@@ -1278,6 +1282,8 @@ class HrExpense(models.Model):
         self.write(values)
         if reinvoice_values:
             self.sudo().write(reinvoice_values)
+        if result.timer:
+            result.timer.lap('enregistrement')
         after = {}
         if check_category_tax and not self.tax_ids:
             # Résolu dès qu'une taxe est posée, à la main ou par un

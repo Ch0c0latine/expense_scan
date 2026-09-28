@@ -615,7 +615,9 @@ def extract_merchant(lines, max_lines=10, buyers=()):
             continue
         if _has_date(text):
             continue  # « ← 18 novembre » : une date, pas une enseigne
-        if _is_buyer(raw, buyers) or lexicon.fold(raw) in CATEGORY_WORDS:
+        # Mot de catégorie : jugé sur la ligne entière. « ASF » détaché de
+        # son lieu-dit reste l'enseigne, même si c'est aussi un mot du péage.
+        if _is_buyer(raw, buyers) or lexicon.fold(line.text) in CATEGORY_WORDS:
             continue
         if find_amounts(raw):
             continue  # « Vol aller x 1 passager 34,05 € » : une ligne d'achat
