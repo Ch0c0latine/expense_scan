@@ -862,7 +862,8 @@ def extract_tax_table(lines):
         if not explicit:
             if find_amounts(line.text):
                 continue  # une ligne d'en-tête ne porte pas de montant
-            if not (TVA_LINE_RE.search(header) and TAX_COLUMNS_RE.search(header)):
+            if not (TAX_TABLE_HEADER_RE.search(header)
+                    or (TVA_LINE_RE.search(header) and TAX_COLUMNS_RE.search(header))):
                 continue
         # « Taux HT TVA TTC » : le taux ouvre la ligne, parfois sans « % ».
         has_rate_column = bool(re.search(
