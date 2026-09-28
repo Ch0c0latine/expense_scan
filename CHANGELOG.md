@@ -1,5 +1,12 @@
 # Journal des changements
 
+## 19.0.2.6.4
+
+- **Ticket à plusieurs taux de TVA** : la dépense retenait la taxe par
+  défaut de la catégorie plutôt que celle du ticket. Elle prend désormais
+  le taux le plus élevé effectivement imprimé (le montant de TVA, lui,
+  était déjà juste — c'est la taxe associée qui était en cause).
+
 ## 19.0.2.6.3
 
 - **TVA lue à côté de la plaque, sur les tickets d'automate** : l'en-tête

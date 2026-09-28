@@ -1592,16 +1592,23 @@ class HrExpense(models.Model):
             # taxe corresponde à ce taux : sur un plan comptable chargé, le
             # choix entre biens et services appartient au comptable.
             tax = self._expense_scan_tax(result.value('tax_rate'), company)
+            if not tax and result.value('tax_rate_max'):
+                # Plusieurs taux sur le même ticket (un repas à 5,5 % et un
+                # autre à 10 %, par exemple) : aucun ne vaut pour la dépense
+                # entière, mais il faut néanmoins choisir une taxe à poser.
+                # Le plus élevé l'emporte — position prudente pour la TVA
+                # déductible, que le comptable pourra toujours corriger.
+                tax = self._expense_scan_tax(result.value('tax_rate_max'), company)
             if tax:
                 values['tax_ids'] = [Command.set(tax.ids)]
                 effective_rate = tax.amount
             else:
-                # Ticket à plusieurs taux, ou taux introuvable au plan
-                # comptable : la dépense garde la taxe de sa catégorie, qui
-                # portera l'écriture. Pour juger de la TVA lue, en revanche,
-                # le plafond du ticket vaut mieux que celui de la catégorie —
-                # un repas à 10 % + 20 % dépasse le plafond d'une catégorie
-                # à 10 % sans être faux pour autant.
+                # Taux introuvable au plan comptable : la dépense garde la
+                # taxe de sa catégorie, qui portera l'écriture. Pour juger
+                # de la TVA lue, en revanche, le plafond du ticket vaut
+                # mieux que celui de la catégorie — un repas à 10 % + 20 %
+                # dépasse le plafond d'une catégorie à 10 % sans être faux
+                # pour autant.
                 category_rates = (guessed.supplier_taxes_id.filtered(
                     lambda t: t.company_id == company and t.amount_type == 'percent'
                 ).mapped('amount') if guessed else None)

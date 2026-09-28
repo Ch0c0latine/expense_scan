@@ -203,6 +203,30 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertEqual(values['product_id'], self.train.id)
         self.assertEqual(values['scan_tax_amount'], 0.0)
 
+    def test_several_rates_apply_the_highest(self):
+        """Deux taux sur le même ticket : le plus élevé est posé sur la dépense.
+
+        Aucun des deux ne vaut pour la dépense entière, mais il en faut
+        néanmoins une : le plus élevé l'emporte plutôt que la taxe de la
+        catégorie (ici 5,5 %, qui laisserait passer trop peu de TVA).
+        """
+        low = self.env['account.tax'].create({
+            'name': "TVA test 5,5 %", 'amount': 5.5,
+            'amount_type': 'percent', 'type_tax_use': 'purchase',
+            'company_id': self.company.id})
+        high = self.env['account.tax'].create({
+            'name': "TVA test 10 % (max ticket)", 'amount': 10.0,
+            'amount_type': 'percent', 'type_tax_use': 'purchase',
+            'company_id': self.company.id})
+        self.food.supplier_taxes_id = low
+        expense = self.expense(product_id=self.food.id)
+        receipt = reading(
+            "FROMZAK\nTVA 5.50% HT 1,80 0,10 TVA 1,90 TTC\nTVA 10% 7,00 0,70 7,70\n"
+            "TOTAL 9,60 EUR")
+        values = expense._expense_scan_field_values(receipt, self.company)
+        self.assertEqual(values['tax_ids'], [(6, 0, high.ids)])
+        self.assertEqual(values['scan_tax_amount'], 0.80)
+
     def test_nothing_sure_keeps_the_default(self):
         expense = self.expense()
         values = expense._expense_scan_category_values(

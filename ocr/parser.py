@@ -900,10 +900,11 @@ def extract_tax_table(lines):
 def extract_taxes(lines):
     """Taux, montant de TVA et taux le plus élevé lu sur le ticket.
 
-    Le troisième champ ne se reporte jamais sur la dépense : il ne sert
-    qu'à borner la vérification. Sur un ticket à plusieurs taux, aucun ne
-    vaut pour la dépense entière — mais le plus élevé donne le plafond
-    au-delà duquel la TVA lue serait forcément fausse.
+    Le troisième champ sert d'abord à borner la vérification : sur un
+    ticket à plusieurs taux, aucun ne vaut pour la dépense entière, mais le
+    plus élevé donne le plafond au-delà duquel la TVA lue serait forcément
+    fausse. Faute de mieux, c'est aussi lui que le modèle pose sur la
+    dépense dans ce cas — voir ``_expense_scan_field_values``.
     """
     table = extract_tax_table(lines)
     if table:
