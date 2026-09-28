@@ -444,8 +444,10 @@ def extract_merchant(lines, max_lines=10):
 TVA_LINE_RE = re.compile(
     r"\bT\.?\s*V\.?\s*A\b|\bV\.?A\.?T\b|\bI\.?V\.?A\b|\bMWST\b|\bUST\b|\bPTU\b"
     r"|\bB\.?T\.?W\b|\bDPH\b|\bMOMS\b|\bPODATEK\b")
-#: « TVA:D » — code de taux renvoyant au tableau, sans montant de taxe.
-TAX_CODE_RE = re.compile(r"\bT\.?\s*V\.?\s*A\s*:\s*[A-Z]\b")
+#: « TVA:D », « (c° tva: 2) » — code de taux renvoyant au tableau, sans
+#: montant de taxe. Un chiffre seul ne compte que s'il n'ouvre pas un montant
+#: (« TVA: 5,50 »).
+TAX_CODE_RE = re.compile(r"\bT\.?\s*V\.?\s*A\s*:\s*[A-Z0-9]\b(?![,.]\d)")
 #: Montant nul, que la recherche des montants ignore à dessein.
 ZERO_AMOUNT_RE = re.compile(r"(?<![\d,.])0[.,]00(?!\d)")
 #: Ligne qui donne la base taxable, non la taxe, malgré son libellé.

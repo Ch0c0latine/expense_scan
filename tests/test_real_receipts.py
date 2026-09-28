@@ -294,3 +294,57 @@ class TestColumnInvoice(common.TransactionCase):
         self.assertEqual(result.value('tax_amount'), 10.00)
         self.assertEqual(result.value('tax_rate'), 20.0)
         self.assertEqual(result.value('tax_rate_max'), 20.0)
+
+
+# Restaurant à caisse enregistreuse : chaque article porte « (c° tva: 2) », un
+# renvoi au tableau des taux, suivi de son prix — qu'on prenait pour de la TVA.
+RESTAURANT_CODES = """LE DRAGON GOURMAND
+12 RUE DE L'EXEMPLE
+VILLEFRANCHE D'ORBEC 99650 France
+Siret:12345678200010
+Code NAF: 5610A
+N°TVA:FR11123456782
+TEL:0100000000
+Ticket C1T00001
+Vente
+Nb personnes: 2
+Impression Ticket: 23/09/2026 21:58:57
+Qté Désignation P.U Total
+1 Takoaki (c° tva: 2) 6,90 6.90
+1 huimian sauté boeuf (c° tva: 2) 14,90 14,90
+1 porc aigre doux a la 16,00 16,00
+vantonaise (c° tva: 2)
+1 riz (c° tva: 2) 2,00 2,00
+Nombre de ligne: 4
+Total HT: 36,18€
+Total TTC: 39,80€
+Code TAUX QTE HT TVA TTC
+2 10,00 4 36,18 3,62 39,80
+Carte Bleue : 39,80€
+Total: 39,80€"""
+
+
+@tagged('post_install', '-at_install')
+class TestRestaurantCodes(common.TransactionCase):
+
+    def test_item_tax_codes_are_not_tax_amounts(self):
+        result = reading(RESTAURANT_CODES)
+        self.assertEqual(result.value('total'), 39.80)
+        self.assertEqual(result.value('tax_amount'), 3.62)
+        self.assertEqual(result.value('tax_rate'), 10.0)
+        self.assertEqual(result.value('activity'), "NAF:5610A")
+
+    def test_a_real_rate_after_tva_still_counts(self):
+        result = reading("BOUTIQUE\nTVA: 5,50 1,10\nTOTAL 21,10")
+        self.assertEqual(result.value('tax_amount'), 1.10)
+
+    def test_the_printed_activity_code_picks_the_meal_category(self):
+        expense = self.env['hr.expense'].new({'name': "Ticket"})
+        company = self.env.company
+        _merchant, _key, product, _reason = expense._expense_scan_recognize(
+            reading(RESTAURANT_CODES), company)
+        families = self.env['product.template']._expense_scan_family_templates()
+        meal = [t.product_variant_id for t, family in families.items() if family == 'meal']
+        if not meal:
+            self.skipTest("aucune catégorie de repas dans cette base")
+        self.assertEqual(product, meal[0])
