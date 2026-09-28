@@ -493,6 +493,9 @@ RECU
 Date 02/09/26
 PRIX TTC 4,20 euros""")
         self.assertEqual(result.value('merchant'), "ASF")
+        # L'adresse sur la même ligne (« Cedex ») n'écarte pas le nom.
+        glued = reading("ASFLieu-dit 00000 EXEMPLE Cedex 6\nRECU\nPRIX TTC 4,20 euros")
+        self.assertEqual(glued.value('merchant'), "ASF")
 
     def test_the_buyer_printed_on_an_invoice_is_not_the_merchant(self):
         """Facture de recharge : le client en tête, le vendeur en pied de page."""

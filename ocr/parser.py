@@ -601,6 +601,11 @@ def extract_merchant(lines, max_lines=10, buyers=()):
     best = None
     for position, line in enumerate(lines[:max_lines]):
         raw = line.text.strip()
+        # « ASFLieu-dit 47901 AGEN Cedex » : le nom collé au lieu-dit, suivi
+        # de l'adresse. Seul ce qui précède le lieu-dit est candidat.
+        before_place = re.split(r"(?i)\s*lieu[- ]?dit", raw)[0].strip()
+        if before_place != raw and sum(char.isalpha() for char in before_place) >= 3:
+            raw = before_place
         text = normalize(raw)
         letters = sum(1 for char in text if char.isalpha())
         digits = sum(1 for char in text if char.isdigit())
