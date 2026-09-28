@@ -212,6 +212,18 @@
     }
 }
 
+// Bouton « Retouche » posé sur l'image du volet d'aperçu.
+.o-mail-Attachment-imgContainer:has(.o_expense_scan_retouch_control) {
+    position: relative;
+}
+.o_expense_scan_retouch_control {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    opacity: 0.9;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
 .o_expense_scan_retouch_angle {
     min-width: 3.5em;
     text-align: right;

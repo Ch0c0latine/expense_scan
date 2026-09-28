@@ -23,8 +23,8 @@ import { useDebounced } from "@web/core/utils/timing";
 //: Distance, en pixels du canevas, en dessous de laquelle un appui vise
 //: une poignée plutôt que déplace le cadre entier.
 const HANDLE_HIT_RADIUS = 22;
-//: Rayon dessiné de chaque poignée.
-const HANDLE_RADIUS = 9;
+//: Longueur de chaque branche des poignées en équerre.
+const HANDLE_LENGTH = 18;
 //: Taille minimale du recadrage, en pixels du canevas : sous ce seuil, le
 //: résultat n'aurait plus de sens (une poignée qui en croise une autre).
 const MIN_CROP_SIZE = 24;
@@ -128,7 +128,7 @@ export class RetouchDialog extends Component {
     }
 
     get title() {
-        return _t("Retoucher le justificatif");
+        return _t("Retouche");
     }
 
     get fineRange() {
@@ -224,15 +224,19 @@ export class RetouchDialog extends Component {
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 2;
         ctx.strokeRect(crop.x0, crop.y0, crop.x1 - crop.x0, crop.y1 - crop.y0);
-        for (const [x, y] of this.handlePositions(crop)) {
+        // Poignées en équerre, tournées vers l'intérieur du cadre : elles
+        // restent entières quand le cadre touche le bord de l'image.
+        const directions = [[1, 1], [-1, 1], [1, -1], [-1, -1]];
+        ctx.lineWidth = 5;
+        ctx.lineCap = "square";
+        this.handlePositions(crop).forEach(([x, y], index) => {
+            const [dx, dy] = directions[index];
             ctx.beginPath();
-            ctx.arc(x, y, HANDLE_RADIUS, 0, 2 * Math.PI);
-            ctx.fillStyle = "#ffffff";
-            ctx.fill();
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
-            ctx.lineWidth = 1;
+            ctx.moveTo(x + dx * HANDLE_LENGTH, y + dy * 2.5);
+            ctx.lineTo(x + dx * 2.5, y + dy * 2.5);
+            ctx.lineTo(x + dx * 2.5, y + dy * HANDLE_LENGTH);
             ctx.stroke();
-        }
+        });
         ctx.restore();
     }
 

@@ -16,7 +16,10 @@
  */
 import { AttachmentView } from "@mail/core/common/attachment_view";
 import { patch } from "@web/core/utils/patch";
+import { useService } from "@web/core/utils/hooks";
 import { useEffect } from "@odoo/owl";
+
+import { openRetouchDialog, retouchableAttachmentId } from "@expense_scan/js/retouch_dialog";
 
 //: Un sélecteur par bouton à cacher. La rotation (`pageRotateCw/Ccw`) n'y
 //: figure pas : c'est le seul outil qu'on garde.
@@ -58,6 +61,8 @@ function hideExpenseScanPdfTools(rootElement) {
 patch(AttachmentView.prototype, {
     setup() {
         super.setup();
+        this.expenseScanDialog = useService("dialog");
+        this.expenseScanOrm = useService("orm");
         if (this.props.threadModel !== "hr.expense") {
             return;
         }
@@ -65,5 +70,31 @@ patch(AttachmentView.prototype, {
             (el) => el && hideExpenseScanPdfTools(el),
             () => [this.iframeViewerPdfRef.el]
         );
+    },
+
+    /**
+     * La dépense ouverte dans le formulaire, si ce volet est le sien.
+     *
+     * Le volet n'a que l'identifiant et le modèle de la dépense ; le
+     * formulaire qui l'héberge, lui, tient l'enregistrement à recharger
+     * après la retouche.
+     */
+    get expenseScanRecord() {
+        const root = this.env.model?.root;
+        if (this.props.threadModel !== "hr.expense" || root?.resId !== this.props.threadId) {
+            return null;
+        }
+        return root;
+    },
+
+    /** Bouton « Retouche » sur l'aperçu : une image, une dépense modifiable. */
+    get expenseScanCanRetouch() {
+        const record = this.expenseScanRecord;
+        return Boolean(record?.data.is_editable && retouchableAttachmentId(record));
+    },
+
+    onExpenseScanRetouch() {
+        openRetouchDialog(
+            { dialog: this.expenseScanDialog, orm: this.expenseScanOrm }, this.expenseScanRecord);
     },
 });

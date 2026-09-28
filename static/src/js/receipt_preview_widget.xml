@@ -17,8 +17,8 @@
                        role="img" t-att-aria-label="toggleLabel"/>
                 </button>
                 <button t-if="canRetouch" type="button" class="btn btn-sm btn-light"
-                        t-on-click="onRetouch" title="Retoucher l'image">
-                    <i class="fa fa-crop" role="img" aria-label="Retoucher l'image"/>
+                        t-on-click="onRetouch" title="Retouche">
+                    <i class="fa fa-crop" role="img" aria-label="Retouche"/>
                 </button>
                 <button type="button" class="btn btn-sm btn-light"
                         t-on-click="onOpenViewer" title="Ouvrir en plein écran">

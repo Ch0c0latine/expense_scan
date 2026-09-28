@@ -104,10 +104,6 @@
                  à gauche : le widget ne rend alors rien. -->
             <xpath expr="//sheet/div[hasclass('oe_title')]" position="before">
                 <widget name="expense_scan_receipt"/>
-                <!-- Rotation fine et recadrage, en tête de fiche sur grand
-                     écran : à portée dès l'envoi, sans sortir puis revenir.
-                     Sur téléphone, le bandeau ci-dessus porte le bouton. -->
-                <widget name="expense_scan_retouch_button"/>
             </xpath>
 
             <!-- ============================================================
