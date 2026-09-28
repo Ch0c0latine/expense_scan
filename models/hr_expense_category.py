@@ -412,11 +412,9 @@ class HrExpense(models.Model):
         brand_family, brand = lexicon.brand_family(lines)
         if brand_family:
             add(brand_family, BRAND_WEIGHT, _("d'après la marque « %s »", brand))
-            if not key and lexicon.fold(brand) not in lexicon.fold(merchant or ''):
+            if not key:
                 # Une marque reconnue est mieux écrite que la première
-                # ligne du ticket, souvent un logo mal lu ou une adresse —
-                # sauf si l'enseigne lue la contient déjà : « Les 3
-                # Brasseurs » dit plus que la marque « 3 Brasseurs ».
+                # ligne du ticket, souvent un logo mal lu ou une adresse.
                 merchant = brand
 
         product_id = lexicon.pick_category(scores)
