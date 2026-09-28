@@ -194,7 +194,10 @@ travaillent sur la même liste de mots situés.
 - **Premier scan après redémarrage** : chaque worker Odoo charge les modèles
   de son côté, ce qui ajoute une à trois secondes. Le bouton de préchauffage
   ne couvre que le worker qui a traité la requête.
-- **PDF** : seule la première page est lue.
+- **PDF** : la première page est toujours lue ; si elle ne donne pas de
+  total, les pages suivantes le sont aussi (jusqu'à 5), pour le retrouver
+  en pied d'une facture de plusieurs pages. L'image affichée reste celle
+  de la première page.
 - **Plafonds** : un justificatif de plus de 25 Mo est refusé ; une image de plus de 50 mégapixels est réduite au décodage (au-delà de 250 Mpx, refusée) ; un PDF est rendu à une résolution qui tient dans le même plafond, avec un délai de 30 s.
 - **Analyse interrompue** : une analyse « en cours » depuis plus de 15 minutes — un justificatif qui aurait fait tuer son worker — n'est plus reprise ; la dépense passe en erreur et se saisit à la main.
 

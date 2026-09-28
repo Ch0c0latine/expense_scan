@@ -107,27 +107,41 @@ def _pdf_dpi(data, dpi):
     return max(10, min(dpi, int(72 * math.sqrt(MAX_PIXELS / (width * height)))))
 
 
-def pdf_first_page_to_image_bytes(data, dpi=200):
-    """Convertit la première page d'un PDF en PNG. Renvoie None si impossible."""
+def pdf_page_count(data):
+    """Nombre de pages d'un PDF ; 1 si le compte ne se lit pas."""
+    try:
+        from pdf2image import pdfinfo_from_bytes
+        return max(1, int(pdfinfo_from_bytes(data, timeout=PDF_TIMEOUT).get('Pages', 1)))
+    except Exception:  # noqa: BLE001 — un PDF illisible se traite comme une seule page
+        return 1
+
+
+def pdf_page_to_image_bytes(data, page, dpi=200):
+    """Convertit une page d'un PDF (1 = la première) en PNG. None si impossible."""
     try:
         from pdf2image import convert_from_bytes
     except ImportError:
         _logger.info("pdf2image absent : PDF non converti")
         return None
-    options = dict(dpi=_pdf_dpi(data, dpi), first_page=1, last_page=1)
+    options = dict(dpi=_pdf_dpi(data, dpi), first_page=page, last_page=page)
     try:
         try:
             pages = convert_from_bytes(data, timeout=PDF_TIMEOUT, **options)
         except TypeError:  # pdf2image ancien, sans délai
             pages = convert_from_bytes(data, **options)
     except Exception:
-        _logger.warning("Conversion du PDF impossible", exc_info=True)
+        _logger.warning("Conversion du PDF (page %s) impossible", page, exc_info=True)
         return None
     if not pages:
         return None
     buffer = io.BytesIO()
     pages[0].save(buffer, format="PNG")
     return buffer.getvalue()
+
+
+def pdf_first_page_to_image_bytes(data, dpi=200):
+    """Convertit la première page d'un PDF en PNG. Renvoie None si impossible."""
+    return pdf_page_to_image_bytes(data, 1, dpi=dpi)
 
 
 def load_image(data):
@@ -621,6 +635,24 @@ def skew_angle_from_lines(lines, min_words=3, min_lines=2):
         return 0.0
     angles.sort()
     return angles[len(angles) // 2]
+
+
+def shift_words(words, dy):
+    """Décale des boîtes verticalement, sans toucher à leur orientation.
+
+    Sert à mettre bout à bout les mots de plusieurs images distinctes — les
+    pages d'un PDF — dans une seule liste, sans que leurs lignes se mêlent :
+    chaque page reçoit un décalage assez grand pour rester sous la
+    précédente.
+    """
+    if not dy:
+        return words
+    return [
+        OcrWord(text=word.text, score=word.score, angle=word.angle,
+                left=word.left, right=word.right,
+                top=word.top + dy, bottom=word.bottom + dy)
+        for word in words
+    ]
 
 
 def scale_words(words, factor):

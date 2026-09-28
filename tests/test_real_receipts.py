@@ -5,9 +5,13 @@
 
 Chacun a révélé un défaut : ils le gardent corrigé.
 """
+from unittest.mock import patch
+
 from odoo.tests import common, tagged
 
-from ..ocr import lexicon, parser
+from ..models.hr_expense import PDF_MAX_PAGES_READ, Stopwatch
+from ..ocr import lexicon, parser, preprocess
+from ..ocr.types import OcrWord
 from .test_parser import words_from_text
 
 MCDONALDS = """4562
@@ -267,6 +271,91 @@ ASF Lieu-dit Les Pins BP 10017
             {'name': "x.jpg", 'raw': b'\xff\xd8', 'mimetype': 'image/jpeg'})
         self.assertTrue(Expense._expense_scan_is_pdf(pdf))
         self.assertFalse(Expense._expense_scan_is_pdf(photo))
+
+
+class TestPdfExtraPages(common.TransactionCase):
+    """Pages suivantes d'un PDF lues quand la première ne donne pas de total.
+
+    Une facture de plusieurs pages porte parfois son total en pied de la
+    dernière. Les moteurs (conversion PDF, OCR) sont ici de purs faux : ce
+    qui est testé, c'est le raccordement — décalage des boîtes, plafond de
+    pages, page illisible qui n'arrête pas les autres —, pas la lecture
+    elle-même.
+    """
+
+    class _FakeEngine:
+        """Rend un mot par page appelée, à une position fixe (0, 0)."""
+
+        def __init__(self):
+            self.calls = []
+
+        def recognize(self, image):
+            self.calls.append(image)
+            return [OcrWord(text="page-%d" % len(self.calls), score=0.9,
+                            left=0.0, top=0.0, right=50.0, bottom=20.0)]
+
+    def setUp(self):
+        super().setUp()
+        self.expense = self.env['hr.expense'].create({
+            'name': "Facture multi-pages",
+            'employee_id': self.env['hr.employee'].create({'name': "Multi Pages"}).id,
+        })
+        self.attachment = self.env['ir.attachment'].create(
+            {'name': "facture.pdf", 'raw': b'%PDF-1.4', 'mimetype': 'application/pdf'})
+        self.page1_words = [OcrWord(text="page-1-mot", score=0.9,
+                                    left=0.0, top=0.0, right=80.0, bottom=30.0)]
+
+    def test_a_single_page_pdf_is_left_alone(self):
+        engine = self._FakeEngine()
+        with patch.object(preprocess, 'pdf_page_count', return_value=1):
+            words = self.expense._expense_scan_extra_pdf_pages(
+                self.attachment, engine, self.page1_words, Stopwatch())
+        self.assertEqual(words, self.page1_words)
+        self.assertFalse(engine.calls)
+
+    def test_a_second_page_is_read_and_shifted_below_the_first(self):
+        engine = self._FakeEngine()
+        with patch.object(preprocess, 'pdf_page_count', return_value=2), \
+             patch.object(preprocess, 'pdf_page_to_image_bytes', return_value=b'\x89PNG'), \
+             patch.object(preprocess, 'load_image', return_value="page-2-image"):
+            words = self.expense._expense_scan_extra_pdf_pages(
+                self.attachment, engine, self.page1_words, Stopwatch())
+        self.assertEqual(len(words), 2)
+        self.assertEqual(words[0], self.page1_words[0])
+        added = words[1]
+        # Le mot de la page 2 garde sa position horizontale, mais atterrit
+        # nettement sous le dernier mot de la page 1 : jamais sur la même
+        # ligne, jamais mêlé à elle par `build_lines`.
+        self.assertEqual(added.left, 0.0)
+        self.assertGreater(added.top, self.page1_words[0].bottom + 500)
+        self.assertEqual(engine.calls, ["page-2-image"])
+
+    def test_pages_are_capped(self):
+        engine = self._FakeEngine()
+        with patch.object(preprocess, 'pdf_page_count', return_value=PDF_MAX_PAGES_READ + 5), \
+             patch.object(preprocess, 'pdf_page_to_image_bytes', return_value=b'\x89PNG'), \
+             patch.object(preprocess, 'load_image', return_value="image"):
+            self.expense._expense_scan_extra_pdf_pages(
+                self.attachment, engine, self.page1_words, Stopwatch())
+        # Une de moins que le plafond : la première page est déjà lue,
+        # avant l'appel à cette méthode.
+        self.assertEqual(len(engine.calls), PDF_MAX_PAGES_READ - 1)
+
+    def test_an_unreadable_page_does_not_stop_the_others(self):
+        engine = self._FakeEngine()
+
+        def convert(data, page, dpi=200):
+            return None if page == 2 else b'\x89PNG'
+
+        with patch.object(preprocess, 'pdf_page_count', return_value=3), \
+             patch.object(preprocess, 'pdf_page_to_image_bytes', side_effect=convert), \
+             patch.object(preprocess, 'load_image', return_value="image"):
+            words = self.expense._expense_scan_extra_pdf_pages(
+                self.attachment, engine, self.page1_words, Stopwatch())
+        # Page 1 (déjà là) + page 3 (lue) ; la page 2, injoignable, manque
+        # sans faire échouer les autres.
+        self.assertEqual(len(words), 2)
+        self.assertEqual(len(engine.calls), 1)
 
 
 # Devis PDF mis en colonnes : le total HT et la TVA partagent des lignes,

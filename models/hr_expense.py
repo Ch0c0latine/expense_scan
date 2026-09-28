@@ -26,6 +26,12 @@ _logger = logging.getLogger(__name__)
 
 SUPPORTED_IMAGE_PREFIX = 'image/'
 PDF_MIMETYPE = 'application/pdf'
+#: Pages supplémentaires converties et lues sur un PDF dont la première ne
+#: donne pas de total : une facture de plusieurs pages porte le sien en
+#: pied de la dernière. Borné, comme les autres plafonds d'entrée : une
+#: page de plus ne coûte rien, cinquante en coûteraient beaucoup pour un
+#: gain qui ne grandit pas d'autant.
+PDF_MAX_PAGES_READ = 5
 #: Écart, en jours, entre deux dépenses d'un même déplacement.
 TRIP_DAYS = 3
 
@@ -1000,12 +1006,18 @@ class HrExpense(models.Model):
         image = self._expense_scan_tighten(image, words, info, company)
         timer.lap('recadrage')
 
-        result = parser.parse(
-            words,
+        parse_kwargs = dict(
             max_age_days=company.expense_scan_max_age_days or 730,
             default_currency=company.currency_id.name or 'EUR',
             buyers=[name for name in (self.employee_id.name, company.name) if name],
         )
+        result = parser.parse(words, **parse_kwargs)
+        if self._expense_scan_is_pdf(attachment) and parser.fields_to_check(result, names=('total',)):
+            # Repli, pas la règle : la plupart des PDF donnent leur total
+            # dès la première page, seule lue jusqu'ici. Une facture de
+            # plusieurs pages le porte parfois en pied de la dernière.
+            words = self._expense_scan_extra_pdf_pages(attachment, engine, words, timer)
+            result = parser.parse(words, **parse_kwargs)
         result.engine = getattr(engine, 'description', engine.label)
         result.duration = duration
         result.preprocess = info
@@ -1014,6 +1026,39 @@ class HrExpense(models.Model):
         timer.lap('analyse')
         result.timer = timer
         return result
+
+    def _expense_scan_extra_pdf_pages(self, attachment, engine, words, timer):
+        """Complète les mots lus avec les pages suivantes d'un PDF.
+
+        Appelée seulement si la première page ne donne pas de total : une
+        facture de plusieurs pages porte souvent le sien en pied de la
+        dernière. Les pages ajoutées ne reçoivent pas le raffinement
+        réservé à l'image affichée (redressement, recadrage) — ce ne sont
+        pas des photos à main levée, et elles ne servent qu'à compléter
+        l'analyse, jamais l'aperçu.
+        """
+        self.ensure_one()
+        data = attachment.raw
+        count = preprocess.pdf_page_count(data)
+        if count <= 1:
+            return words
+        # Un grand décalage vertical par page : les mots de deux pages ne
+        # doivent jamais se mêler à ceux d'une ligne de l'autre.
+        step = max((word.bottom for word in words), default=0.0) + 1000.0
+        combined = list(words)
+        for page in range(2, min(count, PDF_MAX_PAGES_READ) + 1):
+            page_bytes = preprocess.pdf_page_to_image_bytes(data, page)
+            if not page_bytes:
+                continue
+            try:
+                page_image = preprocess.load_image(page_bytes)
+            except Exception:  # noqa: BLE001 — une page illisible n'arrête pas les autres
+                _logger.warning("Page %s du PDF illisible", page, exc_info=True)
+                continue
+            page_words = engine.recognize(page_image)
+            combined.extend(preprocess.shift_words(page_words, step * (page - 1)))
+        timer.lap('pages suivantes')
+        return combined
 
     #: Hauteur médiane des mots, en pixels de travail du moteur, en dessous
     #: de laquelle la lecture perd des caractères : un ticket photographié
