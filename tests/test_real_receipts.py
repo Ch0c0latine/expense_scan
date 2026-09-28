@@ -653,3 +653,11 @@ MwSt 7% EC 17,10 EUR
 Sie haben 17,10 EUR bezahlt""")
         self.assertEqual(result.value('tax_amount'), 1.12)
         self.assertEqual(result.value('total'), 17.10)
+
+    def test_dates_with_month_names_glued_or_slashed(self):
+        glued = reading("CAFE EXEMPLE\nFct 7868 N :0001-0462003\nMai12'25 10:35AM\nTOTAL 6,95")
+        self.assertEqual(str(glued.value('date')), "2025-05-12")
+        slashed = reading("HOTEL EXEMPLE\nDate: 14/May/2025\nTotal 6.37")
+        self.assertEqual(str(slashed.value('date')), "2025-05-14")
+        ambiguous = reading("CAFE EXEMPLE\nJui08'25 08:55AM\nTOTAL 9,00")
+        self.assertIsNone(ambiguous.value('date'))  # juin ou juillet ?

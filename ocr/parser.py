@@ -301,7 +301,11 @@ DATE_PATTERNS = [
     # 04/09/26
     (re.compile(r"\b(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2})\b"), "dmy2", 0.75),
     # 4 SEPT 2026 - 23 SEPTEMBRE 2026
-    (re.compile(r"\b(\d{1,2})\s+([A-Z]{3,10})\.?\s+(\d{4})\b"), "dmonthy", 0.85),
+    # « 14/May/2025 » aussi : le mois en lettres entre deux barres.
+    (re.compile(r"\b(\d{1,2})(?:\s+|\s*[/.\-]\s*)([A-Z]{3,10})\.?(?:\s+|\s*[/.\-]\s*)(\d{4})\b"),
+     "dmonthy", 0.85),
+    # « Mai12'25 10:35AM » : le mois collé au jour (terminaux de restauration).
+    (re.compile(r"\b([A-Z]{3,5})(\d{1,2})\s+(\d{2})\b(?![:\d])"), "mdy2", 0.80),
     # « 28 Jul'26 15:41 » : l'année sur deux chiffres, après une apostrophe
     # que la normalisation a changée en espace. Pas une heure (« 26:… »).
     (re.compile(r"\b(\d{1,2})\s*([A-Z]{3,10})\s+(\d{2})\b(?![:\d])"), "dmonthy2", 0.80),
@@ -351,6 +355,12 @@ def _build_date(kind, groups, today):
             day = int(groups[0])
             month = _month_number(groups[1])
             year = int(groups[2])
+            if not month:
+                return None
+        elif kind == "mdy2":
+            month = _month_number(groups[0])
+            day = int(groups[1])
+            year = 2000 + int(groups[2])
             if not month:
                 return None
         elif kind == "dmonthy2":
