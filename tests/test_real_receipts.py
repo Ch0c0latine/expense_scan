@@ -545,3 +545,51 @@ INSTITUT EXEMPLE GREEN EXEMPLE
 1 rue de l'Exemple 2 CHEMIN DES PRES
 120h x 11 €/h = 1 320,00 € HT"""), buyers=["Camille Exemple", "GreenExemple"])
         self.assertEqual(result.value('merchant'), "Institut Exemple")
+
+    def test_english_net_total_is_before_tax(self):
+        """« Net Total » est le hors-taxe d'un taux ; le montant payé suit."""
+        result = reading("""
+Exemple Food & Beverage
+CHK 5785
+28 Jul'26 15:40 PM
+1 Viennois Exemple 8,50
+1 Croissant Exemple 4,80
+0,77 France-VAT 10% Tak 8,50
+Net Total: €7,73
+0,25 France-VAT 5.5% Ta 4,80
+Net Total: €4,55
+Food €13,30
+Paiement €13,30
+Change Due €0,00""")
+        self.assertEqual(result.value('total'), 13.30)
+        self.assertEqual(str(result.value('date')), "2026-07-28")
+        self.assertGreaterEqual(result.fields['date'].confidence, parser.LOW_CONFIDENCE)
+
+    def test_abbreviated_tot_ttc(self):
+        result = reading("""
+STATION EXEMPLE A62
+TICKET CLIENT
+Donut 3.70
+Moka 5.95
+TOT TTC € 9.65
+Visa 635
+Montant 10.00""")
+        self.assertEqual(result.value('total'), 9.65)
+
+    def test_german_net_turnover_and_tip_are_not_the_total(self):
+        result = reading("""
+Flughafen Exemple
+Rechnung Nr. 1128
+1 × 6,20 EUR 6,20 EUR
+Bowl Exemple 10,90 EUR
+Summe Nettoumsatz 15,98 EUR 1,12 EUR
+Steuersumme Verkäufe 7% inkl. 17,10 EUR 1,12 EUR
+Summe 17,10 EUR""")
+        self.assertEqual(result.value('total'), 17.10)
+        tipped = reading("""
+Exemple Frühstück
+1x Frühstück 5,50
+1x Espresso 3,70
+Summe Trinkgeld 9,20 0,46
+Gesamt 9,66""")
+        self.assertEqual(tipped.value('total'), 9.66)

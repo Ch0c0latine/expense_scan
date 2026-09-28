@@ -3,7 +3,7 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 {
     'name': "Scan de tickets de caisse",
-    'version': '19.0.2.4.1',
+    'version': '19.0.2.4.2',
     'summary': "Saisir une dépense en photographiant un ticket : recadrage et "
                "redressage automatiques, pré-remplissage des champs par OCR "
                "local, vérification en vue scindée.",

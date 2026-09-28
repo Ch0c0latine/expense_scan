@@ -236,8 +236,7 @@ ADDED_KEYWORDS = {
                  "boulangerie", "viennoiserie", "baguette", "croissant",
                  "café au lait", "cafe au lait", "expresso", "cappuccino"],
         'fuel': ["kwh", "energy tariff", "recharge", "chargement", "charging session"],
-        'train_air': ["vol", "vols", "passager", "passagers", "aeroport", "aéroport",
-                      "embarquement"],
+        'train_air': ["vol", "vols", "passager", "passagers", "embarquement"],
     },
     # Un péage italien (« PEDAGGIO »), un reçu de réservation « B&B ».
     '19.0.2.4.1': {
@@ -245,6 +244,21 @@ ADDED_KEYWORDS = {
                          "peaje", "autopista", "esattore", "transito",
                          "attestato di transito"],
         'lodging': ["b&b", "bed and breakfast", "bnb"],
+    },
+    # Restaurant d'aéroport allemand : « Aichinger Gastro GmbH … Tisch 1122 ».
+    # Station italienne dont la raison sociale dit « risto » (restaurant).
+    '19.0.2.4.2': {
+        'meal': ["gastro", "tisch"],
+        'fuel': ["senza piombo", "pompa", "stazione di servizio", "erogatore"],
+    },
+}
+#: Mots retirés d'une version à l'autre, même forme. La migration ne retire
+#: que ces mots-là : le reste de chaque fiche ne bouge pas.
+REMOVED_KEYWORDS = {
+    # « Aéroport » est un lieu, pas un achat : il faisait passer pour un billet
+    # d'avion le sandwich d'une aérogare (Starbucks, Pokawa).
+    '19.0.2.4.2': {
+        'train_air': ["aeroport", "aéroport"],
     },
 }
 # Les catégories créées après cette version partent aussi de ces mots.

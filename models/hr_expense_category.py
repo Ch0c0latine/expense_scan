@@ -30,6 +30,7 @@ simplement « sans TVA », comme l'hôtel, reste proposable.
 """
 import base64
 import logging
+import re
 from collections import Counter
 
 from odoo import _, api, fields, models
@@ -53,8 +54,10 @@ HISTORY_FUZZY_WEIGHT = 3.0
 #: décisif à lui seul, sauf si les mots du ticket disent nettement autre
 #: chose — le restaurant d'un hôtel reste un repas.
 CODE_WEIGHT = 4.0
-#: Poids d'une marque connue en tête du ticket : celui d'un mot d'en-tête.
-BRAND_WEIGHT = 2.0
+#: Poids d'une marque connue en tête du ticket : 3 — plus qu'un mot
+#: d'en-tête. À 2, un mot égaré (« route », « aéroport ») suffisait à
+#: laisser sans catégorie un KFC ou un Starbucks d'aérogare.
+BRAND_WEIGHT = 3.0
 #: États où la catégorie a été confirmée par quelqu'un.
 CONFIRMED_STATES = ('submitted', 'approved', 'posted', 'in_payment', 'paid')
 
@@ -146,6 +149,22 @@ class ProductTemplate(models.Model):
             missing = [word for word in words if lexicon.fold(word) not in known]
             if missing:
                 template.expense_scan_keywords = current.rstrip('\n') + '\n' + '\n'.join(missing)
+
+    def _expense_scan_remove_keywords(self, removals):
+        """Retire des mots, par famille, des catégories qui les servent.
+
+        Seuls ces mots-là partent ; les autres gardent leur écriture et
+        leur ordre.
+        """
+        for template, family in self._expense_scan_family_templates().items():
+            words = {lexicon.fold(word) for word in removals.get(family, ())}
+            current = template.expense_scan_keywords or ''
+            if not words or not current.strip():
+                continue
+            chunks = [chunk.strip() for chunk in re.split(r"[\n,;]+", current) if chunk.strip()]
+            kept = [chunk for chunk in chunks if lexicon.fold(chunk) not in words]
+            if len(kept) != len(chunks):
+                template.expense_scan_keywords = '\n'.join(kept)
 
     @api.model
     def _expense_scan_family_templates(self):

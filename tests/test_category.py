@@ -292,6 +292,34 @@ class TestCategoryRecognition(common.TransactionCase):
             {'toll_parking': ["classe tarif", "PEAGE"]})
         self.assertEqual(parking.expense_scan_keywords, "péage\nmon mot\nclasse tarif")
 
+    def test_removed_keywords_leave_the_rest_alone(self):
+        families = self.env['product.template']._expense_scan_family_templates()
+        train = next((t for t, f in families.items() if f == 'train_air'), None)
+        if not train:
+            return
+        train.expense_scan_keywords = "Gare\nAéroport, billet\nmon mot"
+        self.env['product.template']._expense_scan_remove_keywords(
+            {'train_air': ["aeroport"]})
+        self.assertEqual(train.expense_scan_keywords, "Gare\nbillet\nmon mot")
+
+    def test_a_brand_outweighs_a_stray_word(self):
+        """KFC en tête, un mot d'hôtel égaré plus bas : c'est un repas."""
+        meal = self.env['product.product'].create({
+            'name': "Restaurant test marque", 'can_be_expensed': True, 'sequence': -999,
+            'expense_scan_keywords': "zzrepas"})
+        hotel = self.env['product.product'].create({
+            'name': "Hôtel test marque", 'can_be_expensed': True, 'sequence': -999,
+            'expense_scan_keywords': "zzchambre"})
+        families = self.env['product.template']._expense_scan_family_templates()
+        if families.get(meal.product_tmpl_id) != 'meal' \
+                or families.get(hotel.product_tmpl_id) != 'lodging':
+            return
+        values = self.expense()._expense_scan_category_values(
+            reading("KFC\nKFC Exempleville\n1 Rue Exemple\n00000 Exempleville\n"
+                    "Commande 43\n25/07/2025\nVotre commande\nMenu 15,90\n"
+                    "ZZCHAMBRE\nTOTAL 15,90"), self.company)
+        self.assertEqual(values.get('product_id'), meal.id)
+
 
 @tagged('post_install', '-at_install')
 class TestCardSlips(common.TransactionCase):

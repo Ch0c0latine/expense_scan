@@ -245,6 +245,41 @@ class TestExpenseSheet(common.TransactionCase):
             form.project_ids.add(self.project)
             self.assertTrue(form.selected_summary.startswith("1 "))
 
+    def test_period_dates(self):
+        Wizard = self.env["expense.scan.sheet.wizard"]
+        self.assertEqual(Wizard._period_dates('current', date(2026, 9, 28)),
+                         (date(2026, 9, 1), date(2026, 9, 30)))
+        self.assertEqual(Wizard._period_dates('previous', date(2026, 3, 15)),
+                         (date(2026, 2, 1), date(2026, 2, 28)))
+        self.assertEqual(Wizard._period_dates('previous', date(2026, 1, 5)),
+                         (date(2025, 12, 1), date(2025, 12, 31)))
+
+    def test_wizard_opened_from_the_menu_picks_the_period(self):
+        """« Fiches de frais > Autre période » : les dépenses des dates choisies."""
+        other = self.env['hr.employee'].create({'name': "Jules Période"})
+        inside = self.expense("Dedans", 10)
+        self.expense("Dehors", 25)
+        self.expense("Autre salarié", 10, employee_id=other.id)
+        self.expense("Refusée", 11).write({'approval_state': 'refused'})
+        wizard = self.env["expense.scan.sheet.wizard"].with_context(
+            default_period='custom').create({
+                'employee_ids': [(6, 0, self.employee.ids)],
+                'date_from': date(2026, 8, 5), 'date_to': date(2026, 8, 20),
+                'summary': False, 'receipts': True})
+        wizard._onchange_period()
+        self.assertEqual(wizard.expense_ids, inside)
+        self.assertEqual(wizard.selected_count, 1)
+
+    def test_same_day_expenses_follow_the_ticket_time(self):
+        from datetime import datetime
+        evening = self.expense("Soir", 7, scan_datetime=datetime(2026, 8, 7, 19, 30))
+        morning = self.expense("Matin", 7, scan_datetime=datetime(2026, 8, 7, 8, 15))
+        noon = self.expense("Midi", 7, scan_datetime=datetime(2026, 8, 7, 12, 40))
+        day_before = self.expense("Veille", 6)
+        found = self.env['hr.expense'].search([('id', 'in', (
+            evening | morning | noon | day_before).ids)])
+        self.assertEqual(found.mapped('name'), ["Soir", "Midi", "Matin", "Veille"])
+
     def test_not_reinvoiced_expense_keeps_its_mission(self):
         expense = self.expense("Suivi", 1, reinvoice_mode="none")
         values = expense._expense_scan_project_values(self.project, reinvoice=False)

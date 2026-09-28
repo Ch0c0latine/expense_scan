@@ -35,6 +35,12 @@
                 </button>
             </xpath>
 
+            <!-- « Réinitialiser » laissait croire à un effacement : le
+                 bouton ne fait que rouvrir la dépense pour la corriger. -->
+            <xpath expr="//header/button[@name='action_reset']" position="attributes">
+                <attribute name="string">Retour brouillon</attribute>
+            </xpath>
+
             <!-- Joindre le reçu fait doublon avec le volet des pièces
                  jointes, qu'on ouvre d'office juste en dessous. -->
             <xpath expr="(//widget[@name='attach_document'])[1]" position="attributes">

@@ -132,7 +132,7 @@ def build_lines(words, tolerance_ratio=0.6):
 TOTAL_KEYWORDS = [
     (re.compile(r"\bNET\s*A\s*PAYER\b"), 0.95),
     (re.compile(r"\bDO\s*ZAPLATY\b"), 0.95),                        # pl
-    (re.compile(r"\bTOTAL\s*T\.?\s*T\.?\s*C\b"), 0.93),
+    (re.compile(r"\bTOT(?:AL)?\.?\s*T\.?\s*T\.?\s*C\b"), 0.93),
     # « Montant final (TVA incluse) EUR 15,38 » : facture d'une borne, où le
     # total suit des lignes d'énergie en kWh.
     (re.compile(r"\bMONTANT\s*FINAL\b|\bTVA\s*INCLUSE\b"), 0.91),
@@ -175,7 +175,12 @@ TOTAL_EXCLUDE_RE = re.compile(
     r"\bRENDU\b|\bMONNAIE\b|\bRECU\b|\bREMISE\b|\bECONOMIE\b|\bAVANTAGE\b|"
     r"\bCAGNOTTE\b|\bFIDELITE\b|\bPOINTS?\b|\bSOLDE\b|\bDONT\b|\bACOMPTE\b|"
     r"\bRESTO\b|\bRESZTA\b|\bRUCKGELD\b|\bWECHSELGELD\b|\bGEGEBEN\b|"
-    r"\bCAMBIO\b|\bWISSELGELD\b|\bCHANGE\b|\bSCONTO\b|\bRABATT?\b|\bDESCUENTO\b"
+    r"\bCAMBIO\b|\bWISSELGELD\b|\bCHANGE\b|\bSCONTO\b|\bRABATT?\b|\bDESCUENTO\b|"
+    # « Net Total: €7,73 » : l'anglais met le hors-taxe d'un taux sous ce
+    # nom — pas le « TOTAL NET » français, souvent le montant à payer.
+    # « Summe Nettoumsatz », « Steuersumme » : le net et la taxe allemands ;
+    # le pourboire (« Summe Trinkgeld 9,20 0,46 ») n'est pas le total non plus.
+    r"\bNET\s*TOTAL\b|\bNETTOUMSATZ\b|\bSTEUERSUMME\b|\bTRINKGELD\b|\bPOURBOIRE\b"
 )
 
 
@@ -257,6 +262,9 @@ DATE_PATTERNS = [
     (re.compile(r"\b(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2})\b"), "dmy2", 0.75),
     # 4 SEPT 2026 - 23 SEPTEMBRE 2026
     (re.compile(r"\b(\d{1,2})\s+([A-Z]{3,10})\.?\s+(\d{4})\b"), "dmonthy", 0.85),
+    # « 28 Jul'26 15:41 » : l'année sur deux chiffres, après une apostrophe
+    # que la normalisation a changée en espace. Pas une heure (« 26:… »).
+    (re.compile(r"\b(\d{1,2})\s*([A-Z]{3,10})\s+(\d{2})\b(?![:\d])"), "dmonthy2", 0.80),
     # Sans millésime : « 04/09 », « 23 SEPTEMBRE ». Les lookaheads écartent
     # les dates complètes, déjà captées par les motifs précédents.
     (re.compile(r"\b(\d{1,2})[/.\-](\d{1,2})(?![/.\-]?\d)"), "dm", 0.50),
@@ -303,6 +311,12 @@ def _build_date(kind, groups, today):
             day = int(groups[0])
             month = _month_number(groups[1])
             year = int(groups[2])
+            if not month:
+                return None
+        elif kind == "dmonthy2":
+            day = int(groups[0])
+            month = _month_number(groups[1])
+            year = 2000 + int(groups[2])
             if not month:
                 return None
         elif kind == "dm":

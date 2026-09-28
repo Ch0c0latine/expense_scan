@@ -17,7 +17,7 @@ import logging
 import re
 import zipfile
 from copy import copy
-from datetime import date
+from datetime import date, timedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -748,6 +748,18 @@ class ExpenseScanSheetWizard(models.TransientModel):
     _description = "Édition d'une fiche de frais"
 
     expense_ids = fields.Many2many('hr.expense', string="Dépenses sélectionnées")
+    # Ouvert depuis le menu « Fiches de frais », l'assistant choisit lui-même
+    # les dépenses d'une période : plus besoin de filtrer la liste, tout
+    # sélectionner, puis passer par « Actions ».
+    period = fields.Selection(
+        [('current', "Mois en cours"), ('previous', "Mois précédent"),
+         ('custom', "Autre période")],
+        string="Période")
+    date_from = fields.Date(string="Du")
+    date_to = fields.Date(string="Au")
+    employee_ids = fields.Many2many(
+        'hr.employee', string="Salariés",
+        help="Vide : tous les salariés dont vous voyez les frais.")
     scope = fields.Selection(
         [('all', "Tous les frais"), ('reinvoice', "Frais refacturables seulement")],
         string="Frais", default='reinvoice', required=True)
@@ -770,7 +782,48 @@ class ExpenseScanSheetWizard(models.TransientModel):
         values = super().default_get(fields_list)
         if self.env.context.get('active_model') == 'hr.expense':
             values['expense_ids'] = [(6, 0, self.env.context.get('active_ids') or [])]
+        elif values.get('period'):
+            date_from, date_to = self._period_dates(values['period'])
+            values.setdefault('date_from', fields.Date.to_string(date_from))
+            values.setdefault('date_to', fields.Date.to_string(date_to))
+            employee = self.env.user.employee_id
+            if employee and 'employee_ids' not in values:
+                values['employee_ids'] = [(6, 0, employee.ids)]
+            values['expense_ids'] = [(6, 0, self._period_expenses(
+                values['date_from'], values['date_to'],
+                employee.ids if employee else []).ids)]
         return values
+
+    @api.model
+    def _period_dates(self, period, today=None):
+        """Premier et dernier jour du mois en cours ou du précédent."""
+        today = today or fields.Date.context_today(self)
+        first = today.replace(day=1)
+        if period == 'previous':
+            last = first - timedelta(days=1)
+            return last.replace(day=1), last
+        next_month = (first + timedelta(days=32)).replace(day=1)
+        return first, next_month - timedelta(days=1)
+
+    @api.model
+    def _period_expenses(self, date_from, date_to, employee_ids):
+        """Les dépenses de la période que l'utilisateur voit, refusées exceptées."""
+        if not (date_from and date_to):
+            return self.env['hr.expense']
+        domain = [('date', '>=', date_from), ('date', '<=', date_to),
+                  ('state', '!=', 'refused')]
+        if employee_ids:
+            domain.append(('employee_id', 'in', employee_ids))
+        return self.env['hr.expense'].search(domain)
+
+    @api.onchange('period', 'date_from', 'date_to', 'employee_ids')
+    def _onchange_period(self):
+        if not self.period:
+            return
+        if self.period != 'custom':
+            self.date_from, self.date_to = self._period_dates(self.period)
+        self.expense_ids = self._period_expenses(
+            self.date_from, self.date_to, self.employee_ids._origin.ids)
 
     @api.depends('expense_ids')
     def _compute_available_project_ids(self):

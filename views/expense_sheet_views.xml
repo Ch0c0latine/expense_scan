@@ -113,6 +113,26 @@
                     <i class="fa fa-file-text-o me-2" title="Dépenses sélectionnées"/>
                     <field name="selected_summary" readonly="1" class="d-inline"/>
                 </div>
+                <group invisible="not period">
+                    <group string="Période">
+                        <field name="period" widget="radio" options="{'horizontal': true}"/>
+                        <label for="date_from" string="Dates"/>
+                        <div class="d-flex align-items-center gap-2">
+                            <field name="date_from" readonly="period != 'custom'"
+                                   required="period == 'custom'" class="w-auto"/>
+                            <span>au</span>
+                            <field name="date_to" readonly="period != 'custom'"
+                                   required="period == 'custom'" class="w-auto"/>
+                        </div>
+                    </group>
+                    <group string="Salariés" groups="hr_expense.group_hr_expense_team_approver">
+                        <field name="employee_ids" widget="many2many_tags" nolabel="1" colspan="2"
+                               options="{'no_create': True}"/>
+                        <div colspan="2" class="text-muted small">
+                            Vide : tous les salariés dont vous voyez les frais.
+                        </div>
+                    </group>
+                </group>
                 <group>
                     <group string="Frais">
                         <field name="scope" widget="radio"/>
@@ -145,5 +165,41 @@
         <field name="binding_model_id" ref="hr_expense.model_hr_expense"/>
         <field name="binding_view_types">list</field>
     </record>
+
+    <!-- Accès direct depuis le menu : la fiche du mois, sans filtrer la
+         liste, tout sélectionner puis passer par « Actions ». -->
+    <record id="expense_scan_sheet_current_month_action" model="ir.actions.act_window">
+        <field name="name">Fiche de frais du mois en cours</field>
+        <field name="res_model">expense.scan.sheet.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_period': 'current'}</field>
+    </record>
+    <record id="expense_scan_sheet_previous_month_action" model="ir.actions.act_window">
+        <field name="name">Fiche de frais du mois précédent</field>
+        <field name="res_model">expense.scan.sheet.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_period': 'previous'}</field>
+    </record>
+    <record id="expense_scan_sheet_custom_period_action" model="ir.actions.act_window">
+        <field name="name">Fiche de frais d'une période</field>
+        <field name="res_model">expense.scan.sheet.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_period': 'custom'}</field>
+    </record>
+
+    <menuitem id="menu_expense_scan_sheets" name="Fiches de frais"
+              parent="hr_expense.menu_hr_expense_root" sequence="15"/>
+    <menuitem id="menu_expense_scan_sheet_current_month" name="Mois en cours"
+              parent="menu_expense_scan_sheets" action="expense_scan_sheet_current_month_action"
+              sequence="10"/>
+    <menuitem id="menu_expense_scan_sheet_previous_month" name="Mois précédent"
+              parent="menu_expense_scan_sheets" action="expense_scan_sheet_previous_month_action"
+              sequence="20"/>
+    <menuitem id="menu_expense_scan_sheet_custom_period" name="Autre période…"
+              parent="menu_expense_scan_sheets" action="expense_scan_sheet_custom_period_action"
+              sequence="30"/>
 
 </odoo>

@@ -24,6 +24,10 @@ PDF_MIMETYPE = 'application/pdf'
 
 class HrExpense(models.Model):
     _inherit = 'hr.expense'
+    # Plus récentes en haut, comme Odoo, mais les tickets d'une même
+    # journée suivent l'heure imprimée plutôt que l'ordre de saisie. Sans
+    # heure connue (saisie à la main), la dépense passe après ceux du jour.
+    _order = 'date desc, scan_datetime desc nulls last, id desc'
 
     scan_state = fields.Selection(
         selection=[
