@@ -73,7 +73,14 @@ export class ScanProgress extends Component {
                 setTimeout(() => record.model.load(), 3000);
                 return;
             }
-            this.apply(result.values);
+            if (await record.isDirty()) {
+                // Des saisies en cours : on ne touche qu'aux autres champs.
+                this.apply(result.values);
+            } else {
+                // Rien de saisi : rechargement complet, qui rafraîchit aussi
+                // le titre et le justificatif recadré dans le volet.
+                await record.model.load();
+            }
         } catch (error) {
             this.notification.add(_t("L'analyse du ticket a échoué : relancez-la depuis la fiche."), {
                 type: "danger",
