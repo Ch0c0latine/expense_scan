@@ -664,3 +664,30 @@ Sie haben 17,10 EUR bezahlt""")
         self.assertEqual(str(slashed.value('date')), "2025-05-14")
         ambiguous = reading("CAFE EXEMPLE\nJui08'25 08:55AM\nTOTAL 9,00")
         self.assertIsNone(ambiguous.value('date'))  # juin ou juillet ?
+
+    def test_online_shop_invoice_with_delivery(self):
+        """Facture de boutique en ligne : produits, livraison, point de retrait."""
+        result = parser.parse(words_from_text("""
+BOUTIQUEXEMPLE FACTURE
+.com 02/09/2026
+#AB000001
+Le spécialiste des exemples depuis 2009
+Adresse de livraison Adresse de facturation
+CAMILLE EXEMPLE CAMILLE EXEMPLE
+Référence Produit Taux de Prix Quantité Total
+XX0001 Produit exemple - Pot 20 % 10,75 € 8,25 € 1 8,25 €
+Détail des taxes Taux de taxe Taxe totale Total produits 8,25 €
+Produits 20.000 % 1,65 € Frais de livraison 4,58 €
+Livraison 20.000 % 0,92 € Total (HT) 12,83 €
+Taxe totale 2,57 €
+Moyen de paiement PayPal 15,40 €
+Transporteur Colissimo Points de retrait Total 15,40 €
+Boutiquexemple.com - 1 rue Exemple - 00000 Exempleville"""),
+            buyers=["Camille Exemple"])
+        self.assertEqual(result.value('total'), 15.40)
+        self.assertEqual(result.value('tax_amount'), 2.57)
+        self.assertEqual(result.value('merchant'), "Boutiquexemple")
+
+    def test_loyalty_points_are_still_not_a_total(self):
+        result = reading("CAFE EXEMPLE\nTOTAL 6,40\nPOINTS FIDELITE CUMULES 64,00")
+        self.assertEqual(result.value('total'), 6.40)

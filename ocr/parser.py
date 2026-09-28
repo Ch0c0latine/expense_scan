@@ -181,14 +181,18 @@ TOTAL_EXCLUDE_RE = re.compile(
     r"\bVAT\b(?!\s*INCL)|\bBTW\b(?!\s*INCL)|\bPTU\b|\bOPOD|\bNETTO\b|"
     r"\bIMPONIBILE\b|\bBASE\s*IMPONIBLE\b|\bDI\s*CUI\b|"
     r"\bRENDU\b|\bMONNAIE\b|\bRECU\b|\bREMISE\b|\bECONOMIE\b|\bAVANTAGE\b|"
-    r"\bCAGNOTTE\b|\bFIDELITE\b|\bPOINTS?\b|\bSOLDE\b|\bDONT\b|\bACOMPTE\b|"
+    # « Points de retrait » (Colissimo) n'est pas une cagnotte de points.
+    r"\bCAGNOTTE\b|\bFIDELITE\b|\bPOINTS?\b(?!\s+(?:DE\s+)?RETRAIT)|\bSOLDE\b|\bDONT\b|"
+    r"\bACOMPTE\b|"
     r"\bRESTO\b|\bRESZTA\b|\bRUCKGELD\b|\bWECHSELGELD\b|\bGEGEBEN\b|"
     r"\bCAMBIO\b|\bWISSELGELD\b|\bCHANGE\b|\bSCONTO\b|\bRABATT?\b|\bDESCUENTO\b|"
     # « Net Total: €7,73 » : l'anglais met le hors-taxe d'un taux sous ce
     # nom — pas le « TOTAL NET » français, souvent le montant à payer.
     # « Summe Nettoumsatz », « Steuersumme » : le net et la taxe allemands ;
     # le pourboire (« Summe Trinkgeld 9,20 0,46 ») n'est pas le total non plus.
-    r"\bNET\s*TOTAL\b|\bNETTOUMSATZ\b|\bSTEUERSUMME\b|\bTRINKGELD\b|\bPOURBOIRE\b"
+    r"\bNET\s*TOTAL\b|\bNETTOUMSATZ\b|\bSTEUERSUMME\b|\bTRINKGELD\b|\bPOURBOIRE\b|"
+    # « Total produits 8,25 » : les articles sans la livraison, un sous-total.
+    r"\bTOTAL\s*(?:DES\s*)?(?:PRODUITS?|ARTICLES?|MARCHANDISES?)\b"
 )
 
 
@@ -497,6 +501,10 @@ LEGAL_FORM_RE = re.compile(
     r"\bS\.?\s?P\.?\s?A\b|\bS\.?\s?R\.?\s?L\b|\bGMBH\b|\bLTD\b|\bLLC\b"
     r"|\bSARL\b|\bSASU?\b|\bEURL\b|\bSNC\b|\bB\.?V\b", re.IGNORECASE)
 LEGAL_FORM_BONUS = 1.15
+#: Type de document en tête ou en fin de ligne, à côté du nom de l'enseigne.
+DOCUMENT_KIND_RE = re.compile(
+    r"^\s*(?:FACTURE|TICKET|RE[CÇ]U|INVOICE|RECEIPT)\s+"
+    r"|\s+(?:FACTURE|TICKET|RE[CÇ]U|INVOICE|RECEIPT)\s*$", re.IGNORECASE)
 #: « Voltix Innovations B.V. – Voorbeeldstraat 1 » : la mention légale en
 #: pied de facture, qui nomme le vendeur quand l'en-tête ne porte qu'un logo.
 LEGAL_ENTITY_RE = re.compile(
@@ -606,6 +614,11 @@ def extract_merchant(lines, max_lines=10, buyers=()):
         before_place = re.split(r"(?i)\s*lieu[- ]?dit", raw)[0].strip()
         if before_place != raw and sum(char.isalpha() for char in before_place) >= 3:
             raw = before_place
+        # « ANTIMOUSTIC FACTURE » : le nom et le type de document sur la même
+        # ligne. Sans le mot « facture », le nom reste candidat.
+        without_kind = DOCUMENT_KIND_RE.sub("", raw).strip()
+        if without_kind != raw and sum(char.isalpha() for char in without_kind) >= 3:
+            raw = without_kind
         text = normalize(raw)
         letters = sum(1 for char in text if char.isalpha())
         digits = sum(1 for char in text if char.isdigit())
@@ -671,7 +684,7 @@ def extract_merchant(lines, max_lines=10, buyers=()):
 #: IVA (it, es, pt), MwSt et USt (de), PTU (pl), BTW (nl), DPH (cs), MOMS.
 TVA_LINE_RE = re.compile(
     r"\bT\.?\s*V\.?\s*A\b|\bV\.?A\.?T\b|\bI\.?V\.?A\b|\bMWST\b|\bUST\b|\bPTU\b"
-    r"|\bB\.?T\.?W\b|\bDPH\b|\bMOMS\b|\bPODATEK\b|\bSTEUERSUMME\b")
+    r"|\bB\.?T\.?W\b|\bDPH\b|\bMOMS\b|\bPODATEK\b|\bSTEUERSUMME\b|\bTAXES?\s*TOTALES?\b")
 #: « TVA:D », « (c° tva: 2) » — code de taux renvoyant au tableau, sans
 #: montant de taxe. Un chiffre seul ne compte que s'il n'ouvre pas un montant
 #: (« TVA: 5,50 »).
@@ -693,6 +706,8 @@ TAX_SUM_RE = re.compile(
     r"\b(?:SUMA|TOTAL|TOTALE|SUMME|TOTAAL|RAZEM|GESAMT)\s*(?:DE\s*LA\s*|DI\s*)?"
     r"(?:T\.?\s*V\.?\s*A|PTU|IVA|VAT|MWST|UST|BTW|PODATEK)\b"
     r"|\bTOTAL\s*TAX(?:ES)?\b|\bPODATEK\s*PTU\b|\bSTEUERSUMME\b"
+    # « Taxe totale 2,57 € » : la somme d'une facture de boutique en ligne.
+    r"|\bTAXES?\s*TOTALES?\b"
     # « Montant TVA 10,00 € » : le total d'un tableau mis en colonnes.
     r"|\bMONTANT\s*(?:DE\s*LA\s*|DE\s*)?T\.?\s*V\.?\s*A\b")
 # Taux de TVA en vigueur dans l'Union européenne, en Suisse et au
