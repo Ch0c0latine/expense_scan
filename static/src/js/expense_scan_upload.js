@@ -33,6 +33,12 @@ const expenseScanUpload = () => ({
     setup() {
         super.setup();
         this.expenseScanDialog = useService("dialog");
+        // Envois réellement en cours. Le compteur d'Odoo, `uploadsProcessing`,
+        // monte à chaque ouverture du sélecteur mais ne redescend pas quand
+        // on le referme sans rien choisir : après une annulation, l'envoi
+        // suivant se croyait « un parmi d'autres » et restait sur la liste
+        // au lieu d'ouvrir la fiche. On ne s'y fie donc plus.
+        this.expenseScanInFlight = 0;
     },
 
     /**
@@ -48,9 +54,8 @@ const expenseScanUpload = () => ({
         this.expenseScanDialog.add(ReceiptSourceDialog, {
             choose: (source) => {
                 configureReceiptInput(this.fileInput.el, source);
-                // Ce que fait `uploadDocument` d'Odoo, appelé ici dans le
-                // geste de l'utilisateur sur le bouton du choix.
-                this.uploadsProcessing++;
+                // Dans le geste de l'utilisateur sur le bouton du choix,
+                // sans quoi le navigateur refuse d'ouvrir le sélecteur.
                 this.fileInput.el.click();
             },
         });
@@ -72,10 +77,13 @@ const expenseScanUpload = () => ({
         // `createdExpenseIds` s'accumule sur toute la vie du contrôleur :
         // on ne regarde que ce que cet envoi-ci a produit.
         const alreadyCreated = this.createdExpenseIds.length;
+        this.expenseScanInFlight++;
         try {
             await this._onChangeFileInput([...this.fileInput.el.files]);
             const created = this.createdExpenseIds.slice(alreadyCreated);
-            if (this.uploadsProcessing === 1 && created.length === 1) {
+            // Seul envoi en cours et un seul ticket : on ouvre sa fiche.
+            const alone = this.expenseScanInFlight === 1;
+            if (alone && created.length === 1) {
                 // La fiche qui s'ouvre porte déjà son propre bandeau — un
                 // succès ou un point à vérifier n'a rien à ajouter. Une
                 // erreur reste utile : elle ne dépend pas du scan_state
@@ -93,12 +101,14 @@ const expenseScanUpload = () => ({
                 return;
             }
             await this._expenseScanReport(created);
-            if (this.uploadsProcessing === 1) {
+            if (alone) {
                 await this._expenseScanOpenList();
             }
         } finally {
             closeNotification();
-            this.uploadsProcessing--;
+            this.expenseScanInFlight--;
+            // Tenu à jour pour le reste d'Odoo, sans jamais passer sous zéro.
+            this.uploadsProcessing = Math.max(0, this.uploadsProcessing - 1);
         }
     },
 
