@@ -16,6 +16,7 @@ Ajouter un moteur revient à écrire une sous-classe de :class:`ScanEngine` et
 """
 import logging
 import math
+import os
 import threading
 import time
 
@@ -41,6 +42,9 @@ else:
     CV2_IMPORT_ERROR = None
 
 from .types import OcrWord
+
+#: Threads de calcul ONNX par worker, faute de réglage dans la société.
+DEFAULT_THREADS = 4
 
 
 def imaging_status():
@@ -184,12 +188,20 @@ class RapidOcrEngine(ScanEngine):
         model_dir = self.options.get("model_dir")
         if model_dir:
             params["Global.model_root_dir"] = model_dir
-        threads = int(self.options.get("threads", 0) or 0)
-        if threads > 0:
-            # Odoo fait déjà tourner plusieurs workers ; laisser ONNX ouvrir
-            # autant de threads que de cœurs dans chacun d'eux dégrade le
-            # débit global au lieu de l'améliorer.
-            params["EngineConfig.onnxruntime.intra_op_num_threads"] = threads
+        # Odoo fait déjà tourner plusieurs workers ; laisser ONNX ouvrir
+        # autant de threads que de cœurs dans chacun d'eux dégrade le débit
+        # global au lieu de l'améliorer. Surtout, chaque thread fait réserver
+        # à l'allocateur sa propre zone mémoire : avec trois sessions ONNX
+        # (détection, orientation, lecture) à douze threads, un worker
+        # franchissait sa limite de mémoire virtuelle à chaque scan et se
+        # recyclait — rechargeant les modèles, une seconde de plus, au scan
+        # suivant. Quatre threads lisent aussi vite un ticket.
+        threads = int(self.options.get("threads", 0) or 0) or min(DEFAULT_THREADS, os.cpu_count() or 1)
+        params["EngineConfig.onnxruntime.intra_op_num_threads"] = threads
+        params["EngineConfig.onnxruntime.inter_op_num_threads"] = 1
+        # L'arène préalloue de grands blocs pour chaque taille d'image : de
+        # la mémoire réservée, jamais rendue, pour un gain nul à cette échelle.
+        params["EngineConfig.onnxruntime.enable_cpu_mem_arena"] = False
         if ocr_version and lang:
             params["Rec.ocr_version"] = OCRVersion(ocr_version)
             params["Rec.model_type"] = ModelType(self.options.get("model_type", "mobile"))

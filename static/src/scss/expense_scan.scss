@@ -190,18 +190,12 @@
 // ---------------------------------------------------------------------------
 // Indication sous un champ à vérifier
 // ---------------------------------------------------------------------------
-// Discrète mais visible : une ligne en couleur d'alerte, précédée d'un
-// triangle, qui s'efface d'elle-même dès que le champ est corrigé.
+// Discrète mais visible : une ligne en couleur d'alerte, sans pictogramme,
+// qui s'efface d'elle-même dès que le champ est corrigé.
 .o_expense_scan_hint {
     margin-top: -0.35rem;
     margin-bottom: 0.35rem;
     font-size: 0.875rem;
     color: $warning;
     color: color-mix(in srgb, #{$warning} 75%, black);
-
-    span::before {
-        font-family: FontAwesome;
-        content: "\f071";
-        margin-right: 0.4em;
-    }
 }

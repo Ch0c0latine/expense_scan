@@ -32,8 +32,9 @@ class ResCompany(models.Model):
         string="Threads par worker",
         default=4,
         help="Nombre de threads alloués au calcul OCR dans chaque worker Odoo. "
-             "0 laisse le moteur décider, ce qui sature le processeur quand "
-             "plusieurs scans arrivent en même temps.",
+             "0 revient à 4. Plus de threads ne lit pas plus vite un ticket, "
+             "sature le processeur quand plusieurs scans arrivent en même "
+             "temps, et gonfle la mémoire réservée par chaque worker.",
     )
     expense_scan_tesseract_lang = fields.Char(
         string="Langue Tesseract",
