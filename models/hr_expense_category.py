@@ -36,7 +36,7 @@ from collections import Counter
 from odoo import _, api, fields, models
 from odoo.tools import file_open
 
-from ..ocr import lexicon, parser
+from ..ocr import categorize, lexicon, parser
 from ..ocr.types import OcrLine, OcrWord
 
 _logger = logging.getLogger(__name__)
@@ -49,18 +49,6 @@ HISTORY_MAJORITY = 0.6
 #: ticket qui dit nettement autre chose.
 HISTORY_WEIGHT = 5.0
 HISTORY_FUZZY_WEIGHT = 3.0
-#: Poids d'un code d'activité (APE, MCC, ou SIRET retrouvé dans Sirene) : 4 —
-#: assez pour l'emporter d'au moins 1,5 sur un mot isolé du ticket (deux points) :
-#: décisif à lui seul, sauf si les mots du ticket disent nettement autre
-#: chose — le restaurant d'un hôtel reste un repas.
-CODE_WEIGHT = 4.0
-#: Poids d'une marque connue en tête du ticket : 3 — plus qu'un mot
-#: d'en-tête. À 2, un mot égaré (« route », « aéroport ») suffisait à
-#: laisser sans catégorie un KFC ou un Starbucks d'aérogare.
-BRAND_WEIGHT = 3.0
-#: Poids d'un prix au litre ou au kWh : celui d'une marque. Une recharge
-#: payée à la borne d'un supermarché (« ALDI ») reste une recharge.
-UNIT_WEIGHT = 3.0
 #: États où la catégorie a été confirmée par quelqu'un.
 CONFIRMED_STATES = ('submitted', 'approved', 'posted', 'in_payment', 'paid')
 
@@ -336,6 +324,22 @@ class HrExpense(models.Model):
             if self._expense_scan_guessable(product, company)
         }
 
+    def _expense_scan_reason(self, reason, number=None):
+        """Phrase qui dit pourquoi un indice de catégorie a été retenu.
+
+        ``reason`` : ``(nature, détail)``, tel que le rend ``categorize.score``.
+        """
+        kind, detail = reason
+        if kind == categorize.ACTIVITY:
+            return _("d'après le code d'activité %s imprimé", detail)
+        if kind == categorize.SIRET:
+            return _("d'après le SIRET %(number)s (activité %(naf)s)", number=number, naf=detail)
+        if kind == categorize.UNIT:
+            return _("d'après un prix au litre ou au kWh")
+        if kind == categorize.BRAND:
+            return _("d'après la marque « %s »", detail)
+        return _("d'après les mots du ticket")
+
     def _expense_scan_recognize(self, result, company):
         """Enseigne et catégorie du ticket.
 
@@ -357,9 +361,20 @@ class HrExpense(models.Model):
         # Tous les indices s'additionnent : historique de l'enseigne, mots
         # du ticket, code d'activité imprimé ou retrouvé par le SIRET,
         # marque connue.
-        scores = lexicon.score_categories(lines, self._expense_scan_keyword_categories(company))
-        reasons = {product_id: [(score, _("d'après les mots du ticket"))]
-                   for product_id, score in scores.items()}
+        family_products = {}
+        for template, family in self.env['product.template'].sudo() \
+                ._expense_scan_family_templates().items():
+            product = template.product_variant_id
+            if self._expense_scan_guessable(product, company):
+                family_products[family] = product.id
+        number = result.value('company_number')
+        scores, signals, brand = categorize.score(
+            lines, self._expense_scan_keyword_categories(company), family_products,
+            activity=result.value('activity'),
+            naf_of=lambda: self.env['expense.scan.sirene']._expense_scan_activity(number))
+        reasons = {product_id: [(weight, self._expense_scan_reason(reason, number))
+                                for weight, reason in found]
+                   for product_id, found in signals.items()}
 
         # La catégorie par défaut ne dit rien de l'enseigne : c'est celle
         # que garde une dépense qu'on n'a pas su classer. La compter comme
@@ -380,42 +395,10 @@ class HrExpense(models.Model):
                 scores[product.id] = scores.get(product.id, 0.0) + weight
                 reasons.setdefault(product.id, []).append((weight, _(
                     "d'après l'enseigne « %s », déjà classée ainsi", merchant or key)))
-        family_products = {}
-        for template, family in self.env['product.template'].sudo() \
-                ._expense_scan_family_templates().items():
-            product = template.product_variant_id
-            if self._expense_scan_guessable(product, company):
-                family_products[family] = product
-
-        def add(family, weight, reason):
-            product = family_products.get(family)
-            if product:
-                scores[product.id] = scores.get(product.id, 0.0) + weight
-                reasons.setdefault(product.id, []).append((weight, reason))
-
-        activity = result.value('activity')
-        activity_family = lexicon.activity_family(activity)
-        if activity_family:
-            add(activity_family, CODE_WEIGHT,
-                _("d'après le code d'activité %s imprimé", activity.split(':', 1)[1]))
-        else:
-            number = result.value('company_number')
-            naf = self.env['expense.scan.sirene']._expense_scan_activity(number)
-            naf_family = lexicon.activity_family('NAF:%s' % naf) if naf else None
-            if naf_family:
-                add(naf_family, CODE_WEIGHT,
-                    _("d'après le SIRET %(number)s (activité %(naf)s)", number=number, naf=naf))
-
-        if lexicon.fuel_unit(lines):
-            add('fuel', UNIT_WEIGHT, _("d'après un prix au litre ou au kWh"))
-
-        brand_family, brand = lexicon.brand_family(lines)
-        if brand_family:
-            add(brand_family, BRAND_WEIGHT, _("d'après la marque « %s »", brand))
-            if not key:
-                # Une marque reconnue est mieux écrite que la première
-                # ligne du ticket, souvent un logo mal lu ou une adresse.
-                merchant = brand
+        if brand and not key:
+            # Une marque reconnue est mieux écrite que la première ligne du
+            # ticket, souvent un logo mal lu ou une adresse.
+            merchant = brand
 
         product_id = lexicon.pick_category(scores)
         # Une ligne par scan : de quoi comprendre pourquoi une catégorie a
