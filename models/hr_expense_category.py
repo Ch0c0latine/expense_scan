@@ -28,12 +28,17 @@ ne sont jamais proposés : ils ne naissent pas d'un ticket. Ils se
 reconnaissent à leur prix fixé ou à leur unité de distance ; une catégorie
 simplement « sans TVA », comme l'hôtel, reste proposable.
 """
+import base64
+import logging
 from collections import Counter
 
 from odoo import _, api, fields, models
+from odoo.tools import file_open
 
 from ..ocr import lexicon, parser
 from ..ocr.types import OcrLine, OcrWord
+
+_logger = logging.getLogger(__name__)
 
 #: Part minimale des dépenses d'une enseigne classées dans une catégorie
 #: pour qu'elle s'impose à la suivante.
@@ -82,6 +87,47 @@ class ProductTemplate(models.Model):
             template.expense_scan_keywords = "\n".join(
                 dict.fromkeys(lexicon.DEFAULT_KEYWORDS[family]))
         return len(to_fill)
+
+    @api.model
+    def _expense_scan_icon_key(self, template):
+        """Nom de l'icône fournie qui convient à cette catégorie, ou ``None``."""
+        labels = (template.name, template.default_code)
+        family = lexicon.family_of(*labels)
+        if family:
+            return {'lodging': 'lodging', 'meal': 'meal', 'train_air': 'train_air',
+                    'car_rental': 'car_rental', 'taxi': 'taxi', 'fuel': 'fuel',
+                    'toll_parking': 'toll_parking', 'telecom': 'telecom'}.get(family)
+        words = lexicon.fold(" ".join(label for label in labels if label)).split()
+        starts = lambda prefixes: any(w.startswith(p) for w in words for p in prefixes)  # noqa: E731
+        if starts(('invit', 'affaire')):
+            return 'invitation'
+        if starts(('igd', 'bareme', 'forfait')):
+            if starts(('logement', 'hebergement', 'nuit')):
+                return 'house'
+            if starts(('repas', 'meal')):
+                return 'meal'
+        return None
+
+    @api.model
+    def _expense_scan_seed_icons(self):
+        """Pose une icône sur les catégories qui n'en ont pas.
+
+        Mêmes couleurs et même trait que les icônes qu'Odoo fournit pour ses
+        catégories d'origine. Une catégorie qui a déjà une image, choisie
+        par quelqu'un ou livrée par Odoo, n'est jamais touchée.
+        """
+        seeded = 0
+        for template in self.search([('can_be_expensed', '=', True), ('image_1920', '=', False)]):
+            key = self._expense_scan_icon_key(template)
+            if not key:
+                continue
+            try:
+                with file_open('expense_scan/static/img/categories/%s.svg' % key, 'rb') as icon:
+                    template.image_1920 = base64.b64encode(icon.read())
+                seeded += 1
+            except OSError:
+                _logger.warning("Icône de catégorie introuvable : %s", key)
+        return seeded
 
     @api.model
     def _expense_scan_add_keywords(self, additions):

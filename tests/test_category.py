@@ -324,3 +324,32 @@ Montant 350,28 €
                  "Paiement....6,80 E ..CB", "N° carte: .XX00"]
         scores = lexicon.score_categories(lines, {'toll': keywords})
         self.assertEqual(lexicon.pick_category(scores), 'toll')
+
+
+@tagged('post_install', '-at_install')
+class TestCategoryIcons(common.TransactionCase):
+
+    def test_icon_follows_the_kind_of_expense(self):
+        Template = self.env['product.template']
+        for name, key in (("Hébergement Hôtel", 'lodging'), ("Péages et Parking", 'toll_parking'),
+                          ("Carburant/Elec", 'fuel'), ("IGD Logement - Barème", 'house'),
+                          ("IGD Repas (x2)", 'meal'), ("Repas d'affaires", 'invitation'),
+                          ("Zorglub inconnu", None)):
+            self.assertEqual(Template._expense_scan_icon_key(Template.new({'name': name})), key, name)
+
+    def test_seeding_fills_only_missing_images(self):
+        Template = self.env['product.template']
+        bare = Template.create({'name': "Location de voiture zz", 'can_be_expensed': True})
+        own = Template.create({'name': "Hôtel zz", 'can_be_expensed': True,
+                               'image_1920': bare_png()})
+        Template._expense_scan_seed_icons()
+        self.assertTrue(bare.image_1920)
+        self.assertEqual(own.image_1920, bare_png())
+
+
+def bare_png():
+    """Un PNG minimal (1 px), pour dire « une image existe déjà »."""
+    import base64
+    return base64.b64encode(
+        b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89'
+        b'\x00\x00\x00\rIDATx\x9cc\xf8\xcf\xc0\x00\x00\x03\x01\x01\x00\xc9\xfe\x92\xef\x00\x00\x00\x00IEND\xaeB`\x82')

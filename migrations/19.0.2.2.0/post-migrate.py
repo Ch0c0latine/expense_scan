@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-from . import models
+"""Icônes des catégories de dépenses qui n'en ont pas."""
+from odoo import SUPERUSER_ID, api
 
 
-def post_init_hook(env):
-    """Propose des mots du ticket aux catégories existantes."""
-    env['product.template']._expense_scan_seed_keywords()
+def migrate(cr, version):
+    env = api.Environment(cr, SUPERUSER_ID, {})
     env['product.template']._expense_scan_seed_icons()
