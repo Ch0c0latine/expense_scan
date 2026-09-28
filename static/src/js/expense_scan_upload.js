@@ -13,6 +13,9 @@
 import { _t } from "@web/core/l10n/translation";
 import { Domain } from "@web/core/domain";
 import { patch } from "@web/core/utils/patch";
+import { useService } from "@web/core/utils/hooks";
+
+import { ReceiptSourceDialog, configureReceiptInput } from "@expense_scan/js/receipt_source_dialog";
 
 import { ExpenseListController } from "@hr_expense/views/list";
 import { ExpenseKanbanController } from "@hr_expense/views/kanban";
@@ -27,6 +30,32 @@ import { ExpenseKanbanController } from "@hr_expense/views/kanban";
  * n'y trouverait pas les mêmes informations de vue.
  */
 const expenseScanUpload = () => ({
+    setup() {
+        super.setup();
+        this.expenseScanDialog = useService("dialog");
+    },
+
+    /**
+     * Sur téléphone, on demande la source avant d'ouvrir le sélecteur ;
+     * sur ordinateur, le sélecteur de fichiers s'ouvre directement.
+     *
+     * @override
+     */
+    uploadDocument() {
+        if (!this.env.isSmall) {
+            return super.uploadDocument();
+        }
+        this.expenseScanDialog.add(ReceiptSourceDialog, {
+            choose: (source) => {
+                configureReceiptInput(this.fileInput.el, source);
+                // Ce que fait `uploadDocument` d'Odoo, appelé ici dans le
+                // geste de l'utilisateur sur le bouton du choix.
+                this.uploadsProcessing++;
+                this.fileInput.el.click();
+            },
+        });
+    },
+
     /**
      * Reprend la logique du mixin d'Odoo (hr_expense/mixins/document_upload)
      * en changeant uniquement la destination finale. On ne peut pas
