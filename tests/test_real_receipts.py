@@ -356,3 +356,101 @@ class TestRestaurantCodes(common.TransactionCase):
         if not meal:
             self.skipTest("aucune catégorie de repas dans cette base")
         self.assertEqual(product, meal[0])
+
+
+@tagged('post_install', '-at_install')
+class TestCorpusFindings(common.TransactionCase):
+    """Défauts trouvés en passant des justificatifs réels dans la chaîne."""
+
+    def test_tax_row_led_by_a_code_in_brackets(self):
+        result = reading("""
+KIOSQUE DE GARE
+Total TTC EUR 7,20
+Tx TVA HT TVA TTC
+(10) 10.00% 6,55 0,65 7,20
+TOTAUX 6,55 0,65 7,20
+7 CB SANS CONTACT 7,20""")
+        self.assertEqual(result.value('tax_amount'), 0.65)
+        self.assertEqual(result.value('tax_rate'), 10.0)
+
+    def test_two_rates_with_mixed_columns_keep_the_consistent_triple(self):
+        """Photo de biais : la ligne du second taux traîne les colonnes du total."""
+        result = reading("""
+MAISON EXEMPLE
+HT TVA TTC
+TVA 10% (10%) 32,09 € 3,21 € 35,30 €
+TVA 5,5% (5.5%) 2,84 € Total 34,93 € 0,16 € 3,37 € 38,30 € 3,00 €
+Total 38,30 €""")
+        self.assertEqual(result.value('total'), 38.30)
+        self.assertAlmostEqual(result.value('tax_amount'), 3.37, places=2)
+
+    def test_total_with_vat_included_beats_a_kwh_figure(self):
+        result = reading("""
+Facture
+Sessions de chargement
+1 15/09/2026 18:22:55
+kWh: 27,45
+Sous-totaux: Énergie: EUR 12,82
+Montant final (hors TVA) EUR 12,82
+TVA 20,00 % EUR 2,56
+Montant final (TVA incluse) EUR 15,38""")
+        self.assertEqual(result.value('total'), 15.38)
+        self.assertEqual(result.value('tax_amount'), 2.56)
+
+    def test_merchant_label_wins_over_a_logo_and_a_title(self):
+        result = reading("""
+logo Justificatif d'achat
+Résumé de la commande
+Montant total (TTC) : 13,20 €
+Détail des transactions
+Date de transaction : 22/09/2026 à 17:26:10
+Transaction n° 770717
+Commerçant : GARE EXEMPLE, 93212 La Plaine
+Montant de la transaction (TTC) : 13,20 €""")
+        self.assertEqual(result.value('merchant'), "GARE EXEMPLE")
+
+    def test_online_receipt_headings_are_not_a_merchant(self):
+        result = reading("""
+Voici votre reçu
+Vos coordonnées
+Prénom et nom Camille Exemple
+Nom de l'établissement Hôtel du Parc
+Montant payé 163,90 €""")
+        merchant = (result.value('merchant') or "").lower()
+        self.assertNotIn("coordonn", merchant)
+        self.assertNotIn("voici", merchant)
+
+    def test_a_merchant_may_carry_a_digit(self):
+        result = reading("""
+Distribo Tower 3 CS60042
+53 Bd Exemple
+93200 St Denis
+Café au Lait 2,70 €
+Total TTC 2,70 €""")
+        self.assertTrue((result.value('merchant') or "").startswith("Distribo"))
+
+    def test_a_short_word_does_not_change_its_first_letter(self):
+        """« Selecta » n'est pas « electra » : un distributeur n'est pas une borne."""
+        scores = lexicon.score_categories(["SELECTA PLEYAD 3"], {1: ["electra"]})
+        self.assertEqual(scores, {})
+        misread = lexicon.score_categories(["ELECTRA PLEYAD"], {1: ["electra"]})
+        self.assertTrue(misread)
+
+    def test_default_category_is_not_history(self):
+        """Ce qu'on n'a pas su classer ne devient pas le classement d'une enseigne."""
+        Expense = self.env['hr.expense']
+        default = self.env.company.expense_scan_product_id or self.env['product.product'].create(
+            {'name': "Divers historique zz", 'can_be_expensed': True})
+        self.env.company.expense_scan_product_id = default
+        employee = self.env['hr.employee'].create({'name': "Camille Histoire"})
+        past = Expense.create({'name': "Passé", 'employee_id': employee.id,
+                               'product_id': default.id, 'total_amount_currency': 35.0})
+        past.write({'expense_scan_merchant': "Brasserie Zzexemple",
+                    'expense_scan_merchant_read': lexicon.fold("Brasserie Zzexemple"),
+                    'approval_state': 'submitted'})
+        expense = Expense.create({'name': "Ticket", 'employee_id': employee.id,
+                                  'product_id': default.id})
+        result = reading("BRASSERIE ZZEXEMPLE\nTable 5\nRepas complet 35,00\nTOTAL 35,00 EUR")
+        _merchant, _key, product, _reason = expense._expense_scan_recognize(
+            result, self.env.company)
+        self.assertNotEqual(product, default)

@@ -132,6 +132,9 @@ TOTAL_KEYWORDS = [
     (re.compile(r"\bNET\s*A\s*PAYER\b"), 0.95),
     (re.compile(r"\bDO\s*ZAPLATY\b"), 0.95),                        # pl
     (re.compile(r"\bTOTAL\s*T\.?\s*T\.?\s*C\b"), 0.93),
+    # « Montant final (TVA incluse) EUR 15,38 » : facture d'une borne, où le
+    # total suit des lignes d'énergie en kWh.
+    (re.compile(r"\bMONTANT\s*FINAL\b|\bTVA\s*INCLUSE\b"), 0.91),
     (re.compile(r"\bTOTALE\s*(?:COMPLESSIVO|DOCUMENTO)\b"), 0.93),  # it
     (re.compile(r"\bZU\s*ZAHLEN\b"), 0.93),                         # de
     (re.compile(r"\bTOTAL\s*A\s*PAGAR\b"), 0.93),                   # es, pt
@@ -162,7 +165,7 @@ TOTAL_KEYWORDS = [
 TOTAL_EXCLUDE_RE = re.compile(
     r"\bSOUS\s*[- ]?\s*TOTAL\b|\bSUB\s*[- ]?\s*TOTAL\b|\bSUBTOTALE?\b|"
     r"\bZWISCHENSUMME\b|\bTOTAL\s*H\.?\s*T\b|\bPRIX\s*H\.?\s*T\b|"
-    r"\bMONTANT\s*H\.?\s*T\b|\bTVA\b|\bT\.V\.A\b|"
+    r"\bMONTANT\s*H\.?\s*T\b|\bTVA\b(?!\s*(?:INCLUSE|INCLUS|COMPRISE|INCL))|\bT\.V\.A\b|"
     r"\bIVA\b(?!\s*INCL)|(?<!INKL\s)(?<!INKL\.\s)\b(?:MWST|UST)\b|"
     r"\bVAT\b(?!\s*INCL)|\bBTW\b(?!\s*INCL)|\bPTU\b|\bOPOD|\bNETTO\b|"
     r"\bIMPONIBILE\b|\bBASE\s*IMPONIBLE\b|\bDI\s*CUI\b|"
@@ -371,7 +374,9 @@ MERCHANT_STOP_RE = re.compile(
     r"\bCASSA\b|\bCAJA\b|\bVAT\b|\bIVA\b|\bMWST\b|\bUST\b|"
     # En-têtes de colonnes et pieds de liste, qui ne sont jamais une enseigne.
     r"\bARTICLES?\b|\bQTE\b|\bQUANTITE\b|\bDESIGNATION\b|\bPRODUITS?\b|"
-    r"\bLIBELLE\b|\bNOMBRE\b|\bLIGNES?\b|\bVENTES?\b"
+    r"\bLIBELLE\b|\bNOMBRE\b|\bLIGNES?\b|\bVENTES?\b|"
+    # Intitulés d'un reçu en ligne, avant le nom de l'établissement.
+    r"\bCOORDONNEES\b|\bVOICI\b"
 )
 ADDRESS_RE = re.compile(
     r"\b(RUE|AVENUE|AV|BOULEVARD|BD|PLACE|PL|CHEMIN|ROUTE|RTE|IMPASSE|ALLEE|"
@@ -400,8 +405,22 @@ MERCHANT_PREFIX_RE = re.compile(
     re.IGNORECASE)
 
 
+#: « Commerçant : SNCF CONNECT, 93212 La Plaine… » : un libellé qui désigne
+#: l'enseigne sans ambiguïté, où qu'il figure — un justificatif de paiement
+#: le porte dans son détail, loin sous un titre et un logo.
+LABELED_MERCHANT_RE = re.compile(
+    r"^\s*(?:COMMER[CÇ]ANT|MARCHAND|MERCHANT|H[ÄA]NDLER)\s*:\s*([^,;|]{3,60})",
+    re.IGNORECASE)
+
+
 def extract_merchant(lines, max_lines=10):
     """Le nom de l'enseigne, cherché dans l'en-tête du ticket."""
+    for line in lines:
+        match = LABELED_MERCHANT_RE.match(line.text)
+        if match:
+            name = re.sub(r"\s{2,}", " ", match.group(1)).strip(" -*:.")
+            if sum(1 for char in name if char.isalpha()) >= 3:
+                return ExtractedField(value=name, confidence=0.85, source=line.text)
     best = None
     for position, line in enumerate(lines[:max_lines]):
         raw = line.text.strip()
@@ -415,7 +434,12 @@ def extract_merchant(lines, max_lines=10):
         if _has_date(text):
             continue  # « ← 18 novembre » : une date, pas une enseigne
         if digits > 2 or digits > letters / 2:
-            continue  # code postal, téléphone, numéro de caisse
+            # Code postal, téléphone, numéro de caisse — sauf une enseigne
+            # qui porte un chiffre : « Selecta Pleyad 3 CS60042 », où le nom
+            # ouvre la ligne et les lettres restent largement majoritaires.
+            starts_with_name = text[:1].isalpha() and text.split()[0].isalpha()
+            if not (starts_with_name and letters >= 10 and digits <= 6 and digits <= letters / 2):
+                continue
         # Plus la ligne est haute et riche en lettres, plus c'est l'enseigne.
         weight = (0.85 - 0.08 * position) * min(1.0, 0.4 + letters / 18.0)
         confidence = weight * max(line.score, 0.4)
@@ -504,7 +528,8 @@ TAX_TABLE_HEADER_RE = re.compile(
 # Une ligne de tableau commence par son taux, que certains tickets font
 # précéder du mot TVA : « 10%(C) ... » comme « TVA 10 % ... ».
 TAX_TABLE_ROW_RE = re.compile(
-    r"^\s*(?:[A-D]\s+)?(?:(?:T\.?\s*V\.?\s*A|MWST|UST|VAT|IVA|BTW)\.?\s*)?"
+    r"^\s*(?:[A-D]\s+|\(\d{1,2}\)\s*)?"
+    r"(?:(?:T\.?\s*V\.?\s*A|MWST|UST|VAT|IVA|BTW)\.?\s*)?"
     r"(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
 #: Ligne de tableau dont le taux n'a pas de « % » : « 10,00 14,36 1,44 15,80 »,
 #: ou, quand une colonne « Code » la précède, « 2 10,00 4 36,18 3,62 39,80 ».
@@ -512,7 +537,8 @@ TAX_TABLE_BARE_ROW_RE = re.compile(r"^\s*(?:(?:[A-D]|\d)\s+)?(\d{1,2}[.,]\d{1,2}
 #: Colonnes d'un tableau de TVA, dans n'importe quel ordre :
 #: « TVA Taux MONT.TTC MONT.TVA TOTAL HT ».
 TAX_COLUMNS_RE = re.compile(r"\bHT\b|\bTTC\b|\bTAUX\b|\bNETTO\b|\bBRUTTO\b|\bIMPONIBILE\b")
-TAX_TABLE_AMOUNT_RE = re.compile(r"(?<![\d,])(\d+)[.,](\d{2,4})(?![\d])")
+# Un nombre suivi de « % » est un taux (« 10.00% »), jamais un montant.
+TAX_TABLE_AMOUNT_RE = re.compile(r"(?<![\d,])(\d+)[.,](\d{2,4})(?![\d])(?!\s*%)")
 #: Nombre de lignes examinées après l'en-tête avant d'abandonner.
 TAX_TABLE_DEPTH = 8
 
@@ -526,6 +552,23 @@ def _table_amounts(text):
         except ValueError:
             continue
     return values
+
+
+def _consistent_tax(amounts, rate):
+    """La TVA d'un triplet (HT, TVA, TTC) qui se tient à ce taux, ou ``None``.
+
+    ``HT + TVA = TTC``, et ``TVA`` vaut ``HT`` fois le taux à deux centimes
+    près : assez pour retrouver la bonne colonne dans une ligne où l'OCR en
+    a mêlé d'autres.
+    """
+    for i, base in enumerate(amounts):
+        for j, tax in enumerate(amounts):
+            if j == i or tax <= 0 or abs(base * rate / 100.0 - tax) > 0.03:
+                continue
+            for k, total in enumerate(amounts):
+                if k not in (i, j) and abs(base + tax - total) <= 0.02:
+                    return round(tax, 2)
+    return None
 
 
 def extract_tax_table(lines):
@@ -568,8 +611,12 @@ def extract_tax_table(lines):
                 amounts = amounts[1:]  # le taux lui-même, lu comme un montant
             if rate is None or len(amounts) < 2:
                 continue
-            # Colonnes HT, TVA, TTC : la taxe est la deuxième.
+            # Colonnes HT, TVA, TTC : la taxe est la deuxième. Sur une photo
+            # de biais, les colonnes de deux lignes se mêlent : on cherche
+            # alors le triplet qui se tient, HT + TVA = TTC au taux du rang.
             amount = round(amounts[1], 2)
+            if len(amounts) > 3:
+                amount = _consistent_tax(amounts, rate) or amount
             if amount > 0:
                 entries.append((rate, amount, row.text))
         if entries:

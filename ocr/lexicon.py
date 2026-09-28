@@ -227,7 +227,24 @@ DEFAULT_KEYWORDS = {
 #: Mots ajoutés après la première proposition, par version :
 #: ``{'19.0.x.y.z': {famille: [mots]}}``. Le script de migration de la
 #: version les ajoute aux fiches déjà remplies, sans rien y retirer.
-ADDED_KEYWORDS = {}
+ADDED_KEYWORDS = {
+    # Justificatifs réels que la première liste ratait : un hot-dog d'aérogare
+    # classé en transport, un café de distributeur, une borne de recharge
+    # facturée en kWh, un vol payé en ligne.
+    '19.0.2.3.0': {
+        'meal': ["repas", "hot dog", "fricadelle", "sandwich", "kebab",
+                 "boulangerie", "viennoiserie", "baguette", "croissant",
+                 "café au lait", "cafe au lait", "expresso", "cappuccino"],
+        'fuel': ["kwh", "energy tariff", "recharge", "chargement", "charging session"],
+        'train_air': ["vol", "vols", "passager", "passagers", "aeroport", "aéroport",
+                      "embarquement"],
+    },
+}
+# Les catégories créées après cette version partent aussi de ces mots.
+for _words in ADDED_KEYWORDS.values():
+    for _family, _added in _words.items():
+        DEFAULT_KEYWORDS[_family] = DEFAULT_KEYWORDS[_family] + [
+            word for word in _added if word not in DEFAULT_KEYWORDS[_family]]
 
 #: Comment reconnaître, à son nom ou à sa référence, la catégorie qui
 #: correspond à une famille. Premier indice trouvé, première famille servie.
@@ -302,6 +319,26 @@ def resembles(first, second, threshold):
             and matcher.ratio() >= threshold)
 
 
+def _same_start(candidate, keyword):
+    """Une faute de lecture change rarement la première lettre d'un mot court.
+
+    « Selecta » ressemble à « electra » à 86 % : un distributeur de café
+    passait pour une borne de recharge. Au-delà de sept lettres, la
+    ressemblance seule suffit.
+    """
+    return len(keyword) >= 8 or candidate[:1] == keyword[:1]
+
+
+def _same_start(candidate, keyword):
+    """Une faute de lecture change rarement la première lettre d'un mot court.
+
+    « Selecta » ressemble à « electra » à 86 % : un distributeur de café
+    passait pour une borne de recharge. Au-delà de sept lettres, la
+    ressemblance seule suffit.
+    """
+    return len(keyword) >= 8 or candidate[:1] == keyword[:1]
+
+
 def _find(keyword, line_words):
     """Le mot déclaré figure-t-il dans la ligne ? Tolère une faute de lecture."""
     parts = keyword.split()
@@ -312,6 +349,7 @@ def _find(keyword, line_words):
         if candidate == keyword:
             return True
         if len(keyword) >= FUZZY_MIN_LENGTH and abs(len(candidate) - len(keyword)) <= 2 \
+                and _same_start(candidate, keyword) \
                 and resembles(candidate, keyword, FUZZY_RATIO):
             return True
     # Mot collé à un autre par l'OCR : « TOTALENERGIESSTATION », « IBISLYON ».

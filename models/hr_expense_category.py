@@ -339,8 +339,14 @@ class HrExpense(models.Model):
         reasons = {product_id: [(score, _("d'après les mots du ticket"))]
                    for product_id, score in scores.items()}
 
-        if key and known[key]['products']:
-            products = known[key]['products']
+        # La catégorie par défaut ne dit rien de l'enseigne : c'est celle
+        # que garde une dépense qu'on n'a pas su classer. La compter comme
+        # un classement apprenait à la reproduire — un restaurant scanné
+        # quand la reconnaissance échouait restait ensuite « Dépenses ».
+        history = Counter(known[key]['products']) if key else Counter()
+        history.pop(company.expense_scan_product_id.id, None)
+        if history:
+            products = history
             product_id, count = products.most_common(1)[0]
             product = Product.browse(product_id).exists()
             share = count / sum(products.values())

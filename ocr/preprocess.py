@@ -186,6 +186,32 @@ def _find_quad_by_brightness(gray, image_area):
     return np.array(box, dtype="float32")
 
 
+#: Une seconde zone claire compte comme un autre ticket à partir de cette
+#: part de l'image, et de cette part de la plus grande.
+SECOND_RECEIPT_AREA_RATIO = 0.10
+SECOND_RECEIPT_RELATIVE_AREA = 0.40
+
+
+def _has_several_receipts(gray, image_area):
+    """Deux justificatifs côte à côte dans la même photo ?
+
+    Un ticket d'une borne et le reçu de carte de son paiement se photographient
+    ensemble. Recadrer sur le plus grand rognerait l'autre — et sa TVA, ou
+    son total : le recadrage sur le texte, lui, garde tout ce qui est lu.
+    """
+    blurred = cv2.GaussianBlur(gray, (7, 7), 0)
+    _, mask = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    areas = sorted((cv2.contourArea(contour) for contour in contours), reverse=True)
+    if len(areas) < 2:
+        return False
+    return (areas[1] >= SECOND_RECEIPT_AREA_RATIO * image_area
+            and areas[1] >= SECOND_RECEIPT_RELATIVE_AREA * areas[0])
+
+
 def detect_receipt_quad(image):
     """Renvoie les 4 coins du ticket dans l'image, ou None."""
     height, width = image.shape[:2]
@@ -196,6 +222,9 @@ def detect_receipt_quad(image):
         small = image
     gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
     small_area = small.shape[0] * small.shape[1]
+
+    if _has_several_receipts(gray, small_area):
+        return None
 
     quad = _find_quad_by_edges(gray, small_area)
     if quad is None:
