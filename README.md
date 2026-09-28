@@ -63,6 +63,21 @@ sont téléchargés une seule fois, au premier scan ou via le bouton *Tester et
 précharger le moteur*. Ils sont rangés dans le répertoire de données d'Odoo,
 pas dans `site-packages`.
 
+**Mémoire des workers** : avec des workers (`workers > 0`), Odoo recycle un
+worker qui dépasse `limit_memory_soft`, mesurée en mémoire *virtuelle*. Or
+l'allocateur de la glibc réserve jusqu'à 64 Mo d'espace d'adresses par thread
+qui alloue, et le moteur OCR en ajoute une vingtaine : la mémoire virtuelle
+d'un worker bondit de deux gigaoctets au premier scan, sans que la mémoire
+réellement occupée suive. Le worker se recycle alors après chaque scan, et le
+suivant recharge les modèles — une seconde de plus. Limiter ces réserves
+dans l'environnement du service règle le problème :
+
+```ini
+# systemctl edit odoo19
+[Service]
+Environment=MALLOC_ARENA_MAX=2
+```
+
 ---
 
 ## Configuration
