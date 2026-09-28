@@ -25,8 +25,13 @@ class TestCorpus(common.TransactionCase):
     def test_real_receipts(self):
         if not os.path.isdir(CORPUS_DIR):
             self.skipTest("pas de corpus")
-        employee = self.env['hr.employee'].search([('user_id', '=', self.env.uid)], limit=1) \
-            or self.env['hr.employee'].create({'name': "Corpus"})
+        # Un salarié ordinaire, sans droit de gestion : la chaîne doit passer
+        # sous ses règles d'accès, comme depuis le bouton « Téléverser ».
+        user = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': "Corpus", 'login': 'expense_scan_corpus',
+            'group_ids': [(6, 0, [self.env.ref('base.group_user').id])]})
+        employee = self.env['hr.employee'].create({'name': "Corpus", 'user_id': user.id})
+        env = self.env(user=user)
         seen = set()
         for name in sorted(os.listdir(CORPUS_DIR)):
             path = os.path.join(CORPUS_DIR, name)
@@ -36,14 +41,14 @@ class TestCorpus(common.TransactionCase):
             if digest in seen:
                 continue
             seen.add(digest)
-            attachment = self.env['ir.attachment'].create({
+            attachment = env['ir.attachment'].create({
                 'name': name, 'raw': raw, 'res_model': 'hr.expense', 'res_id': 0})
             started = time.time()
             try:
-                ids = self.env['hr.expense'].with_context(
+                ids = env['hr.expense'].with_context(
                     default_employee_id=employee.id).create_expense_from_attachments(
                         [attachment.id], 'list')
-                expense = self.env['hr.expense'].browse(ids[:1])
+                expense = env['hr.expense'].browse(ids[:1])
                 _logger.info(
                     "CORPUS|%s|%.1fs|%s|%s|total=%s|tva=%s/%s|marchand=%s|date=%s|todo=%s|%s",
                     name, time.time() - started, expense.scan_state,
@@ -54,4 +59,4 @@ class TestCorpus(common.TransactionCase):
                 text = (expense.scan_raw_text or "").replace(chr(10), " | ")
                 _logger.info("CORPUSTXT|%s|%s", name, text)
             except Exception as error:  # noqa: BLE001
-                _logger.info("CORPUS|%s|ERREUR|%s", name, error)
+                _logger.warning("CORPUS|%s|ERREUR|%s", name, error, exc_info=True)

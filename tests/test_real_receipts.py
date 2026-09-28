@@ -422,7 +422,7 @@ Montant payé 163,90 €""")
 
     def test_a_merchant_may_carry_a_digit(self):
         result = reading("""
-Distribo Tower 3 CS60042
+Distribo Tower 3 CS00000
 53 Bd Exemple
 93200 St Denis
 Café au Lait 2,70 €
@@ -454,3 +454,94 @@ Total TTC 2,70 €""")
         _merchant, _key, product, _reason = expense._expense_scan_recognize(
             result, self.env.company)
         self.assertNotEqual(product, default)
+
+    def test_toll_ticket_without_a_total_word(self):
+        """Ticket de péage italien : le prix du passage est le seul montant."""
+        result = reading("""
+Autostrade Exemplo S.p.A.
+Tronco X1 Nord-Sud
+Direzione e Coordinamento EXEMPLO
+Via Esempio 1
+00100 Città (XX)
+ATTESTATO DI TRANSITO
+CARTA DI CREDITO
+USCITA: CASELLO NORD 100
+DATA e ORA: 02/09/2026 10:15
+ENTRATA: CASELLO SUD 200
+DATA e ORA: 02/09/2026 09:05
+CLASSE DI PEDAGGIO: A
+PEDAGGIO € 9,40
+TESSERA 0000""")
+        self.assertEqual(result.value('total'), 9.40)
+        self.assertNotIn(parser.FIELD_LABELS['total'], parser.fields_to_check(result))
+        self.assertEqual(result.value('merchant'), "Autostrade Exemplo S.p.A.")
+
+    def test_booking_receipt_names_the_establishment(self):
+        result = reading("""
+Voici votre reçu
+Numéro De Réservation 1234567890
+VOS COORDONNÉES
+Prénom et nom Camille Exemple
+Nom de l'établissement Hôtel Exemple Centre 3 étoiles
+Montant payé le 02 sept. 2026 € 98,40""")
+        self.assertEqual(result.value('merchant'), "Hôtel Exemple Centre")
+
+    def test_merchant_is_cut_before_a_glued_lieu_dit(self):
+        result = reading("""
+ASFLieu-ditExemple 12
+RECU
+Date 02/09/26
+PRIX TTC 4,20 euros""")
+        self.assertEqual(result.value('merchant'), "ASF")
+
+    def test_the_buyer_printed_on_an_invoice_is_not_the_merchant(self):
+        """Facture de recharge : le client en tête, le vendeur en pied de page."""
+        result = parser.parse(words_from_text("""
+Facture
+Spécification N° de facture: FRXX000001 Voltix>
+CAMILLE EXEMPLE
+Sessions de chargement
+Voltix – Parking Exemple: Rue des Usines 00000 Exempleville
+CAMILLE EXEMPLE
+1 02/09/2026 18:00:00
+Montant final (TVA incluse) EUR 12,00
+Voltix Innovations B.V. – Voorbeeldstraat 1, 0000 XX Voorbeeld"""),
+            buyers=["Camille Exemple", "Green Exemple"])
+        self.assertEqual(result.value('merchant'), "Voltix Innovations B.V.")
+
+    def test_web_page_headings_are_not_a_merchant(self):
+        result = reading("""
+Fermer ×
+PAIEMENTS EFFECTUÉS
+De Villeun à Villedeux
+02 septembre, 1 passager
+TOTAL PAYÉ À CE JOUR
+42,00€
+VOLS
+Vol aller V x 1 passager 41,05€
+TOTAL 42,00€""")
+        self.assertIsNone(result.value('merchant'))
+        self.assertEqual(result.value('total'), 42.0)
+
+    def test_tax_table_with_rate_tax_net_gross_columns(self):
+        """« TVA% TVA Net Brut » : la taxe en première colonne."""
+        result = reading("""
+SUPERMARCHE EXEMPLE
+*CAFE MOULU 5,05
+*BISCUITS 2*2,73 5,46
+Total 10,51
+TVA% TVA Net Brut
+5,50 0,54 9,97 10,51
+Brut 0,54 9,97 10,51
+Reçu CARTE BANCAIRE 10.51""")
+        self.assertEqual(result.value('tax_amount'), 0.54)
+        self.assertEqual(result.value('tax_rate'), 5.5)
+
+    def test_buyer_glued_to_the_seller_by_two_columns(self):
+        result = parser.parse(words_from_text("""
+L Institut Le 02.09.2026
+Exemple Facture n°000000001
+INSTITUT EXEMPLE GREEN EXEMPLE
+1 rue de l'Exemple 2 CHEMIN DES PRES
+120h x 11 €/h = 1 320,00 € HT"""), buyers=["Camille Exemple", "GreenExemple"])
+        self.assertEqual(result.value('merchant'), "Institut Exemple")

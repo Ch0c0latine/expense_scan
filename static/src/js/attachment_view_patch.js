@@ -25,11 +25,14 @@ const HIDDEN_PDF_TOOLS = [
     "button#downloadButton", "button#secondaryDownload",
     "button#presentationMode",
     "#firstPage", "#secondaryFirstPage", "#lastPage", "#secondaryLastPage",
-    "#cursorHandTool",
-    "#scrollPageButton", "#scrollHorizontalButton", "#scrollWrappedButton",
-    "#spreadOddButton", "#spreadEvenButton",
+    // L'outil de sélection n'a de sens qu'en alternative à l'outil main.
+    "#cursorHandTool", "#cursorSelectTool",
+    // Identifiants de la version de PDF.js livrée avec Odoo 19.
+    "#scrollPage", "#scrollVertical", "#scrollHorizontal", "#scrollWrapped",
+    "#spreadNone", "#spreadOdd", "#spreadEven",
+    "#secondaryToolbar .horizontalToolbarSeparator",
     // Barre principale : le volet de vignettes qu'il ouvre.
-    "#sidebarToggle",
+    "#sidebarToggleButton", "#sidebarToggle",
 ];
 
 function hideExpenseScanPdfTools(rootElement) {

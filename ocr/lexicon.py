@@ -239,6 +239,13 @@ ADDED_KEYWORDS = {
         'train_air': ["vol", "vols", "passager", "passagers", "aeroport", "aéroport",
                       "embarquement"],
     },
+    # Un péage italien (« PEDAGGIO »), un reçu de réservation « B&B ».
+    '19.0.2.4.1': {
+        'toll_parking': ["pedaggio", "casello", "autostrada", "telepass", "maut",
+                         "peaje", "autopista", "esattore", "transito",
+                         "attestato di transito"],
+        'lodging': ["b&b", "bed and breakfast", "bnb"],
+    },
 }
 # Les catégories créées après cette version partent aussi de ces mots.
 for _words in ADDED_KEYWORDS.values():

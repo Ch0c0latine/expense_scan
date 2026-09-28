@@ -690,6 +690,7 @@ class HrExpense(models.Model):
             words,
             max_age_days=company.expense_scan_max_age_days or 730,
             default_currency=company.currency_id.name or 'EUR',
+            buyers=[name for name in (self.employee_id.name, company.name) if name],
         )
         result.engine = getattr(engine, 'description', engine.label)
         result.duration = duration

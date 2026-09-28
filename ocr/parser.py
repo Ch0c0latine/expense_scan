@@ -20,6 +20,7 @@ import re
 import unicodedata
 from datetime import date, time as dtime, timedelta
 
+from . import lexicon
 from .types import ExtractedField, OcrLine, ScanResult
 
 # ---------------------------------------------------------------------------
@@ -152,6 +153,8 @@ TOTAL_KEYWORDS = [
     (re.compile(r"\bTOTAL\b|\bTOTALE\b|\bTOTAAL\b"), 0.80),
     (re.compile(r"\bRAZEM\b"), 0.75),                               # pl
     (re.compile(r"\bMONTANT\b|\bIMPORTO\b|\bIMPORTE\b|\bBETRAG\b|\bBEDRAG\b"), 0.70),
+    # Ticket de péage sans « total » : le prix du passage est le montant.
+    (re.compile(r"\bPEDAGGIO\b|\bPEAGE\b|\bPEAJE\b|\bMAUT\b"), 0.80),
     (re.compile(r"\bPAIEMENT\b|\bREGLEMENT\b|\bPAGAMENTO\b|\bPLATNOSC\b"
                 r"|\bKARTENZAHLUNG\b|\bPAYMENT\b"), 0.65),
     (re.compile(r"\bCARTE\s*BANCAIRE\b|\bCB\b|\bSANS\s*CONTACT\b|\bKARTA\b"), 0.60),
@@ -200,8 +203,10 @@ def extract_total(lines):
             value = amounts[-1][0]
             confidence = weight * confidence_penalty * max(line.score, 0.4)
             candidate = (weight, value, confidence, line.text)
+            # À poids égal, le plus gros montant ; à montant égal, la lecture
+            # la plus sûre — celle où le montant suit le libellé sur sa ligne.
             if best is None or candidate[0] > best[0] or (
-                candidate[0] == best[0] and value > best[1]
+                candidate[0] == best[0] and (value, candidate[2]) > (best[1], best[2])
             ):
                 best = candidate
             break
@@ -355,7 +360,7 @@ MERCHANT_STOP_RE = re.compile(
     r"\bTICKET\b|\bFACTURE\b|\bRECU\b|\bDUPLICATA\b|\bCAISSE\b|\bVENDEUR\b|"
     r"\bMERCI\b|\bBIENVENUE\b|\bBONJOUR\b|\bTEL\b|\bTELEPHONE\b|\bSIRET\b|"
     r"\bSIREN\b|\bTVA\b|\bRCS\b|\bAPE\b|\bNAF\b|\bMAGASIN\b|\bADRESSE\b|"
-    r"\bWWW\b|\bHTTP\b|\bEMAIL\b|\bMAIL\b|\bHORAIRES?\b|\bCLIENT\b|"
+    r"\bWWW\b|\bHTTP\b|\bEMAIL\b|\bMAIL\b|\bHORAIRES?\b|\bCLIENT\b|\bPRENOM\b|"
     # Champs d'un ticket de transport ou de péage : ils occupent le haut du
     # ticket et se feraient volontiers passer pour une enseigne.
     r"\bSORTIE\b|\bENTREE\b|\bDEPART\b|\bARRIVEE\b|\bCLASSE\b|\bTARIF\b|"
@@ -376,7 +381,9 @@ MERCHANT_STOP_RE = re.compile(
     r"\bARTICLES?\b|\bQTE\b|\bQUANTITE\b|\bDESIGNATION\b|\bPRODUITS?\b|"
     r"\bLIBELLE\b|\bNOMBRE\b|\bLIGNES?\b|\bVENTES?\b|"
     # Intitulés d'un reçu en ligne, avant le nom de l'établissement.
-    r"\bCOORDONNEES\b|\bVOICI\b"
+    r"\bCOORDONNEES\b|\bVOICI\b|\bPAIEMENTS\b|"
+    # Capture d'une page web : bouton de fermeture, trajet en titre.
+    r"\bFERMER\b|\bCLOSE\b|^\s*DE\s+\S+.*\sA\s+\S+"
 )
 ADDRESS_RE = re.compile(
     r"\b(RUE|AVENUE|AV|BOULEVARD|BD|PLACE|PL|CHEMIN|ROUTE|RTE|IMPASSE|ALLEE|"
@@ -413,14 +420,116 @@ LABELED_MERCHANT_RE = re.compile(
     re.IGNORECASE)
 
 
-def extract_merchant(lines, max_lines=10):
-    """Le nom de l'enseigne, cherché dans l'en-tête du ticket."""
+#: « Nom de l'établissement Hôtel Exemple 3 étoiles » : un reçu de
+#: réservation, sans deux-points ; le classement de l'hôtel n'est pas du nom.
+ESTABLISHMENT_RE = re.compile(
+    r"^\s*Nom\s+de\s+l['’]\s?[ée]tablissement\s*:?\s*(.{3,60}?)"
+    r"(?:\s+\d\s*[ée]toiles?)?\s*$", re.IGNORECASE)
+#: Raison sociale : un nom suivi d'une forme juridique est l'enseigne, même
+#: quand l'adresse imprimée dessous est plus longue.
+LEGAL_FORM_RE = re.compile(
+    r"\bS\.?\s?P\.?\s?A\b|\bS\.?\s?R\.?\s?L\b|\bGMBH\b|\bLTD\b|\bLLC\b"
+    r"|\bSARL\b|\bSASU?\b|\bEURL\b|\bSNC\b|\bB\.?V\b", re.IGNORECASE)
+LEGAL_FORM_BONUS = 1.15
+#: « Voltix Innovations B.V. – Voorbeeldstraat 1 » : la mention légale en
+#: pied de facture, qui nomme le vendeur quand l'en-tête ne porte qu'un logo.
+LEGAL_ENTITY_RE = re.compile(
+    r"^\W*([^\W\d_][\w&'’\-]*(?:\s+[^\W\d_][\w&'’\-]*){0,3})\s+"
+    r"(S\.?\s?P\.?\s?A\.?|S\.?\s?R\.?\s?L\.?|GMBH|LTD\.?|LLC|SARL|SASU?|EURL|SNC"
+    r"|B\.\s?V\.?|BV)(?!\w)", re.IGNORECASE)
+#: Mots des catégories : « Vols », « Repas » disent ce qu'on a acheté, pas à qui.
+CATEGORY_WORDS = {
+    lexicon.fold(word) for words in lexicon.DEFAULT_KEYWORDS.values() for word in words}
+
+
+def _words_of(text):
+    return re.findall(r"[A-Z0-9]+", strip_accents(text or "").upper())
+
+
+def _is_buyer(text, buyers):
+    """La ligne nomme-t-elle l'acheteur — le salarié, sa société ?
+
+    Une facture imprime le nom du client en tête, là où un ticket porte
+    l'enseigne : « CAMILLE EXEMPLE » sur une facture de recharge.
+    """
+    words = set(_words_of(text))
+    for buyer in buyers:
+        expected = set(_words_of(buyer))
+        if sum(len(word) for word in expected) >= 5 and expected <= words \
+                and len(words) <= len(expected) + 2:
+            return True
+    tokens = text.split()
+    span = _buyer_span(tokens, buyers)
+    return bool(span) and len(tokens) - (span[1] - span[0]) <= 2
+
+
+def _buyer_span(tokens, buyers):
+    """Position ``(début, fin)`` des mots qui écrivent un acheteur.
+
+    Les espaces ne comptent pas : la société « GreenExemple » est imprimée
+    « GREEN EXEMPLE » sur la facture d'un fournisseur.
+    """
+    keys = ["".join(_words_of(token)) for token in tokens]
+    for buyer in buyers:
+        compact = "".join(_words_of(buyer))
+        if len(compact) < 5:
+            continue
+        for start in range(len(keys)):
+            joined = ""
+            for end in range(start, len(keys)):
+                joined += keys[end]
+                if joined == compact:
+                    return start, end + 1
+                if len(joined) >= len(compact):
+                    break
+    return None
+
+
+def _without_buyer(name, buyers):
+    """« INSTITUT EXEMPLE GREEN EXEMPLE » : deux colonnes d'en-tête — le
+    vendeur et le client — lues d'un tenant. On retire le client."""
+    tokens = name.split()
+    span = _buyer_span(tokens, buyers)
+    if span:
+        rest = tokens[:span[0]] + tokens[span[1]:]
+        if sum(char.isalpha() for char in "".join(rest)) >= 3:
+            return " ".join(rest)
+    return name
+
+
+def _legal_entity(lines, header, buyers):
+    """La raison sociale d'une mention légale, si l'en-tête la cite aussi."""
+    for index, line in enumerate(lines):
+        match = LEGAL_ENTITY_RE.match(line.text)
+        if not match or _is_buyer(line.text, buyers):
+            continue
+        first = _words_of(match.group(1))[0]
+        if len(first) < 3:
+            continue
+        cited = re.compile(r"\b%s\b" % re.escape(first))
+        if any(cited.search(normalize(other.text))
+               for position, other in enumerate(header) if position != index):
+            name = "%s %s" % (re.sub(r"\s+", " ", match.group(1)), match.group(2))
+            return name, line.text
+    return None
+
+
+def extract_merchant(lines, max_lines=10, buyers=()):
+    """Le nom de l'enseigne, cherché dans l'en-tête du ticket.
+
+    ``buyers`` : noms de l'acheteur (salarié, société), jamais l'enseigne.
+    """
     for line in lines:
         match = LABELED_MERCHANT_RE.match(line.text)
         if match:
             name = re.sub(r"\s{2,}", " ", match.group(1)).strip(" -*:.")
             if sum(1 for char in name if char.isalpha()) >= 3:
                 return ExtractedField(value=name, confidence=0.85, source=line.text)
+    for line in lines:
+        match = ESTABLISHMENT_RE.match(line.text)
+        if match:
+            return ExtractedField(value=match.group(1).strip(" -*:."), confidence=0.85,
+                                  source=line.text)
     best = None
     for position, line in enumerate(lines[:max_lines]):
         raw = line.text.strip()
@@ -433,27 +542,47 @@ def extract_merchant(lines, max_lines=10):
             continue
         if _has_date(text):
             continue  # « ← 18 novembre » : une date, pas une enseigne
+        if _is_buyer(raw, buyers) or lexicon.fold(raw) in CATEGORY_WORDS:
+            continue
+        if find_amounts(raw):
+            continue  # « Vol aller x 1 passager 34,05 € » : une ligne d'achat
         if digits > 2 or digits > letters / 2:
             # Code postal, téléphone, numéro de caisse — sauf une enseigne
-            # qui porte un chiffre : « Selecta Pleyad 3 CS60042 », où le nom
+            # qui porte un chiffre : « Distribo Tower 3 CS00000 », où le nom
             # ouvre la ligne et les lettres restent largement majoritaires.
             starts_with_name = text[:1].isalpha() and text.split()[0].isalpha()
             if not (starts_with_name and letters >= 10 and digits <= 6 and digits <= letters / 2):
                 continue
         # Plus la ligne est haute et riche en lettres, plus c'est l'enseigne.
         weight = (0.85 - 0.08 * position) * min(1.0, 0.4 + letters / 18.0)
+        if LEGAL_FORM_RE.search(raw):
+            weight *= LEGAL_FORM_BONUS
         confidence = weight * max(line.score, 0.4)
         if best is None or confidence > best[0]:
             best = (confidence, raw)
 
+    entity = _legal_entity(lines, lines[:max_lines], buyers)
+    if entity and (best is None or not re.search(
+            r"\b%s\b" % re.escape(_words_of(entity[0])[0]), normalize(best[1]))):
+        # L'en-tête n'offrait qu'un intitulé (« Sessions de chargement ») :
+        # le vendeur est celui de la mention légale, que l'en-tête cite.
+        name, source = entity
+        if name.isupper():
+            name = name.title()
+        return ExtractedField(value=name, confidence=0.75, source=source)
     if best is None:
         return ExtractedField(value=None, confidence=0.0)
     confidence, raw = best
     name = re.sub(r"\s{2,}", " ", raw).strip(" -*:.")
+    # « ASFLieu-ditExemple 12 » : le nom collé au lieu-dit qui le suit.
+    name = re.sub(r"(?i)\s*lieu[- ]?dit.*$", "", name) or name
     # « Établissement DORMIZZ », « Société : POPEYES » : le libellé qui
     # précède l'enseigne sur un reçu de carte n'en fait pas partie.
     name = MERCHANT_PREFIX_RE.sub("", name).strip(" -*:.") or name
     name = re.sub(r"^[^\w]+", "", name) or name  # « ← », « * » d'un logo
+    name = _without_buyer(name, buyers)
+    if raw.endswith(".") and LEGAL_FORM_RE.search(name):
+        name += "."  # « S.p.A. » : le dernier point fait partie de la forme
     if name.isupper() and len(name) > 3:
         name = name.title()
     return ExtractedField(value=name, confidence=min(confidence, 0.95), source=raw)
@@ -542,7 +671,9 @@ TAX_TABLE_ROW_RE = re.compile(
 TAX_TABLE_BARE_ROW_RE = re.compile(r"^\s*(?:(?:[A-D]|\d)\s+)?(\d{1,2}[.,]\d{1,2})\s+\d")
 #: Colonnes d'un tableau de TVA, dans n'importe quel ordre :
 #: « TVA Taux MONT.TTC MONT.TVA TOTAL HT ».
-TAX_COLUMNS_RE = re.compile(r"\bHT\b|\bTTC\b|\bTAUX\b|\bNETTO\b|\bBRUTTO\b|\bIMPONIBILE\b")
+#: « TVA% TVA Net Brut » : taux, taxe, net, brut.
+TAX_COLUMNS_RE = re.compile(
+    r"\bHT\b|\bTTC\b|\bTAUX\b|\bNETTO\b|\bBRUTTO\b|\bIMPONIBILE\b|\bNET\b|\bBRUT\b")
 # Un nombre suivi de « % » est un taux (« 10.00% »), jamais un montant.
 TAX_TABLE_AMOUNT_RE = re.compile(r"(?<![\d,])(\d+)[.,](\d{2,4})(?![\d])(?!\s*%)")
 #: Nombre de lignes examinées après l'en-tête avant d'abandonner.
@@ -601,7 +732,8 @@ def extract_tax_table(lines):
                 or (TVA_LINE_RE.search(header) and TAX_COLUMNS_RE.search(header))):
             continue
         # « Taux HT TVA TTC » : le taux ouvre la ligne, parfois sans « % ».
-        has_rate_column = bool(re.search(r"\bTAUX\b|\bRATE\b|\bALIQUOTA\b", header))
+        has_rate_column = bool(re.search(
+            r"\bTAUX\b|\bRATE\b|\bALIQUOTA\b|\bT\.?\s*V\.?\s*A\s*%", header))
         entries = []
         for row in lines[index + 1:index + 1 + TAX_TABLE_DEPTH]:
             text = normalize(row.text)
@@ -617,11 +749,12 @@ def extract_tax_table(lines):
                 amounts = amounts[1:]  # le taux lui-même, lu comme un montant
             if rate is None or len(amounts) < 2:
                 continue
-            # Colonnes HT, TVA, TTC : la taxe est la deuxième. Sur une photo
-            # de biais, les colonnes de deux lignes se mêlent : on cherche
-            # alors le triplet qui se tient, HT + TVA = TTC au taux du rang.
+            # Colonnes HT, TVA, TTC : la taxe est la deuxième. Mais l'ordre
+            # varie (« TVA Net Brut ») et, sur une photo de biais, les
+            # colonnes de deux lignes se mêlent : le triplet qui se tient,
+            # HT + TVA = TTC au taux du rang, l'emporte sur la position.
             amount = round(amounts[1], 2)
-            if len(amounts) > 3:
+            if len(amounts) >= 3:
                 amount = _consistent_tax(amounts, rate) or amount
             if amount > 0:
                 entries.append((rate, amount, row.text))
@@ -1017,13 +1150,13 @@ FIELD_LABELS = {
 LOW_CONFIDENCE = 0.65
 
 
-def parse(words, today=None, max_age_days=730, default_currency="EUR"):
+def parse(words, today=None, max_age_days=730, default_currency="EUR", buyers=()):
     """Analyse une liste de mots situés et renvoie un :class:`ScanResult`."""
     lines = build_lines(words)
     tax_rate, tax_amount, tax_rate_max = extract_taxes(lines)
     scan_date = extract_date(lines, today=today, max_age_days=max_age_days)
     fields = {
-        "merchant": extract_merchant(lines),
+        "merchant": extract_merchant(lines, buyers=buyers),
         "date": scan_date,
         "time": extract_time(lines, date_source=scan_date.source),
         "total": extract_total(lines),

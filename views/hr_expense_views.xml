@@ -72,7 +72,7 @@
                 </div>
                 <div class="alert alert-info d-flex align-items-center gap-2"
                      role="status" name="expense_scan_done"
-                     invisible="scan_state != 'done'">
+                     invisible="scan_state != 'done' or state != 'draft'">
                     <i class="fa fa-check" role="img" aria-label="Analyse"/>
                     <span>Ticket analysé et champs pré-remplis. Relisez-les avant de soumettre.</span>
                 </div>

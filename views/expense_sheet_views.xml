@@ -110,7 +110,7 @@
                 <field name="expense_ids" invisible="1"/>
                 <field name="available_project_ids" invisible="1"/>
                 <div class="alert alert-info fs-5 fw-bold mb-2" role="status">
-                    <i class="fa fa-file-text-o me-2"/>
+                    <i class="fa fa-file-text-o me-2" title="Dépenses sélectionnées"/>
                     <field name="selected_summary" readonly="1" class="d-inline"/>
                 </div>
                 <group>
