@@ -1066,20 +1066,38 @@ class HrExpense(models.Model):
         adressée à la société : son code postal relierait toutes les dépenses.
         """
         self.ensure_one()
-        zips = {self.company_id.zip, self.company_id.partner_id.zip}
         employee = self.employee_id.sudo()
+        partners = [self.company_id.partner_id]
+        zips = {self.company_id.zip}
+        cities = {self.company_id.city}
         if 'private_zip' in employee._fields:
             zips.add(employee.private_zip)
-        return {"cp:%s" % zip_code.strip() for zip_code in zips if zip_code}
+            cities.add(employee.private_city)
+        zips.update(partner.zip for partner in partners)
+        cities.update(partner.city for partner in partners)
+        home_cities = set()
+        for city in filter(None, cities):
+            home_cities.update(parser.normalize(city).replace("-", " ").split())
+        return ({"cp:%s" % zip_code.strip() for zip_code in zips if zip_code},
+                {city for city in home_cities if len(city) >= 4})
 
     def _expense_scan_trip_reason(self, scan_date, lines):
         """La raison d'un déplacement déjà écrite sur une dépense voisine.
 
-        Une dépense du même jour qui porte une raison — « Déplacement
-        commercial Mécaprec » — la donne à la nouvelle. À quelques jours
-        près, il faut en plus un lieu commun : même code postal (l'hôtel et
-        le restaurant d'une même ville), même gare de péage (l'aller et le
-        retour). Sans quoi, deux déplacements proches se confondraient.
+        Toutes les dépenses d'un même déplacement partagent sa raison —
+        « Déplacement commercial Mécaprec ». Sont du même déplacement, à
+        quelques jours près :
+
+        * une dépense du même jour ;
+        * une dépense d'un même lieu : même code postal, même gare de
+          péage (l'aller et le retour), ou une ville de l'une citée par
+          l'autre — le billet « Lille à Bordeaux », l'hôtel de Bordeaux,
+          le péage « Sortie Bordeaux » ;
+        * une journée encadrée par deux dépenses de même raison.
+
+        Chaque dépense qui reprend la raison relaie à son tour : un long
+        déplacement se couvre de proche en proche. La ville de la société
+        et celle du domicile ne relient rien : elles figurent partout.
         """
         self.ensure_one()
         if not (scan_date and self.employee_id):
@@ -1089,24 +1107,43 @@ class HrExpense(models.Model):
             ('employee_id', '=', self.employee_id.id),
             ('date', '>=', scan_date - timedelta(days=TRIP_DAYS)),
             ('date', '<=', scan_date + timedelta(days=TRIP_DAYS)),
+            ('approval_state', '!=', 'refused'),
         ])
         neighbours = neighbours.filtered(lambda e: not e._expense_scan_name_is_automatic())
         if not neighbours:
             return False
+
+        def most_common(expenses):
+            # La raison la plus répandue, la plus proche en date à égalité.
+            counts = Counter(expenses.mapped('name'))
+            return max(expenses, key=lambda e: (
+                counts[e.name], -abs((e.date - scan_date).days), e.id)).name
+
         same_day = neighbours.filtered(lambda e: e.date == scan_date)
         if same_day:
-            # La raison la plus répandue du jour, la plus récente à égalité.
-            counts = Counter(same_day.mapped('name'))
-            return max(same_day, key=lambda e: (counts[e.name], e.id)).name
-        home = self._expense_scan_home_places()
-        places = parser.places_in_text(lines) - home
-        if not places:
-            return False
-        linked = neighbours.filtered(lambda e: places & (
-            parser.places_in_text((e.scan_raw_text or '').splitlines()) - home))
-        if not linked:
-            return False
-        return min(linked, key=lambda e: (abs((e.date - scan_date).days), -e.id)).name
+            return most_common(same_day)
+
+        home_places, home_cities = self._expense_scan_home_places()
+        places, cities = parser.trip_places(lines)
+        places -= home_places
+        cities -= home_cities
+
+        def same_place(expense):
+            other_lines = (expense.scan_raw_text or '').splitlines()
+            other_places, other_cities = parser.trip_places(other_lines)
+            return bool(
+                places & (other_places - home_places)
+                or any(parser.cites_city(city, other_lines) for city in cities)
+                or any(parser.cites_city(city, lines) for city in other_cities - home_cities))
+
+        linked = neighbours.filtered(same_place)
+        if linked:
+            return most_common(linked)
+
+        before = set(neighbours.filtered(lambda e: e.date < scan_date).mapped('name'))
+        after = set(neighbours.filtered(lambda e: e.date > scan_date).mapped('name'))
+        between = neighbours.filtered(lambda e: e.name in before & after)
+        return most_common(between) if between else False
 
     def _expense_scan_date_name(self, label, date_text):
         """« Péage du 12/09/2026 » : la catégorie, puis la date du ticket."""

@@ -1239,33 +1239,63 @@ def extract_vat_number(lines):
 # ---------------------------------------------------------------------------
 
 #: Code postal suivi d'une ville : « 31150 Fenouillet », « 10144 Torino ».
-POSTAL_CODE_RE = re.compile(r"(?<![\d.,])(\d{5})\s+(?=[A-Z])")
+POSTAL_CITY_RE = re.compile(r"(?<![\d.,])(\d{5})\s+([A-Z][A-Z\-]{2,})")
 #: Gare de péage : « Sortie ..Muret », « Entree.. Toulouse-S-E »,
 #: « USCITA: MARCALLO MESERO ».
 TOLL_STATION_RE = re.compile(
     r"\b(?:SORTIE|ENTREE|USCITA|ENTRATA|AUSFAHRT|EINFAHRT|SALIDA|ENTRADA)\b[\s.:]*"
     r"([A-Z][A-Z\- ]{2,40})")
+#: Trajet imprimé : « De Toulouse à Lille », « Lille à Bordeaux (Billi) ».
+ROUTE_RE = re.compile(r"^\s*(?:DE\s+)?([A-Z][A-Z\-]{3,})\s+A\s+([A-Z][A-Z\-]{3,})\b")
+#: Mots qu'un trajet ou une adresse ferait passer pour une ville.
+NOT_A_CITY = {
+    "EMPORTER", "CONSOMMER", "PLACE", "PARTIR", "BIENTOT", "VOUS", "PAYER",
+    "CEDEX", "FRANCE", "SAINT", "SAINTE", "ROUTE", "AVENUE",
+}
+#: L'adresse du magasin est en tête ; celle du siège, en pied de page, ne
+#: dit rien de l'endroit où l'on était.
+PLACE_HEADER_LINES = 10
 
 
-def places_in_text(lines):
-    """Lieux cités par un justificatif : codes postaux et gares de péage.
+def _city(word):
+    word = word.strip("-")
+    return word if len(word) >= 4 and word not in NOT_A_CITY else None
 
-    Sert à reconnaître deux dépenses d'un même déplacement — l'hôtel et le
-    restaurant d'une même ville, l'aller et le retour d'un péage. Prend des
-    lignes de texte, pour servir aussi au texte reconnu déjà enregistré.
+
+def trip_places(lines):
+    """Lieux d'un justificatif : ``(clés, villes)``.
+
+    Les clés (code postal, gare de péage) se comparent telles quelles ; les
+    villes se cherchent aussi dans le texte entier de l'autre justificatif —
+    le billet « Lille à Bordeaux » rejoint l'hôtel « 33000 BORDEAUX ». Prend
+    des lignes de texte, pour servir aussi au texte reconnu enregistré.
     """
-    places = set()
-    for raw in lines:
+    places, cities = set(), set()
+    for index, raw in enumerate(lines):
         text = normalize(raw)
-        for match in POSTAL_CODE_RE.finditer(text):
-            places.add("cp:" + match.group(1))
+        if index < PLACE_HEADER_LINES:
+            for match in POSTAL_CITY_RE.finditer(text):
+                places.add("cp:" + match.group(1))
+                city = _city(match.group(2))
+                if city:
+                    cities.add(city)
         for match in TOLL_STATION_RE.finditer(text):
             # Les deux premiers mots suffisent : l'OCR tronque volontiers
             # la suite (« TARBES/EST », « Toulouse-S-E »).
             words = re.findall(r"[A-Z]{3,}", match.group(1))[:2]
             if words:
                 places.add("gare:" + " ".join(words))
-    return places
+                cities.update(filter(None, (_city(word) for word in words)))
+        route = ROUTE_RE.match(text)
+        if route:
+            cities.update(filter(None, (_city(word) for word in route.groups())))
+    return places, cities
+
+
+def cites_city(city, lines):
+    """La ville est-elle citée, en mot entier, dans ces lignes ?"""
+    pattern = re.compile(r"(?<![A-Z])%s(?![A-Z])" % re.escape(city))
+    return any(pattern.search(normalize(line)) for line in lines)
 
 
 # ---------------------------------------------------------------------------

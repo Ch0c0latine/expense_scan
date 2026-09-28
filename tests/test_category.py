@@ -175,6 +175,12 @@ class TestCategoryRecognition(common.TransactionCase):
             'product_id': self.default.id,
         }, **values))
 
+    def fresh(self):
+        """Une dépense tout juste déposée : Odoo lui donne un nom provisoire."""
+        expense = self.expense()
+        expense.name = expense._get_untitled_expense_name("10/09/2026")
+        return expense
+
     def test_keywords_choose_the_category(self):
         expense = self.expense()
         values = expense._expense_scan_category_values(
@@ -275,7 +281,7 @@ class TestCategoryRecognition(common.TransactionCase):
     def test_same_day_reason_is_kept(self):
         from datetime import date
         self.expense(name="Déplacement commercial Exemple", date=date(2026, 9, 10))
-        values = self.expense()._expense_scan_field_values(
+        values = self.fresh()._expense_scan_field_values(
             reading("PEAGE EXEMPLE\n10/09/2026\nPRIX TTC 6,80"), self.company)
         self.assertEqual(values['name'], "Déplacement commercial Exemple")
 
@@ -284,7 +290,7 @@ class TestCategoryRecognition(common.TransactionCase):
         from datetime import date
         self.expense(name="Mission Exemple", date=date(2026, 9, 8),
                      scan_raw_text="ASF\nSortie ..Villeun\nEntree.. Villedeux\nPRIX TTC 6,80")
-        values = self.expense()._expense_scan_field_values(reading(
+        values = self.fresh()._expense_scan_field_values(reading(
             "ASF\nDate 10/09/26\nSortie ..Villedeux\nEntree.. Villeun\nPRIX TTC 6,80"),
             self.company)
         self.assertEqual(values['name'], "Mission Exemple")
@@ -293,17 +299,35 @@ class TestCategoryRecognition(common.TransactionCase):
         from datetime import date
         self.expense(name="Autre mission", date=date(2026, 9, 9),
                      scan_raw_text="HOTEL EXEMPLE\n1 rue Exemple\n75001 Paris")
-        values = self.expense()._expense_scan_field_values(
+        values = self.fresh()._expense_scan_field_values(
             reading("RESTAURANT EXEMPLE\n69001 Lyon\n10/09/2026\nTOTAL 20,00"), self.company)
         self.assertNotEqual(values['name'], "Autre mission")
+
+    def test_a_city_cited_elsewhere_links_the_trip(self):
+        """Le billet « Villeun à Villedeux », puis l'hôtel de Villedeux."""
+        from datetime import date
+        self.expense(name="Audit Exemple", date=date(2026, 9, 8),
+                     scan_raw_text="Villeun à Villedeux\nDépart 08:10\nTOTAL 35,00")
+        values = self.fresh()._expense_scan_field_values(reading(
+            "HOTEL EXEMPLE\n1 rue Exemple\n12345 Villedeux\n10/09/2026\nTOTAL 80,00"),
+            self.company)
+        self.assertEqual(values['name'], "Audit Exemple")
+
+    def test_a_day_between_two_days_of_a_trip_belongs_to_it(self):
+        from datetime import date
+        self.expense(name="Chantier Exemple", date=date(2026, 9, 9))
+        self.expense(name="Chantier Exemple", date=date(2026, 9, 11))
+        values = self.fresh()._expense_scan_field_values(
+            reading("BOULANGERIE EXEMPLE\n10/09/2026\nTOTAL 4,20"), self.company)
+        self.assertEqual(values['name'], "Chantier Exemple")
 
     def test_company_address_links_nothing(self):
         """Le pied de facture « … 99999 Exempleville » de la société acheteuse."""
         from datetime import date
-        self.company.zip = "99999"
+        self.company.write({'zip': "99999", 'city': "Exempleville"})
         self.expense(name="Formation Exemple", date=date(2026, 9, 9),
                      scan_raw_text="FACTURE\nGREEN EXEMPLE 99999 Exempleville")
-        values = self.expense()._expense_scan_field_values(
+        values = self.fresh()._expense_scan_field_values(
             reading("BORNE EXEMPLE\n99999 Exempleville\n10/09/2026\nTOTAL 12,00"), self.company)
         self.assertNotEqual(values['name'], "Formation Exemple")
 
