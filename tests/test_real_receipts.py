@@ -307,8 +307,12 @@ N°TVA:FR11123456782
 TEL:0100000000
 Ticket C1T00001
 Vente
+Num commande: 23
 Nb personnes: 2
 Impression Ticket: 23/09/2026 21:58:57
+Création commande: 23/09/2026 21:21:18
+Opérateur: Vendeur(1)
+N° Caisse: 1
 Qté Désignation P.U Total
 1 Takoaki (c° tva: 2) 6,90 6.90
 1 huimian sauté boeuf (c° tva: 2) 14,90 14,90
@@ -321,7 +325,11 @@ Total TTC: 39,80€
 Code TAUX QTE HT TVA TTC
 2 10,00 4 36,18 3,62 39,80
 Carte Bleue : 39,80€
-Total: 39,80€"""
+Total: 39,80€
+Impression N°1
+L'équipe du LE DRAGON GOURMAND vous remercie de
+votre visite, à bientôt!
+(NF525) B 0000 AAAA - MyCaisse 3.0.10.0"""
 
 
 @tagged('post_install', '-at_install')
