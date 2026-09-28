@@ -763,7 +763,15 @@ def _closest_known_rate(value):
 # un numéro. On en utilise donc une autre, cantonnée au tableau.
 TAX_TABLE_HEADER_RE = re.compile(
     r"\bH\.?\s*T\b.{0,24}\bT\.?\s*V\.?\s*A\b"
-    r"|\b(?:NETTO|NET|IMPONIBILE|BASE)\b.{0,24}\b(?:MWST|UST|VAT|IVA|BTW)\b")
+    r"|\b(?:NETTO|NET|IMPONIBILE|BASE)\b.{0,24}\b(?:MWST|UST|VAT|IVA|BTW)\b"
+    # « Code Taux HT Montant TTC » : certaines caisses de restauration
+    # rapide libellent la colonne de taxe « Montant », sans jamais écrire
+    # « TVA ». Le mot « Taux » à côté de « HT » suffit à désigner le
+    # tableau ; sans lui, la ligne « A 10,00 18,00 1,80 19,80 » se lit,
+    # mais aucun taux ne s'y rattache, et la dépense retombe sur la taxe
+    # par défaut de la catégorie — potentiellement un taux différent de
+    # celui, pourtant juste, imprimé sur le ticket.
+    r"|\bTAUX\b.{0,24}\bH\.?\s*T\b|\bH\.?\s*T\b.{0,24}\bTAUX\b")
 # Une ligne de tableau commence par son taux, que certains tickets font
 # précéder du mot TVA : « 10%(C) ... » comme « TVA 10 % ... ».
 TAX_TABLE_ROW_RE = re.compile(

@@ -328,6 +328,30 @@ TOTAL 33,10 EUR
         self.assertIsNone(result.value('tax_rate'))
         self.assertEqual(result.value('tax_rate_max'), 20.0)
 
+    def test_vat_table_header_says_montant_not_tva(self):
+        """« Code Taux HT Montant TTC » : la colonne de taxe ne dit pas TVA.
+
+        Une caisse de restauration rapide, sans « % » sur le taux ni le mot
+        TVA en en-tête. Sans le mot « Taux » à côté de « HT », le taux ne se
+        rattache à rien, et la dépense retombe sur la taxe par défaut de la
+        catégorie — un taux qui peut ne pas être celui, pourtant juste,
+        imprimé sur le ticket (péché constaté en production : 20 % retenu
+        au lieu des 10 % du ticket).
+        """
+        result = self.parse("""
+BURGER ZORGLUB
+Menu Big Combo 15,90
+Total HT : 18,00
+Total TVA : 1,80
+Total TTC : 19,80
+Code Taux HT Montant TTC
+A 10,00 18,00 1,80 19,80
+""")
+        self.assertEqual(result.value('total'), 19.80)
+        self.assertEqual(result.value('tax_rate'), 10.0)
+        self.assertEqual(result.value('tax_rate_max'), 10.0)
+        self.assertEqual(result.value('tax_amount'), 1.80)
+
     def test_vat_rows_without_table_header(self):
         """Mêmes lignes, sans l'en-tête HT/TVA/TTC : le repli doit tenir.
 

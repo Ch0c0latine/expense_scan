@@ -1,5 +1,20 @@
 # Journal des changements
 
+## 19.0.2.6.2
+
+- **Taux de TVA mal reconnu sur les tickets « Code Taux HT Montant TTC »**
+  (caisses de restauration rapide notamment) : l'en-tête du tableau de taxe
+  n'était pas reconnu, faute du mot « TVA » (remplacé par « Montant ») ; le
+  taux retombait alors sur celui, par défaut, de la catégorie — potentiellement
+  différent de celui imprimé sur le ticket. Corrigé.
+
+## 19.0.2.6.1
+
+- **Conservation du texte lu portée à 10 ans par défaut** (au lieu de 365 jours) :
+  c'est la durée que le Code de commerce impose pour les pièces comptables
+  (art. L123-22), tickets compris. Migration pour les sociétés restées sur
+  l'ancien défaut.
+
 ## 19.0.2.6.0 — Fiabilisation
 
 Aucun changement de fonctionnement visible : ce qui pouvait faire tomber un
@@ -14,7 +29,7 @@ worker ou garder trop longtemps des données personnelles est corrigé.
 - **Droits avant verrou** : le démarrage d'une analyse contrôle le droit
   d'écriture avant de verrouiller la ligne.
 - **Données personnelles** : le texte lu sur un justificatif est effacé des
-  dépenses soumises au bout de 365 jours (réglable par société, 0 = jamais).
+  dépenses soumises au bout d'un délai réglable par société (0 = jamais).
   Le journal de test du corpus n'écrit plus les textes.
 - **Historique des enseignes cloisonné par société.**
 - **Banc d'évaluation** (`tools/bench.py`) : rejeu de l'analyse sur un instantané

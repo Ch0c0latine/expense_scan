@@ -71,12 +71,14 @@ class ResCompany(models.Model):
     )
     expense_scan_text_retention_days = fields.Integer(
         string="Conservation du texte lu (jours)",
-        default=365,
+        default=3650,
         help="Le texte lu sur un justificatif — noms, adresses, fin de numéro "
-             "de carte — n'est gardé que le temps d'en avoir besoin. Une fois "
-             "la dépense soumise et sa date plus ancienne que ce nombre de "
-             "jours, il est effacé ; l'image du justificatif, elle, reste. "
-             "Zéro : ne jamais l'effacer.",
+             "de carte — n'est effacé qu'après ce délai. Par défaut, 10 ans : "
+             "le Code de commerce (art. L123-22) impose cette durée de "
+             "conservation des pièces comptables, tickets compris, à compter "
+             "de la clôture de l'exercice. L'image du justificatif, elle, "
+             "n'est jamais effacée par le module. Zéro : ne jamais effacer le "
+             "texte non plus.",
     )
     expense_scan_apply_tax = fields.Boolean(
         string="Reporter la TVA lue sur le ticket",

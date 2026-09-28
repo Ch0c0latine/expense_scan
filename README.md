@@ -205,7 +205,8 @@ travaillent sur la même liste de mots situés.
 Le texte lu sur un justificatif (noms, adresses, fin de numéro de carte…)
 est gardé sur la dépense pour l'analyse et le rattachement des
 déplacements voisins. Une tâche quotidienne l'efface des dépenses soumises
-dont la date dépasse **Conservation du texte lu** (365 jours par défaut ;
+dont la date dépasse **Conservation du texte lu** (10 ans par défaut, comme
+l'exige le Code de commerce pour les pièces comptables — art. L123-22 ;
 0 = jamais). L'image du justificatif, elle, reste : c'est la pièce
 comptable.
 
