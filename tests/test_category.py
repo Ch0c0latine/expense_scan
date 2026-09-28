@@ -209,12 +209,22 @@ class TestCategoryRecognition(common.TransactionCase):
         Aucun des deux ne vaut pour la dépense entière, mais il en faut
         néanmoins une : le plus élevé l'emporte plutôt que la taxe de la
         catégorie (ici 5,5 %, qui laisserait passer trop peu de TVA).
+
+        Une seule taxe par taux, sans quoi le module s'abstient à dessein
+        (une correspondance ambiguë passerait inaperçue à la relecture) :
+        toute autre taxe d'achat à ces deux taux, pour cette société, est
+        désactivée le temps du test.
         """
-        low = self.env['account.tax'].create({
+        Tax = self.env['account.tax']
+        Tax.search([
+            ('company_id', '=', self.company.id), ('type_tax_use', '=', 'purchase'),
+            ('amount_type', '=', 'percent'), ('amount', 'in', (5.5, 10.0)),
+        ]).active = False
+        low = Tax.create({
             'name': "TVA test 5,5 %", 'amount': 5.5,
             'amount_type': 'percent', 'type_tax_use': 'purchase',
             'company_id': self.company.id})
-        high = self.env['account.tax'].create({
+        high = Tax.create({
             'name': "TVA test 10 % (max ticket)", 'amount': 10.0,
             'amount_type': 'percent', 'type_tax_use': 'purchase',
             'company_id': self.company.id})
