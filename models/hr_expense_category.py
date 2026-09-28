@@ -242,11 +242,19 @@ class HrExpense(models.Model):
         salarié ne voit que ses propres dépenses. Seuls en sortent des noms
         d'enseignes et des catégories, rien de ce que la dépense contenait.
 
+        Cloisonné par société : les habitudes de l'une n'orientent pas le
+        classement d'une autre, même si le filtre de droits est levé ici.
+
+        Cloisonné par société : les habitudes de l'une n'orientent pas le
+        classement d'une autre, même si le filtre de droits est levé ici.
+
         La dépense analysée n'en fait pas partie : relancée après
         approbation, elle se reconnaissait elle-même et ne corrigeait plus rien.
         """
+        companies = self.company_id or self.env.company
         groups = self.sudo()._read_group(
             [('state', 'in', CONFIRMED_STATES),
+             ('company_id', 'in', companies.ids),
              ('id', 'not in', self.ids),
              ('product_id', '!=', False),
              '|', ('expense_scan_merchant_key', '!=', False),

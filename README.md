@@ -17,7 +17,7 @@ d'API, pas de jeton facturé, aucun document envoyé à un tiers.
 | **Redressage** | L'inclinaison résiduelle des lignes est mesurée puis annulée ; une photo prise de travers (quart de tour) est remise droite. |
 | **Lecture** | Les réseaux PP-OCR lisent le ticket (détection des zones de texte + reconnaissance), en ~0,5 à 1,5 s sur un processeur récent. |
 | **Extraction** | Marchand, date, total TTC, devise et TVA sont extraits, chacun avec un indice de fiabilité. |
-| **Vérification** | La fiche s'ouvre avec le ticket d'un côté et les champs de l'autre, et un bandeau liste les champs à relire. |
+| **Vérification** | La fiche s'ouvre aussitôt, avec le ticket d'un côté et les champs de l'autre : l'analyse se déroule en arrière-plan, avec sa progression, et remplit les champs au fil de l'eau. Une indication s'affiche sous chaque champ à relire (date, total, TVA, catégorie…) et disparaît quand on le corrige. |
 
 Le module **ne valide jamais** une dépense automatiquement : il pré-remplit,
 signale ce qui est douteux, et laisse la décision à l'utilisateur.
@@ -195,6 +195,31 @@ travaillent sur la même liste de mots situés.
   de son côté, ce qui ajoute une à trois secondes. Le bouton de préchauffage
   ne couvre que le worker qui a traité la requête.
 - **PDF** : seule la première page est lue.
+- **Plafonds** : un justificatif de plus de 25 Mo est refusé ; une image de plus de 50 mégapixels est réduite au décodage (au-delà de 250 Mpx, refusée) ; un PDF est rendu à une résolution qui tient dans le même plafond, avec un délai de 30 s.
+- **Analyse interrompue** : une analyse « en cours » depuis plus de 15 minutes — un justificatif qui aurait fait tuer son worker — n'est plus reprise ; la dépense passe en erreur et se saisit à la main.
+
+---
+
+## Données personnelles
+
+Le texte lu sur un justificatif (noms, adresses, fin de numéro de carte…)
+est gardé sur la dépense pour l'analyse et le rattachement des
+déplacements voisins. Une tâche quotidienne l'efface des dépenses soumises
+dont la date dépasse **Conservation du texte lu** (365 jours par défaut ;
+0 = jamais). L'image du justificatif, elle, reste : c'est la pièce
+comptable.
+
+---
+
+## Développement
+
+`tools/check.py` compile tout le module en une seconde (à lancer avant une
+mise à jour). `tools/bench.py` rejoue l'analyse sur un instantané de textes
+déjà lus, sans Odoo, et compare fichier par fichier à une mesure de
+référence : c'est ce qui permet de retoucher le parseur sans régression.
+Son mode d'emploi est en tête du fichier. Les justificatifs, l'instantané et
+les tableaux de vérité sont des données personnelles : ils ne sont jamais
+versionnés.
 
 ---
 

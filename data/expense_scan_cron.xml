@@ -15,4 +15,16 @@
         <field name="active" eval="True"/>
     </record>
 
+    <!-- Le texte lu sur un justificatif est une donnée personnelle : il ne se
+         garde pas au-delà du délai réglé sur la société. -->
+    <record id="ir_cron_expense_scan_purge_texts" model="ir.cron">
+        <field name="name">Scan de tickets : effacer le texte lu des anciennes dépenses</field>
+        <field name="model_id" ref="hr_expense.model_hr_expense"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_expense_scan_purge_texts()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+
 </odoo>

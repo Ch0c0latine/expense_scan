@@ -78,3 +78,70 @@ class TestAsyncScan(common.TransactionCase):
             with self.assertRaises(psycopg2.errors.SerializationFailure):
                 expense._expense_scan_run(force=True)
         self.assertNotEqual(expense.scan_state, 'error')
+
+    def test_a_stuck_analysis_is_given_up(self):
+        """Un justificatif qui tue son worker n'est pas repris indéfiniment."""
+        with patch.object(type(self.Expense), '_expense_scan_run', autospec=True):
+            expense = self.upload(expense_scan_async=True)
+        self.env.flush_all()
+        self.env.cr.execute(
+            "UPDATE hr_expense SET create_date = now() - interval '1 hour',"
+            " write_date = now() - interval '1 hour' WHERE id = %s", [expense.id])
+        self.env.invalidate_all()
+        with patch.object(type(self.Expense), '_expense_scan_run', autospec=True) as run:
+            self.Expense._cron_expense_scan_pending()
+        run.assert_not_called()
+        self.assertEqual(expense.scan_state, 'error')
+
+    def test_the_form_does_not_restart_a_stuck_analysis(self):
+        with patch.object(type(self.Expense), '_expense_scan_run', autospec=True):
+            expense = self.upload(expense_scan_async=True)
+        self.env.flush_all()
+        self.env.cr.execute(
+            "UPDATE hr_expense SET create_date = now() - interval '1 hour' WHERE id = %s",
+            [expense.id])
+        self.env.invalidate_all()
+        with patch.object(type(self.Expense), '_expense_scan_run', autospec=True) as run:
+            result = expense.action_expense_scan_start({'scan_state': {}})
+        run.assert_not_called()
+        self.assertFalse(result['started'])
+        self.assertEqual(result['values']['scan_state'], 'error')
+
+    def test_rights_are_checked_before_the_row_is_locked(self):
+        """Personne ne verrouille la dépense d'un autre sans y avoir droit."""
+        from odoo.exceptions import AccessError
+        with patch.object(type(self.Expense), '_expense_scan_run', autospec=True):
+            expense = self.upload(expense_scan_async=True)
+        stranger = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': "Passant", 'login': 'expense_scan_passant',
+            'group_ids': [(6, 0, [self.env.ref('base.group_user').id])]})
+        with self.assertRaises(AccessError):
+            expense.with_user(stranger).action_expense_scan_start({'scan_state': {}})
+
+    def test_old_submitted_texts_are_erased(self):
+        """Le texte lu est une donnée personnelle : il ne se garde pas indéfiniment."""
+        old = self.Expense.create({
+            'name': "Vieux ticket", 'employee_id': self.employee.id,
+            'product_id': self.env.company.expense_scan_product_id.id or
+            self.env['product.product'].search([('can_be_expensed', '=', True)], limit=1).id,
+            'date': '2020-01-15', 'scan_raw_text': "Jean Dupont 12 rue X CB **** 1234"})
+        old.write({'approval_state': 'submitted'})
+        draft = self.Expense.create({
+            'name': "Brouillon", 'employee_id': self.employee.id,
+            'product_id': old.product_id.id,
+            'date': '2020-01-15', 'scan_raw_text': "reste"})
+        self.env.company.expense_scan_text_retention_days = 365
+        self.Expense._cron_expense_scan_purge_texts()
+        self.assertFalse(old.scan_raw_text)
+        self.assertEqual(draft.scan_raw_text, "reste")  # un brouillon garde le sien
+
+    def test_zero_days_keeps_texts_forever(self):
+        old = self.Expense.create({
+            'name': "Vieux ticket", 'employee_id': self.employee.id,
+            'product_id': self.env['product.product'].search(
+                [('can_be_expensed', '=', True)], limit=1).id,
+            'date': '2020-01-15', 'scan_raw_text': "reste"})
+        old.write({'approval_state': 'submitted'})
+        self.env.company.expense_scan_text_retention_days = 0
+        self.Expense._cron_expense_scan_purge_texts()
+        self.assertEqual(old.scan_raw_text, "reste")

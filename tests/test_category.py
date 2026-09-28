@@ -446,3 +446,37 @@ def bare_png():
     return base64.b64encode(
         b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89'
         b'\x00\x00\x00\rIDATx\x9cc\xf8\xcf\xc0\x00\x00\x03\x01\x01\x00\xc9\xfe\x92\xef\x00\x00\x00\x00IEND\xaeB`\x82')
+
+
+    def test_history_is_kept_per_company(self):
+        """Les habitudes d'une société n'orientent pas le classement d'une autre."""
+        past = self.expense(product_id=self.food.id, total_amount_currency=14.0)
+        past.write({
+            'expense_scan_merchant': "Autresocietezz",
+            'expense_scan_merchant_read': "autresocietezz",
+            'approval_state': 'submitted',
+        })
+        other = self.env['res.company'].create({'name': "Autre société test"})
+        self.env.flush_all()
+        self.env.cr.execute("UPDATE hr_expense SET company_id = %s WHERE id = %s",
+                            [other.id, past.id])
+        self.env.invalidate_all()
+        expense = self.expense()
+        values = expense._expense_scan_category_values(
+            reading("AUTRESOCIETEZZ\nTOTAL 14,00"), self.company)
+        self.assertNotIn('product_id', values)
+
+    def test_the_pure_scoring_matches_the_model(self):
+        """Le banc et le module partagent le même calcul de catégorie."""
+        from ..ocr import categorize
+        scores, reasons, brand = categorize.score(
+            ["ZORBLAX INN", "QUIMBO 2"], {'A': ["zorblax", "quimbo"]}, {}, activity=None)
+        self.assertGreater(scores['A'], 2.0)
+        self.assertEqual(reasons['A'][0][1][0], categorize.WORDS)
+        self.assertIsNone(brand)
+        scores, reasons, _brand = categorize.score(
+            ["Prix 1,85 EUR/L"], {}, {'fuel': 'F'}, activity=None)
+        self.assertEqual(scores['F'], categorize.UNIT_WEIGHT)
+        scores, _reasons, _brand = categorize.score(
+            ["RIEN"], {}, {'lodging': 'H'}, activity="NAF:5510Z")
+        self.assertEqual(scores.get('H'), categorize.CODE_WEIGHT)

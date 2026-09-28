@@ -42,6 +42,21 @@ except Exception as error:  # noqa: BLE001
 
 from .types import OcrWord, PreprocessInfo
 
+#: Plafonds d'entrée. Une pièce jointe arrive de n'importe où — un téléphone,
+#: la passerelle e-mail — et ce qu'elle déclare n'engage pas ce qu'elle
+#: coûte à décoder : une photo de 100 mégapixels ou une page PDF géante
+#: suffit à saturer un worker.
+#:
+#: Taille du fichier, en octets.
+MAX_FILE_BYTES = 25 * 1024 * 1024
+#: Au-delà de ce nombre de pixels, l'image est réduite dès son décodage : un
+#: ticket se lit très bien à 50 mégapixels, et plus n'apporte que de la
+#: mémoire. Au-delà du plafond dur, elle est refusée (bombe de décompression).
+MAX_PIXELS = 50_000_000
+HARD_MAX_PIXELS = 250_000_000
+#: Délai de conversion d'un PDF, en secondes.
+PDF_TIMEOUT = 30
+
 # Un quadrilatère candidat doit couvrir au moins cette fraction de la photo
 # pour être considéré comme « le ticket » et non un détail du décor.
 MIN_QUAD_AREA_RATIO = 0.18
@@ -74,6 +89,24 @@ def dependencies_status():
     return True, "numpy %s, OpenCV %s" % (np.__version__, cv2.__version__)
 
 
+def _pdf_dpi(data, dpi):
+    """Résolution de rendu qui tient dans le plafond de pixels.
+
+    Une page A4 à 200 dpi fait 4 mégapixels ; une page de plan de plusieurs
+    mètres, des milliards. La taille se lit dans l'en-tête du PDF, sans rien
+    rendre.
+    """
+    try:
+        from pdf2image import pdfinfo_from_bytes
+        size = pdfinfo_from_bytes(data, timeout=PDF_TIMEOUT).get('Page size', '')
+        width, height = (float(part) for part in size.split(' pts')[0].split(' x '))
+    except Exception:  # noqa: BLE001 — sans la taille, on rend à la résolution demandée
+        return dpi
+    if width <= 0 or height <= 0:
+        return dpi
+    return max(10, min(dpi, int(72 * math.sqrt(MAX_PIXELS / (width * height)))))
+
+
 def pdf_first_page_to_image_bytes(data, dpi=200):
     """Convertit la première page d'un PDF en PNG. Renvoie None si impossible."""
     try:
@@ -81,8 +114,12 @@ def pdf_first_page_to_image_bytes(data, dpi=200):
     except ImportError:
         _logger.info("pdf2image absent : PDF non converti")
         return None
+    options = dict(dpi=_pdf_dpi(data, dpi), first_page=1, last_page=1)
     try:
-        pages = convert_from_bytes(data, dpi=dpi, first_page=1, last_page=1)
+        try:
+            pages = convert_from_bytes(data, timeout=PDF_TIMEOUT, **options)
+        except TypeError:  # pdf2image ancien, sans délai
+            pages = convert_from_bytes(data, **options)
     except Exception:
         _logger.warning("Conversion du PDF impossible", exc_info=True)
         return None
@@ -99,12 +136,27 @@ def load_image(data):
     L'EXIF est essentiel : la plupart des téléphones enregistrent la photo
     dans le sens du capteur et indiquent la rotation en métadonnée. Sans
     cette correction, un ticket sur deux arrive couché.
+
+    Le nombre de pixels se lit dans l'en-tête, avant tout décodage : une
+    image au-delà de ``MAX_PIXELS`` est réduite pendant son décodage (un
+    JPEG se décode directement à taille réduite), et au-delà de
+    ``HARD_MAX_PIXELS`` elle est refusée.
     """
     if Image is None or np is None:
         raise RuntimeError("Pillow et numpy sont requis pour lire l'image")
     with Image.open(io.BytesIO(data)) as img:
+        pixels = img.width * img.height
+        if pixels > HARD_MAX_PIXELS:
+            raise ValueError("Image trop grande : %d mégapixels (plafond %d)." % (
+                pixels // 1_000_000, HARD_MAX_PIXELS // 1_000_000))
+        if pixels > MAX_PIXELS:
+            ratio = math.sqrt(MAX_PIXELS / pixels)
+            img.draft('RGB', (int(img.width * ratio) + 1, int(img.height * ratio) + 1))
         img = ImageOps.exif_transpose(img)
         img = img.convert("RGB")
+        if img.width * img.height > MAX_PIXELS:
+            ratio = math.sqrt(MAX_PIXELS / (img.width * img.height))
+            img = img.resize((int(img.width * ratio), int(img.height * ratio)), Image.BILINEAR)
         array = np.array(img)
     if cv2 is not None:
         return cv2.cvtColor(array, cv2.COLOR_RGB2BGR)

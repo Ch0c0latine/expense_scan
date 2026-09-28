@@ -32,6 +32,10 @@
                             <label for="expense_scan_max_age_days" class="col-lg-4 o_light_label"/>
                             <field name="expense_scan_max_age_days"/>
                         </div>
+                        <div class="row">
+                            <label for="expense_scan_text_retention_days" class="col-lg-4 o_light_label"/>
+                            <field name="expense_scan_text_retention_days"/>
+                        </div>
                         <div class="row" invisible="expense_scan_engine == 'tesseract'">
                             <label for="expense_scan_model_dir" class="col-lg-4 o_light_label"/>
                             <field name="expense_scan_model_dir"
@@ -110,7 +114,7 @@
                          help="Module libre, développé sur le temps de son auteur">
                     <div class="content-group">
                         <a href="https://github.com/sponsors/Ch0c0latine" target="_blank"
-                           rel="noopener noreferrer" class="btn btn-link ps-0">
+                           rel="noopener noreferrer" class="btn btn-link ps-0" role="button">
                             <i class="fa fa-coffee me-1"/>Offrir un café à l'auteur
                         </a>
                     </div>

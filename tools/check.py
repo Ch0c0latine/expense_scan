@@ -16,7 +16,8 @@ laissent alors l'instance entière hors service :
 La lecture des tickets, elle, se vérifie par les tests du module (tickets
 de référence) et par le banc d'évaluation, ``tools/bench.py``.
 
-    python3 tools/check.py
+    python3 tools/check.py            # syntaxe et imports
+    python3 tools/check.py --strict   # exige aussi les dépendances d'image (interpréteur d'Odoo)
 """
 import os
 import sys
@@ -60,7 +61,7 @@ def main():
             status['message']))
 
     failures = check_syntax()
-    if not available:
+    if not available and '--strict' in sys.argv:
         failures.append("traitement d'image indisponible")
     if failures:
         print("\nÉCHEC :\n  %s" % "\n  ".join(failures))

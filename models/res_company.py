@@ -69,6 +69,15 @@ class ResCompany(models.Model):
         help="Une date lue au-delà de cette ancienneté est écartée : c'est "
              "presque toujours une date de garantie ou de carte de fidélité.",
     )
+    expense_scan_text_retention_days = fields.Integer(
+        string="Conservation du texte lu (jours)",
+        default=365,
+        help="Le texte lu sur un justificatif — noms, adresses, fin de numéro "
+             "de carte — n'est gardé que le temps d'en avoir besoin. Une fois "
+             "la dépense soumise et sa date plus ancienne que ce nombre de "
+             "jours, il est effacé ; l'image du justificatif, elle, reste. "
+             "Zéro : ne jamais l'effacer.",
+    )
     expense_scan_apply_tax = fields.Boolean(
         string="Reporter la TVA lue sur le ticket",
         default=False,

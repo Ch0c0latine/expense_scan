@@ -29,6 +29,8 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.expense_scan_keep_original', readonly=False)
     expense_scan_max_age_days = fields.Integer(
         related='company_id.expense_scan_max_age_days', readonly=False)
+    expense_scan_text_retention_days = fields.Integer(
+        related='company_id.expense_scan_text_retention_days', readonly=False)
     expense_scan_apply_tax = fields.Boolean(
         related='company_id.expense_scan_apply_tax', readonly=False)
     expense_scan_reinvoice = fields.Boolean(

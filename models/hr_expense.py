@@ -20,6 +20,7 @@ from odoo.service.model import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY
 from odoo.tools import email_normalize, format_date
 
 from ..ocr import engines, parser, preprocess
+from .hr_expense_category import CONFIRMED_STATES
 
 _logger = logging.getLogger(__name__)
 
@@ -80,6 +81,7 @@ class HrExpense(models.Model):
         default='none',
         readonly=True,
         copy=False,
+        index=True,
     )
     scan_message = fields.Char(string="Détail de l'analyse", readonly=True, copy=False)
     scan_todo = fields.Char(string="Champs à vérifier", readonly=True, copy=False)
@@ -597,6 +599,30 @@ class HrExpense(models.Model):
     #: Délai au-delà duquel une analyse restée en attente est reprise par la
     #: tâche planifiée : l'application a pu se fermer avant de la lancer.
     PENDING_SCAN_MINUTES = 3
+    #: Délai au-delà duquel on renonce. Un justificatif qui fait tuer son
+    #: worker (mémoire, processeur) le ferait sinon tuer indéfiniment : la
+    #: fiche relance l'analyse à chaque ouverture, la tâche planifiée toutes
+    #: les cinq minutes. Une limite de durée plutôt qu'un compte d'essais :
+    #: Odoo rejoue lui-même une requête en conflit, ce qui fausserait le
+    #: compte, et le compteur devrait s'écrire hors de la transaction.
+    EXPIRE_SCAN_MINUTES = 15
+
+    def _expense_scan_expire(self):
+        """Passe en erreur les analyses en cours depuis trop longtemps.
+
+        Renvoie celles qu'elle vient d'abandonner.
+        """
+        limit = fields.Datetime.subtract(fields.Datetime.now(), minutes=self.EXPIRE_SCAN_MINUTES)
+        stale = self.filtered(lambda e: e.scan_state == 'running' and e.create_date < limit)
+        stale.sudo().write({
+            'scan_state': 'error',
+            'scan_message': _("L'analyse de ce justificatif n'a pas abouti. "
+                              "Saisissez la dépense à la main."),
+            'scan_todo': False,
+            'expense_scan_todo_codes': False,
+            'expense_scan_hints': False,
+        })
+        return stale
 
     def action_expense_scan_start(self, specification=None):
         """Analyse le ticket que la fiche vient d'ouvrir, étape par étape.
@@ -613,6 +639,11 @@ class HrExpense(models.Model):
         toujours après elle.
         """
         self.ensure_one()
+        # Les droits d'abord : le verrou de ligne se pose sans passer par
+        # l'ORM, donc sans contrôle d'accès.
+        self.check_access('write')
+        if self._expense_scan_expire():
+            return {'started': False, 'values': self._expense_scan_web_values(specification)}
         try:
             with self.env.cr.savepoint():
                 self.env.cr.execute(
@@ -669,11 +700,37 @@ class HrExpense(models.Model):
     def _cron_expense_scan_pending(self):
         """Reprend les analyses restées en attente : fiche fermée trop tôt."""
         limit = fields.Datetime.subtract(fields.Datetime.now(), minutes=self.PENDING_SCAN_MINUTES)
-        pending = self.search([('scan_state', '=', 'running'), ('write_date', '<', limit)])
+        running = self.search([('scan_state', '=', 'running')])
+        running -= running._expense_scan_expire()
+        pending = running.filtered(lambda e: e.write_date < limit)
         for expense in pending:
             expense._expense_scan_run(force=True)
             if not odoo_module.current_test:
                 self.env.cr.commit()  # une analyse faite ne se perd pas avec la suivante
+
+    @api.model
+    def _cron_expense_scan_purge_texts(self, batch=1000):
+        """Efface le texte lu des dépenses soumises depuis assez longtemps.
+
+        Le texte d'un justificatif porte des données personnelles — noms,
+        adresses, fin de numéro de carte — dont on n'a plus besoin une fois
+        la dépense soumise : il ne sert qu'à l'analyse et au rattachement des
+        déplacements voisins. La durée est un réglage de la société.
+        """
+        for company in self.env['res.company'].search([]):
+            days = company.expense_scan_text_retention_days
+            if days <= 0:
+                continue
+            limit = fields.Date.subtract(fields.Date.context_today(self), days=days)
+            old = self.sudo().search([
+                ('company_id', '=', company.id),
+                ('scan_raw_text', '!=', False),
+                ('state', 'in', CONFIRMED_STATES),
+                ('date', '<', limit),
+            ], limit=batch)
+            old.with_context(tracking_disable=True).write({'scan_raw_text': False})
+            if not odoo_module.current_test:
+                self.env.cr.commit()
 
     def _get_employee_from_email(self, email_address):
         """Reconnaît aussi l'expéditeur à son adresse privée.
@@ -862,6 +919,11 @@ class HrExpense(models.Model):
     def _expense_scan_image_bytes(self, attachment):
         """Octets d'image exploitables, en convertissant le PDF si besoin."""
         self.ensure_one()
+        if attachment.file_size and attachment.file_size > preprocess.MAX_FILE_BYTES:
+            raise UserError(_(
+                "Le justificatif est trop volumineux (%(size)d Mo, plafond %(max)d Mo).",
+                size=attachment.file_size // (1024 * 1024),
+                max=preprocess.MAX_FILE_BYTES // (1024 * 1024)))
         data = attachment.raw
         if not data:
             raise UserError(_("Le justificatif est vide."))

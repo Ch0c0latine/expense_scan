@@ -196,3 +196,31 @@ class TestPreprocess(common.TransactionCase):
         matrix, _size = preprocess.rotation_matrix((300, 300), 6.0)
         moved = preprocess.rotate_words(make_words(angle=6.0), matrix, 6.0)
         self.assertAlmostEqual(moved[0].angle, 0.0)
+
+
+    def test_an_oversized_photo_is_reduced_while_decoding(self):
+        """Le plafond de pixels réduit l'image au lieu de saturer le worker."""
+        import io
+        from unittest.mock import patch
+        from PIL import Image
+        buffer = io.BytesIO()
+        Image.new('RGB', (400, 300), 'white').save(buffer, format='JPEG')
+        with patch.object(preprocess, 'MAX_PIXELS', 30000):
+            image = preprocess.load_image(buffer.getvalue())
+        self.assertLessEqual(image.shape[0] * image.shape[1], 30000)
+        # Sans plafond dépassé, rien ne change.
+        self.assertEqual(preprocess.load_image(buffer.getvalue()).shape[:2], (300, 400))
+
+    def test_an_absurd_photo_is_refused(self):
+        import io
+        from unittest.mock import patch
+        from PIL import Image
+        buffer = io.BytesIO()
+        Image.new('RGB', (400, 300), 'white').save(buffer, format='PNG')
+        with patch.object(preprocess, 'HARD_MAX_PIXELS', 1000):
+            with self.assertRaisesRegex(ValueError, "trop grande"):
+                preprocess.load_image(buffer.getvalue())
+
+    def test_pdf_resolution_falls_back_without_page_size(self):
+        """Un PDF dont on ne lit pas la taille est rendu à la résolution demandée."""
+        self.assertEqual(preprocess._pdf_dpi(b"pas un pdf", 200), 200)
