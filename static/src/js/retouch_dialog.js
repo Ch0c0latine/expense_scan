@@ -226,17 +226,22 @@ export class RetouchDialog extends Component {
         ctx.strokeRect(crop.x0, crop.y0, crop.x1 - crop.x0, crop.y1 - crop.y0);
         // Poignées en équerre, tournées vers l'intérieur du cadre : elles
         // restent entières quand le cadre touche le bord de l'image.
+        // Un trait sombre sous un trait blanc : visibles sur un ticket blanc
+        // comme sur une table sombre.
         const directions = [[1, 1], [-1, 1], [1, -1], [-1, -1]];
-        ctx.lineWidth = 5;
         ctx.lineCap = "square";
-        this.handlePositions(crop).forEach(([x, y], index) => {
-            const [dx, dy] = directions[index];
-            ctx.beginPath();
-            ctx.moveTo(x + dx * HANDLE_LENGTH, y + dy * 2.5);
-            ctx.lineTo(x + dx * 2.5, y + dy * 2.5);
-            ctx.lineTo(x + dx * 2.5, y + dy * HANDLE_LENGTH);
-            ctx.stroke();
-        });
+        for (const [color, width] of [["rgba(0, 0, 0, 0.6)", 7], ["#ffffff", 4]]) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            this.handlePositions(crop).forEach(([x, y], index) => {
+                const [dx, dy] = directions[index];
+                ctx.beginPath();
+                ctx.moveTo(x + dx * HANDLE_LENGTH, y + dy * 3.5);
+                ctx.lineTo(x + dx * 3.5, y + dy * 3.5);
+                ctx.lineTo(x + dx * 3.5, y + dy * HANDLE_LENGTH);
+                ctx.stroke();
+            });
+        }
         ctx.restore();
     }
 
