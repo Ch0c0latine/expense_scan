@@ -205,6 +205,22 @@
                 <attribute name="invisible">1</attribute>
             </xpath>
 
+            <!-- Compte et répartition analytique : réservés au groupe qui
+                 les régla à la main, pas au salarié qui photographie son
+                 ticket. Le module impute déjà la bonne mission tout seul
+                 (voir hr_expense_project.py) ; ces deux champs n'existent
+                 que pour qui doit vérifier ou corriger l'imputation.
+                 Activer la comptabilité analytique de la société donne le
+                 droit d'origine (`analytic.group_analytic_accounting`) à
+                 tous les utilisateurs internes — Odoo l'ajoute alors à
+                 chacun, salariés compris — d'où ce resserrement ici. -->
+            <xpath expr="//field[@name='account_id']" position="attributes">
+                <attribute name="groups">hr_expense.group_hr_expense_manager</attribute>
+            </xpath>
+            <xpath expr="//field[@name='analytic_distribution']" position="attributes">
+                <attribute name="groups">hr_expense.group_hr_expense_manager</attribute>
+            </xpath>
+
             <!-- « Payé par la société » faisait apparaître deux champs de
                  comptabilité au milieu de la saisie. Le fournisseur se
                  déduit du justificatif quand l'option est active, et sa

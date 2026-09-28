@@ -84,3 +84,19 @@ class ProductProduct(models.Model):
         }
         found.sort(key=lambda pair: rank[pair[0]])
         return found[:limit] if limit else found
+
+    def web_search_read(self, domain, specification, offset=0, limit=None,
+                        order=None, count_limit=None):
+        """Même ordre pour la fenêtre de recherche complète, sur mobile.
+
+        Le clavier tactile ouvre une liste plein écran plutôt que le fil de
+        suggestions du champ : elle passe par ``web_search_read``, pas par
+        ``name_search`` — c'est elle qui restait triée par référence,
+        « CADEAU » et « COMM » en tête, quand on changeait de catégorie
+        depuis un téléphone.
+        """
+        if self.env.context.get('expense_scan_category_order'):
+            order = 'sequence, name'
+        return super().web_search_read(
+            domain, specification, offset=offset, limit=limit,
+            order=order, count_limit=count_limit)

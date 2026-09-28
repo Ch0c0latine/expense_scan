@@ -115,6 +115,26 @@ class TestExpenseScanTeam(common.TransactionCase):
         plain = new_test_user(self.env, login='plain_scan', groups='base.group_user')
         self.assertFalse(self.env['hr.expense'].with_user(plain)._expense_scan_team_employees())
 
+    def test_account_and_analytic_fields_are_for_managers_only(self):
+        """Compte et répartition analytique : pas une affaire de salarié.
+
+        Activer la comptabilité analytique de la société donne le droit
+        d'origine de ces deux champs à tout utilisateur interne — vérifié
+        ici en le simulant sur le salarié ordinaire, plutôt que de le
+        changer pour de vrai sur la société de test.
+        """
+        plain = new_test_user(
+            self.env, login='plain_account', groups='base.group_user')
+        manager = new_test_user(
+            self.env, login='manager_account',
+            groups='base.group_user,hr_expense.group_hr_expense_manager')
+        arch = self.env['hr.expense'].with_user(plain).get_view(view_type='form')['arch']
+        for name in ('account_id', 'analytic_distribution'):
+            self.assertNotIn('name="%s"' % name, arch)
+        arch = self.env['hr.expense'].with_user(manager).get_view(view_type='form')['arch']
+        for name in ('account_id', 'analytic_distribution'):
+            self.assertIn('name="%s"' % name, arch)
+
     def test_opening_a_member_sets_the_default_employee(self):
         public = self.env['hr.employee.public'].with_user(self.manager_user).browse(self.member.id)
         action = public.action_expense_scan_open_expenses()
@@ -197,6 +217,22 @@ class TestExpenseScanCategories(common.TransactionCase):
         })
         found = self.env['product.product'].name_search('', [('id', 'in', (first | last).ids)])
         self.assertEqual([product_id for product_id, _name in found], [last.id, first.id])
+
+    def test_full_screen_search_follows_the_sequence_too(self):
+        """Le sélecteur plein écran (tactile) passe par web_search_read, pas name_search."""
+        first = self.env['product.product'].create({
+            'name': "Zèbre", 'default_code': 'ZZZ', 'can_be_expensed': True, 'sequence': 1,
+        })
+        last = self.env['product.product'].create({
+            'name': "Âne", 'default_code': 'AAA', 'can_be_expensed': True, 'sequence': 999,
+        })
+        domain = [('id', 'in', (first | last).ids)]
+        ordered = self.env['product.product'].with_context(
+            expense_scan_category_order=True,
+        ).web_search_read(domain, {'display_name': {}})
+        self.assertEqual([r['id'] for r in ordered['records']], [first.id, last.id])
+        unordered = self.env['product.product'].web_search_read(domain, {'display_name': {}})
+        self.assertEqual([r['id'] for r in unordered['records']], [last.id, first.id])
 
     def test_flat_rate_category_carries_no_tax(self):
         """Un barème Urssaf n'a pas d'unité de distance : c'est la case qui compte."""
