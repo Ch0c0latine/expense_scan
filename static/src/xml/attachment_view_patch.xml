@@ -3,10 +3,11 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <templates xml:space="preserve">
 
-    <!-- Bouton « Retouche » posé sur l'image du volet d'aperçu, pour une
-         dépense : l'outil est là où l'on regarde le ticket. -->
+    <!-- Bouton « Retouche » sous l'image du volet d'aperçu, pour une
+         dépense. Hors du conteneur de l'image : Odoo le place derrière le
+         volet (z-index négatif), où aucun clic ne l'atteindrait. -->
     <t t-inherit="mail.AttachmentView" t-inherit-mode="extension">
-        <xpath expr="//img[@id='attachment_img']" position="before">
+        <xpath expr="//div[hasclass('o-mail-Attachment-imgContainer')]" position="after">
             <button t-if="expenseScanCanRetouch" type="button"
                     class="btn btn-sm btn-light o_expense_scan_retouch_control"
                     t-on-click="onExpenseScanRetouch">
