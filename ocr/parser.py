@@ -460,7 +460,9 @@ def _is_buyer(text, buyers):
             return True
     tokens = text.split()
     span = _buyer_span(tokens, buyers)
-    return bool(span) and len(tokens) - (span[1] - span[0]) <= 2
+    # Au-delà d'un mot de plus, c'est une enseigne à laquelle l'acheteur
+    # s'est collé : on la garde, ``_without_buyer`` la nettoiera.
+    return bool(span) and len(tokens) - (span[1] - span[0]) <= 1
 
 
 def _buyer_span(tokens, buyers):
