@@ -2,19 +2,16 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Sur les dépenses, « Fiche de frais » prend la place du menu « Imprimer ».
- *
- * La fiche récapitule, numérote et rassemble les justificatifs : c'est
- * l'impression dont on a besoin, et le rapport d'origine d'Odoo, dépense
- * par dépense, n'apporte rien de plus. L'action quitte aussi le menu
- * « Actions », pour ne pas y figurer en double.
+ * Sur la liste des dépenses, le bouton « Fiche de frais » remplace le menu
+ * « Imprimer » (rapport d'Odoo, une page par dépense). L'action est retirée
+ * du menu « Actions » pour ne pas y figurer deux fois.
  */
 import { ActionMenus } from "@web/search/action_menus/action_menus";
 import { patch } from "@web/core/utils/patch";
 import { session } from "@web/session";
 
 patch(ActionMenus.prototype, {
-    /** L'action « Fiche de frais », si cette barre la propose. */
+    /** Action « Fiche de frais », si elle figure dans cette barre. */
     get expenseSheetAction() {
         const actionId = session.expense_scan_sheet_action_id;
         if (this.props.resModel !== "hr.expense" || !actionId) {

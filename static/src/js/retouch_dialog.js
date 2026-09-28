@@ -1,18 +1,15 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Rotation fine et recadrage manuel du justificatif, avant de relancer
- * l'analyse sur l'image corrigée.
+ * Retouche du justificatif : rotation et recadrage, puis nouvelle analyse
+ * sur l'image corrigée.
  *
- * Tout se fait dans le navigateur, sur un canevas : le serveur ne reçoit
- * que le résultat, déjà en JPEG (action_expense_scan_retouch). Rien n'est
- * envoyé tant que l'utilisateur n'a pas validé.
+ * L'image est transformée dans le navigateur, sur un canevas ; le serveur
+ * reçoit le résultat en JPEG (action_expense_scan_retouch).
  *
- * Deux temps, comme un vrai scanner : d'abord la rotation, sur l'image
- * entière (pivotée, jamais rognée par la rotation elle-même) ; le
- * recadrage se règle ensuite, sur cette image déjà droite. Changer la
- * rotation réinitialise donc le recadrage — le réconcilier avec un angle
- * différent n'aurait pas de sens.
+ * La rotation s'applique à l'image entière, sans la rogner. Le cadre de
+ * recadrage est défini sur l'image pivotée : changer la rotation le
+ * réinitialise.
  */
 import { _t } from "@web/core/l10n/translation";
 import { Component, onWillUnmount, onMounted, useRef, useState } from "@odoo/owl";
@@ -20,19 +17,17 @@ import { Dialog } from "@web/core/dialog/dialog";
 import { browser } from "@web/core/browser/browser";
 import { useDebounced } from "@web/core/utils/timing";
 
-//: Distance, en pixels du canevas, en dessous de laquelle un appui vise
-//: une poignée plutôt que déplace le cadre entier.
+//: Distance, en pixels du canevas, en deçà de laquelle un appui saisit une
+//: poignée ; au-delà, un appui dans le cadre le déplace.
 const HANDLE_HIT_RADIUS = 22;
 //: Longueur de chaque branche des poignées en équerre.
 const HANDLE_LENGTH = 18;
-//: Taille minimale du recadrage, en pixels du canevas : sous ce seuil, le
-//: résultat n'aurait plus de sens (une poignée qui en croise une autre).
+//: Taille minimale du cadre, en pixels du canevas.
 const MIN_CROP_SIZE = 24;
 //: Rotation fine, en degrés de part et d'autre du quart de tour choisi.
 const FINE_RANGE = 45;
-//: Plafond de l'image retouchée, en pixels : sous la limite de canevas des
-//: navigateurs mobiles (16,7 Mpx sur iOS), et bien au-delà de ce que lit
-//: le moteur, qui ramène le ticket à 1 800 px de côté.
+//: Taille maximale de l'image produite, en pixels. Reste sous la limite de
+//: canevas de Safari iOS (16,7 Mpx) ; le moteur OCR lit à 1 800 px de côté.
 const MAX_OUTPUT_PIXELS = 12000000;
 
 function normalizeQuarter(quarter) {
@@ -42,10 +37,9 @@ function normalizeQuarter(quarter) {
 /**
  * Pièce jointe principale d'une dépense, si c'est une image retouchable.
  *
- * `message_main_attachment_id` arrive tantôt en tuple `[id, nom]`, tantôt
- * en objet `{id, display_name}` selon la version du modèle relationnel.
- * Le canevas ne sait pas dessiner un PDF : on l'écarte à son extension,
- * sans requête de plus.
+ * `message_main_attachment_id` est un tuple `[id, nom]` ou un objet
+ * `{id, display_name}` selon la version du modèle relationnel. Les PDF sont
+ * exclus d'après leur extension : le canevas ne les affiche pas.
  *
  * @returns {number|null} l'identifiant de la pièce, ou null
  */
@@ -59,18 +53,18 @@ export function retouchableAttachmentId(record) {
 }
 
 /**
- * Ouvre la retouche, puis corrige le justificatif et relance l'analyse.
+ * Ouvre la retouche ; à la validation, remplace le justificatif et relance
+ * l'analyse.
  *
  * @param {{dialog: Object, orm: Object}} services
- * @param {Object} record la dépense, telle que le formulaire la tient
+ * @param {Object} record enregistrement de la dépense dans le formulaire
  */
 export function openRetouchDialog({ dialog, orm }, record) {
     dialog.add(RetouchDialog, {
         attachmentId: retouchableAttachmentId(record),
         apply: async (base64) => {
-            // Une saisie en cours partirait sinon avec le rechargement. Si
-            // elle ne peut pas s'enregistrer (champ obligatoire vide), on
-            // s'arrête là : le formulaire signale lui-même ce qui manque.
+            // Enregistre d'abord les saisies en cours, que le rechargement
+            // effacerait. En cas d'échec, le formulaire affiche l'erreur.
             if (!(await record.save())) {
                 return false;
             }
@@ -105,7 +99,7 @@ export class RetouchDialog extends Component {
         });
         this.image = null;
         this.scale = 1;
-        this.drag = null; // { handle } | { move, startX, startY, crop0 } pendant un geste
+        this.drag = null; // { handle } ou { move, startX, startY, crop0 }
 
         this.onResize = useDebounced(() => this.layout(), 200);
 
@@ -115,8 +109,6 @@ export class RetouchDialog extends Component {
             image.onload = () => {
                 this.image = image;
                 this.state.loaded = true;
-                // Le canevas est dans le DOM dès l'ouverture (masqué tant
-                // que l'image charge) : on peut le dimensionner tout de suite.
                 this.layout();
             };
             image.onerror = () => {
@@ -135,15 +127,12 @@ export class RetouchDialog extends Component {
         return FINE_RANGE;
     }
 
-    /** Rotation totale, quart de tour et réglage fin combinés. */
+    /** Rotation totale, en degrés. */
     get angleDegrees() {
         return this.state.quarter * 90 + this.state.fine;
     }
 
-    /**
-     * Dimensions du rectangle qui contient l'image pivotée, pour une image
-     * de ``width`` × ``height`` : la rotation ne rogne jamais rien.
-     */
+    /** Rectangle englobant une image ``width`` × ``height`` après rotation. */
     rotatedBounds(width, height) {
         const angle = (this.angleDegrees * Math.PI) / 180;
         const cos = Math.abs(Math.cos(angle));
@@ -155,23 +144,22 @@ export class RetouchDialog extends Component {
     // Aperçu
     // ------------------------------------------------------------------
 
-    /** Échelle de l'aperçu, d'après la place disponible, puis cadre entier. */
+    /** Calcule l'échelle de l'aperçu d'après la place disponible. */
     layout() {
         if (!this.image) {
             return;
         }
         const container = this.containerRef.el;
         const maxWidth = container ? container.clientWidth : 480;
-        // Un peu de marge : à un angle intermédiaire, le rectangle qui
-        // contient l'image pivotée est plus grand que l'image elle-même.
+        // Marge pour le rectangle englobant, plus grand que l'image pivotée.
         const width = Math.max(240, maxWidth) * 0.86;
-        const height = Math.min(browser.innerHeight * 0.5, 480);
+        const height = Math.min(browser.innerHeight * 0.6, 560);
         this.scale = Math.min(
             width / this.image.naturalWidth, height / this.image.naturalHeight, 1);
         this.resetCrop();
     }
 
-    /** Le cadre couvre toute l'image : point de départ, et bouton « tout ». */
+    /** Remet le cadre sur toute l'image. */
     resetCrop() {
         const canvas = this.canvasRef.el;
         if (!canvas || !this.image) {
@@ -190,7 +178,7 @@ export class RetouchDialog extends Component {
         canvas.height = Math.round(bounds.height);
     }
 
-    /** Dessine l'image pivotée, puis le cadre par-dessus. */
+    /** Dessine l'image pivotée et le cadre. */
     draw() {
         const canvas = this.canvasRef.el;
         if (!canvas || !this.image) {
@@ -215,7 +203,7 @@ export class RetouchDialog extends Component {
             return;
         }
         ctx.save();
-        // Quatre bandes sombres autour du cadre : ce qui sera retiré.
+        // Assombrit la zone hors du cadre.
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
         ctx.fillRect(0, 0, width, crop.y0);
         ctx.fillRect(0, crop.y1, width, height - crop.y1);
@@ -224,10 +212,8 @@ export class RetouchDialog extends Component {
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 2;
         ctx.strokeRect(crop.x0, crop.y0, crop.x1 - crop.x0, crop.y1 - crop.y0);
-        // Poignées en équerre, tournées vers l'intérieur du cadre : elles
-        // restent entières quand le cadre touche le bord de l'image.
-        // Un trait sombre sous un trait blanc : visibles sur un ticket blanc
-        // comme sur une table sombre.
+        // Poignées en équerre tracées vers l'intérieur du cadre, pour rester
+        // visibles au bord du canevas ; contour sombre sous un trait blanc.
         const directions = [[1, 1], [-1, 1], [1, -1], [-1, -1]];
         ctx.lineCap = "square";
         for (const [color, width] of [["rgba(0, 0, 0, 0.6)", 7], ["#ffffff", 4]]) {
@@ -267,10 +253,10 @@ export class RetouchDialog extends Component {
     }
 
     // ------------------------------------------------------------------
-    // Recadrage : souris ou doigt, par les événements pointeur
+    // Recadrage (événements pointeur : souris et tactile)
     // ------------------------------------------------------------------
 
-    /** Position d'un pointeur, en pixels du canevas (affiché plus petit ou non). */
+    /** Position du pointeur en pixels du canevas. */
     canvasPoint(event) {
         const canvas = this.canvasRef.el;
         const rect = canvas.getBoundingClientRect();
@@ -326,8 +312,7 @@ export class RetouchDialog extends Component {
             const x = clamp(point.x, canvas.width);
             const y = clamp(point.y, canvas.height);
             const next = { ...crop };
-            // Chaque coin ne bouge que ses deux bords, sans jamais croiser
-            // les bords opposés.
+            // Le coin déplace ses deux bords, sans dépasser les bords opposés.
             if (this.drag.handle.startsWith("x0")) {
                 next.x0 = Math.min(x, crop.x1 - MIN_CROP_SIZE);
             } else {
@@ -382,19 +367,18 @@ export class RetouchDialog extends Component {
     }
 
     /**
-     * Version définitive, encodée en JPEG (base64, sans l'en-tête).
+     * Image finale en JPEG, encodée en base64 sans l'en-tête.
      *
-     * Composée directement dans le cadre final : l'image entière pivotée
-     * n'existe jamais en mémoire à pleine taille. Une photo de 50 Mpx,
-     * pivotée, dépasserait sinon la taille de canevas que tolère un
-     * téléphone. Le résultat est aussi plafonné (MAX_OUTPUT_PIXELS).
+     * Dessinée directement dans un canevas à la taille du cadre, sans
+     * canevas intermédiaire pour l'image pivotée entière : pour une grande
+     * photo, celui-ci dépasserait la limite des navigateurs mobiles.
+     * Taille plafonnée à MAX_OUTPUT_PIXELS.
      */
     compose() {
         const iw = this.image.naturalWidth;
         const ih = this.image.naturalHeight;
         const bounds = this.rotatedBounds(iw, ih);
-        // Le cadre est mesuré sur l'aperçu : un même rapport le reporte
-        // à pleine résolution, dans les deux dimensions.
+        // Passage des coordonnées de l'aperçu à la pleine résolution.
         const ratio = bounds.width / this.canvasRef.el.width;
         const crop = this.state.crop;
         const cropX = crop.x0 * ratio;
@@ -407,8 +391,8 @@ export class RetouchDialog extends Component {
         output.width = Math.max(1, Math.round(cropWidth * shrink));
         output.height = Math.max(1, Math.round(cropHeight * shrink));
         const ctx = output.getContext("2d");
-        // Coins découverts par la rotation : blancs, comme le papier,
-        // plutôt que noirs — un bord sombre se lirait comme un trait.
+        // Fond blanc pour les coins découverts par la rotation : un fond
+        // noir serait lu comme du texte.
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, output.width, output.height);
         ctx.scale(shrink, shrink);

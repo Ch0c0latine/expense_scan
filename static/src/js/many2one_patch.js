@@ -1,20 +1,18 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * La liste déroulante d'un champ relationnel s'arrête à sept résultats, le
- * reste passant par « Rechercher plus ». Pour les catégories de dépenses —
- * une dizaine en général — c'est toujours la même poignée qu'il fallait
- * aller chercher dans la recherche avancée.
+ * La liste déroulante d'un champ relationnel affiche sept résultats ; les
+ * suivants passent par « Rechercher plus ». Les catégories de dépenses
+ * dépassent souvent ce nombre.
  *
- * Le composant sait afficher davantage (`searchLimit`), mais Odoo ne relaie
- * pas cette option depuis la vue. On la pose donc ici, et seulement pour le
- * champ qui porte le drapeau `expense_scan_category_order` dans son
- * contexte : tous les autres champs relationnels gardent leur limite.
+ * Le composant accepte une limite plus haute (`searchLimit`), qu'Odoo ne
+ * transmet pas depuis la vue. Elle est posée ici pour le seul champ dont le
+ * contexte porte `expense_scan_category_order`.
  */
 import { patch } from "@web/core/utils/patch";
 import { Many2One } from "@web/views/fields/many2one/many2one";
 
-/** Au-delà, la liste deviendrait plus longue à parcourir qu'une recherche. */
+/** Nombre de catégories affichées dans la liste déroulante. */
 const EXPENSE_CATEGORY_LIMIT = 20;
 
 patch(Many2One.prototype, {

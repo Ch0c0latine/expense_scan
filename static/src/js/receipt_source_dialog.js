@@ -1,13 +1,13 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * D'où vient le justificatif ? Appareil photo, galerie ou fichiers.
+ * Choix de la source du justificatif : appareil photo, galerie ou fichiers.
  *
- * Sur téléphone, un seul champ fichier ne sait pas offrir ces trois choix
- * partout : l'application Odoo ouvre la galerie sans proposer l'appareil
- * photo, et un filtre « image » cache les PDF reçus par mail. On demande
- * donc d'abord, puis on règle le champ en conséquence — dans le même
- * geste, faute de quoi le navigateur refuserait d'ouvrir le sélecteur.
+ * Sur téléphone, un champ fichier unique ne propose pas ces trois choix
+ * partout : l'application Odoo ouvre la galerie sans l'appareil photo, et
+ * le filtre « image » masque les PDF. Le champ est réglé selon la source
+ * choisie, puis ouvert dans le même geste : le navigateur refuse d'ouvrir
+ * un sélecteur hors d'une action de l'utilisateur.
  */
 import { _t } from "@web/core/l10n/translation";
 import { Component } from "@odoo/owl";
@@ -18,8 +18,8 @@ export const RECEIPT_SOURCES = {
     // `capture` ouvre directement l'appareil photo arrière.
     camera: { accept: "image/*", capture: "environment" },
     gallery: { accept: "image/*" },
-    // Un type non-image fait passer Android sur son sélecteur de fichiers :
-    // c'est là que se trouvent les PDF téléchargés.
+    // Avec un type non-image, Android ouvre son sélecteur de fichiers, qui
+    // donne accès aux PDF téléchargés.
     files: { accept: "image/*,application/pdf" },
 };
 
@@ -51,7 +51,7 @@ export class ReceiptSourceDialog extends Component {
         return _t("Ajouter un justificatif");
     }
 
-    /** Le sélecteur s'ouvre avant la fermeture : le geste compte encore. */
+    /** Ouvre le sélecteur avant de fermer la boîte, pendant l'action de l'utilisateur. */
     pick(source) {
         this.props.choose(source);
         this.props.close();

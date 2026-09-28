@@ -4,9 +4,9 @@
 /**
  * Télécharge la fiche de frais produite, puis ferme la fenêtre d'export.
  *
- * Un lien ordinaire laissait la fenêtre ouverte ; ouvrir un nouvel onglet
- * serait bloqué par les navigateurs qui filtrent les fenêtres surgissantes,
- * l'ouverture n'étant plus liée au clic une fois le fichier fabriqué.
+ * Un lien ordinaire laissait la fenêtre ouverte ; un nouvel onglet serait
+ * bloqué par les bloqueurs de fenêtres, l'ouverture n'étant plus liée au
+ * clic une fois le fichier produit.
  */
 import { download } from "@web/core/network/download";
 import { registry } from "@web/core/registry";

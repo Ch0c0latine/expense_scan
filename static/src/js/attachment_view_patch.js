@@ -1,18 +1,14 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Barre d'outils du PDF allégée sur le volet natif d'une dépense.
+ * Volet d'aperçu d'une dépense : barre d'outils PDF réduite et bouton
+ * « Retouche ».
  *
- * PDF.js embarque une barre pensée pour un lecteur de documents : imprimer,
- * enregistrer, mode présentation, aller à la première ou la dernière page,
- * outil main, défilement par page/horizontal/par bloc, pages doubles, et
- * un volet de vignettes qui n'a aucun sens sur un justificatif d'une seule
- * page. Rien de tout cela n'aide à vérifier qu'un ticket correspond à la
- * dépense saisie à côté — seuls le zoom, la page et la rotation restent.
- *
- * Odoo masque déjà le téléchargement (sur mobile) via `hidePDFJSButtons` ;
- * on va plus loin ici, et seulement pour les dépenses, sans toucher à
- * l'aperçu des autres modèles (devis, factures…), qui gardent leurs outils.
+ * De la barre de PDF.js, seuls restent le zoom, la page et la rotation :
+ * impression, téléchargement, mode présentation, navigation, modes de
+ * défilement et vignettes sont masqués. Odoo ne masque que le
+ * téléchargement sur mobile (`hidePDFJSButtons`). Les autres modèles
+ * gardent la barre complète.
  */
 import { AttachmentView } from "@mail/core/common/attachment_view";
 import { patch } from "@web/core/utils/patch";
@@ -21,20 +17,18 @@ import { useEffect } from "@odoo/owl";
 
 import { openRetouchDialog, retouchableAttachmentId } from "@expense_scan/js/retouch_dialog";
 
-//: Un sélecteur par bouton à cacher. La rotation (`pageRotateCw/Ccw`) n'y
-//: figure pas : c'est le seul outil qu'on garde.
+//: Boutons masqués. La rotation (`pageRotateCw/Ccw`) reste affichée.
 const HIDDEN_PDF_TOOLS = [
     "button#printButton", "button#secondaryPrint",
     "button#downloadButton", "button#secondaryDownload",
     "button#presentationMode",
     "#firstPage", "#secondaryFirstPage", "#lastPage", "#secondaryLastPage",
-    // L'outil de sélection n'a de sens qu'en alternative à l'outil main.
     "#cursorHandTool", "#cursorSelectTool",
     // Identifiants de la version de PDF.js livrée avec Odoo 19.
     "#scrollPage", "#scrollVertical", "#scrollHorizontal", "#scrollWrapped",
     "#spreadNone", "#spreadOdd", "#spreadEven",
     "#secondaryToolbar .horizontalToolbarSeparator",
-    // Barre principale : le volet de vignettes qu'il ouvre.
+    // Barre principale : bouton du volet de vignettes.
     "#sidebarToggleButton", "#sidebarToggle",
 ];
 
@@ -73,11 +67,8 @@ patch(AttachmentView.prototype, {
     },
 
     /**
-     * La dépense ouverte dans le formulaire, si ce volet est le sien.
-     *
-     * Le volet n'a que l'identifiant et le modèle de la dépense ; le
-     * formulaire qui l'héberge, lui, tient l'enregistrement à recharger
-     * après la retouche.
+     * Enregistrement du formulaire qui affiche ce volet, s'il s'agit de la
+     * même dépense. Nécessaire pour recharger la fiche après la retouche.
      */
     get expenseScanRecord() {
         const root = this.env.model?.root;
@@ -87,7 +78,7 @@ patch(AttachmentView.prototype, {
         return root;
     },
 
-    /** Bouton « Retouche » sur l'aperçu : une image, une dépense modifiable. */
+    /** Bouton « Retouche » : image, sur une dépense modifiable. */
     get expenseScanCanRetouch() {
         const record = this.expenseScanRecord;
         return Boolean(record?.data.is_editable && retouchableAttachmentId(record));

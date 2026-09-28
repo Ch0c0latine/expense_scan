@@ -3,11 +3,9 @@
 /**
  * Aperçu du ticket sur écran étroit.
  *
- * Sur grand écran, Odoo affiche le justificatif dans un volet à gauche du
- * formulaire ; sur téléphone ce volet n'existe pas, et la vérification se
- * ferait alors à l'aveugle. Ce widget rétablit l'aperçu sous la forme d'un
- * bandeau collé en haut de la fiche : le ticket reste visible pendant que
- * l'on fait défiler les champs, et un appui l'ouvre en plein écran.
+ * Sur petit écran, Odoo n'affiche pas le volet du justificatif. Ce widget
+ * l'affiche en bandeau fixé en haut de la fiche, visible pendant le
+ * défilement des champs ; un appui l'ouvre en plein écran.
  */
 import { Component, onWillDestroy, useState } from "@odoo/owl";
 
@@ -42,23 +40,19 @@ export class ExpenseScanReceipt extends Component {
     }
 
     /**
-     * Largeur à partir de laquelle le volet latéral prend le relais.
-     * Elle suit le réglage de société exposé dans la session : dès 768 px
-     * s'il est actif, à 1400 px — le seuil d'Odoo — sinon.
+     * Largeur à partir de laquelle le volet latéral est affiché : 768 px si
+     * le réglage de la société est actif, sinon 1400 px (seuil d'Odoo).
      */
     get splitThreshold() {
         return session.expense_scan_wide_split ? SIZES.MD : SIZES.XXL;
     }
 
-    /** L'aperçu ne sert que là où le volet natif est absent. */
+    /** Affiché seulement quand le volet d'Odoo ne l'est pas. */
     get visible() {
         return Boolean(this.attachment) && this.state.size < this.splitThreshold;
     }
 
-    /**
-     * La pièce jointe principale, quelle que soit la forme sous laquelle
-     * le modèle web la restitue.
-     */
+    /** Pièce jointe principale (tuple ou objet selon le modèle relationnel). */
     get attachment() {
         const value = this.props.record.data.message_main_attachment_id;
         if (!value) {
@@ -82,7 +76,7 @@ export class ExpenseScanReceipt extends Component {
         this.state.expanded = !this.state.expanded;
     }
 
-    /** Rotation fine et recadrage : sur une image, et sur une dépense modifiable. */
+    /** Bouton « Retouche » : image, sur une dépense modifiable. */
     get canRetouch() {
         return Boolean(this.props.record.data.is_editable)
             && Boolean(retouchableAttachmentId(this.props.record));
@@ -92,7 +86,7 @@ export class ExpenseScanReceipt extends Component {
         openRetouchDialog({ dialog: this.dialog, orm: this.orm }, this.props.record);
     }
 
-    /** Ouvre la visionneuse d'Odoo : zoom, rotation, plein écran. */
+    /** Ouvre la visionneuse d'Odoo (zoom, rotation, plein écran). */
     onOpenViewer() {
         const file = new FileModel();
         Object.assign(file, {

@@ -12,8 +12,8 @@
                 <div t-if="!state.loaded and !state.error" class="text-center text-muted py-5">
                     <i class="fa fa-circle-o-notch fa-spin fa-2x" role="img" aria-hidden="true"/>
                 </div>
-                <!-- Toujours dans le DOM : il doit exister au moment où
-                     l'image se charge, pour être dimensionné aussitôt. -->
+                <!-- Toujours présent dans le DOM, pour être dimensionné dès
+                     le chargement de l'image. -->
                 <div class="text-center" t-att-class="{ 'd-none': !state.loaded }">
                     <canvas t-ref="canvas"
                             class="o_expense_scan_retouch_canvas"

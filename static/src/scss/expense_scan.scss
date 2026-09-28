@@ -200,8 +200,8 @@
     color: color-mix(in srgb, #{$warning} 75%, black);
 }
 
-// Retouche du justificatif : le canevas capte les gestes du doigt — sans
-// quoi, sur téléphone, faire glisser un coin ferait défiler la page.
+// Canevas de retouche : touch-action désactive le défilement de la page
+// pendant le glissement d'une poignée sur téléphone.
 .o_expense_scan_retouch_canvas {
     max-width: 100%;
     touch-action: none;
@@ -212,8 +212,8 @@
     }
 }
 
-// Bouton « Retouche » en bas du volet d'aperçu, sous l'image. La place du
-// bouton est retirée à celle de l'image : il ne masque jamais le ticket.
+// Bouton « Retouche » en bas du volet d'aperçu. La zone de l'image est
+// réduite de la hauteur du bouton pour qu'il ne la recouvre pas.
 .o-mail-Attachment:has(> .o_expense_scan_retouch_control) .o-mail-Attachment-imgContainer {
     bottom: 3rem;
 }
