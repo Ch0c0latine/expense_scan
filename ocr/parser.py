@@ -450,6 +450,8 @@ MERCHANT_STOP_RE = re.compile(
     r"\bLIBELLE\b|\bNOMBRE\b|\bLIGNES?\b|\bVENTES?\b|"
     # Intitulés d'un reçu en ligne, avant le nom de l'établissement.
     r"\bCOORDONNEES\b|\bVOICI\b|\bPAIEMENTS\b|"
+    # « Servi par : Cassandra » : le prénom du serveur, pas l'enseigne.
+    r"\bSERVI\b|\bSERVEUR\b|\bSERVEUSE\b|\bCAISSIER\b|\bCAISSIERE\b|"
     # Mode de service imprimé en gros en tête des tickets de restauration.
     r"\bEMPORTER\b|\bSUR\s*PLACE\b|\bTAKE\s*(?:OUT|AWAY)\b|"
     # Capture d'une page web : bouton de fermeture, trajet en titre.
@@ -501,6 +503,11 @@ LEGAL_FORM_RE = re.compile(
     r"\bS\.?\s?P\.?\s?A\b|\bS\.?\s?R\.?\s?L\b|\bGMBH\b|\bLTD\b|\bLLC\b"
     r"|\bSARL\b|\bSASU?\b|\bEURL\b|\bSNC\b|\bB\.?V\b", re.IGNORECASE)
 LEGAL_FORM_BONUS = 1.15
+#: Nom suivi, sur la même ligne, d'un numéro et d'un type de voie.
+NAME_BEFORE_STREET_RE = re.compile(
+    r"^(.+?)\s+\d{1,5}\s*,?\s*(?:BIS|TER)?\s*,?\s*"
+    r"(?:RUE|AVENUE|AV|BD|BOULEVARD|PLACE|PL|CHEMIN|ROUTE|RTE|ALL[EÉ]E|QUAI|IMPASSE|COURS)\b",
+    re.IGNORECASE)
 #: Type de document en tête ou en fin de ligne, à côté du nom de l'enseigne.
 DOCUMENT_KIND_RE = re.compile(
     r"^\s*(?:FACTURE|TICKET|RE[CÇ]U|INVOICE|RECEIPT)\s+"
@@ -619,6 +626,11 @@ def extract_merchant(lines, max_lines=10, buyers=()):
         without_kind = DOCUMENT_KIND_RE.sub("", raw).strip()
         if without_kind != raw and sum(char.isalpha() for char in without_kind) >= 3:
             raw = without_kind
+        # « Les 3 Brasseurs 9003, rue Chanzy » : l'OCR a fondu le nom et
+        # l'adresse en une ligne. Ce qui précède le numéro de rue reste le nom.
+        street = NAME_BEFORE_STREET_RE.match(raw)
+        if street and sum(char.isalpha() for char in street.group(1)) >= 3:
+            raw = street.group(1).strip(" ,-")
         text = normalize(raw)
         letters = sum(1 for char in text if char.isalpha())
         digits = sum(1 for char in text if char.isdigit())
@@ -634,6 +646,8 @@ def extract_merchant(lines, max_lines=10, buyers=()):
             continue
         if find_amounts(raw):
             continue  # « Vol aller x 1 passager 34,05 € » : une ligne d'achat
+        if "@" in raw:
+            continue  # une adresse e-mail, celle du client le plus souvent
         if digits > 2 or digits > letters / 2:
             # Code postal, téléphone, numéro de caisse — sauf une enseigne
             # qui porte un chiffre : « Distribo Tower 3 CS00000 », où le nom
@@ -1241,6 +1255,8 @@ def extract_tax_label(lines):
         if FRENCH_TVA_RE.search(text):
             return ExtractedField(value="TVA", confidence=0.9, source=line.text)
         label = re.sub(r"[^A-Z]", "", match.group(0))
+        if label.startswith("TAXE"):
+            label = "TVA"  # « Taxe totale » : la TVA d'une facture française
         return ExtractedField(value=label, confidence=0.9, source=line.text)
     return ExtractedField(value=None, confidence=0.0)
 

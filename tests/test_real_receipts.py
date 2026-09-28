@@ -691,3 +691,18 @@ Boutiquexemple.com - 1 rue Exemple - 00000 Exempleville"""),
     def test_loyalty_points_are_still_not_a_total(self):
         result = reading("CAFE EXEMPLE\nTOTAL 6,40\nPOINTS FIDELITE CUMULES 64,00")
         self.assertEqual(result.value('total'), 6.40)
+
+    def test_name_and_street_merged_on_one_line(self):
+        """« Brasserie X 12, rue Y » : l'OCR a fondu le nom et l'adresse."""
+        result = reading("""
+Les 3 Exemples 9003, rue Exemple
+00000 Exempleville
+jeudi 24 septembre 2026 à 14:13:21
+Servi par : Camille EX
+Ticket #0364560/52
+Total 35,00 €""")
+        self.assertEqual(result.value('merchant'), "Les 3 Exemples")
+
+    def test_an_email_address_is_not_a_merchant(self):
+        result = reading("camille.exemple@example.com\nCOURSE EXEMPLE\nTotal 12,00 €")
+        self.assertNotIn("@", result.value('merchant') or "")
