@@ -3,7 +3,7 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 {
     'name': "Scan de tickets de caisse",
-    'version': '19.0.2.5.1',
+    'version': '19.0.2.5.2',
     'summary': "Saisir une dépense en photographiant un ticket : recadrage et "
                "redressage automatiques, pré-remplissage des champs par OCR "
                "local, vérification en vue scindée.",
@@ -45,6 +45,7 @@ Module libre (LGPL-3). S'il vous rend service, vous pouvez offrir un café
         'data/export_templates.xml',
         'data/expense_policies.xml',
         'data/expense_scan_cron.xml',
+        'data/menu_icon.xml',
         'views/hr_expense_views.xml',
         'views/hr_employee_views.xml',
         'views/expense_team_views.xml',
