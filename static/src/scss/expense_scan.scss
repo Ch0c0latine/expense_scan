@@ -212,16 +212,19 @@
     }
 }
 
-// Bouton « Retouche » posé sur l'image du volet d'aperçu.
+// Bouton « Retouche » juste au-dessus de l'image du volet d'aperçu. Odoo
+// centre l'image par des marges automatiques ; en colonne centrée, le
+// bouton reste collé au ticket, quelle que soit sa forme.
 .o-mail-Attachment-imgContainer:has(.o_expense_scan_retouch_control) {
-    position: relative;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    #attachment_img {
+        margin: 0;
+    }
 }
 .o_expense_scan_retouch_control {
-    position: absolute;
-    top: 0.5rem;
-    left: 0.5rem;
-    opacity: 0.9;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    margin-bottom: 0.5rem;
 }
 
 .o_expense_scan_retouch_angle {
