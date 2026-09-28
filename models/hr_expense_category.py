@@ -48,10 +48,11 @@ HISTORY_MAJORITY = 0.6
 #: ticket qui dit nettement autre chose.
 HISTORY_WEIGHT = 5.0
 HISTORY_FUZZY_WEIGHT = 3.0
-#: Poids d'un code d'activité (APE, MCC, ou SIRET retrouvé dans Sirene) :
+#: Poids d'un code d'activité (APE, MCC, ou SIRET retrouvé dans Sirene) : 4 —
+#: assez pour l'emporter d'au moins 1,5 sur un mot isolé du ticket (deux points) :
 #: décisif à lui seul, sauf si les mots du ticket disent nettement autre
 #: chose — le restaurant d'un hôtel reste un repas.
-CODE_WEIGHT = 3.0
+CODE_WEIGHT = 4.0
 #: Poids d'une marque connue en tête du ticket : celui d'un mot d'en-tête.
 BRAND_WEIGHT = 2.0
 #: États où la catégorie a été confirmée par quelqu'un.
