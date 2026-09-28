@@ -57,6 +57,12 @@ class TestLexicon(common.TransactionCase):
         self.assertEqual(lexicon.pick_category(
             lexicon.score_categories(["PERNOTTAMENT0 2 NOTTI"], categories)), 'lodging')
 
+    def test_price_per_litre_or_kwh_is_fuel(self):
+        self.assertTrue(lexicon.fuel_unit(["4,83 L x 2,069 €/L", "Totale 10,00"]))
+        self.assertTrue(lexicon.fuel_unit(["Energy Tariff: 0.28 EUR/kWh"]))
+        self.assertTrue(lexicon.fuel_unit(["Energy: 23.3170 kWh"]))
+        self.assertFalse(lexicon.fuel_unit(["Eau minérale 1,5L 0,80", "TOTAL 0,80"]))
+
     def test_close_scores_decide_nothing(self):
         categories = {'lodging': ["hotel"], 'meal': ["restaurant"]}
         lines = ["HOTEL DU PARC", "RESTAURANT"]

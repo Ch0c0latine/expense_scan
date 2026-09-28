@@ -659,6 +659,19 @@ def brand_index():
     return index
 
 
+#: Prix à l'unité d'un carburant ou d'une recharge : « 2,069 €/L »,
+#: « 0.28 EUR/kWh », « Energy: 23.3170 kWh ». Une bouteille d'eau de 1,5 L
+#: n'a pas de prix au litre imprimé.
+FUEL_UNIT_RE = re.compile(
+    r"(?:€|\bEUR)\s*/\s*(?:L|LT|LITRES?|KWH)\b|\b\d+[.,]\d+\s*KWH\b|\bKWH\s*:?\s*\d",
+    re.IGNORECASE)
+
+
+def fuel_unit(lines):
+    """La ligne qui porte un prix au litre ou au kWh, s'il y en a une."""
+    return next((line for line in lines if FUEL_UNIT_RE.search(line)), None)
+
+
 def brand_family(lines, max_lines=HEADER_LINES, max_words=4):
     """``(famille, marque affichée)`` d'après l'en-tête, ou ``(None, None)``.
 

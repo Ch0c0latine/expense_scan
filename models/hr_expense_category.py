@@ -58,6 +58,9 @@ CODE_WEIGHT = 4.0
 #: d'en-tête. À 2, un mot égaré (« route », « aéroport ») suffisait à
 #: laisser sans catégorie un KFC ou un Starbucks d'aérogare.
 BRAND_WEIGHT = 3.0
+#: Poids d'un prix au litre ou au kWh : celui d'une marque. Une recharge
+#: payée à la borne d'un supermarché (« ALDI ») reste une recharge.
+UNIT_WEIGHT = 3.0
 #: États où la catégorie a été confirmée par quelqu'un.
 CONFIRMED_STATES = ('submitted', 'approved', 'posted', 'in_payment', 'paid')
 
@@ -402,6 +405,9 @@ class HrExpense(models.Model):
             if naf_family:
                 add(naf_family, CODE_WEIGHT,
                     _("d'après le SIRET %(number)s (activité %(naf)s)", number=number, naf=naf))
+
+        if lexicon.fuel_unit(lines):
+            add('fuel', UNIT_WEIGHT, _("d'après un prix au litre ou au kWh"))
 
         brand_family, brand = lexicon.brand_family(lines)
         if brand_family:
