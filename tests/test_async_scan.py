@@ -124,12 +124,12 @@ class TestAsyncScan(common.TransactionCase):
             'name': "Vieux ticket", 'employee_id': self.employee.id,
             'product_id': self.env.company.expense_scan_product_id.id or
             self.env['product.product'].search([('can_be_expensed', '=', True)], limit=1).id,
-            'date': '2020-01-15', 'scan_raw_text': "Jean Dupont 12 rue X CB **** 1234"})
+            'date': '2020-01-15', 'total_amount_currency': 10.0, 'scan_raw_text': "Jean Dupont 12 rue X CB **** 1234"})
         old.write({'approval_state': 'submitted'})
         draft = self.Expense.create({
             'name': "Brouillon", 'employee_id': self.employee.id,
             'product_id': old.product_id.id,
-            'date': '2020-01-15', 'scan_raw_text': "reste"})
+            'date': '2020-01-15', 'total_amount_currency': 10.0, 'scan_raw_text': "reste"})
         self.env.company.expense_scan_text_retention_days = 365
         self.Expense._cron_expense_scan_purge_texts()
         self.assertFalse(old.scan_raw_text)
@@ -140,7 +140,7 @@ class TestAsyncScan(common.TransactionCase):
             'name': "Vieux ticket", 'employee_id': self.employee.id,
             'product_id': self.env['product.product'].search(
                 [('can_be_expensed', '=', True)], limit=1).id,
-            'date': '2020-01-15', 'scan_raw_text': "reste"})
+            'date': '2020-01-15', 'total_amount_currency': 10.0, 'scan_raw_text': "reste"})
         old.write({'approval_state': 'submitted'})
         self.env.company.expense_scan_text_retention_days = 0
         self.Expense._cron_expense_scan_purge_texts()

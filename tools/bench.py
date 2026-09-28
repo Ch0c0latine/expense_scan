@@ -22,6 +22,10 @@ l'outil.
     # 3. après un changement, comparer :
     python3 tools/bench.py SNAPSHOT --truth VERITE --baseline avant.json
 
+Le banc juge ce que lit l'analyseur (``tax`` : la TVA lue, avant les règles
+de l'application — catégorie sans TVA, devise étrangère —, donc plus sévère que
+ce qu'Odoo écrit) ; ses mesures se comparent entre elles, pas au journal.
+
 La vérité est le tableau d'une note de frais, une ligne par dépense
 (``vsa01.txt`` pour les justificatifs ``vsa01_p003.jpg``). Sans elle, le
 banc ne dit pas si un résultat est juste, seulement s'il a changé.
@@ -250,7 +254,8 @@ def print_fidelity(items, results):
         odoo, got = item.get("odoo") or {}, results[name]
         if odoo.get("total") is not None and abs((got["total"] or 0) - odoo["total"]) > 0.005:
             differ["total"] += 1
-        if odoo.get("date") and odoo["date"] != got["date"]:
+        # Sans date lue, Odoo met celle du jour : ce n'est pas un écart.
+        if got["date"] and odoo.get("date") and odoo["date"] != got["date"]:
             differ["date"] += 1
         if odoo.get("category") and got["category"] and odoo["category"] != got["category"]:
             differ["catégorie"] += 1
@@ -259,6 +264,8 @@ def print_fidelity(items, results):
 
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     argp = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     argp.add_argument("snapshot", help="dossier de l'instantané (mots lus)")
     argp.add_argument("--truth", help="dossier des tableaux de vérité")
