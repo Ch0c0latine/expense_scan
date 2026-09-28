@@ -386,6 +386,12 @@ class HrExpense(models.Model):
                 merchant = brand
 
         product_id = lexicon.pick_category(scores)
+        # Une ligne par scan : de quoi comprendre pourquoi une catégorie a
+        # été choisie, ou pourquoi aucune ne l'a été.
+        _logger.info(
+            "expense_scan : catégorie scores=%s activité=%s enseigne=%s retenue=%s",
+            {Product.browse(pid).display_name: round(score, 1) for pid, score in scores.items()},
+            result.value('activity'), read_key, product_id)
         if product_id:
             reason = max(reasons[product_id], key=lambda item: item[0])[1]
             return merchant, read_key, Product.browse(product_id), reason
