@@ -772,6 +772,15 @@ TAX_TABLE_HEADER_RE = re.compile(
     # par défaut de la catégorie — potentiellement un taux différent de
     # celui, pourtant juste, imprimé sur le ticket.
     r"|\bTAUX\b.{0,24}\bH\.?\s*T\b|\bH\.?\s*T\b.{0,24}\bTAUX\b")
+#: Les trois libellés de colonnes réunis, l'un après l'autre sans le moindre
+#: montant entre eux — un signal plus strict que ``TAX_TABLE_HEADER_RE``,
+#: qui ne cite que deux des trois : il ne matcherait pas un ticket de péage
+#: écrivant sa TVA sur une seule ligne (« PRIX HT....5,67 TVA 20,00%
+#: ....1,13 »), ni une ligne à deux taux qui, mal disposée par l'OCR, mêle
+#: elle aussi les trois mots aux montants (« 53,64 HT 5,36 TVA 59,00 TTC »)
+#: sans être un en-tête.
+TAX_TABLE_ALL_LABELS_RE = re.compile(
+    r"\bH\.?\s*T\b[^\d]{0,20}\bT\.?\s*V\.?\s*A\b[^\d]{0,20}\bT\.?\s*T\.?\s*C\b")
 # Une ligne de tableau commence par son taux, que certains tickets font
 # précéder du mot TVA : « 10%(C) ... » comme « TVA 10 % ... ».
 TAX_TABLE_ROW_RE = re.compile(
@@ -838,11 +847,23 @@ def extract_tax_table(lines):
     """
     for index, line in enumerate(lines):
         header = normalize(line.text)
-        if find_amounts(line.text):
-            continue  # une ligne d'en-tête ne porte pas de montant
-        if not (TAX_TABLE_HEADER_RE.search(header)
-                or (TVA_LINE_RE.search(header) and TAX_COLUMNS_RE.search(header))):
-            continue
+        # Les trois libellés réunis, sans le moindre montant entre eux, sont
+        # un signal assez fort pour être reconnu même si la ligne porte
+        # aussi un montant ailleurs : sur un ticket d'automate, l'OCR mêle
+        # parfois à l'en-tête un total voisin (« TOTAL EN EUROS : 15,80 HT
+        # TVA TTC ») qui n'est pas la taxe — la ligne suivante, elle, reste
+        # la vraie ligne de valeurs. Une ligne à deux taux mal disposée par
+        # l'OCR peut, elle aussi, contenir les trois mots (« 53,64 HT 5,36
+        # TVA 59,00 TTC ») mais avec des montants entre eux : ni un en-tête,
+        # ni à traiter comme tel. Tout autre signal, plus faible, continue
+        # d'exiger une ligne sans montant, pour ne pas confondre une ligne
+        # de totaux avec l'en-tête qui la précède.
+        explicit = bool(TAX_TABLE_ALL_LABELS_RE.search(header))
+        if not explicit:
+            if find_amounts(line.text):
+                continue  # une ligne d'en-tête ne porte pas de montant
+            if not (TVA_LINE_RE.search(header) and TAX_COLUMNS_RE.search(header)):
+                continue
         # « Taux HT TVA TTC » : le taux ouvre la ligne, parfois sans « % ».
         has_rate_column = bool(re.search(
             r"\bTAUX\b|\bRATE\b|\bALIQUOTA\b|\bT\.?\s*V\.?\s*A\s*%", header))
@@ -953,6 +974,16 @@ def _extract_taxes_by_line(lines):
     for line in lines:
         text = normalize(line.text)
         if not TVA_LINE_RE.search(text):
+            continue
+        if TAX_TABLE_ALL_LABELS_RE.search(text):
+            # « ... TOTAL EN EUROS : 15,80 HT TVA TTC ... » : les trois
+            # libellés de colonnes réunis — HT, TVA et TTC — signent un
+            # en-tête de tableau, mêlée par l'OCR à un total voisin. Son
+            # montant n'est pas une taxe ; s'il y en a une, elle est
+            # ailleurs — sur cette ligne, mieux vaut ne rien lire que lire
+            # le total. Un ticket de péage qui imprime tout sur une ligne
+            # (« PRIX HT....5,67 TVA 20,00%....1,13 ») ne cite que HT et
+            # TVA, jamais TTC au même endroit : il reste lu normalement.
             continue
         if TAX_NOT_A_TAX_RE.search(text):
             continue  # « Montant final (TVA incluse) 15,38 » : un total, pas la taxe

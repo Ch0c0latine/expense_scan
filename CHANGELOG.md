@@ -1,5 +1,15 @@
 # Journal des changements
 
+## 19.0.2.6.3
+
+- **TVA lue à côté de la plaque, sur les tickets d'automate** : l'en-tête
+  d'un tableau de taxe se retrouve parfois, à cause de l'OCR, accolé à un
+  total voisin sur la même ligne (« TOTAL EN EUROS : 15,80 HT TVA TTC »).
+  Le module y lisait ce total comme s'il était la TVA elle-même (10 fois
+  le montant réel). Corrigé, sans perdre la lecture des tickets à deux
+  taux dont les lignes citent, elles aussi, HT/TVA/TTC mais entourés de
+  montants.
+
 ## 19.0.2.6.2
 
 - **Taux de TVA mal reconnu sur les tickets « Code Taux HT Montant TTC »**

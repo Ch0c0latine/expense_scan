@@ -352,6 +352,46 @@ A 10,00 18,00 1,80 19,80
         self.assertEqual(result.value('tax_rate_max'), 10.0)
         self.assertEqual(result.value('tax_amount'), 1.80)
 
+    def test_vat_table_header_merged_with_an_unrelated_total(self):
+        """En-tête de tableau mêlée par l'OCR à un total sans rapport.
+
+        Un ticket d'automate (péché constaté en production) : la ligne
+        d'en-tête, « HT TVA TTC », se retrouve accolée à un total voisin —
+        « TOTAL EN EUROS : 15,80 HT TVA TTC » — et porte donc, comme une
+        ligne de valeurs, un montant qui n'est pas la taxe. Sans précaution,
+        ce montant (15,80, le total) était pris pour la TVA elle-même : dix
+        fois plus que les 1,44 imprimés par la machine.
+        """
+        result = self.parse("""
+ZORGLUB AUTOMATE
+Trajet unitaire x10 1 x 15,80 = 15,80
+Taux Paiement en CB TVA en Euros TOTAL EN EUROS : 15,80 HT TVA TTC
+10,00 14,36 1,44 15,80
+""")
+        self.assertEqual(result.value('total'), 15.80)
+        self.assertEqual(result.value('tax_rate'), 10.0)
+        self.assertEqual(result.value('tax_amount'), 1.44)
+
+    def test_two_rates_on_lines_that_also_spell_out_the_column_labels(self):
+        """Un ticket à deux taux, dont les lignes citent aussi HT/TVA/TTC.
+
+        Contrairement à la ligne d'en-tête ci-dessus, les libellés y sont
+        séparés par des montants (« 53,64 HT 5,36 TVA 59,00 TTC ») : ce sont
+        de vraies lignes de valeurs, pas un en-tête à ignorer. Les deux
+        taux doivent rester comptés.
+        """
+        result = self.parse("""
+RESTAURANT ZORGLUB
+1 x Plat du jour 53,64
+TVA 10 % 53,64 HT 5,36 TVA 59,00 A TTC
+TVA 20 % 10,00 2,00 12,00 B
+TOTAL 71,00 EUR
+""")
+        self.assertEqual(result.value('total'), 71.00)
+        self.assertIsNone(result.value('tax_rate'))
+        self.assertEqual(result.value('tax_amount'), 7.36)
+        self.assertEqual(result.value('tax_rate_max'), 20.0)
+
     def test_vat_rows_without_table_header(self):
         """Mêmes lignes, sans l'en-tête HT/TVA/TTC : le repli doit tenir.
 
