@@ -13,3 +13,4 @@ from . import test_batch
 from . import test_sheet
 from . import test_policy
 from . import test_todo_banner
+from . import test_corpus
