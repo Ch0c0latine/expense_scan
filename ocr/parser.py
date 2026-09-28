@@ -506,8 +506,9 @@ TAX_TABLE_HEADER_RE = re.compile(
 TAX_TABLE_ROW_RE = re.compile(
     r"^\s*(?:[A-D]\s+)?(?:(?:T\.?\s*V\.?\s*A|MWST|UST|VAT|IVA|BTW)\.?\s*)?"
     r"(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
-#: Ligne de tableau dont le taux n'a pas de « % » : « 10,00 14,36 1,44 15,80 ».
-TAX_TABLE_BARE_ROW_RE = re.compile(r"^\s*(?:[A-D]\s+)?(\d{1,2}[.,]\d{1,2})\s+\d")
+#: Ligne de tableau dont le taux n'a pas de « % » : « 10,00 14,36 1,44 15,80 »,
+#: ou, quand une colonne « Code » la précède, « 2 10,00 4 36,18 3,62 39,80 ».
+TAX_TABLE_BARE_ROW_RE = re.compile(r"^\s*(?:(?:[A-D]|\d)\s+)?(\d{1,2}[.,]\d{1,2})\s+\d")
 #: Colonnes d'un tableau de TVA, dans n'importe quel ordre :
 #: « TVA Taux MONT.TTC MONT.TVA TOTAL HT ».
 TAX_COLUMNS_RE = re.compile(r"\bHT\b|\bTTC\b|\bTAUX\b|\bNETTO\b|\bBRUTTO\b|\bIMPONIBILE\b")
