@@ -593,3 +593,63 @@ Exemple Frühstück
 Summe Trinkgeld 9,20 0,46
 Gesamt 9,66""")
         self.assertEqual(tipped.value('total'), 9.66)
+
+    def test_ocr_reads_tva_as_tua(self):
+        result = reading("""
+CAFETERIA EXEMPLE
+1 x PLAT DU JOUR 8.60
+TOTAL 14.95
+HT TUA TTC
+E TUA 10.00 13.59 1.36 14.95
+CARTE BLEUE 14.95""")
+        self.assertEqual(result.value('tax_amount'), 1.36)
+        self.assertEqual(result.value('tax_rate'), 10.0)
+
+    def test_tax_named_taxe_after_a_rate(self):
+        result = reading("""
+RESTAURANT RAPIDE EXEMPLE
+Sous-total 18,09
+10% Taxe 1,81
+Total taxes 1,81
+Sur Place Total 19,90
+Taxe de séjour 1,65""")
+        self.assertEqual(result.value('tax_amount'), 1.81)
+        self.assertEqual(result.value('total'), 19.90)
+
+    def test_tax_line_with_tax_then_gross(self):
+        result = reading("""
+EXEMPLE FOOD
+0,77 France-VAT 10% Tak 8,50
+0,25 France-VAT 5.5% Ta 4,80
+Paiement €13,30""")
+        self.assertAlmostEqual(result.value('tax_amount'), 1.02, places=2)
+
+    def test_total_line_with_columns_in_reverse(self):
+        """Facture de parking : « TTC TVA HT Total », dans cet ordre."""
+        result = reading("""
+PARKING AEROPORT EXEMPLE
+PROXIPARC P1
+68,60 € 11,43 € 57,17 € Total""")
+        self.assertEqual(result.value('total'), 68.60)
+
+    def test_net_total_under_each_rate_is_before_tax(self):
+        result = reading("""
+TACOS EXEMPLE
+1 TACOS XL 14.30
+2.27 T.V.A. 10% AE 25.00
+Total net : 22.73
+0.12 T.V.A. 5.5% AE 2.25
+Total net : 2.13
+SOUS-TOTAL 27.25
+PAIEMENT 27.25""")
+        self.assertEqual(result.value('total'), 27.25)
+
+    def test_german_tax_sum(self):
+        result = reading("""
+Flughafen Exemple
+Bowl Exemple 17,10 EUR
+Steuersumme Verkäufe 7% inkl. 17,10 EUR 1,12 EUR
+MwSt 7% EC 17,10 EUR
+Sie haben 17,10 EUR bezahlt""")
+        self.assertEqual(result.value('tax_amount'), 1.12)
+        self.assertEqual(result.value('total'), 17.10)

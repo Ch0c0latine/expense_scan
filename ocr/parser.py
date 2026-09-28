@@ -70,7 +70,13 @@ def normalize(text):
     text = strip_accents(text or "").upper()
     # L'OCR confond volontiers O et 0 dans les libellés ; on ne touche qu'aux
     # séparateurs pour ne pas abîmer les montants.
-    return re.sub(r"[^A-Z0-9%.,:/\- ]+", " ", text)
+    text = re.sub(r"[^A-Z0-9%.,:/\- ]+", " ", text)
+    # « HT TUA TTC », « TUA à 5.50% » : l'OCR confond V et U sur les petites
+    # polices de caisse. « TUA » n'est pas un mot de ticket.
+    text = re.sub(r"\bT\.?\s?U\.?\s?A\b", "TVA", text)
+    # « 10% Taxe 1,81 » : la taxe qui suit un taux est la TVA — contrairement
+    # à la « taxe de séjour », qui n'en suit aucun.
+    return re.sub(r"(%\s*)TAXE\b", r"\1TVA", text)
 
 
 def parse_amount(integer_part, decimal_part):
@@ -148,6 +154,8 @@ TOTAL_KEYWORDS = [
     (re.compile(r"\bRESTE\s*A\s*PAYER\b"), 0.88),
     (re.compile(r"\bIMPORTO\s*PAGATO\b"), 0.88),                    # it
     (re.compile(r"\bA\s*PAYER\b"), 0.86),
+    # « Sie haben 18.00 CHF bezahlt », « Amount paid ».
+    (re.compile(r"\bBEZAHLT\b|\bAMOUNT\s*PAID\b"), 0.86),
     (re.compile(r"\bSUMA\b|\bSUMME\b"), 0.85),                      # pl, de
     (re.compile(r"\bGESAMT(?:BETRAG)?\b"), 0.82),                   # de
     (re.compile(r"\bTOTAL\b|\bTOTALE\b|\bTOTAAL\b"), 0.80),
@@ -184,6 +192,29 @@ TOTAL_EXCLUDE_RE = re.compile(
 )
 
 
+def _triplet_gross(values):
+    """Le TTC d'un triplet HT + TVA = TTC, ou ``None``.
+
+    Trois montants exactement : au-delà, la ligne mêle d'autres colonnes —
+    deux devises sur une facture tchèque — et une somme fortuite s'y trouve.
+    """
+    if len(values) != 3:
+        return None
+    for gross in sorted(values, reverse=True):
+        others = list(values)
+        others.remove(gross)
+        if any(abs(a + b - gross) <= 0.02 and a > 0 and b > 0
+               for i, a in enumerate(others) for b in others[i + 1:]):
+            return gross
+    return None
+
+
+def _is_rate_line(line):
+    """Une ligne de TVA à un taux : « 2.27 T.V.A. 10% AE 25.00 »."""
+    text = normalize(line.text)
+    return bool(TVA_LINE_RE.search(text) and RATE_RE.search(text))
+
+
 def extract_total(lines):
     """Le montant total payé, avec sa fiabilité."""
     best = None
@@ -203,9 +234,18 @@ def extract_total(lines):
                 confidence_penalty = 0.85
             if not amounts:
                 continue
+            if re.search(r"\bTOTAL\s*NET\b", text) and index and _is_rate_line(lines[index - 1]):
+                # « 2.27 T.V.A. 10% 25.00 / Total net : 22.73 » : le hors-taxe
+                # du taux qui précède, répété sous chaque taux.
+                break
             # Le montant utile est le dernier de la ligne : à gauche on
             # trouve souvent une quantité ou un prix unitaire.
             value = amounts[-1][0]
+            # « 68,60 € 11,43 € 57,17 € Total » : des colonnes TTC, TVA, HT
+            # lues dans le désordre. Un triplet qui se tient désigne son TTC.
+            gross = _triplet_gross([amount for amount, _position in amounts])
+            if gross is not None:
+                value = gross
             confidence = weight * confidence_penalty * max(line.score, 0.4)
             candidate = (weight, value, confidence, line.text)
             # À poids égal, le plus gros montant ; à montant égal, la lecture
@@ -396,6 +436,8 @@ MERCHANT_STOP_RE = re.compile(
     r"\bLIBELLE\b|\bNOMBRE\b|\bLIGNES?\b|\bVENTES?\b|"
     # Intitulés d'un reçu en ligne, avant le nom de l'établissement.
     r"\bCOORDONNEES\b|\bVOICI\b|\bPAIEMENTS\b|"
+    # Mode de service imprimé en gros en tête des tickets de restauration.
+    r"\bEMPORTER\b|\bSUR\s*PLACE\b|\bTAKE\s*(?:OUT|AWAY)\b|"
     # Capture d'une page web : bouton de fermeture, trajet en titre.
     r"\bFERMER\b|\bCLOSE\b|^\s*DE\s+\S+.*\sA\s+\S+"
 )
@@ -612,7 +654,7 @@ def extract_merchant(lines, max_lines=10, buyers=()):
 #: IVA (it, es, pt), MwSt et USt (de), PTU (pl), BTW (nl), DPH (cs), MOMS.
 TVA_LINE_RE = re.compile(
     r"\bT\.?\s*V\.?\s*A\b|\bV\.?A\.?T\b|\bI\.?V\.?A\b|\bMWST\b|\bUST\b|\bPTU\b"
-    r"|\bB\.?T\.?W\b|\bDPH\b|\bMOMS\b|\bPODATEK\b")
+    r"|\bB\.?T\.?W\b|\bDPH\b|\bMOMS\b|\bPODATEK\b|\bSTEUERSUMME\b")
 #: « TVA:D », « (c° tva: 2) » — code de taux renvoyant au tableau, sans
 #: montant de taxe. Un chiffre seul ne compte que s'il n'ouvre pas un montant
 #: (« TVA: 5,50 »).
@@ -633,7 +675,7 @@ TAX_NOT_A_TAX_RE = re.compile(
 TAX_SUM_RE = re.compile(
     r"\b(?:SUMA|TOTAL|TOTALE|SUMME|TOTAAL|RAZEM|GESAMT)\s*(?:DE\s*LA\s*|DI\s*)?"
     r"(?:T\.?\s*V\.?\s*A|PTU|IVA|VAT|MWST|UST|BTW|PODATEK)\b"
-    r"|\bTOTAL\s*TAX\b|\bPODATEK\s*PTU\b"
+    r"|\bTOTAL\s*TAX(?:ES)?\b|\bPODATEK\s*PTU\b|\bSTEUERSUMME\b"
     # « Montant TVA 10,00 € » : le total d'un tableau mis en colonnes.
     r"|\bMONTANT\s*(?:DE\s*LA\s*|DE\s*)?T\.?\s*V\.?\s*A\b")
 # Taux de TVA en vigueur dans l'Union européenne, en Suisse et au
@@ -831,6 +873,25 @@ def _consistent_rates(lines):
     return found
 
 
+#: Ligne de total TTC : jamais une ligne de taxe, même si « TVA » s'y glisse.
+TOTAL_TTC_RE = re.compile(r"\bTOT(?:AL)?\.?\s*T\.?\s*T\.?\s*C\b")
+
+
+def _tax_of_pair(amounts, rate):
+    """La taxe d'une ligne à deux montants : celui que l'autre explique.
+
+    « TVA 10 % 4,55 0,45 » (base, taxe) comme « 0,77 VAT 10% 8,50 » (taxe,
+    TTC) : la taxe vaut la base fois le taux, ou le TTC fois taux / (100 +
+    taux). Faute de concordance, le dernier montant, comme avant.
+    """
+    first, second = amounts
+    for tax, other in ((second, first), (first, second)):
+        if tax < other and (abs(other * rate / 100.0 - tax) <= 0.02
+                            or abs(other * rate / (100.0 + rate) - tax) <= 0.02):
+            return tax
+    return second
+
+
 def _extract_taxes_by_line(lines):
     """Repli : tickets qui impriment leur TVA sur une ligne étiquetée."""
     entries = []
@@ -841,6 +902,8 @@ def _extract_taxes_by_line(lines):
             continue
         if TAX_NOT_A_TAX_RE.search(text):
             continue  # « Montant final (TVA incluse) 15,38 » : un total, pas la taxe
+        if TOTAL_TTC_RE.search(text) and not TAX_SUM_RE.search(text):
+            continue  # « TOTAL TTC: TVA 25,50 EUR TTC » : des colonnes mêlées au total
         if TAX_SUM_RE.search(text):
             # « SUMA PTU 18,70 », « TOTAL TVA 6,87 » : la somme des lignes
             # de taux, déjà imprimée. L'additionner aux lignes qu'elle
@@ -875,9 +938,23 @@ def _extract_taxes_by_line(lines):
         # Prendre systématiquement le dernier revenait, sur trois colonnes,
         # à retenir le TTC — et donc à additionner les totaux du ticket au
         # lieu de ses taxes.
+        if rate is None and len(amounts) >= 4:
+            # « E TVA 10.00 13.59 1.36 14.95 » : le taux, sans « % », passe
+            # pour un montant. Retenu s'il est un taux connu et que le reste
+            # forme un triplet HT + TVA = TTC à ce taux.
+            for position, value in enumerate(amounts):
+                if _closest_known_rate(value) == value and value > 0:
+                    rest = amounts[:position] + amounts[position + 1:]
+                    if _consistent_tax(rest, value) is not None:
+                        rate, amounts = value, rest
+                        break
         amount = None
         if len(amounts) >= 3:
             amount = amounts[1]
+            if rate:
+                amount = _consistent_tax(amounts, rate) or amount
+        elif len(amounts) == 2 and rate:
+            amount = _tax_of_pair(amounts, rate)
         elif amounts:
             amount = amounts[-1]
         if rate is None and amount is None:
