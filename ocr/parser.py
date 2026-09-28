@@ -478,6 +478,12 @@ ZERO_AMOUNT_RE = re.compile(r"(?<![\d,.])0[.,]00(?!\d)")
 TAX_BASE_RE = re.compile(
     r"\bOPOD|\bNETTO\b|\bIMPONIBILE\b|\bBASE\s*IMPONIBLE\b|\bSPRZED|"
     r"\b(?:TOTAL|BASE|MONTANT)\s*H\.?\s*T\b")
+#: Ligne qui nomme la TVA pour dire qu'un montant l'inclut ou l'exclut :
+#: « Montant final (hors TVA) », « (TVA incluse) », « excl. VAT ».
+TAX_NOT_A_TAX_RE = re.compile(
+    r"\bHORS\s*(?:T\.?\s*V\.?\s*A|TAXES?)\b"
+    r"|\bT\.?\s*V\.?\s*A\s*(?:INCLUSE|INCLUS|COMPRISE|INCL)\b"
+    r"|\b(?:EXCL|EXCLUDING|EXCLUSIVE|INCL|INCLUDING|INCLUSIVE)\.?\s*(?:OF\s*)?(?:VAT|TAX)\b")
 #: Ligne qui totalise la TVA plutôt que d'en donner un taux.
 TAX_SUM_RE = re.compile(
     r"\b(?:SUMA|TOTAL|TOTALE|SUMME|TOTAAL|RAZEM|GESAMT)\s*(?:DE\s*LA\s*|DI\s*)?"
@@ -528,7 +534,7 @@ TAX_TABLE_HEADER_RE = re.compile(
 # Une ligne de tableau commence par son taux, que certains tickets font
 # précéder du mot TVA : « 10%(C) ... » comme « TVA 10 % ... ».
 TAX_TABLE_ROW_RE = re.compile(
-    r"^\s*(?:[A-D]\s+|\(\d{1,2}\)\s*)?"
+    r"^\s*(?:[A-D]\s+|\d{1,2}\s+)?"
     r"(?:(?:T\.?\s*V\.?\s*A|MWST|UST|VAT|IVA|BTW)\.?\s*)?"
     r"(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
 #: Ligne de tableau dont le taux n'a pas de « % » : « 10,00 14,36 1,44 15,80 »,
@@ -684,6 +690,8 @@ def _extract_taxes_by_line(lines):
         text = normalize(line.text)
         if not TVA_LINE_RE.search(text):
             continue
+        if TAX_NOT_A_TAX_RE.search(text):
+            continue  # « Montant final (TVA incluse) 15,38 » : un total, pas la taxe
         if TAX_SUM_RE.search(text):
             # « SUMA PTU 18,70 », « TOTAL TVA 6,87 » : la somme des lignes
             # de taux, déjà imprimée. L'additionner aux lignes qu'elle

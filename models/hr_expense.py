@@ -1005,7 +1005,7 @@ class HrExpense(models.Model):
         label = result.value('tax_label')
         if not (label or result.value('tax_amount') or result.value('tax_rate_max')):
             return False
-        if label and label != 'TVA':
+        if label and label not in ('TVA', 'VAT'):  # « VAT » : le mot anglais, pas un pays
             return label
         code = result.value('currency')
         if code and company.currency_id and code != company.currency_id.name \
