@@ -169,21 +169,21 @@
     <!-- Accès direct depuis le menu : la fiche du mois, sans filtrer la
          liste, tout sélectionner puis passer par « Actions ». -->
     <record id="expense_scan_sheet_current_month_action" model="ir.actions.act_window">
-        <field name="name">Fiche de frais du mois en cours</field>
+        <field name="name">Fiche de frais</field>
         <field name="res_model">expense.scan.sheet.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
         <field name="context">{'default_period': 'current'}</field>
     </record>
     <record id="expense_scan_sheet_previous_month_action" model="ir.actions.act_window">
-        <field name="name">Fiche de frais du mois précédent</field>
+        <field name="name">Fiche de frais</field>
         <field name="res_model">expense.scan.sheet.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
         <field name="context">{'default_period': 'previous'}</field>
     </record>
     <record id="expense_scan_sheet_custom_period_action" model="ir.actions.act_window">
-        <field name="name">Fiche de frais d'une période</field>
+        <field name="name">Fiche de frais</field>
         <field name="res_model">expense.scan.sheet.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>

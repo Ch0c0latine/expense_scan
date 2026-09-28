@@ -36,8 +36,15 @@
             </xpath>
 
             <!-- « Réinitialiser » laissait croire à un effacement : le
-                 bouton ne fait que rouvrir la dépense pour la corriger. -->
-            <xpath expr="//header/button[@name='action_reset']" position="attributes">
+                 bouton ne fait que rouvrir la dépense pour la corriger.
+                 Odoo en a deux, l'un pour la comptabilité, l'autre pour
+                 les autres — chacun ne voit que le sien. -->
+            <xpath expr="//header/button[@name='action_reset'][@groups='account.group_account_invoice']"
+                   position="attributes">
+                <attribute name="string">Retour brouillon</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_reset'][@groups='!account.group_account_invoice']"
+                   position="attributes">
                 <attribute name="string">Retour brouillon</attribute>
             </xpath>
 

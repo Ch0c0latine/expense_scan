@@ -270,6 +270,13 @@ class TestExpenseSheet(common.TransactionCase):
         self.assertEqual(wizard.expense_ids, inside)
         self.assertEqual(wizard.selected_count, 1)
 
+    def test_reset_buttons_are_renamed(self):
+        """Les deux « Réinitialiser » d'Odoo — comptable ou non — sont renommés."""
+        arch = self.env.ref('hr_expense.hr_expense_view_form').sudo()._get_combined_arch()
+        buttons = arch.xpath("//header/button[@name='action_reset']")
+        self.assertEqual(len(buttons), 2)
+        self.assertEqual({button.get('string') for button in buttons}, {"Retour brouillon"})
+
     def test_same_day_expenses_follow_the_ticket_time(self):
         from datetime import datetime
         evening = self.expense("Soir", 7, scan_datetime=datetime(2026, 8, 7, 19, 30))
