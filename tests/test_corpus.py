@@ -51,5 +51,7 @@ class TestCorpus(common.TransactionCase):
                     expense.scan_tax_amount, expense.tax_ids.mapped('amount'),
                     expense.expense_scan_merchant, expense.date,
                     expense.scan_todo, expense.scan_message)
+                _logger.info("CORPUSTXT|%s|%s", name, (expense.scan_raw_text or "").replace("
+", " ⏎ "))
             except Exception as error:  # noqa: BLE001
                 _logger.info("CORPUS|%s|ERREUR|%s", name, error)
