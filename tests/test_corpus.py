@@ -32,6 +32,9 @@ class TestCorpus(common.TransactionCase):
             'group_ids': [(6, 0, [self.env.ref('base.group_user').id])]})
         employee = self.env['hr.employee'].create({'name': "Corpus", 'user_id': user.id})
         env = self.env(user=user)
+        # Un corpus d'archives remonte à plusieurs années : la limite
+        # d'ancienneté ne doit pas faire écarter la date d'un ticket de 2023.
+        self.env.company.expense_scan_max_age_days = 3650
         seen = set()
         for name in sorted(os.listdir(CORPUS_DIR)):
             path = os.path.join(CORPUS_DIR, name)
