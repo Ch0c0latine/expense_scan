@@ -2,10 +2,14 @@
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Analyse lancée par la fiche : la dépense naît avant d'être lue."""
+import base64
+
 from unittest.mock import patch
 
+from odoo.exceptions import AccessError, UserError
 from odoo.tests import common, tagged
 
+from ..ocr import preprocess
 from .test_sheet import png
 
 
@@ -145,3 +149,63 @@ class TestAsyncScan(common.TransactionCase):
         self.env.company.expense_scan_text_retention_days = 0
         self.Expense._cron_expense_scan_purge_texts()
         self.assertEqual(old.scan_raw_text, "reste")
+
+
+@tagged('post_install', '-at_install')
+class TestRetouch(common.TransactionCase):
+    """Retouche manuelle : rotation fine et recadrage faits dans le navigateur.
+
+    Le serveur ne reçoit que le résultat, déjà en JPEG ; ces tests ne
+    couvrent que ce qu'il en fait — corriger le justificatif sur place —
+    pas le canevas côté client.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.employee = cls.env['hr.employee'].create({'name': "Léon Retouche"})
+        cls.Expense = cls.env['hr.expense']
+
+    def expense_with_attachment(self):
+        with patch.object(type(self.Expense), '_expense_scan_run', autospec=True):
+            ids = self.Expense.with_context(
+                default_employee_id=self.employee.id
+            ).create_expense_from_attachments(
+                [self.env['ir.attachment'].create({
+                    'name': "ticket.png", 'raw': png(),
+                    'res_model': 'hr.expense', 'res_id': 0}).id], 'list')
+        return self.Expense.browse(ids)
+
+    def test_the_current_attachment_is_corrected_in_place(self):
+        expense = self.expense_with_attachment()
+        attachment = expense.message_main_attachment_id
+        retouched = png(color=(10, 200, 10))
+        expense.action_expense_scan_retouch(base64.b64encode(retouched).decode())
+        self.assertEqual(expense.message_main_attachment_id, attachment)  # même pièce
+        self.assertEqual(attachment.raw, retouched)
+        self.assertEqual(attachment.mimetype, 'image/jpeg')
+
+    def test_without_attachment_it_refuses(self):
+        expense = self.Expense.create({'name': "Sans photo", 'employee_id': self.employee.id})
+        with self.assertRaises(UserError):
+            expense.action_expense_scan_retouch(base64.b64encode(png()).decode())
+
+    def test_garbled_data_is_refused(self):
+        expense = self.expense_with_attachment()
+        with self.assertRaises(UserError):
+            expense.action_expense_scan_retouch("ceci n'est pas du base64 valide%%%")
+
+    def test_an_oversized_image_is_refused(self):
+        expense = self.expense_with_attachment()
+        with patch.object(preprocess, 'MAX_FILE_BYTES', 10):
+            with self.assertRaises(UserError):
+                expense.action_expense_scan_retouch(base64.b64encode(png()).decode())
+
+    def test_a_stranger_cannot_retouch(self):
+        expense = self.expense_with_attachment()
+        stranger = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': "Passant Retouche", 'login': 'expense_scan_retouch_passant',
+            'group_ids': [(6, 0, [self.env.ref('base.group_user').id])]})
+        with self.assertRaises(AccessError):
+            expense.with_user(stranger).action_expense_scan_retouch(
+                base64.b64encode(png()).decode())

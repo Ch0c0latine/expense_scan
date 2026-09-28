@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
+import base64
 import json
 import logging
 import os
@@ -789,6 +790,38 @@ class HrExpense(models.Model):
             if self._get_employee_from_email(email_normalize(email_from, strict=False)):
                 return False
         return error
+
+    def action_expense_scan_retouch(self, image_base64):
+        """Remplace le justificatif courant par une image retouchée.
+
+        La retouche — rotation fine, recadrage — se fait dans le
+        navigateur, sur un canevas : le serveur ne reçoit que le résultat,
+        déjà en JPEG. Le justificatif courant est corrigé sur place, comme
+        une relance d'analyse le fait pour l'image qu'elle recadre elle-même
+        (voir ``_expense_scan_store_image``) : ici, c'est l'utilisateur qui
+        vient d'ajuster l'image, pas l'analyse.
+
+        Ne relance rien : c'est au bouton « Relancer l'analyse » de le
+        faire, sur cette image déjà corrigée.
+        """
+        self.ensure_one()
+        self.check_access('write')
+        attachment = self.message_main_attachment_id
+        if not attachment:
+            raise UserError(_("Aucun justificatif à retoucher."))
+        try:
+            raw = base64.b64decode(image_base64)
+        except (ValueError, TypeError) as error:
+            raise UserError(_("Image retouchée illisible.")) from error
+        if not raw:
+            raise UserError(_("Image retouchée illisible."))
+        if len(raw) > preprocess.MAX_FILE_BYTES:
+            raise UserError(_(
+                "L'image retouchée est trop volumineuse (%(size)d Mo, plafond %(max)d Mo).",
+                size=len(raw) // (1024 * 1024),
+                max=preprocess.MAX_FILE_BYTES // (1024 * 1024)))
+        attachment.write({'raw': raw, 'mimetype': 'image/jpeg'})
+        return True
 
     def action_expense_scan_rescan(self):
         """Relance l'analyse sur le ou les justificatifs courants.

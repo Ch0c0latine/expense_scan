@@ -199,3 +199,21 @@
     color: $warning;
     color: color-mix(in srgb, #{$warning} 75%, black);
 }
+
+// Retouche du justificatif : le canevas capte les gestes du doigt — sans
+// quoi, sur téléphone, faire glisser un coin ferait défiler la page.
+.o_expense_scan_retouch_canvas {
+    max-width: 100%;
+    touch-action: none;
+    cursor: crosshair;
+    background: repeating-conic-gradient(#e9ecef 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+    &.o_expense_scan_retouch_dragging {
+        cursor: grabbing;
+    }
+}
+
+.o_expense_scan_retouch_angle {
+    min-width: 3.5em;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}

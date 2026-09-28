@@ -21,12 +21,16 @@ import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 import { standardWidgetProps } from "@web/views/widgets/standard_widget_props";
 
+import { openRetouchDialog, retouchableAttachmentId } from "@expense_scan/js/retouch_dialog";
+
 export class ExpenseScanReceipt extends Component {
     static template = "expense_scan.ReceiptPreview";
     static props = { ...standardWidgetProps };
 
     setup() {
         this.ui = useService("ui");
+        this.dialog = useService("dialog");
+        this.orm = useService("orm");
         this.fileViewer = useFileViewer();
         this.state = useState({ size: this.ui.size, expanded: false });
 
@@ -78,6 +82,16 @@ export class ExpenseScanReceipt extends Component {
         this.state.expanded = !this.state.expanded;
     }
 
+    /** Rotation fine et recadrage : sur une image, et sur une dépense modifiable. */
+    get canRetouch() {
+        return Boolean(this.props.record.data.is_editable)
+            && Boolean(retouchableAttachmentId(this.props.record));
+    }
+
+    onRetouch() {
+        openRetouchDialog({ dialog: this.dialog, orm: this.orm }, this.props.record);
+    }
+
     /** Ouvre la visionneuse d'Odoo : zoom, rotation, plein écran. */
     onOpenViewer() {
         const file = new FileModel();
@@ -94,6 +108,7 @@ export class ExpenseScanReceipt extends Component {
 export const expenseScanReceiptWidget = {
     component: ExpenseScanReceipt,
     fieldDependencies: [
+        { name: "is_editable", type: "boolean", readonly: true },
         {
             name: "message_main_attachment_id",
             type: "many2one",
