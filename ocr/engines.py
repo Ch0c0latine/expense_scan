@@ -64,6 +64,14 @@ class ScanEngine(object):
     def __init__(self, **options):
         self.options = options
 
+    @property
+    def working_side(self):
+        """Plus grand côté, en pixels, auquel le moteur ramène l'image.
+
+        ``None`` : le moteur lit l'image à sa taille d'origine.
+        """
+        return None
+
     @classmethod
     def availability(cls):
         """Renvoie (disponible, message lisible)."""
@@ -245,6 +253,10 @@ class RapidOcrEngine(ScanEngine):
     @property
     def description(self):
         return self._description or self.label
+
+    @property
+    def working_side(self):
+        return int(self.options.get("max_side_len", 1800))
 
     def recognize(self, image, use_cls=None):
         return self._words_from_result(self._get_engine()(image, use_cls=use_cls))

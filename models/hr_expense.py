@@ -25,6 +25,33 @@ PDF_MIMETYPE = 'application/pdf'
 TRIP_DAYS = 3
 
 
+class Stopwatch:
+    """Durée de chaque étape d'une analyse, pour le journal.
+
+    Une ligne par scan suffit à voir où passe le temps — lecture,
+    relecture, catégorie — et à suivre la vitesse sur la durée.
+    """
+
+    def __init__(self):
+        self.started = self.last = time.time()
+        self.laps = []
+
+    def lap(self, name):
+        now = time.time()
+        self.laps.append((name, now - self.last))
+        self.last = now
+
+    def sum(self, *names):
+        return sum(duration for name, duration in self.laps if name in names)
+
+    @property
+    def total(self):
+        return self.last - self.started
+
+    def __str__(self):
+        return " ".join("%s=%.2f" % lap for lap in self.laps) + " total=%.2f" % self.total
+
+
 class HrExpense(models.Model):
     _inherit = 'hr.expense'
     # Plus récentes en haut, comme Odoo, mais les tickets d'une même
@@ -651,25 +678,34 @@ class HrExpense(models.Model):
             raise UserError(message)
 
         company = self.company_id or self.env.company
+        timer = Stopwatch()
         data = self._expense_scan_image_bytes(attachment)
+        timer.lap('fichier')
 
         image, info = preprocess.prepare(
             data,
             autocrop=company.expense_scan_autocrop,
             deskew=company.expense_scan_deskew,
         )
+        timer.lap('préparation')
 
         engine = engines.resolve_engine(
             company.expense_scan_engine, **company._expense_scan_engine_options())
 
-        started = time.time()
-        # Redresser avant de lire, et non après : la reconstruction des
-        # lignes suppose du texte horizontal. Sur un ticket posé en
-        # diagonale, elle assemble des colonnes, et le parseur y cherche en
-        # vain « le dernier montant de la ligne ».
-        image = self._expense_scan_straighten(engine, image, info, company)
+        # Une lecture, puis le redressement sur ses boîtes : le moteur lit
+        # une ligne dans n'importe quel sens (il redresse chaque boîte avant
+        # de la reconnaître), et les boîtes se transposent sans relire. Une
+        # seconde lecture n'a lieu que si elle apporte quelque chose — voir
+        # _expense_scan_straighten.
         words = engine.recognize(image)
-        duration = time.time() - started
+        timer.lap('lecture')
+        image, words, reread = self._expense_scan_straighten(engine, image, words, info, company)
+        if reread:
+            words = engine.recognize(image)
+            timer.lap('relecture')
+        else:
+            timer.lap('redressement')
+        duration = timer.sum('lecture', 'relecture')
 
         # Dernier mot sur l'orientation, sur les boîtes de la lecture
         # définitive : plus nombreuses et mieux placées que celles de
@@ -692,6 +728,7 @@ class HrExpense(models.Model):
         # est déjà faite, il s'agit d'obtenir l'image que l'utilisateur aura
         # sous les yeux pour vérifier les champs.
         image = self._expense_scan_tighten(image, words, info, company)
+        timer.lap('recadrage')
 
         result = parser.parse(
             words,
@@ -704,84 +741,109 @@ class HrExpense(models.Model):
         result.preprocess = info
         if info.changed or info.rotated_quarters:
             result.image_bytes = preprocess.encode_jpeg(image)
+        timer.lap('analyse')
+        result.timer = timer
         return result
 
-    #: Côté maximal de l'image d'essai servant à choisir l'orientation.
-    #:
-    #: Convient à un ticket, déjà cadré serré par la photo. Un justificatif
-    #: édité en PDF — une page A4 entière, texte dense et petit — y devient
-    #: illisible : l'essai n'attrape plus que les gros titres, perd les
-    #: repères de bas de page (SIRET, adresse) qui trancheraient le sens de
-    #: lecture, et un faux-semblant l'emporte. Le double, encore loin de la
-    #: pleine résolution, suffit à les retrouver.
-    ORIENTATION_PROBE_SIDE = 1600
+    #: Hauteur médiane des mots, en pixels de travail du moteur, en dessous
+    #: de laquelle la lecture perd des caractères : un ticket photographié
+    #: de loin, une page A4 entière au texte dense.
+    SMALL_TEXT_PX = 20
+    #: Agrandissement minimal du texte qui justifie de relire le ticket
+    #: recadré : en deçà, la seconde lecture coûte autant que la première
+    #: pour un gain négligeable.
+    REREAD_MIN_GAIN = 1.3
+    #: Inclinaison au-delà de laquelle relire l'image redressée : les boîtes
+    #: de la première lecture sont droites, et sur un texte penché elles se
+    #: chevauchent d'une ligne à l'autre, ce qui brouille leur regroupement.
+    REREAD_ANGLE = 4.0
 
-    def _expense_scan_straighten(self, engine, image, info, company):
-        """Remet le ticket d'aplomb avant la lecture définitive.
+    def _expense_scan_straighten(self, engine, image, words, info, company):
+        """Remet le ticket d'aplomb, sur les boîtes de la première lecture.
 
-        Une seule passe d'essai à basse résolution sert à tout : choisir le
-        quart de tour, mesurer l'inclinaison résiduelle, et délimiter le
-        ticket. Toute orientation se ramène ainsi à un quart de tour plus un
-        résidu dans ±45°.
+        Toute orientation se ramène à un quart de tour plus un résidu dans
+        ±45°. Le quart de tour se lit sur la **forme des boîtes**, pas sur
+        la qualité de la lecture : le moteur redresse chaque boîte avant de
+        la reconnaître, il lit donc aussi bien dans les quatre sens. Image et
+        boîtes tournent ensemble, sans relire.
 
-        Le quart de tour se lit sur la **forme des boîtes**, pas sur la
-        qualité de la lecture. Le moteur redresse chaque boîte détectée
-        avant de la reconnaître : il lit donc aussi bien dans les quatre
-        sens, et comparer les scores — ce que faisait cette méthode, en
-        relisant l'image quatre fois — ne tranchait rien du tout.
+        L'endroit/l'envers n'est volontairement pas tranché ici (voir
+        _expense_scan_quarters) : il l'est une seule fois, après.
+
+        Renvoie ``(image, mots, relire)``. Relire ne sert que dans deux cas :
+        un ticket nettement penché, et un texte trop petit dans la photo
+        entière que le recadrage agrandirait vraiment — le moteur ramenant
+        l'image à sa taille de travail, autant que ce budget se dépense sur
+        le ticket plutôt que sur la table. Tout le reste se lit bien du
+        premier coup : l'ancienne lecture d'essai doublait le temps
+        d'analyse de chaque ticket pour rien.
         """
         if not company.expense_scan_auto_rotate:
-            return image
+            return image, words, False
 
-        probe = preprocess.limit_size(image, self.ORIENTATION_PROBE_SIDE)
-        best_words = engine.recognize(probe)
-
-        # L'essai et la photo suivent exactement les mêmes transformations :
-        # les boîtes trouvées sur l'un restent donc transposables sur l'autre
-        # par une simple homothétie.
-        #
-        # L'endroit/l'envers n'est volontairement pas tranché ici (voir
-        # _expense_scan_quarters) : sur un essai en basse résolution, une
-        # page dense se relit mal, et la relecture complète qui suit
-        # confirmait parfois — sur les mêmes indices, tout aussi trompeurs
-        # dans le nouveau sens — une décision prise à tort. Un ticket
-        # couché de travers reste corrigé ici : lire des colonnes non
-        # redressées assemblerait n'importe quoi.
-        quarters = self._expense_scan_quarters(best_words, probe, decide_180=False)
+        quarters = self._expense_scan_quarters(words, image, decide_180=False)
         if quarters:
-            best_words = preprocess.rotate_words_quarters(
-                best_words, quarters, probe.shape[1], probe.shape[0])
-            probe = preprocess.rotate_quarters(probe, quarters)
+            words = preprocess.rotate_words_quarters(
+                words, quarters, image.shape[1], image.shape[0])
             image = preprocess.rotate_quarters(image, quarters)
             info.rotated_quarters = quarters
 
+        angle = 0.0
         if company.expense_scan_deskew:
-            angle = preprocess.skew_angle_from_words(best_words)
+            angle = preprocess.skew_angle_from_words(words)
             if preprocess.MIN_DESKEW_ANGLE < abs(angle) <= preprocess.MAX_TEXT_DESKEW_ANGLE:
                 matrix, _size = preprocess.rotation_matrix(
-                    (probe.shape[1], probe.shape[0]), angle)
-                best_words = preprocess.rotate_words(best_words, matrix, angle)
-                probe = preprocess.rotate(probe, angle)
+                    (image.shape[1], image.shape[0]), angle)
+                words = preprocess.rotate_words(words, matrix, angle)
                 image = preprocess.rotate(image, angle)
                 info.deskew_angle = angle
+            else:
+                angle = 0.0
 
-        # Recadrer sur le ticket avant la lecture définitive. Le moteur
-        # ramène de toute façon l'image à sa taille de travail : autant que
-        # ce budget de résolution se dépense sur le ticket plutôt que sur la
-        # table qui l'entoure. Marge large, car l'essai est basse
-        # définition et peut avoir manqué une ligne en bord de ticket.
-        if company.expense_scan_autocrop and probe.shape[1]:
-            # Sur les mêmes boîtes retenues pour l'angle : un caractère du
-            # décor étirerait le cadre bien au-delà du ticket.
-            scaled = preprocess.scale_words(
-                preprocess.text_inliers(best_words),
-                image.shape[1] / float(probe.shape[1]))
-            image, cropped = preprocess.crop_to_text(image, scaled, margin_ratio=0.08)
-            info.cropped = info.cropped or cropped
+        reread = abs(angle) > self.REREAD_ANGLE
+        if company.expense_scan_autocrop:
+            # Sur les boîtes retenues pour l'angle : un caractère du décor
+            # étirerait le cadre bien au-delà du ticket.
+            inliers = preprocess.text_inliers(words)
+            small = self._expense_scan_text_px(engine, image, words) < self.SMALL_TEXT_PX
+            if reread or (small and self._expense_scan_crop_gain(
+                    engine, image, inliers) >= self.REREAD_MIN_GAIN):
+                # Marge large : un mot manqué en bord de ticket reviendra
+                # à la relecture.
+                image, cropped = preprocess.crop_to_text(image, inliers, margin_ratio=0.08)
+                info.cropped = info.cropped or cropped
+                reread = True
 
         info.changed = info.changed or bool(
             info.rotated_quarters or info.deskew_angle or info.cropped)
-        return image
+        info.reread = reread
+        return image, words, reread
+
+    @staticmethod
+    def _expense_scan_working_scale(engine, width, height):
+        """Facteur de réduction qu'appliquera le moteur à cette image."""
+        side = engine.working_side
+        longest = max(width, height)
+        return min(1.0, side / float(longest)) if side and longest else 1.0
+
+    def _expense_scan_text_px(self, engine, image, words):
+        """Hauteur médiane des mots, telle que le moteur les a vus."""
+        heights = sorted(word.bottom - word.top for word in words if word.text.strip())
+        if not heights:
+            return 0.0
+        scale = self._expense_scan_working_scale(engine, image.shape[1], image.shape[0])
+        return heights[len(heights) // 2] * scale
+
+    def _expense_scan_crop_gain(self, engine, image, words):
+        """Agrandissement du texte qu'apporterait une relecture recadrée."""
+        boxes = [word for word in words if word.text.strip()]
+        if not boxes:
+            return 1.0
+        width = max(word.right for word in boxes) - min(word.left for word in boxes)
+        height = max(word.bottom for word in boxes) - min(word.top for word in boxes)
+        before = self._expense_scan_working_scale(engine, image.shape[1], image.shape[0])
+        after = self._expense_scan_working_scale(engine, width * 1.16, height * 1.16)
+        return after / before if before else 1.0
 
     def _expense_scan_reorient(self, words, image, info, decide_180=True):
         """Applique le quart de tour manquant, sans relire l'image.
@@ -998,6 +1060,9 @@ class HrExpense(models.Model):
                 'scan_todo': ", ".join(text for text, _code in items),
                 'expense_scan_todo_codes': ",".join(code for _text, code in items),
             })
+        if result.timer:
+            result.timer.lap('écriture')
+            _logger.info("expense_scan : durées dépense=%s %s", self.id, result.timer)
 
     def _expense_scan_foreign_tax(self, result, company):
         """Nom de la taxe si le ticket vient de l'étranger, sinon ``False``.
@@ -1409,6 +1474,8 @@ class HrExpense(models.Model):
                 steps.append(_("redressé de %.1f°", info.deskew_angle))
             if info.rotated_quarters:
                 steps.append(_("pivoté de %d°", info.rotated_quarters * 90))
+            if info.reread:
+                steps.append(_("relu"))
             if steps:
                 parts.append(", ".join(steps))
         return " · ".join(part for part in parts if part)[:250]

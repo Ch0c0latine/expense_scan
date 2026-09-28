@@ -92,6 +92,7 @@ class PreprocessInfo:
     original_size: Tuple[int, int] = (0, 0)
     final_size: Tuple[int, int] = (0, 0)
     changed: bool = False
+    reread: bool = False  # une seconde lecture, sur l'image redressée ou recadrée
 
 
 @dataclass
@@ -104,6 +105,7 @@ class ScanResult:
     fields: Dict[str, ExtractedField] = field(default_factory=dict)
     preprocess: Optional[PreprocessInfo] = None
     image_bytes: Optional[bytes] = None  # image recadrée/redressée, en JPEG
+    timer: Any = None  # durée de chaque étape, pour le journal
 
     @property
     def raw_text(self) -> str:
