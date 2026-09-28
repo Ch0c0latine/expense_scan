@@ -272,6 +272,41 @@ class TestCategoryRecognition(common.TransactionCase):
                 ('company_id', '=', self.company.id), ('type_tax_use', '=', 'purchase')]):
             self.assertFalse(expense._expense_scan_foreign_tax(french, self.company))
 
+    def test_same_day_reason_is_kept(self):
+        from datetime import date
+        self.expense(name="Déplacement commercial Exemple", date=date(2026, 9, 10))
+        values = self.expense()._expense_scan_field_values(
+            reading("PEAGE EXEMPLE\n10/09/2026\nPRIX TTC 6,80"), self.company)
+        self.assertEqual(values['name'], "Déplacement commercial Exemple")
+
+    def test_return_toll_keeps_the_trip_reason(self):
+        """Aller le 8, retour le 10 : les mêmes gares, dans l'autre sens."""
+        from datetime import date
+        self.expense(name="Mission Exemple", date=date(2026, 9, 8),
+                     scan_raw_text="ASF\nSortie ..Villeun\nEntree.. Villedeux\nPRIX TTC 6,80")
+        values = self.expense()._expense_scan_field_values(reading(
+            "ASF\nDate 10/09/26\nSortie ..Villedeux\nEntree.. Villeun\nPRIX TTC 6,80"),
+            self.company)
+        self.assertEqual(values['name'], "Mission Exemple")
+
+    def test_an_unrelated_trip_keeps_its_own_name(self):
+        from datetime import date
+        self.expense(name="Autre mission", date=date(2026, 9, 9),
+                     scan_raw_text="HOTEL EXEMPLE\n1 rue Exemple\n75001 Paris")
+        values = self.expense()._expense_scan_field_values(
+            reading("RESTAURANT EXEMPLE\n69001 Lyon\n10/09/2026\nTOTAL 20,00"), self.company)
+        self.assertNotEqual(values['name'], "Autre mission")
+
+    def test_company_address_links_nothing(self):
+        """Le pied de facture « … 99999 Exempleville » de la société acheteuse."""
+        from datetime import date
+        self.company.zip = "99999"
+        self.expense(name="Formation Exemple", date=date(2026, 9, 9),
+                     scan_raw_text="FACTURE\nGREEN EXEMPLE 99999 Exempleville")
+        values = self.expense()._expense_scan_field_values(
+            reading("BORNE EXEMPLE\n99999 Exempleville\n10/09/2026\nTOTAL 12,00"), self.company)
+        self.assertNotEqual(values['name'], "Formation Exemple")
+
     def test_seeding_never_overwrites(self):
         hotel = self.env['product.product'].create({
             'name': "Hotel maison", 'can_be_expensed': True,

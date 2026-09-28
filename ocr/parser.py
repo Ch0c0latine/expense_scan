@@ -1235,6 +1235,40 @@ def extract_vat_number(lines):
 
 
 # ---------------------------------------------------------------------------
+# Lieux
+# ---------------------------------------------------------------------------
+
+#: Code postal suivi d'une ville : « 31150 Fenouillet », « 10144 Torino ».
+POSTAL_CODE_RE = re.compile(r"(?<![\d.,])(\d{5})\s+(?=[A-Z])")
+#: Gare de péage : « Sortie ..Muret », « Entree.. Toulouse-S-E »,
+#: « USCITA: MARCALLO MESERO ».
+TOLL_STATION_RE = re.compile(
+    r"\b(?:SORTIE|ENTREE|USCITA|ENTRATA|AUSFAHRT|EINFAHRT|SALIDA|ENTRADA)\b[\s.:]*"
+    r"([A-Z][A-Z\- ]{2,40})")
+
+
+def places_in_text(lines):
+    """Lieux cités par un justificatif : codes postaux et gares de péage.
+
+    Sert à reconnaître deux dépenses d'un même déplacement — l'hôtel et le
+    restaurant d'une même ville, l'aller et le retour d'un péage. Prend des
+    lignes de texte, pour servir aussi au texte reconnu déjà enregistré.
+    """
+    places = set()
+    for raw in lines:
+        text = normalize(raw)
+        for match in POSTAL_CODE_RE.finditer(text):
+            places.add("cp:" + match.group(1))
+        for match in TOLL_STATION_RE.finditer(text):
+            # Les deux premiers mots suffisent : l'OCR tronque volontiers
+            # la suite (« TARBES/EST », « Toulouse-S-E »).
+            words = re.findall(r"[A-Z]{3,}", match.group(1))[:2]
+            if words:
+                places.add("gare:" + " ".join(words))
+    return places
+
+
+# ---------------------------------------------------------------------------
 # Point d'entrée
 # ---------------------------------------------------------------------------
 

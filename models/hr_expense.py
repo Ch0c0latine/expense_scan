@@ -5,7 +5,8 @@ import logging
 import os
 import re
 import time
-from datetime import datetime, time as dtime
+from collections import Counter
+from datetime import datetime, time as dtime, timedelta
 
 from pytz import timezone, utc
 
@@ -20,6 +21,8 @@ _logger = logging.getLogger(__name__)
 
 SUPPORTED_IMAGE_PREFIX = 'image/'
 PDF_MIMETYPE = 'application/pdf'
+#: Écart, en jours, entre deux dépenses d'un même déplacement.
+TRIP_DAYS = 3
 
 
 class HrExpense(models.Model):
@@ -1056,6 +1059,55 @@ class HrExpense(models.Model):
         return bool(self.env['product.product'].sudo().with_context(active_test=False).search_count([
             ('can_be_expensed', '=', True), ('name', '=ilike', label)], limit=1))
 
+    def _expense_scan_home_places(self):
+        """Lieux qui ne disent rien d'un déplacement : la société, le domicile.
+
+        « GREEN ENGINE … 31790 ST JORY » figure au pied de chaque facture
+        adressée à la société : son code postal relierait toutes les dépenses.
+        """
+        self.ensure_one()
+        zips = {self.company_id.zip, self.company_id.partner_id.zip}
+        employee = self.employee_id.sudo()
+        if 'private_zip' in employee._fields:
+            zips.add(employee.private_zip)
+        return {"cp:%s" % zip_code.strip() for zip_code in zips if zip_code}
+
+    def _expense_scan_trip_reason(self, scan_date, lines):
+        """La raison d'un déplacement déjà écrite sur une dépense voisine.
+
+        Une dépense du même jour qui porte une raison — « Déplacement
+        commercial Mécaprec » — la donne à la nouvelle. À quelques jours
+        près, il faut en plus un lieu commun : même code postal (l'hôtel et
+        le restaurant d'une même ville), même gare de péage (l'aller et le
+        retour). Sans quoi, deux déplacements proches se confondraient.
+        """
+        self.ensure_one()
+        if not (scan_date and self.employee_id):
+            return False
+        neighbours = self.sudo().search([
+            ('id', '!=', self._origin.id or 0),
+            ('employee_id', '=', self.employee_id.id),
+            ('date', '>=', scan_date - timedelta(days=TRIP_DAYS)),
+            ('date', '<=', scan_date + timedelta(days=TRIP_DAYS)),
+        ])
+        neighbours = neighbours.filtered(lambda e: not e._expense_scan_name_is_automatic())
+        if not neighbours:
+            return False
+        same_day = neighbours.filtered(lambda e: e.date == scan_date)
+        if same_day:
+            # La raison la plus répandue du jour, la plus récente à égalité.
+            counts = Counter(same_day.mapped('name'))
+            return max(same_day, key=lambda e: (counts[e.name], e.id)).name
+        home = self._expense_scan_home_places()
+        places = parser.places_in_text(lines) - home
+        if not places:
+            return False
+        linked = neighbours.filtered(lambda e: places & (
+            parser.places_in_text((e.scan_raw_text or '').splitlines()) - home))
+        if not linked:
+            return False
+        return min(linked, key=lambda e: (abs((e.date - scan_date).days), -e.id)).name
+
     def _expense_scan_date_name(self, label, date_text):
         """« Péage du 12/09/2026 » : la catégorie, puis la date du ticket."""
         return _("%(category)s du %(date)s", category=label, date=date_text)
@@ -1094,8 +1146,11 @@ class HrExpense(models.Model):
         # elle nomme la dépense : « Péage du 12/09/2026 ».
         if scan_date and not self.expense_scan_keep_name \
                 and self._expense_scan_name_is_automatic():
-            values['name'] = self._expense_scan_auto_name(
-                self._expense_scan_target_product(values), scan_date)
+            # La raison d'un même déplacement, déjà écrite ailleurs, passe
+            # avant la description automatique.
+            values['name'] = self._expense_scan_trip_reason(
+                scan_date, [line.text for line in result.lines]) \
+                or self._expense_scan_auto_name(self._expense_scan_target_product(values), scan_date)
 
         currency = self._expense_scan_currency(result, company)
         if currency:
