@@ -356,6 +356,24 @@ def rotate_words(words, matrix, angle=0.0):
     """
     moved = []
     for word in words:
+        residual = normalize_angle(word.angle - angle)
+        extents = _true_extents(word)
+        if extents:
+            # Le rectangle droit d'un mot penché déborde sur ses voisins ;
+            # tourner ses coins le gonflerait encore, et les lignes se
+            # mêleraient. On repart de la vraie longueur et de la vraie
+            # épaisseur du mot, qu'on replace à son nouvel angle.
+            length, thickness = extents
+            cx, cy = (word.left + word.right) / 2.0, (word.top + word.bottom) / 2.0
+            nx = matrix[0, 0] * cx + matrix[0, 1] * cy + matrix[0, 2]
+            ny = matrix[1, 0] * cx + matrix[1, 1] * cy + matrix[1, 2]
+            rad = math.radians(abs(residual))
+            half_w = (length * math.cos(rad) + thickness * math.sin(rad)) / 2.0
+            half_h = (length * math.sin(rad) + thickness * math.cos(rad)) / 2.0
+            moved.append(OcrWord(text=word.text, score=word.score,
+                                 left=nx - half_w, top=ny - half_h,
+                                 right=nx + half_w, bottom=ny + half_h, angle=residual))
+            continue
         corners = ((word.left, word.top), (word.right, word.top),
                    (word.right, word.bottom), (word.left, word.bottom))
         xs, ys = [], []
@@ -364,8 +382,29 @@ def rotate_words(words, matrix, angle=0.0):
             ys.append(matrix[1, 0] * x + matrix[1, 1] * y + matrix[1, 2])
         moved.append(OcrWord(text=word.text, score=word.score,
                              left=min(xs), top=min(ys), right=max(xs), bottom=max(ys),
-                             angle=normalize_angle(word.angle - angle)))
+                             angle=residual))
     return moved
+
+
+def _true_extents(word, max_angle=30.0):
+    """Longueur et épaisseur d'un mot penché, d'après son rectangle droit.
+
+    Un mot de longueur L et d'épaisseur T, penché de a, occupe un rectangle
+    droit de L·cos a + T·sin a sur L·sin a + T·cos a. On inverse ces deux
+    relations. Au-delà de 30°, l'inversion devient instable (elle divise
+    par cos 2a) : ``None``, on garde alors les coins.
+    """
+    tilt = abs(word.angle)
+    if tilt < 0.5 or tilt > max_angle:
+        return None
+    rad = math.radians(tilt)
+    width, height = word.right - word.left, word.bottom - word.top
+    divisor = math.cos(2 * rad)
+    length = (width * math.cos(rad) - height * math.sin(rad)) / divisor
+    thickness = (height * math.cos(rad) - width * math.sin(rad)) / divisor
+    if length <= 0 or thickness <= 0:
+        return None
+    return length, thickness
 
 
 def rotate_words_quarters(words, quarters, width, height):

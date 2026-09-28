@@ -800,7 +800,11 @@ class HrExpense(models.Model):
             else:
                 angle = 0.0
 
-        reread = abs(angle) > self.REREAD_ANGLE
+        # Un ticket couché se relit toujours : le moteur lit mal une ligne
+        # debout (« aiement P » pour « Paiement »), même s'il en retrouve
+        # bien la place. Les boîtes suffisaient à choisir le quart de tour,
+        # pas le texte.
+        reread = bool(quarters) or abs(angle) > self.REREAD_ANGLE
         if company.expense_scan_autocrop:
             # Sur les boîtes retenues pour l'angle : un caractère du décor
             # étirerait le cadre bien au-delà du ticket.
