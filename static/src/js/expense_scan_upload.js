@@ -62,6 +62,27 @@ const expenseScanUpload = () => ({
     },
 
     /**
+     * Un seul ticket : la dépense est créée sans attendre l'analyse, que la
+     * fiche lance elle-même en affichant sa progression (widget
+     * expense_scan_progress). Plusieurs : analysés à la création, comme
+     * avant — la liste qui s'ouvre ensuite n'a pas de quoi suivre chacun.
+     *
+     * @override
+     */
+    async onUpload(attachments) {
+        if (attachments.length !== 1 || this.expenseScanInFlight !== 1) {
+            return super.onUpload(attachments);
+        }
+        const createdExpenseIds = await this.orm.call(
+            "hr.expense",
+            "create_expense_from_attachments",
+            [attachments.map((attachment) => attachment.id), this.env.config.viewType],
+            { context: { ...this.props.context, expense_scan_async: true } }
+        );
+        this.createdExpenseIds = [...this.createdExpenseIds, ...createdExpenseIds];
+    },
+
+    /**
      * Reprend la logique du mixin d'Odoo (hr_expense/mixins/document_upload)
      * en changeant uniquement la destination finale. On ne peut pas
      * déléguer à `super` : il déclenche lui-même la navigation, et la
@@ -70,8 +91,12 @@ const expenseScanUpload = () => ({
      * @override
      */
     async onChangeFileInput() {
+        // Un seul ticket s'analyse dans sa fiche, qui en montre les étapes :
+        // on n'annonce ici que l'envoi.
         const closeNotification = this.notification.add(
-            _t("Lecture du ticket en cours…"),
+            this.fileInput.el.files.length === 1
+                ? _t("Envoi du justificatif…")
+                : _t("Lecture des tickets en cours…"),
             { type: "info", sticky: true }
         );
         // `createdExpenseIds` s'accumule sur toute la vie du contrôleur :

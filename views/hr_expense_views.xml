@@ -72,22 +72,21 @@
                 <attribute name="open_attachments">1</attribute>
             </xpath>
 
-            <!-- Bandeau de relecture, au même niveau que l'alerte de doublon -->
+            <!-- Les points à vérifier s'affichent sous leur champ (voir plus
+                 bas). Le bandeau ne sert plus qu'aux analyses faites avant
+                 ces indications, dont les points n'ont pas de place. -->
             <xpath expr="//div[@name='warning_duplicate_receipt_expense']" position="after">
+                <!-- Étapes de l'analyse, pendant qu'elle se fait : la fiche
+                     s'ouvre avant, et se remplit au fil de l'eau. -->
+                <widget name="expense_scan_progress"/>
                 <div class="alert alert-warning d-flex align-items-center gap-2"
                      role="alert" name="expense_scan_todo"
-                     invisible="not expense_scan_todo_pending">
+                     invisible="not expense_scan_todo_unplaced or state != 'draft'">
                     <i class="fa fa-search" role="img" aria-label="Analyse"/>
                     <span>
                         Ticket analysé. Vérifiez ces champs avant de soumettre :
                         <field name="scan_todo" class="fw-bold" nolabel="1" readonly="1"/>
                     </span>
-                </div>
-                <div class="alert alert-info d-flex align-items-center gap-2"
-                     role="status" name="expense_scan_done"
-                     invisible="scan_state != 'done' or state != 'draft'">
-                    <i class="fa fa-check" role="img" aria-label="Analyse"/>
-                    <span>Ticket analysé et champs pré-remplis. Relisez-les avant de soumettre.</span>
                 </div>
                 <div class="alert alert-danger d-flex align-items-center gap-2"
                      role="alert" name="expense_scan_error"
@@ -267,6 +266,9 @@
                            options="{'horizontal': True}" nolabel="1"
                            readonly="not is_editable"/>
                 </div>
+                <field name="expense_scan_hint_reinvoice" nolabel="1" colspan="2" readonly="1"
+                       invisible="not expense_scan_hint_reinvoice or not expense_scan_reinvoice"
+                       class="o_expense_scan_hint"/>
                 <!-- Le domaine vient d'un champ calculé : il dépend de qui
                      regarde, pas de la dépense. Un salarié n'y voit que ses
                      missions. Sans mission qui convienne, il dispose déjà de
@@ -308,7 +310,31 @@
                 <attribute name="invisible">expense_scan_own</attribute>
             </xpath>
 
+            <!-- ============================================================
+                 Indications sous les champs à vérifier
+                 ============================================================
+                 Là où l'on corrige, et seulement tant qu'il y a quelque chose
+                 à corriger : chacune s'efface dès que le champ change. -->
+            <xpath expr="//field[@name='expense_scan_nights']" position="after">
+                <field name="expense_scan_hint_date" nolabel="1" colspan="2" readonly="1"
+                       invisible="not expense_scan_hint_date" class="o_expense_scan_hint"/>
+            </xpath>
+            <xpath expr="//field[@name='total_amount_currency']/parent::div" position="after">
+                <field name="expense_scan_hint_total" nolabel="1" colspan="2" readonly="1"
+                       invisible="not expense_scan_hint_total" class="o_expense_scan_hint"/>
+            </xpath>
+            <xpath expr="//field[@name='tax_ids']/parent::div" position="after">
+                <field name="expense_scan_hint_tax" nolabel="1" colspan="2" readonly="1"
+                       invisible="not expense_scan_hint_tax or expense_scan_no_vat"
+                       class="o_expense_scan_hint"/>
+            </xpath>
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="expense_scan_hint_category" nolabel="1" colspan="2" readonly="1"
+                       invisible="not expense_scan_hint_category" class="o_expense_scan_hint"/>
+            </xpath>
+
             <xpath expr="//field[@name='nb_attachment']" position="after">
+                <field name="expense_scan_todo_unplaced" invisible="1"/>
                 <field name="scan_state" invisible="1"/>
                 <field name="expense_scan_todo_pending" invisible="1"/>
                 <field name="expense_scan_reinvoice" invisible="1"/>

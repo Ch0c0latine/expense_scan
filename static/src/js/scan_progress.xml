@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Yves Vallée
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<templates xml:space="preserve">
+
+    <t t-name="expense_scan.ScanProgress">
+        <div t-if="state.active" class="alert alert-info o_expense_scan_progress mb-2"
+             role="status" aria-live="polite">
+            <div class="fw-bold mb-1">
+                <i class="fa fa-circle-o-notch fa-spin me-2" role="img" aria-hidden="true"/>
+                Analyse du ticket — vous pouvez déjà saisir la description.
+            </div>
+            <ul class="list-unstyled mb-0 small">
+                <li t-foreach="steps" t-as="step" t-key="step.key"
+                    t-att-class="step.done ? 'text-body' : (step.current ? 'fw-bold' : 'text-muted')">
+                    <i class="fa fa-fw me-1" role="img" aria-hidden="true"
+                       t-att-class="step.done ? 'fa-check text-success'
+                                    : (step.current ? 'fa-spinner fa-pulse' : 'fa-circle-thin')"/>
+                    <t t-esc="step.label"/>
+                </li>
+            </ul>
+        </div>
+    </t>
+
+</templates>

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
+import json
 import logging
 import os
 import re
@@ -8,11 +9,13 @@ import time
 from collections import Counter
 from datetime import datetime, time as dtime, timedelta
 
+import psycopg2
 from pytz import timezone, utc
 
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo import tools
+from odoo.modules import module as odoo_module
 from odoo.tools import email_normalize, format_date
 
 from ..ocr import engines, parser, preprocess
@@ -32,14 +35,19 @@ class Stopwatch:
     relecture, catégorie — et à suivre la vitesse sur la durée.
     """
 
-    def __init__(self):
+    def __init__(self, on_lap=None):
         self.started = self.last = time.time()
         self.laps = []
+        # Appelé à la fin de chaque étape : c'est ce qui fait avancer la
+        # progression affichée sur la fiche pendant l'analyse.
+        self.on_lap = on_lap
 
     def lap(self, name):
         now = time.time()
         self.laps.append((name, now - self.last))
         self.last = now
+        if self.on_lap:
+            self.on_lap(name)
 
     def sum(self, *names):
         return sum(duration for name, duration in self.laps if name in names)
@@ -64,6 +72,7 @@ class HrExpense(models.Model):
             ('none', "Non analysé"),
             ('done', "Analysé"),
             ('partial', "À vérifier"),
+            ('running', "Analyse en cours"),
             ('error', "Échec de l'analyse"),
         ],
         string="Analyse du ticket",
@@ -79,6 +88,16 @@ class HrExpense(models.Model):
     #: points qu'on ne sait pas rouvrir automatiquement (date, catégorie…) :
     #: ils comptent comme toujours d'actualité, comme avant ce champ.
     expense_scan_todo_codes = fields.Char(readonly=True, copy=False)
+    #: Phrase d'aide de chaque point, en JSON : ``{code: phrase}``.
+    expense_scan_hints = fields.Text(readonly=True, copy=False)
+    #: Valeurs posées par l'analyse, en JSON, pour reconnaître une correction.
+    expense_scan_read_values = fields.Text(readonly=True, copy=False)
+    expense_scan_hint_date = fields.Char(compute='_compute_expense_scan_field_hints')
+    expense_scan_hint_total = fields.Char(compute='_compute_expense_scan_field_hints')
+    expense_scan_hint_tax = fields.Char(compute='_compute_expense_scan_field_hints')
+    expense_scan_hint_category = fields.Char(compute='_compute_expense_scan_field_hints')
+    expense_scan_hint_reinvoice = fields.Char(compute='_compute_expense_scan_field_hints')
+    expense_scan_todo_unplaced = fields.Boolean(compute='_compute_expense_scan_field_hints')
     expense_scan_todo_pending = fields.Boolean(
         string="Points à vérifier encore ouverts",
         compute='_compute_expense_scan_todo_pending', store=True,
@@ -161,8 +180,10 @@ class HrExpense(models.Model):
     # ------------------------------------------------------------------
 
     #: Un point est résolu quand son champ surveillé prend une valeur qui
-    #: lève le doute que le scan avait signalé. « static » (voir
-    #: _expense_scan_apply) n'y figure pas : il ne se résout jamais seul.
+    #: lève le doute que le scan avait signalé. Date, total, catégorie et
+    #: devise : dès que la valeur diffère de celle que l'analyse avait posée
+    #: — quelqu'un l'a corrigée. « static », des anciennes analyses, ne se
+    #: résout jamais seul.
     TODO_RESOLVED_WHEN = {
         'reinvoice': lambda expense: expense.reinvoice_mode != 'todo',
         'tax_category': lambda expense: bool(expense.tax_ids),
@@ -170,16 +191,89 @@ class HrExpense(models.Model):
         # façon, en saisissant soi-même le montant de TVA du ticket.
         'tax_amount': lambda expense: bool(expense.scan_tax_amount),
         'tax_total': lambda expense: bool(expense.total_amount_currency),
+        'date': lambda expense: expense._expense_scan_changed('date'),
+        'total': lambda expense: expense._expense_scan_changed('total_amount_currency'),
+        'category': lambda expense: expense._expense_scan_changed('product_id'),
+        'currency': lambda expense: expense._expense_scan_changed('currency_id'),
     }
+    #: Où s'affiche l'indication de chaque point : sous quel champ.
+    HINT_PLACES = {
+        'date': 'date',
+        'total': 'total', 'currency': 'total',
+        'tax_amount': 'tax', 'tax_total': 'tax', 'tax_category': 'tax',
+        'category': 'category',
+        'reinvoice': 'reinvoice',
+    }
+    #: Champs dont l'analyse retient la valeur posée, pour savoir ensuite si
+    #: quelqu'un l'a corrigée.
+    READ_VALUE_FIELDS = ('date', 'total_amount_currency', 'product_id', 'currency_id')
 
-    @api.depends('expense_scan_todo_codes', 'reinvoice_mode', 'tax_ids',
-                 'scan_tax_amount', 'total_amount_currency')
+    @api.depends('expense_scan_todo_codes', 'expense_scan_read_values', 'reinvoice_mode',
+                 'tax_ids', 'scan_tax_amount', 'total_amount_currency', 'date',
+                 'product_id', 'currency_id')
     def _compute_expense_scan_todo_pending(self):
         for expense in self:
-            codes = (expense.expense_scan_todo_codes or '').split(',')
-            expense.expense_scan_todo_pending = any(
-                not expense.TODO_RESOLVED_WHEN.get(code, lambda e: False)(expense)
-                for code in codes if code)
+            expense.expense_scan_todo_pending = bool(expense._expense_scan_open_codes())
+
+    def _expense_scan_open_codes(self):
+        """Codes des points encore à vérifier, dans leur ordre."""
+        self.ensure_one()
+        codes = [code for code in (self.expense_scan_todo_codes or '').split(',') if code]
+        return [code for code in codes
+                if not self.TODO_RESOLVED_WHEN.get(code, lambda e: False)(self)]
+
+    def _expense_scan_read_value(self, name):
+        """Valeur que l'analyse avait posée sur ce champ, ``None`` sinon."""
+        try:
+            return json.loads(self.expense_scan_read_values or '{}').get(name)
+        except ValueError:
+            return None
+
+    def _expense_scan_changed(self, name):
+        """Le champ a-t-il quitté la valeur posée par l'analyse ?"""
+        read = self._expense_scan_read_value(name)
+        if read is None:
+            return False
+        return read != self._expense_scan_comparable(name)
+
+    def _expense_scan_comparable(self, name):
+        """Valeur du champ sous une forme comparable à celle retenue."""
+        value = self[name]
+        if isinstance(value, models.BaseModel):
+            return value.id or False
+        if name == 'date':
+            return fields.Date.to_string(value) if value else False
+        if isinstance(value, float):
+            return round(value, 2)
+        return value
+
+    @api.depends('expense_scan_hints', 'expense_scan_todo_codes', 'expense_scan_read_values',
+                 'reinvoice_mode', 'tax_ids', 'scan_tax_amount', 'total_amount_currency',
+                 'date', 'product_id', 'currency_id', 'state')
+    def _compute_expense_scan_field_hints(self):
+        """Une indication sous chaque champ à vérifier, tant qu'il l'est.
+
+        Remplace le bandeau « vérifiez ces champs » : l'indication est là où
+        l'on corrige, et s'efface dès la correction — le formulaire recalcule
+        ces champs à chaque modification, avant même l'enregistrement.
+        """
+        for expense in self:
+            texts = {}
+            if expense.state == 'draft':
+                try:
+                    hints = json.loads(expense.expense_scan_hints or '{}')
+                except ValueError:
+                    hints = {}
+                for code in expense._expense_scan_open_codes():
+                    place = self.HINT_PLACES.get(code)
+                    if place and hints.get(code):
+                        texts.setdefault(place, []).append(hints[code])
+            for place in ('date', 'total', 'tax', 'category', 'reinvoice'):
+                expense['expense_scan_hint_%s' % place] = " ".join(texts.get(place, [])) or False
+            # Le bandeau ne reste que pour les points sans place attitrée :
+            # ceux des analyses faites avant les indications par champ.
+            expense.expense_scan_todo_unplaced = any(
+                code not in self.HINT_PLACES for code in expense._expense_scan_open_codes())
 
     # ------------------------------------------------------------------
     # TVA du ticket : le montant prime sur le taux
@@ -486,8 +580,99 @@ class HrExpense(models.Model):
             expenses.product_id = company.expense_scan_product_id
 
         if company.expense_scan_enabled:
-            expenses._expense_scan_run()
+            if self.env.context.get('expense_scan_async') and len(expenses) == 1:
+                # Un seul ticket, depuis l'interface : la fiche s'ouvre tout
+                # de suite, et c'est elle qui lance l'analyse en affichant
+                # sa progression (action_expense_scan_start).
+                expenses.write({'scan_state': 'running'})
+            else:
+                expenses._expense_scan_run()
         return expense_ids
+
+    # ------------------------------------------------------------------
+    # Analyse lancée par la fiche, avec sa progression
+    # ------------------------------------------------------------------
+
+    #: Délai au-delà duquel une analyse restée en attente est reprise par la
+    #: tâche planifiée : l'application a pu se fermer avant de la lancer.
+    PENDING_SCAN_MINUTES = 3
+
+    def action_expense_scan_start(self, specification=None):
+        """Analyse le ticket que la fiche vient d'ouvrir, étape par étape.
+
+        Chaque étape est annoncée à l'utilisateur au fil de l'eau, avec les
+        premières valeurs lues, pour que la fiche se remplisse pendant
+        l'analyse. Renvoie les valeurs finales au format de ``web_read``
+        (``specification`` : les champs de la fiche) ; la fiche les applique
+        sans toucher à ce que l'utilisateur a déjà modifié.
+
+        Le verrou sur la ligne garantit une seule analyse à la fois ; il
+        fait aussi patienter un enregistrement de la fiche jusqu'à la fin
+        de l'analyse, si bien que les corrections de l'utilisateur passent
+        toujours après elle.
+        """
+        self.ensure_one()
+        try:
+            with self.env.cr.savepoint():
+                self.env.cr.execute(
+                    "SELECT id FROM hr_expense WHERE id = %s FOR UPDATE NOWAIT", [self.id])
+        except psycopg2.errors.LockNotAvailable:
+            return {'started': False, 'busy': True}
+        self.invalidate_recordset(['scan_state'])
+        if self.scan_state != 'running':
+            return {'started': False, 'values': self._expense_scan_web_values(specification)}
+        self._expense_scan_run(force=True, progress=self._expense_scan_progress_sender())
+        return {'started': True, 'values': self._expense_scan_web_values(specification)}
+
+    def _expense_scan_web_values(self, specification):
+        """Valeurs de la fiche, au format qu'elle attend."""
+        if not specification:
+            return {}
+        return self.web_read(specification)[0]
+
+    def _expense_scan_progress_sender(self):
+        """Fonction qui annonce une étape de l'analyse à l'utilisateur.
+
+        Sur un curseur à part, validé aussitôt : une notification émise dans
+        la transaction de l'analyse n'arriverait qu'à sa fin, toutes étapes
+        confondues.
+        """
+        registry, uid = self.env.registry, self.env.uid
+        partner_id, expense_id = self.env.user.partner_id.id, self.id
+
+        def send(step, values=None):
+            if odoo_module.current_test:
+                return  # un test ne valide rien hors de sa transaction
+            try:
+                with registry.cursor() as cr:
+                    env = api.Environment(cr, uid, {})
+                    env['bus.bus']._sendone(
+                        env['res.partner'].browse(partner_id), 'expense_scan/progress',
+                        {'expense_id': expense_id, 'step': step, 'values': values or {}})
+            except Exception:  # noqa: BLE001 — la progression n'est qu'un confort
+                _logger.debug("Progression de l'analyse non envoyée", exc_info=True)
+        return send
+
+    def _expense_scan_preview(self, result):
+        """Premières valeurs lues, affichées avant la fin de l'analyse."""
+        values = {}
+        if result.value('date'):
+            values['date'] = fields.Date.to_string(result.value('date'))
+        if result.value('total'):
+            values['total_amount_currency'] = result.value('total')
+        if result.value('merchant'):
+            values['expense_scan_merchant'] = result.value('merchant')
+        return values
+
+    @api.model
+    def _cron_expense_scan_pending(self):
+        """Reprend les analyses restées en attente : fiche fermée trop tôt."""
+        limit = fields.Datetime.subtract(fields.Datetime.now(), minutes=self.PENDING_SCAN_MINUTES)
+        pending = self.search([('scan_state', '=', 'running'), ('write_date', '<', limit)])
+        for expense in pending:
+            expense._expense_scan_run(force=True)
+            if not odoo_module.current_test:
+                self.env.cr.commit()  # une analyse faite ne se perd pas avec la suivante
 
     def _get_employee_from_email(self, email_address):
         """Reconnaît aussi l'expéditeur à son adresse privée.
@@ -557,7 +742,16 @@ class HrExpense(models.Model):
         return True
 
     def action_expense_scan_done(self):
-        """Vérification terminée : on rend la main à la liste."""
+        """Vérification terminée : on rend la main à la liste.
+
+        « Terminé » vaut relecture : les indications encore affichées sous
+        les champs — une date jugée peu lisible et pourtant juste — n'ont
+        plus lieu d'être. Le libellé des points reste, pour mémoire.
+        """
+        self.filtered(lambda e: e.state == 'draft' and e.expense_scan_todo_codes).write({
+            'expense_scan_todo_codes': False,
+            'expense_scan_hints': False,
+        })
         return self._expense_scan_expense_list()
 
     def action_expense_scan_drop(self):
@@ -591,7 +785,7 @@ class HrExpense(models.Model):
     # Chaîne de traitement
     # ------------------------------------------------------------------
 
-    def _expense_scan_run(self, force=False, from_original=True):
+    def _expense_scan_run(self, force=False, from_original=True, progress=None):
         """Analyse les dépenses du recordset, sans jamais interrompre l'import.
 
         Un ticket illisible ou une dépendance manquante ne doit pas faire
@@ -611,7 +805,9 @@ class HrExpense(models.Model):
                 # point de sauvegarde permet d'écrire l'erreur ensuite, sur
                 # un curseur redevenu sain.
                 with self.env.cr.savepoint():
-                    result = expense._expense_scan_process(attachment)
+                    result = expense._expense_scan_process(attachment, progress=progress)
+                    if progress:
+                        progress('valeurs', expense._expense_scan_preview(result))
                     expense._expense_scan_apply(result, attachment)
             except Exception as error:  # noqa: BLE001
                 _logger.exception("Analyse du ticket impossible (dépense %s)", expense.id)
@@ -620,6 +816,7 @@ class HrExpense(models.Model):
                     'scan_message': str(error)[:250],
                     'scan_todo': False,
                     'expense_scan_todo_codes': False,
+                    'expense_scan_hints': False,
                 })
 
     def _expense_scan_source_attachment(self, from_original=True):
@@ -670,15 +867,19 @@ class HrExpense(models.Model):
             return converted
         return data
 
-    def _expense_scan_process(self, attachment):
-        """Pré-traite l'image, la lit, en extrait les champs."""
+    def _expense_scan_process(self, attachment, progress=None):
+        """Pré-traite l'image, la lit, en extrait les champs.
+
+        ``progress`` : appelé à la fin de chaque étape, avec son nom — voir
+        _expense_scan_progress_sender.
+        """
         self.ensure_one()
         ok, message = preprocess.dependencies_status()
         if not ok:
             raise UserError(message)
 
         company = self.company_id or self.env.company
-        timer = Stopwatch()
+        timer = Stopwatch(on_lap=progress)
         data = self._expense_scan_image_bytes(attachment)
         timer.lap('fichier')
 
@@ -995,37 +1196,60 @@ class HrExpense(models.Model):
         # « static » marque les points qu'on ne sait pas rouvrir tout
         # seuls : ils restent affichés tant que personne ne relance
         # l'analyse, comme avant ce mécanisme.
-        items = [(text, 'static') for text in parser.fields_to_check(result)]
+        #
+        # Chaque point porte aussi sa phrase d'aide, affichée sous le champ
+        # concerné (voir _compute_expense_scan_field_hints) : (libellé court,
+        # code, phrase).
+        items = []
+        for name, found, missing in (
+                ('date', _("Date peu lisible sur le ticket : vérifiez-la."),
+                 _("Date introuvable sur le ticket : saisissez-la.")),
+                ('total', _("Montant peu lisible sur le ticket : vérifiez-le."),
+                 _("Montant introuvable sur le ticket : saisissez-le."))):
+            for label in parser.fields_to_check(result, names=(name,)):
+                items.append((label, name, missing if result.value(name) is None else found))
         if not values.get('expense_scan_guessed_product_id') \
                 and self._expense_scan_category_is_free(company):
             # Rien de sûr sur le ticket : la catégorie par défaut n'est
             # qu'un point de départ.
-            items.append((_("Catégorie"), 'static'))
+            items.append((_("Catégorie"), 'category',
+                          _("Catégorie non reconnue sur le ticket : choisissez-la.")))
         code = result.value('currency')
         if code and code != company.currency_id.name and not values.get('currency_id') \
                 and result.confidence('currency') >= 0.5:
             # Ticket en zlotys, devise inactive : le montant serait compté
             # en euros sans que personne ne le voie.
-            items.append((_("Devise (%s à activer dans Odoo)", code), 'static'))
+            items.append((_("Devise (%s à activer dans Odoo)", code), 'currency',
+                          _("Ticket en %s : cette devise est à activer dans Odoo, "
+                            "sans quoi le montant compte en euros.", code)))
         if company.expense_scan_reinvoice and not values.get('project_id'):
             # Aucune mission ne couvre cette date, ou plusieurs : dans les
             # deux cas c'est au salarié de trancher — y compris pour dire
             # que le frais n'est pas refacturable. Résolu dès qu'il choisit.
-            items.append((_("À refacturer"), 'reinvoice'))
+            items.append((_("À refacturer"), 'reinvoice',
+                          _("Aucune mission trouvée pour cette date : "
+                            "indiquez si ce frais est à refacturer.")))
         check_category_tax = False
         target = self._expense_scan_target_product(values)
         if company.expense_scan_apply_tax and not self._expense_scan_product_no_vat(target):
             if foreign:
-                items.append((_("TVA étrangère (%s), non déduite", foreign), 'tax_amount'))
+                items.append((_("TVA étrangère (%s), non déduite", foreign), 'tax_amount',
+                              _("TVA étrangère (%s) : elle ne se déduit pas en France, "
+                                "laissez-la à zéro.", foreign)))
             elif not result.value('tax_amount'):
-                items.append((_("TVA (aucune sur le justificatif)"), 'tax_amount'))
+                items.append((_("TVA (aucune sur le justificatif)"), 'tax_amount',
+                              _("Aucune TVA lue sur le ticket : saisissez-la si elle y figure.")))
             elif not (values.get('total_amount_currency') or self.total_amount_currency):
                 items.append((_("TVA (%.2f lue, à reporter avec le total)",
-                              result.value('tax_amount')), 'tax_total'))
+                              result.value('tax_amount')), 'tax_total',
+                              _("TVA de %.2f lue : saisissez le total pour la reporter.",
+                                result.value('tax_amount'))))
             elif not values.get('scan_tax_amount'):
                 # Lecture écartée parce qu'elle dépasse le plafond du taux :
                 # c'est presque toujours un montant pris pour un autre.
-                items.append((_("TVA (lecture incompatible avec le taux)"), 'tax_amount'))
+                items.append((_("TVA (lecture incompatible avec le taux)"), 'tax_amount',
+                              _("La TVA lue ne colle pas avec le taux : "
+                                "saisissez le montant imprimé sur le ticket.")))
             else:
                 # La TVA lue ne pourra pas être comptabilisée tant qu'aucune
                 # taxe ne porte les tags fiscaux : vérifié après écriture,
@@ -1037,8 +1261,7 @@ class HrExpense(models.Model):
             'scan_duration': result.duration,
             'scan_score': round(result.mean_score * 100.0, 1),
             'scan_raw_text': result.raw_text,
-            'scan_todo': ", ".join(text for text, _code in items) if items else False,
-            'expense_scan_todo_codes': ",".join(code for _text, code in items) or False,
+            **self._expense_scan_todo_values(items),
             'scan_message': self._expense_scan_summary(result),
             'scan_detected_tax': self._expense_scan_tax_label(result),
         })
@@ -1055,18 +1278,31 @@ class HrExpense(models.Model):
         self.write(values)
         if reinvoice_values:
             self.sudo().write(reinvoice_values)
+        after = {}
         if check_category_tax and not self.tax_ids:
             # Résolu dès qu'une taxe est posée, à la main ou par un
             # changement de catégorie qui en apporte une.
-            items.append((_("Taxe (aucune sur la catégorie)"), 'tax_category'))
-            self.write({
-                'scan_state': 'partial',
-                'scan_todo': ", ".join(text for text, _code in items),
-                'expense_scan_todo_codes': ",".join(code for _text, code in items),
-            })
+            items.append((_("Taxe (aucune sur la catégorie)"), 'tax_category',
+                          _("Cette catégorie n'a pas de taxe : choisissez le taux "
+                            "pour que la TVA lue soit déduite.")))
+            after.update({'scan_state': 'partial', **self._expense_scan_todo_values(items)})
+        # Ce que l'analyse a posé, pour reconnaître ensuite une correction.
+        after['expense_scan_read_values'] = json.dumps({
+            name: self._expense_scan_comparable(name) for name in self.READ_VALUE_FIELDS})
+        self.write(after)
         if result.timer:
             result.timer.lap('écriture')
             _logger.info("expense_scan : durées dépense=%s %s", self.id, result.timer)
+
+    @staticmethod
+    def _expense_scan_todo_values(items):
+        """Champs qui décrivent les points à vérifier : libellés, codes, phrases."""
+        return {
+            'scan_todo': ", ".join(text for text, _code, _hint in items) or False,
+            'expense_scan_todo_codes': ",".join(code for _text, code, _hint in items) or False,
+            'expense_scan_hints': json.dumps({code: hint for _text, code, hint in items})
+            if items else False,
+        }
 
     def _expense_scan_foreign_tax(self, result, company):
         """Nom de la taxe si le ticket vient de l'étranger, sinon ``False``.

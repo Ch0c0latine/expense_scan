@@ -258,6 +258,7 @@ class HrExpense(models.Model):
                 'scan_message': str(error)[:250],
                 'scan_todo': False,
                 'expense_scan_todo_codes': False,
+                'expense_scan_hints': False,
             })
 
     def _expense_scan_split_off(self, group):

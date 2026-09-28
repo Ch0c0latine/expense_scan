@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Yves Vallée
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<odoo>
+
+    <!-- Une analyse attend que sa fiche la lance ; si l'application s'est
+         fermée entre-temps, cette tâche la reprend quelques minutes après. -->
+    <record id="ir_cron_expense_scan_pending" model="ir.cron">
+        <field name="name">Scan de tickets : reprendre les analyses en attente</field>
+        <field name="model_id" ref="hr_expense.model_hr_expense"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_expense_scan_pending()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+
+</odoo>

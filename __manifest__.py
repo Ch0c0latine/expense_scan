@@ -44,6 +44,7 @@ Module libre (LGPL-3). S'il vous rend service, vous pouvez offrir un café
         'report/expense_sheet_report.xml',
         'data/export_templates.xml',
         'data/expense_policies.xml',
+        'data/expense_scan_cron.xml',
         'views/hr_expense_views.xml',
         'views/hr_employee_views.xml',
         'views/expense_team_views.xml',

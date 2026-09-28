@@ -78,3 +78,65 @@ class TestTodoBanner(common.TransactionCase):
     def test_no_codes_means_nothing_pending(self):
         expense = self.expense(scan_state='done')
         self.assertFalse(expense.expense_scan_todo_pending)
+
+
+@tagged('post_install', '-at_install')
+class TestFieldHints(common.TransactionCase):
+    """Chaque point à vérifier s'affiche sous son champ et s'efface à la correction."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.employee = cls.env['hr.employee'].create({'name': "Camille Indication"})
+        cls.product = cls.env['product.product'].create(
+            {'name': "Repas indication", 'can_be_expensed': True})
+
+    def scanned(self, codes, hints, **values):
+        import json
+        from datetime import date
+        expense = self.env['hr.expense'].create(dict({
+            'name': "Ticket", 'employee_id': self.employee.id,
+            'product_id': self.product.id, 'total_amount_currency': 10.0,
+            'date': date(2026, 9, 10), 'scan_state': 'partial',
+            'expense_scan_todo_codes': codes, 'expense_scan_hints': json.dumps(hints),
+        }, **values))
+        expense.expense_scan_read_values = json.dumps({
+            name: expense._expense_scan_comparable(name)
+            for name in expense.READ_VALUE_FIELDS})
+        return expense
+
+    def test_date_hint_clears_once_the_date_is_corrected(self):
+        from datetime import date
+        expense = self.scanned('date', {'date': "Date peu lisible"})
+        self.assertEqual(expense.expense_scan_hint_date, "Date peu lisible")
+        self.assertFalse(expense.expense_scan_hint_total)
+        expense.date = date(2026, 9, 11)
+        self.assertFalse(expense.expense_scan_hint_date)
+        self.assertFalse(expense.expense_scan_todo_pending)
+
+    def test_total_and_currency_share_the_amount_line(self):
+        expense = self.scanned('total,currency', {'total': "Montant ?", 'currency': "Devise ?"})
+        self.assertEqual(expense.expense_scan_hint_total, "Montant ? Devise ?")
+        expense.total_amount_currency = 12.5
+        self.assertEqual(expense.expense_scan_hint_total, "Devise ?")
+
+    def test_category_hint_clears_once_another_is_chosen(self):
+        expense = self.scanned('category', {'category': "Catégorie ?"})
+        self.assertEqual(expense.expense_scan_hint_category, "Catégorie ?")
+        expense.product_id = self.env['product.product'].create(
+            {'name': "Autre indication", 'can_be_expensed': True})
+        self.assertFalse(expense.expense_scan_hint_category)
+
+    def test_done_clears_every_hint(self):
+        expense = self.scanned('date,category', {'date': "D", 'category': "C"})
+        expense.action_expense_scan_done()
+        self.assertFalse(expense.expense_scan_hint_date)
+        self.assertFalse(expense.expense_scan_hint_category)
+        self.assertFalse(expense.expense_scan_todo_pending)
+
+    def test_old_analyses_keep_their_banner(self):
+        """« static » : un point d'avant les indications, sans place attitrée."""
+        expense = self.scanned('static', {})
+        self.assertTrue(expense.expense_scan_todo_unplaced)
+        placed = self.scanned('date', {'date': "D"})
+        self.assertFalse(placed.expense_scan_todo_unplaced)
