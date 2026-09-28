@@ -16,6 +16,7 @@ from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo import tools
 from odoo.modules import module as odoo_module
+from odoo.service.model import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY
 from odoo.tools import email_normalize, format_date
 
 from ..ocr import engines, parser, preprocess
@@ -809,6 +810,12 @@ class HrExpense(models.Model):
                     if progress:
                         progress('valeurs', expense._expense_scan_preview(result))
                     expense._expense_scan_apply(result, attachment)
+            except PG_CONCURRENCY_EXCEPTIONS_TO_RETRY:
+                # Une autre requête a écrit la même ligne pendant l'analyse —
+                # la fiche qui s'ouvre pose par exemple un jeton d'accès sur
+                # la photo. Ce n'est pas un échec de l'analyse : Odoo rejoue
+                # toute la requête, analyse comprise, si on le laisse faire.
+                raise
             except Exception as error:  # noqa: BLE001
                 _logger.exception("Analyse du ticket impossible (dépense %s)", expense.id)
                 expense.write({

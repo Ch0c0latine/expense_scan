@@ -18,6 +18,7 @@ import logging
 import re
 
 from odoo import _, api, fields, models
+from odoo.service.model import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY
 
 _logger = logging.getLogger(__name__)
 
@@ -158,6 +159,8 @@ class HrExpense(models.Model):
             try:
                 with self.env.cr.savepoint():
                     pieces.append((attachment, self._expense_scan_process(attachment)))
+            except PG_CONCURRENCY_EXCEPTIONS_TO_RETRY:
+                raise  # rejoué par Odoo, voir _expense_scan_run
             except Exception as error:  # noqa: BLE001
                 _logger.exception(
                     "Justificatif illisible (dépense %s, pièce jointe %s)",
@@ -251,6 +254,8 @@ class HrExpense(models.Model):
         try:
             with self.env.cr.savepoint():
                 self._expense_scan_apply(merged, attachment)
+        except PG_CONCURRENCY_EXCEPTIONS_TO_RETRY:
+            raise  # rejoué par Odoo, voir _expense_scan_run
         except Exception as error:  # noqa: BLE001
             _logger.exception("Report impossible (dépense %s)", self.id)
             self.write({

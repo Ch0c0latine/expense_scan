@@ -67,3 +67,14 @@ class TestAsyncScan(common.TransactionCase):
         with patch.object(type(self.Expense), '_expense_scan_run', autospec=True) as run:
             self.Expense._cron_expense_scan_pending()
         run.assert_called_once()
+
+    def test_a_concurrent_write_is_retried_not_recorded_as_a_failure(self):
+        """La fiche écrit la photo pendant l'analyse : Odoo doit rejouer."""
+        import psycopg2
+        with patch.object(type(self.Expense), '_expense_scan_run', autospec=True):
+            expense = self.upload(expense_scan_async=True)
+        with patch.object(type(self.Expense), '_expense_scan_process', autospec=True,
+                          side_effect=psycopg2.errors.SerializationFailure("concurrent")):
+            with self.assertRaises(psycopg2.errors.SerializationFailure):
+                expense._expense_scan_run(force=True)
+        self.assertNotEqual(expense.scan_state, 'error')
