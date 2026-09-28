@@ -316,7 +316,7 @@ class TestCategoryRecognition(common.TransactionCase):
             return
         values = self.expense()._expense_scan_category_values(
             reading("KFC\nKFC Exempleville\n1 Rue Exemple\n00000 Exempleville\n"
-                    "Commande 43\n25/07/2025\nVotre commande\nMenu 15,90\n"
+                    "N 43\n25/07/2025\nMerci\nArticle 15,90\n"
                     "ZZCHAMBRE\nTOTAL 15,90"), self.company)
         self.assertEqual(values.get('product_id'), meal.id)
 

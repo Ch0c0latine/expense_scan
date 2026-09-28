@@ -265,7 +265,7 @@ class TestExpenseSheet(common.TransactionCase):
             default_period='custom').create({
                 'employee_ids': [(6, 0, self.employee.ids)],
                 'date_from': date(2026, 8, 5), 'date_to': date(2026, 8, 20),
-                'summary': False, 'receipts': True})
+                'scope': 'all', 'summary': False, 'receipts': True})
         wizard._onchange_period()
         self.assertEqual(wizard.expense_ids, inside)
         self.assertEqual(wizard.selected_count, 1)
