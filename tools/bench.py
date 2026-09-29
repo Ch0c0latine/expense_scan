@@ -5,14 +5,13 @@
 """Banc d'évaluation : rejoue l'analyse sur des textes déjà lus, sans Odoo.
 
 Un passage complet par Odoo prend de 35 à 60 minutes pour 700 justificatifs,
-presque tout en OCR. Or la plupart des changements touchent l'analyse — dates,
-totaux, TVA, enseigne, catégorie —, pas la lecture. Le banc rejoue donc
-seulement l'analyse, sur un instantané des mots lus : quelques secondes, et
-un compte rendu fichier par fichier de ce qui a changé.
+presque tout en OCR. La plupart des changements portent sur l'analyse (dates,
+totaux, TVA, enseigne, catégorie) et non sur la lecture. Le banc rejoue
+uniquement l'analyse, sur un instantané des mots lus : quelques secondes,
+avec un compte rendu fichier par fichier de ce qui a changé.
 
 Ni les justificatifs, ni l'instantané, ni les tableaux de vérité ne sont
-versionnés : ce sont des données personnelles. Le dépôt ne contient que
-l'outil.
+versionnés (données personnelles). Le dépôt ne contient que l'outil.
 
     # 1. produire l'instantané (à refaire quand la lecture OCR change) :
     #    déposer les justificatifs dans /tmp/expense_scan_corpus, créer
@@ -23,12 +22,13 @@ l'outil.
     python3 tools/bench.py SNAPSHOT --truth VERITE --baseline avant.json
 
 Le banc juge ce que lit l'analyseur (``tax`` : la TVA lue, avant les règles
-de l'application — catégorie sans TVA, devise étrangère —, donc plus sévère que
-ce qu'Odoo écrit) ; ses mesures se comparent entre elles, pas au journal.
+de l'application comme catégorie sans TVA ou devise étrangère, donc plus
+sévère que ce qu'Odoo écrit) ; ses mesures se comparent entre elles, pas au
+journal.
 
 La vérité est le tableau d'une note de frais, une ligne par dépense
 (``vsa01.txt`` pour les justificatifs ``vsa01_p003.jpg``). Sans elle, le
-banc ne dit pas si un résultat est juste, seulement s'il a changé.
+banc indique seulement si un résultat a changé, pas s'il est juste.
 
 Code de sortie : 1 si un résultat juste est devenu faux, 0 sinon.
 """
@@ -56,7 +56,7 @@ ROW = re.compile(r"^\s*(\d\d/\d\d/\d{4})\s+(%s)\s+((?:%s\s+)*)(\S.*?)\s+(%s) ([A
                  % (NUM, NUM, NUM))
 LOOSE_TOTAL = re.compile(r"(%s) ([A-Z]{3})\b" % NUM)
 
-#: Type de frais du tableau -> code(s) de notre catégorie.
+#: Type de frais du tableau -> code(s) de la catégorie correspondante.
 TYPE_MAP = {
     "HOTEL": ("HEBERGEMENT",), "RESTAURANT": ("REPAS",), "PARKING": ("PARK",),
     "PEAGE": ("PARK",), "TAXI_TRANSPORT": ("MOB_URB", "TRANSPORT"), "TRAIN": ("TRANSPORT",),
@@ -165,7 +165,7 @@ def judge(name, got, truth):
 
 
 def recall(results, truth):
-    """Chaque dépense à justificatif du tableau a-t-elle une image au bon total ?"""
+    """Vérifie que chaque dépense à justificatif du tableau a une image au bon total."""
     found = collections.Counter()
     lost = []
     for note, (rows, _loose) in sorted(truth.items()):
@@ -248,7 +248,7 @@ def print_comparison(baseline, results, verdicts):
 
 
 def print_fidelity(items, results):
-    """Le rejeu redit-il ce qu'Odoo avait écrit ? Sinon l'instantané est périmé."""
+    """Compare le rejeu à ce qu'Odoo avait écrit ; un écart signale un instantané périmé."""
     differ = collections.Counter()
     for name, item in items.items():
         odoo, got = item.get("odoo") or {}, results[name]

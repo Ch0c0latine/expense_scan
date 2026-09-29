@@ -3,7 +3,8 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Tickets typiques, tels que les lit l'OCR (enseignes réelles, coordonnées fictives).
 
-Chacun a révélé un défaut : ils le gardent corrigé.
+Chaque ticket correspond à un défaut corrigé ; les tests évitent sa
+réapparition.
 """
 from unittest.mock import patch
 
@@ -203,15 +204,15 @@ class TestRescanAfterApproval(common.TransactionCase):
 
 @tagged('post_install', '-at_install')
 class TestOrientationFallback(common.TransactionCase):
-    """Choix du quart de tour quand aucun sens de lecture ne s'impose.
+    """Choix du quart de tour sans opinion lisible.
 
-    Cas réel : un justificatif de train édité en PDF (SNCF Connect), mis en
-    page comme une facture plutôt qu'un ticket de caisse — l'enseigne en
-    logo (pas en texte) et un pied de page légal (SIRET, adresse) en bas de
-    page plutôt qu'en en-tête. Le solde de vote y est franchement négatif à
-    l'endroit (le pied de page fait illusion en en-tête) sans jamais devenir
-    franchement positif à l'envers, et l'ancien repli — le premier quart qui
-    couche bien le texte, sans regarder son propre avis — le retournait.
+    Exemple : justificatif de train en PDF (SNCF Connect), mis en page comme
+    une facture : enseigne en logo (pas en texte) et pied de page légal
+    (SIRET, adresse) en bas de page plutôt qu'en en-tête. Le solde de vote
+    est nettement négatif à l'endroit (le pied de page est pris pour un
+    en-tête) et jamais nettement positif à l'envers. L'ancien repli, qui
+    retenait le premier quart mettant le texte à l'horizontale sans tenir
+    compte de son propre avis, retournait le document.
     """
 
     def test_a_slightly_negative_original_orientation_is_kept(self):
@@ -221,8 +222,8 @@ class TestOrientationFallback(common.TransactionCase):
     def test_a_clean_positive_verdict_wins_immediately(self):
         Expense = self.env['hr.expense']
         self.assertEqual(Expense._expense_scan_pick_quarter([(0, 1), (2, -1)]), 0)
-        # L'ordre des candidats ne joue pas : un avis franc l'emporte
-        # toujours, même s'il n'est pas testé en premier.
+        # L'ordre des candidats est sans effet : un avis positif net
+        # l'emporte, même testé en dernier.
         self.assertEqual(Expense._expense_scan_pick_quarter([(0, -1), (2, 1)]), 2)
 
     def test_no_opinion_anywhere_keeps_the_first_candidate(self):
@@ -230,22 +231,22 @@ class TestOrientationFallback(common.TransactionCase):
         self.assertEqual(Expense._expense_scan_pick_quarter([(0, 0), (2, 0)]), 0)
 
     def test_every_candidate_negative_keeps_the_first_by_default(self):
-        """Cas dégénéré : aucune orientation n'est crédible. Faute de mieux."""
+        """Cas dégénéré : aucune orientation n'est crédible, la première est conservée."""
         Expense = self.env['hr.expense']
         self.assertEqual(Expense._expense_scan_pick_quarter([(0, -1), (2, -1)]), 0)
 
     class _FakeImage:
-        """De quoi satisfaire `image.shape[:2]`, sans dépendre d'OpenCV."""
+        """Fournit `image.shape[:2]` sans dépendre d'OpenCV."""
         def __init__(self, width, height):
             self.shape = (height, width, 3)
 
     def test_decide_180_false_never_flips_upside_down_or_not(self):
         """L'essai basse résolution ne corrige que debout/couché.
 
-        Sur le même texte qui fait pencher `reading_direction` vers -1 à
-        l'endroit (voir test_reading_direction_upside_down dans
-        test_parser.py), l'appeler avec ``decide_180=False`` ne bouge pas
-        le quart — c'est tout l'objet du repli introduit pour les PDF.
+        Sur le même texte qui donne `reading_direction` = -1 à l'endroit
+        (voir test_reading_direction_upside_down dans test_parser.py),
+        l'appel avec ``decide_180=False`` ne change pas le quart. C'est le
+        rôle du repli introduit pour les PDF.
         """
         upside_down_text = words_from_text("""
 6,80 euros PRIX TTC
@@ -257,9 +258,9 @@ ASF Lieu-dit Les Pins BP 10017
         Expense = self.env['hr.expense']
         self.assertEqual(
             Expense._expense_scan_quarters(upside_down_text, image, decide_180=False), 0)
-        # À décider (le comportement d'une photo), le même texte tranche
-        # bien pour le quart 2 : le repli n'aveugle pas la méthode, il la
-        # rend seulement muette à ce stade.
+        # Avec la décision à 180° activée (comportement d'une photo), le même
+        # texte donne bien le quart 2 : le repli ne désactive cette décision
+        # qu'à ce stade.
         self.assertEqual(
             Expense._expense_scan_quarters(upside_down_text, image, decide_180=True), 2)
 
@@ -277,10 +278,9 @@ class TestPdfExtraPages(common.TransactionCase):
     """Pages suivantes d'un PDF lues quand la première ne donne pas de total.
 
     Une facture de plusieurs pages porte parfois son total en pied de la
-    dernière. Les moteurs (conversion PDF, OCR) sont ici de purs faux : ce
-    qui est testé, c'est le raccordement — décalage des boîtes, plafond de
-    pages, page illisible qui n'arrête pas les autres —, pas la lecture
-    elle-même.
+    dernière. Les moteurs (conversion PDF, OCR) sont remplacés par des faux :
+    les tests portent sur le raccordement (décalage des boîtes, plafond de
+    pages, page illisible sans effet sur les autres), pas sur la lecture.
     """
 
     class _FakeEngine:
@@ -323,9 +323,9 @@ class TestPdfExtraPages(common.TransactionCase):
         self.assertEqual(len(words), 2)
         self.assertEqual(words[0], self.page1_words[0])
         added = words[1]
-        # Le mot de la page 2 garde sa position horizontale, mais atterrit
-        # nettement sous le dernier mot de la page 1 : jamais sur la même
-        # ligne, jamais mêlé à elle par `build_lines`.
+        # Le mot de la page 2 garde sa position horizontale mais se place
+        # nettement sous le dernier mot de la page 1, pour que `build_lines`
+        # ne le mêle pas à une ligne de la page 1.
         self.assertEqual(added.left, 0.0)
         self.assertGreater(added.top, self.page1_words[0].bottom + 500)
         self.assertEqual(engine.calls, ["page-2-image"])
@@ -352,8 +352,8 @@ class TestPdfExtraPages(common.TransactionCase):
              patch.object(preprocess, 'load_image', return_value="image"):
             words = self.expense._expense_scan_extra_pdf_pages(
                 self.attachment, engine, self.page1_words, Stopwatch())
-        # Page 1 (déjà là) + page 3 (lue) ; la page 2, injoignable, manque
-        # sans faire échouer les autres.
+        # Page 1 (déjà présente) et page 3 (lue) ; la page 2, illisible,
+        # manque sans faire échouer les autres.
         self.assertEqual(len(words), 2)
         self.assertEqual(len(engine.calls), 1)
 
@@ -385,8 +385,9 @@ class TestColumnInvoice(common.TransactionCase):
         self.assertEqual(result.value('tax_rate_max'), 20.0)
 
 
-# Restaurant à caisse enregistreuse : chaque article porte « (c° tva: 2) », un
-# renvoi au tableau des taux, suivi de son prix — qu'on prenait pour de la TVA.
+# Restaurant à caisse enregistreuse : chaque article porte « (c° tva: 2) »,
+# renvoi au tableau des taux, suivi de son prix, que le parseur prenait pour
+# de la TVA.
 RESTAURANT_CODES = """LE DRAGON GOURMAND
 12 RUE DE L'EXEMPLE
 VILLEFRANCHE D'ORBEC 99650 France
@@ -526,7 +527,7 @@ Total TTC 2,70 €""")
         self.assertTrue(misread)
 
     def test_default_category_is_not_history(self):
-        """Ce qu'on n'a pas su classer ne devient pas le classement d'une enseigne."""
+        """Une dépense non classée ne devient pas le classement d'une enseigne."""
         Expense = self.env['hr.expense']
         default = self.env.company.expense_scan_product_id or self.env['product.product'].create(
             {'name': "Divers historique zz", 'can_be_expensed': True})
@@ -782,7 +783,7 @@ Boutiquexemple.com - 1 rue Exemple - 00000 Exempleville"""),
         self.assertEqual(result.value('total'), 6.40)
 
     def test_name_and_street_merged_on_one_line(self):
-        """« Brasserie X 12, rue Y » : l'OCR a fondu le nom et l'adresse."""
+        """« Brasserie X 12, rue Y » : l'OCR a fusionné le nom et l'adresse."""
         result = reading("""
 Les 3 Exemples 9003, rue Exemple
 00000 Exempleville

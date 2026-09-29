@@ -2,19 +2,19 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Contrôle d'une seconde, sans Odoo ni base de données.
+"""Contrôle rapide, sans Odoo ni base de données : syntaxe et imports.
 
-À lancer **avant** chaque mise à jour du module. Il attrape les erreurs
-qui, sinon, ne se manifestent qu'au chargement du registre Odoo — et
-laissent alors l'instance entière hors service :
+À lancer avant chaque mise à jour du module. Il détecte les erreurs qui ne
+se manifestent qu'au chargement du registre Odoo et rendent l'instance
+inutilisable :
 
-* une faute de syntaxe dans n'importe quel fichier Python du module, y
-  compris les modèles, que seul Odoo importe ;
-* un paquet ``ocr`` qui ne s'importe plus, ou dont une dépendance de
-  traitement d'image est absente.
+* faute de syntaxe dans un fichier Python du module, y compris les modèles,
+  que seul Odoo importe ;
+* paquet ``ocr`` qui ne s'importe plus, ou dépendance de traitement d'image
+  absente.
 
-La lecture des tickets, elle, se vérifie par les tests du module (tickets
-de référence) et par le banc d'évaluation, ``tools/bench.py``.
+La lecture des tickets se vérifie par les tests du module (tickets de
+référence) et par le banc d'évaluation, ``tools/bench.py``.
 
     python3 tools/check.py            # syntaxe et imports
     python3 tools/check.py --strict   # exige aussi les dépendances d'image (interpréteur d'Odoo)
@@ -36,8 +36,8 @@ def check_syntax():
             if not name.endswith('.py'):
                 continue
             path = os.path.join(folder, name)
-            # Compilation en mémoire : `py_compile` veut écrire un fichier
-            # de bytecode, et refuse `/dev/null` depuis Python 3.14.
+            # Compilation en mémoire : `py_compile` écrit un fichier de bytecode
+            # et refuse `/dev/null` depuis Python 3.14.
             with open(path, encoding='utf-8') as handle:
                 source = handle.read()
             try:

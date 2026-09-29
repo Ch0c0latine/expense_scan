@@ -4,19 +4,17 @@
 <templates xml:space="preserve">
 
     <!--
-        Sur une note de frais scannée, le fil de discussion n'a aucun usage :
-        on vient y relire trois champs, pas converser. Ses trois boutons et
-        son historique détournent le regard de la seule chose à faire.
+        Sur une dépense scannée, le fil de discussion est inutile : la fiche
+        sert à relire quelques champs. Ses trois boutons et son historique
+        sont masqués.
 
-        Deux tentatives ont échoué avant celle-ci, et pour la même raison :
-        le compilateur de formulaire d'Odoo ne propage pas au DOM la classe
-        posée sur la balise <form> — il n'y reprend qu'une propriété du
-        composant — et le chatter est de toute façon compilé comme un frère
-        de la feuille, hors de portée de toute classe posée à l'intérieur.
+        Une classe posée sur la balise <form> ne convient pas : le compilateur
+        de formulaire d'Odoo ne la propage pas au DOM (il n'en reprend
+        qu'une propriété du composant), et le chatter est compilé comme un
+        frère de la feuille, hors de portée d'une classe posée à l'intérieur.
 
-        On agit donc là où l'information existe : dans le chatter, qui
-        reçoit le modèle qu'il accompagne. Les autres modèles ne voient
-        aucune différence.
+        Le correctif porte donc sur le chatter, qui reçoit le modèle auquel
+        il est rattaché. Les autres modèles ne sont pas modifiés.
     -->
     <t t-name="expense_scan.ChatterSlim" t-inherit="mail.Chatter" t-inherit-mode="extension">
         <xpath expr="//button[hasclass('o-mail-Chatter-sendMessage')]" position="attributes">
@@ -25,14 +23,14 @@
         <xpath expr="//button[hasclass('o-mail-Chatter-logNote')]" position="attributes">
             <attribute name="t-if">props.threadModel !== 'hr.expense'</attribute>
         </xpath>
-        <!-- Ce bouton porte déjà une condition : on la complète, on ne la
-             remplace pas. -->
+        <!-- Ce bouton a déjà une condition : elle est complétée, pas
+             remplacée. -->
         <xpath expr="//button[hasclass('o-mail-Chatter-activity')]" position="attributes">
             <attribute name="t-if">props.has_activities and props.threadModel !== 'hr.expense'</attribute>
         </xpath>
-        <!-- L'historique est rendu par un composant en `t-else` : on ne peut
-             pas y ajouter de condition. On marque son conteneur, et la
-             feuille de style s'en charge. -->
+        <!-- L'historique est rendu par un composant en `t-else`, sans
+             condition possible. Le conteneur reçoit une classe, et la
+             feuille de style masque l'historique. -->
         <xpath expr="//div[hasclass('o-mail-Chatter-content')]" position="attributes">
             <attribute name="t-att-class">props.threadModel === 'hr.expense' ? 'o_expense_scan_slim' : ''</attribute>
         </xpath>

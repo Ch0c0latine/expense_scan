@@ -4,18 +4,18 @@
  * « Nouveau » dans la barre des listes de dépenses, sur téléphone.
  *
  * Sous 768 px, web/static/src/search/control_panel/control_panel_mobile.css
- * ne garde visible que le premier bouton de la barre, et relègue tous les
- * suivants derrière « ⋮ » — en !important, qu'il reste de la place ou non.
- * Sur les dépenses, le premier est « Scanner » : « Nouveau » disparaissait,
- * alors que les deux tiennent sur une ligne jusqu'à 320 px de large.
+ * ne garde visible que le premier bouton de la barre et place les suivants
+ * dans le menu « ⋮ », en !important, même s'il reste de la place. Sur les
+ * dépenses, le premier est « Scanner » et « Nouveau » est masqué, alors que
+ * les deux tiennent sur une ligne jusqu'à 320 px de large.
  *
- * Le menu ne contenait plus alors que ces deux boutons, déjà visibles : on
- * masque aussi « ⋮ », mais seulement quand la barre ne porte rien d'autre —
- * un module qui y ajouterait un bouton retrouverait son menu.
+ * Le menu ne contient alors plus que ces deux boutons, déjà visibles :
+ * « ⋮ » est aussi masqué, mais seulement quand la barre ne contient rien
+ * d'autre (un module qui y ajoute un bouton conserve son menu).
  *
  * Fichier CSS et non SCSS, comme celui d'Odoo : le compilateur SCSS d'Odoo
- * digère mal les sélecteurs de niveau 4 imbriqués, et une compilation en
- * échec laisse toute l'interface blanche.
+ * gère mal les sélecteurs de niveau 4 imbriqués, et une compilation en échec
+ * laisse toute l'interface blanche.
  *
  * Spécificité : la règle d'Odoo compte trois classes en !important ; ces
  * sélecteurs en comptent quatre, plus un élément, pour l'emporter quel que

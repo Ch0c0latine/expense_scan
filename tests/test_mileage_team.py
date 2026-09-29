@@ -49,7 +49,7 @@ class TestExpenseScanMileage(common.TransactionCase):
             self.assertAlmostEqual(form.total_amount_currency, 6.36)
 
     def test_typed_price_survives_a_one_km_quantity(self):
-        """Le cas signalé : un kilomètre ramenait le prix à celui de la catégorie."""
+        """Avec une quantité d'un kilomètre, le prix saisi n'est pas remplacé par celui de la catégorie."""
         expense = self.expense()
         expense.price_unit = 0.7
         expense.quantity = 1
@@ -118,10 +118,10 @@ class TestExpenseScanTeam(common.TransactionCase):
     def test_account_and_analytic_fields_are_for_managers_only(self):
         """Compte et répartition analytique : pas une affaire de salarié.
 
-        Activer la comptabilité analytique de la société donne le droit
-        d'origine de ces deux champs à tout utilisateur interne — vérifié
-        ici en le simulant sur le salarié ordinaire, plutôt que de le
-        changer pour de vrai sur la société de test.
+        Activer la comptabilité analytique de la société donne à tout
+        utilisateur interne le droit d'origine sur ces deux champs. Le test
+        vérifie le cas en le simulant sur un salarié ordinaire, sans modifier
+        la société de test.
         """
         plain = new_test_user(
             self.env, login='plain_account', groups='base.group_user')
@@ -227,8 +227,8 @@ class TestExpenseScanCategories(common.TransactionCase):
             'name': "Âne", 'default_code': 'AAA', 'can_be_expensed': True, 'sequence': 999,
         })
         domain = [('id', 'in', (first | last).ids)]
-        # Par l'appel RPC, comme le client : sans @api.model, le domaine
-        # y était pris pour des identifiants.
+        # Appel par RPC, comme le fait le client : sans @api.model, le
+        # domaine serait pris pour des identifiants.
         from odoo.service.model import call_kw
         ordered = call_kw(
             self.env['product.product'], 'web_search_read',
@@ -239,7 +239,7 @@ class TestExpenseScanCategories(common.TransactionCase):
         self.assertEqual([r['id'] for r in unordered['records']], [last.id, first.id])
 
     def test_flat_rate_category_carries_no_tax(self):
-        """Un barème Urssaf n'a pas d'unité de distance : c'est la case qui compte."""
+        """Un barème Urssaf n'a pas d'unité de distance : seule la case « sans TVA » compte."""
         per_diem = self.env['product.product'].create({
             'name': "IGD Repas", 'can_be_expensed': True, 'standard_price': 20.7,
             'supplier_taxes_id': [(6, 0, self.tax.ids)],
@@ -324,7 +324,7 @@ class TestExpenseScanNightsAndReturn(common.TransactionCase):
         self.assertFalse(expense.expense_scan_nights_required)
 
     def test_done_returns_to_the_employee_list(self):
-        """Saisir pour Jules, puis « Terminé » : on revient chez Jules."""
+        """Saisie pour Jules puis « Terminé » : retour à la liste de Jules."""
         other = self.env['product.product'].create({'name': "Divers", 'can_be_expensed': True})
         expense = self.env['hr.expense'].create({
             'name': "Pour Jules", 'employee_id': self.employee.id, 'product_id': other.id,

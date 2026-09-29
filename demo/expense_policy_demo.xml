@@ -3,8 +3,7 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- Démonstration : un client qui impose ses propres règles sur les
-         missions qu'il confie, plus strictes que les bonnes pratiques. -->
+    <!-- Exemple : règles client plus strictes que les bonnes pratiques générales. -->
     <record id="demo_client" model="res.partner">
         <field name="name">Industries Exemple SA</field>
         <field name="is_company" eval="True"/>

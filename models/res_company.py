@@ -90,8 +90,8 @@ class ResCompany(models.Model):
              "taux, lui, reste celui de la catégorie de dépense.",
     )
     expense_scan_reinvoice = fields.Boolean(
-        # Le libellé nomme la refacturation, faute de quoi on cherche en vain
-        # ce mot-là dans les paramètres : c'est bien ce qu'on vient y activer.
+        # Le libellé cite la refacturation pour que le réglage soit trouvé par
+        # la recherche dans les paramètres.
         string="Refacturer les frais sur une mission",
         default=False,
         help="Ajoute un champ « À refacturer » sur les notes de frais et y "
@@ -139,12 +139,11 @@ class ResCompany(models.Model):
     )
 
     def _expense_scan_model_dir(self):
-        """Dossier de modèles, garanti inscriptible.
+        """Dossier des modèles OCR, créé s'il n'existe pas.
 
-        RapidOCR télécharge ses modèles à côté de son propre code, dans
-        site-packages : un chemin que l'utilisateur système « odoo » n'a
-        généralement pas le droit d'écrire. On le renvoie donc par défaut
-        dans le répertoire de données d'Odoo.
+        RapidOCR télécharge ses modèles dans site-packages, où l'utilisateur
+        système d'Odoo n'a généralement pas le droit d'écrire. Par défaut, le
+        répertoire de données d'Odoo est utilisé à la place.
         """
         self.ensure_one()
         path = self.expense_scan_model_dir or os.path.join(

@@ -3,8 +3,8 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Conservation du texte lu portée à 10 ans (Code de commerce, art. L123-22).
 
-Ne touche que les sociétés restées sur l'ancien défaut (365 jours) : une
-valeur choisie à la main, quelle qu'elle soit, n'est jamais écrasée.
+Ne modifie que les sociétés restées sur l'ancien défaut (365 jours) : une
+valeur choisie manuellement est conservée.
 """
 from odoo import SUPERUSER_ID, api
 

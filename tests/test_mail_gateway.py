@@ -32,7 +32,7 @@ class TestExpenseScanMailGateway(common.TransactionCase):
         return self.env['hr.expense']._get_employee_from_email(address)
 
     def test_work_email_still_wins(self):
-        """Le comportement d'Odoo reste premier servi."""
+        """L'e-mail professionnel reste prioritaire (comportement d'Odoo)."""
         self.assertEqual(self.sender("camille@societe.example"), self.employee)
 
     def test_private_email_is_recognised(self):
@@ -41,9 +41,10 @@ class TestExpenseScanMailGateway(common.TransactionCase):
     def test_address_is_matched_whole(self):
         """Un fragment ne désigne personne.
 
-        La recherche se fait en « ilike » pour rester rapide, mais la
-        comparaison finale porte sur l'adresse entière : sans quoi
-        « perso@exemple.fr » ramènerait n'importe quel homonyme.
+        La recherche utilise « ilike » pour rester rapide, puis la
+        comparaison finale porte sur l'adresse entière ; sinon
+        « perso@exemple.fr » désignerait tout salarié dont l'adresse
+        contient ce fragment.
         """
         self.assertFalse(self.sender("perso@exemple.fr"))
 
@@ -59,7 +60,7 @@ class TestExpenseScanMailGateway(common.TransactionCase):
         self.assertFalse(self.sender(""))
 
     def test_alias_lets_private_address_through(self):
-        """L'alias réservé aux employés ne renvoie plus l'adresse privée."""
+        """L'alias réservé aux employés ne refuse plus l'adresse privée."""
         from email.message import EmailMessage
         alias = self.env['mail.alias'].new({'alias_contact': 'employees'})
         Expense = self.env['hr.expense']

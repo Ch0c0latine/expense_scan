@@ -3,13 +3,13 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Pré-traitement de la photo : détection du ticket, recadrage, redressage.
 
-C'est l'étape qui fait la plus grande différence de qualité sur une photo
-prise à main levée : un moteur OCR, aussi bon soit-il, lit mal un ticket
-photographié de biais, penché et noyé au milieu d'une table.
+C'est l'étape qui a le plus d'effet sur la qualité de lecture d'une photo
+prise à main levée : un moteur OCR lit mal un ticket photographié de biais,
+penché ou noyé au milieu d'une table.
 
-Toutes les dépendances lourdes (OpenCV, Pillow, pdf2image) sont importées
-de façon défensive : si elles manquent, le module reste importable et la
-chaîne se rabat sur l'image brute, en le signalant.
+Les dépendances lourdes (OpenCV, Pillow, pdf2image) sont importées de façon
+défensive : si elles manquent, le module reste importable et la chaîne se
+rabat sur l'image brute, en le signalant.
 """
 import io
 import math
@@ -17,8 +17,8 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
-# Les erreurs d'import sont conservées plutôt qu'avalées : sur un serveur,
-# « module manquant » et « bibliothèque système absente » se soignent très
+# Les erreurs d'import sont conservées plutôt qu'ignorées : sur un serveur,
+# « module manquant » et « bibliothèque système absente » se corrigent très
 # différemment, et seule l'exception d'origine permet de les distinguer.
 _IMPORT_ERRORS = {}
 
@@ -42,10 +42,10 @@ except Exception as error:  # noqa: BLE001
 
 from .types import OcrWord, PreprocessInfo
 
-#: Plafonds d'entrée. Une pièce jointe arrive de n'importe où — un téléphone,
-#: la passerelle e-mail — et ce qu'elle déclare n'engage pas ce qu'elle
-#: coûte à décoder : une photo de 100 mégapixels ou une page PDF géante
-#: suffit à saturer un worker.
+#: Plafonds d'entrée. Une pièce jointe arrive de n'importe où (téléphone,
+#: passerelle e-mail) et ce qu'elle déclare n'indique pas ce qu'elle coûte à
+#: décoder : une photo de 100 mégapixels ou une page PDF géante suffit à
+#: saturer un worker.
 #:
 #: Taille du fichier, en octets.
 MAX_FILE_BYTES = 25 * 1024 * 1024
@@ -73,11 +73,11 @@ DETECTION_MAX_SIDE = 900
 # d'analyse plutôt qu'une photo penchée).
 MAX_DESKEW_ANGLE = 15.0
 # Le redressage mesuré sur le texte reconnu est bien plus fiable que
-# l estimation morphologique : il peut viser un ticket posé en diagonale.
+# l'estimation morphologique : il peut viser un ticket posé en diagonale.
 MAX_TEXT_DESKEW_ANGLE = 45.0
 MIN_DESKEW_ANGLE = 0.3
-# Écart maximal à l inclinaison médiane pour qu une boîte compte dans la
-# moyenne. Au-delà, c est du texte d arrière-plan, pas une ligne du ticket.
+# Écart maximal à l'inclinaison médiane pour qu'une boîte compte dans la
+# moyenne. Au-delà, c'est du texte d'arrière-plan, pas une ligne du ticket.
 SKEW_OUTLIER_TOLERANCE = 8.0
 
 
@@ -100,7 +100,7 @@ def _pdf_dpi(data, dpi):
         from pdf2image import pdfinfo_from_bytes
         size = pdfinfo_from_bytes(data, timeout=PDF_TIMEOUT).get('Page size', '')
         width, height = (float(part) for part in size.split(' pts')[0].split(' x '))
-    except Exception:  # noqa: BLE001 — sans la taille, on rend à la résolution demandée
+    except Exception:  # noqa: BLE001 - sans la taille, rendu à la résolution demandée
         return dpi
     if width <= 0 or height <= 0:
         return dpi
@@ -108,11 +108,11 @@ def _pdf_dpi(data, dpi):
 
 
 def pdf_page_count(data):
-    """Nombre de pages d'un PDF ; 1 si le compte ne se lit pas."""
+    """Nombre de pages d'un PDF. Renvoie 1 si le compte ne se lit pas."""
     try:
         from pdf2image import pdfinfo_from_bytes
         return max(1, int(pdfinfo_from_bytes(data, timeout=PDF_TIMEOUT).get('Pages', 1)))
-    except Exception:  # noqa: BLE001 — un PDF illisible se traite comme une seule page
+    except Exception:  # noqa: BLE001 - un PDF illisible compte pour une seule page
         return 1
 
 
@@ -140,7 +140,7 @@ def pdf_page_to_image_bytes(data, page, dpi=200):
 
 
 def pdf_first_page_to_image_bytes(data, dpi=200):
-    """Convertit la première page d'un PDF en PNG. Renvoie None si impossible."""
+    """Convertit la première page d'un PDF en PNG. Renvoie None en cas d'échec."""
     return pdf_page_to_image_bytes(data, 1, dpi=dpi)
 
 
@@ -215,7 +215,7 @@ def _find_quad_by_edges(gray, image_area):
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     edges = cv2.Canny(blurred, 50, 150)
     # Ferme les interruptions du contour : sur un ticket clair posé sur un
-    # fond clair, le bord n'est jamais détecté d'un seul tenant.
+    # fond clair, le bord n'est pas détecté d'un seul tenant.
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
     edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
 
@@ -259,11 +259,11 @@ SECOND_RECEIPT_RELATIVE_AREA = 0.40
 
 
 def _has_several_receipts(gray, image_area):
-    """Deux justificatifs côte à côte dans la même photo ?
+    """Indique si la photo contient deux justificatifs côte à côte.
 
-    Un ticket d'une borne et le reçu de carte de son paiement se photographient
-    ensemble. Recadrer sur le plus grand rognerait l'autre — et sa TVA, ou
-    son total : le recadrage sur le texte, lui, garde tout ce qui est lu.
+    Un ticket de borne et le reçu de carte de son paiement se photographient
+    ensemble. Recadrer sur le plus grand rognerait l'autre, avec sa TVA ou
+    son total. Le recadrage sur le texte reconnu garde tout ce qui est lu.
     """
     blurred = cv2.GaussianBlur(gray, (7, 7), 0)
     _, mask = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -279,7 +279,7 @@ def _has_several_receipts(gray, image_area):
 
 
 def detect_receipt_quad(image):
-    """Renvoie les 4 coins du ticket dans l'image, ou None."""
+    """Renvoie les 4 coins du ticket détecté, ou None."""
     height, width = image.shape[:2]
     scale = min(1.0, DETECTION_MAX_SIDE / float(max(height, width)))
     if scale < 1.0:
@@ -301,8 +301,8 @@ def detect_receipt_quad(image):
     area_ratio = _quad_area(quad) / float(small_area)
     if area_ratio < MIN_QUAD_AREA_RATIO or area_ratio > SKIP_CROP_AREA_RATIO:
         return None
-    # Les coordonnées ont été trouvées sur l'image réduite : on les remet à
-    # l'échelle pour découper dans la pleine résolution.
+    # Les coordonnées ont été trouvées sur l'image réduite : elles sont
+    # remises à l'échelle pour découper dans la pleine résolution.
     return quad / scale if scale < 1.0 else quad
 
 
@@ -344,8 +344,8 @@ def estimate_skew_angle(image):
 
     binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                    cv2.THRESH_BINARY_INV, 25, 15)
-    # Souder les caractères d'une même ligne pour raisonner sur des lignes
-    # entières plutôt que sur des lettres isolées.
+    # Les caractères d'une même ligne sont soudés pour raisonner sur des
+    # lignes entières plutôt que sur des lettres isolées.
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (max(width // 30, 9), 3))
     merged = cv2.dilate(binary, kernel, iterations=1)
 
@@ -354,8 +354,8 @@ def estimate_skew_angle(image):
     for contour in contours:
         (_, _), (rect_width, rect_height), angle = cv2.minAreaRect(contour)
         # OpenCV décrit une même ligne tantôt couchée, tantôt debout, et sa
-        # convention d'angle a changé d'une version à l'autre. On raisonne
-        # donc sur le grand côté, quelle que soit la façon dont il est
+        # convention d'angle a changé d'une version à l'autre. Le calcul
+        # porte donc sur le grand côté, quelle que soit la façon dont il est
         # rendu : c'est lui qui suit la ligne de texte. Filtrer sur la
         # « largeur » brute écartait à tort toute ligne décrite debout.
         length, thickness = max(rect_width, rect_height), min(rect_width, rect_height)
@@ -376,9 +376,9 @@ def deskew_image(image):
     """Redresse l'image et vérifie que le résultat est meilleur.
 
     La convention de signe de ``cv2.minAreaRect`` a changé entre les
-    versions d'OpenCV : plutôt que de parier dessus, on essaie la rotation
-    puis son opposée et on ne garde que celle qui réduit réellement
-    l'inclinaison mesurée. Si aucune n'améliore, on ne touche à rien.
+    versions d'OpenCV. La rotation est donc essayée dans les deux sens, et
+    seule celle qui réduit réellement l'inclinaison mesurée est conservée.
+    Si aucune n'améliore, l'image reste inchangée.
 
     Renvoie (image, angle appliqué).
     """
@@ -416,9 +416,9 @@ def rotate(image, angle):
 def rotate_words(words, matrix, angle=0.0):
     """Suit les boîtes de mots à travers la même rotation que l'image.
 
-    Sans ça, recadrer après un redressage se ferait sur des coordonnées
-    périmées — et c'est bien après le redressage qu'il faut recadrer, la
-    rotation agrandissant le cadre pour ne rien couper.
+    Sans cela, le recadrage après un redressage se ferait sur des coordonnées
+    périmées. Or c'est après le redressage qu'il faut recadrer, la rotation
+    agrandissant le cadre pour ne rien couper.
     """
     moved = []
     for word in words:
@@ -426,9 +426,9 @@ def rotate_words(words, matrix, angle=0.0):
         extents = _true_extents(word)
         if extents:
             # Le rectangle droit d'un mot penché déborde sur ses voisins ;
-            # tourner ses coins le gonflerait encore, et les lignes se
-            # mêleraient. On repart de la vraie longueur et de la vraie
-            # épaisseur du mot, qu'on replace à son nouvel angle.
+            # tourner ses coins le gonflerait encore et les lignes se
+            # mêleraient. Le calcul repart de la vraie longueur et de la
+            # vraie épaisseur du mot, replacées à son nouvel angle.
             length, thickness = extents
             cx, cy = (word.left + word.right) / 2.0, (word.top + word.bottom) / 2.0
             nx = matrix[0, 0] * cx + matrix[0, 1] * cy + matrix[0, 2]
@@ -456,9 +456,10 @@ def _true_extents(word, max_angle=30.0):
     """Longueur et épaisseur d'un mot penché, d'après son rectangle droit.
 
     Un mot de longueur L et d'épaisseur T, penché de a, occupe un rectangle
-    droit de L·cos a + T·sin a sur L·sin a + T·cos a. On inverse ces deux
-    relations. Au-delà de 30°, l'inversion devient instable (elle divise
-    par cos 2a) : ``None``, on garde alors les coins.
+    droit de L·cos a + T·sin a sur L·sin a + T·cos a. Ces deux relations
+    sont inversées ici. Au-delà de 30°, l'inversion devient instable (elle
+    divise par cos 2a) : la fonction renvoie ``None`` et les coins sont
+    conservés.
     """
     tilt = abs(word.angle)
     if tilt < 0.5 or tilt > max_angle:
@@ -474,12 +475,12 @@ def _true_extents(word, max_angle=30.0):
 
 
 def rotate_words_quarters(words, quarters, width, height):
-    """Fait subir aux boîtes le quart de tour qu'on applique à l'image.
+    """Fait subir aux boîtes le quart de tour appliqué à l'image.
 
-    Le texte, lui, ne bouge pas : le moteur redresse chaque boîte détectée
-    avant de la lire, quelle que soit son orientation dans la photo. Seuls
-    les emplacements sont à corriger — ce qui permet de choisir le quart de
-    tour après la lecture, sans en payer une seconde.
+    Le texte ne bouge pas : le moteur redresse chaque boîte détectée avant
+    de la lire, quelle que soit son orientation dans la photo. Seuls les
+    emplacements sont à corriger, ce qui permet de choisir le quart de tour
+    après la lecture, sans en payer une seconde.
 
     L'inclinaison n'est pas touchée non plus : elle est définie modulo 90°,
     et un quart de tour la laisse donc inchangée.
@@ -516,12 +517,12 @@ def horizontal_text_score(words):
     """Positif si les lignes sont couchées, négatif si elles sont debout.
 
     C'est le seul indice qui distingue vraiment un quart de tour : le
-    moteur redresse chaque boîte avant de la lire, donc il lit aussi bien
-    dans les quatre sens et comparer les scores de reconnaissance ne
-    tranche rien.
+    moteur redresse chaque boîte avant de la lire et lit donc aussi bien
+    dans les quatre sens, si bien que comparer les scores de reconnaissance
+    ne permet pas de trancher.
 
-    On lit la direction que le détecteur donne à chaque boîte, pondérée par
-    sa longueur — une ligne entière est un bien meilleur témoin qu'un
+    La direction que le détecteur donne à chaque boîte est lue, pondérée par
+    sa longueur : une ligne entière est un bien meilleur témoin qu'un
     fragment de quelques caractères. Une ligne à 45° pile ne vote pas.
     """
     total = 0.0
@@ -548,10 +549,10 @@ def rotate_quarters(image, quarters):
 def text_angle(word):
     """Inclinaison d'une boîte, ramenée modulo 90° dans (-45, 45].
 
-    Les boîtes portent la direction du texte dans (-90, 90], ce qui dit si
-    le ticket est couché ou debout. Pour le seul redressage, cette
-    distinction n'a pas lieu d'être — un quart de tour s'en charge — et
-    seul le résidu compte.
+    Les boîtes portent la direction du texte dans (-90, 90], ce qui indique
+    si le ticket est couché ou debout. Pour le seul redressage, cette
+    distinction est inutile (un quart de tour s'en charge) : seul le résidu
+    compte.
     """
     return ((word.angle + 45.0) % 90.0) - 45.0
 
@@ -560,12 +561,12 @@ def text_inliers(words, tolerance=SKEW_OUTLIER_TOLERANCE):
     """Boîtes dont l'inclinaison suit celle de l'ensemble.
 
     Deux usages : calculer un angle de redressage, et délimiter le ticket.
-    Dans les deux cas, les intrus faussent tout — texte imprimé au dos du
-    ticket et vu par transparence, caractères du décor, lecture douteuse.
-    Ils penchent n'importe comment, là où les lignes d'un même ticket
+    Dans les deux cas, les intrus faussent le résultat : texte imprimé au dos
+    du ticket et vu par transparence, caractères du décor, lecture douteuse.
+    Ils penchent n'importe comment, alors que les lignes d'un même ticket
     partagent une inclinaison à quelques degrés près.
 
-    La médiane sert de repère, insensible par construction à ces intrus, et
+    La médiane sert de repère, car elle est insensible à ces intrus, et
     l'écart à cette médiane les désigne.
     """
     if len(words) < 3:
@@ -582,12 +583,12 @@ def skew_angle_from_words(words, min_width_ratio=0.25, min_boxes=2):
     À préférer à :func:`skew_angle_from_lines` : PP-OCR ne détecte souvent
     qu'**une seule boîte par ligne de ticket**, ce qui ne laisse rien à
     régresser et faisait très largement sous-estimer l'angle. L'orientation
-    de chaque boîte, elle, est une donnée du détecteur.
+    de chaque boîte est une donnée du détecteur.
 
-    La perspective fait varier l'angle d'une ligne à l'autre : on prend
-    donc une moyenne plutôt qu'une valeur unique, pondérée par la longueur
-    des boîtes — une ligne entière donne un angle bien plus sûr qu'un
-    fragment de quelques caractères — et débarrassée de ses intrus.
+    La perspective fait varier l'angle d'une ligne à l'autre : la moyenne est
+    donc préférée à une valeur unique. Elle est pondérée par la longueur des
+    boîtes (une ligne entière donne un angle bien plus sûr qu'un fragment de
+    quelques caractères) et débarrassée de ses intrus.
     """
     oriented = text_inliers(words)
     if len(oriented) < min_boxes:
@@ -610,11 +611,12 @@ def skew_angle_from_lines(lines, min_words=3, min_lines=2):
     Bien plus fiable que :func:`estimate_skew_angle`, qui travaille sur
     l'image : une fois le ticket recadré, ses bords de papier entrent dans
     le cadre et sont eux aussi des droites marquées, souvent inclinées
-    autrement que l'impression. Ici on ne regarde que le texte.
+    autrement que l'impression. Ici, seul le texte est pris en compte.
 
     L'angle renvoyé se donne tel quel à :func:`rotate` : une rotation de
     ``a`` transforme une pente ``tan(θ)`` en ``tan(θ - a)``, donc corriger
-    revient à tourner de l'angle mesuré. Aucune ambiguïté de signe.
+    revient à tourner de l'angle mesuré. Le signe ne prête à aucune
+    ambiguïté.
     """
     angles = []
     for line in lines:
@@ -640,8 +642,8 @@ def skew_angle_from_lines(lines, min_words=3, min_lines=2):
 def shift_words(words, dy):
     """Décale des boîtes verticalement, sans toucher à leur orientation.
 
-    Sert à mettre bout à bout les mots de plusieurs images distinctes — les
-    pages d'un PDF — dans une seule liste, sans que leurs lignes se mêlent :
+    Sert à mettre bout à bout les mots de plusieurs images distinctes (les
+    pages d'un PDF) dans une seule liste, sans que leurs lignes se mêlent :
     chaque page reçoit un décalage assez grand pour rester sous la
     précédente.
     """
@@ -658,8 +660,7 @@ def shift_words(words, dy):
 def scale_words(words, factor):
     """Transpose des boîtes mesurées sur une image réduite vers la grande.
 
-    L'orientation, elle, ne change pas : une homothétie ne fait pas pencher
-    le texte.
+    L'orientation ne change pas : une homothétie n'incline pas le texte.
     """
     if factor == 1.0:
         return words
@@ -674,11 +675,10 @@ def scale_words(words, factor):
 def crop_to_text(image, words, margin_ratio=0.035, max_kept_ratio=0.94):
     """Recadre sur l'enveloppe du texte reconnu, avec une marge.
 
-    Complète la détection de contours plutôt qu'elle ne la remplace : un
+    Complète la détection de contours plutôt que de la remplacer : un
     ticket blanc posé sur une table claire n'a pas de bord détectable, mais
-    la position du texte, elle, est connue sans ambiguïté une fois l'OCR
-    passé. Et recadrer sur le texte ne peut pas couper une information
-    utile, par construction.
+    la position du texte est connue sans ambiguïté une fois l'OCR passé.
+    Recadrer sur le texte ne peut pas couper une information utile.
 
     Renvoie (image, recadrée ou non).
     """
@@ -719,9 +719,9 @@ def limit_size(image, max_side):
 def prepare(data, autocrop=True, deskew=True, max_side=0):
     """Chaîne complète : octets -> image BGR prête pour l'OCR.
 
-    Renvoie (image, PreprocessInfo). Ne lève jamais pour une raison
-    cosmétique : si le recadrage échoue, on rend l'image d'origine et on le
-    dit dans PreprocessInfo.
+    Renvoie (image, PreprocessInfo). Ne lève pas d'exception pour une
+    raison cosmétique : si le recadrage échoue, l'image d'origine est rendue
+    et l'échec est indiqué dans PreprocessInfo.
 
     ``max_side`` vaut zéro par défaut, donc aucune réduction : le moteur
     ramène lui-même l'image à sa taille de travail, et réduire ici avant de

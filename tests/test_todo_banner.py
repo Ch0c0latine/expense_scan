@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Le bandeau de relecture disparaît au fil de l'eau, sans nouveau scan."""
+"""Le bandeau de relecture disparaît au fur et à mesure des corrections, sans nouveau scan."""
 from odoo.tests import common, tagged
 
 
@@ -22,7 +22,7 @@ class TestTodoBanner(common.TransactionCase):
         }, **values))
 
     def test_reinvoice_flag_clears_once_decided(self):
-        """« À refacturer » signalé au scan disparaît dès qu'on tranche."""
+        """« À refacturer » signalé au scan : disparaît une fois la décision prise."""
         expense = self.expense(
             scan_state='partial', scan_todo="À refacturer",
             expense_scan_todo_codes='reinvoice', reinvoice_mode='todo')
@@ -44,8 +44,8 @@ class TestTodoBanner(common.TransactionCase):
             ('amount_type', '=', 'percent')], limit=1) or self.env['account.tax'].create({
                 'name': "Achat bandeau", 'amount': 20.0,
                 'amount_type': 'percent', 'type_tax_use': 'purchase'})
-        # Sans taxe par défaut sur la catégorie : c'est justement le cas
-        # que le code « tax_category » signale.
+        # Catégorie sans taxe par défaut : cas signalé par le code
+        # « tax_category ».
         bare = self.env['product.product'].create({
             'name': "Sans taxe bandeau", 'can_be_expensed': True,
             'supplier_taxes_id': [(5, 0, 0)]})
@@ -58,7 +58,7 @@ class TestTodoBanner(common.TransactionCase):
         self.assertFalse(expense.expense_scan_todo_pending)
 
     def test_static_points_never_clear_on_their_own(self):
-        """Date, catégorie, devise : rien ne les corrige tout seuls."""
+        """Date, catégorie, devise : le signalement ne disparaît pas de lui-même."""
         expense = self.expense(
             scan_state='partial', scan_todo="Catégorie",
             expense_scan_todo_codes='static')
@@ -68,7 +68,7 @@ class TestTodoBanner(common.TransactionCase):
         self.assertTrue(expense.expense_scan_todo_pending)
 
     def test_several_points_all_need_resolving(self):
-        """Le bandeau reste tant qu'un seul point est encore ouvert."""
+        """Le bandeau reste affiché tant qu'un point reste ouvert."""
         expense = self.expense(
             scan_state='partial', scan_todo="À refacturer, Catégorie",
             expense_scan_todo_codes='reinvoice,static', reinvoice_mode='todo')
@@ -135,7 +135,7 @@ class TestFieldHints(common.TransactionCase):
         self.assertFalse(expense.expense_scan_todo_pending)
 
     def test_old_analyses_keep_their_banner(self):
-        """« static » : un point d'avant les indications, sans place attitrée."""
+        """Code « static » : point antérieur aux indications par champ, sans emplacement attitré."""
         expense = self.scanned('static', {})
         self.assertTrue(expense.expense_scan_todo_unplaced)
         placed = self.scanned('date', {'date': "D"})

@@ -109,7 +109,7 @@
                     </div>
                 </setting>
 
-                <!-- Discret, en dernier : le module est libre, le soutien aussi. -->
+                <!-- En dernier : le soutien est facultatif. -->
                 <setting id="expense_scan_support_setting" string="Soutenir Expense Scan"
                          help="Module libre, développé sur le temps de son auteur">
                     <div class="content-group">

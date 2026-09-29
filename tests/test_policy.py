@@ -87,7 +87,7 @@ class TestExpensePolicy(common.TransactionCase):
         dinner = self.expense("Repas soir", 45.0)
         self.assertIn("Dîner 40", dinner.expense_scan_policy_alert)
         self.assertIn("Journée 60", dinner.expense_scan_policy_alert)
-        # Le déjeuner, sous son plafond, apprend le dépassement du jour.
+        # Le déjeuner, sous son plafond, signale aussi le dépassement du jour.
         self.assertIn("Journée 60", lunch.expense_scan_policy_alert)
 
     def test_meal_without_time_is_a_suspicion(self):

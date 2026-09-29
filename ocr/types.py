@@ -20,8 +20,8 @@ class OcrWord:
     top: float
     right: float
     bottom: float
-    #: Inclinaison de la ligne en degrés, quand le moteur la donne. PP-OCR
-    #: détecte des quadrilatères orientés ; Tesseract, lui, ne rend que des
+    #: Inclinaison de la ligne en degrés, quand le moteur la fournit. PP-OCR
+    #: détecte des quadrilatères orientés ; Tesseract ne rend que des
     #: rectangles droits et laisse donc cette valeur à zéro.
     angle: float = 0.0
 

@@ -3,9 +3,7 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo noupdate="1">
 
-    <!-- Modèle de base : toutes les valeurs utiles, dans un classeur vierge
-         fabriqué à l'installation. À télécharger, mettre aux couleurs de
-         l'entreprise, puis redéposer — ou à dupliquer pour un client. -->
+    <!-- Modèle de base : classeur vierge livré à l'installation ; télécharger, adapter, redéposer. -->
     <record id="export_template_basic" model="expense.scan.export.template">
         <field name="name">Fiche de frais (modèle de base)</field>
         <field name="sequence">1</field>

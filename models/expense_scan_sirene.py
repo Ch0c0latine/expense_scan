@@ -3,17 +3,17 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Activité des établissements français, d'après la base Sirene de l'INSEE.
 
-Beaucoup de tickets impriment le SIRET du commerçant, rarement son code
-APE. La base Sirene fait le lien : à chaque établissement, son activité
-principale. On n'en garde qu'une petite partie — les établissements actifs
-dont l'activité correspond à une famille de frais (hôtels, restaurants,
-stations-service, parkings…) —, soit quelques centaines de milliers de
+Beaucoup de tickets impriment le SIRET du commerçant, rarement son code APE
+(NAF). La base Sirene associe à chaque établissement son activité
+principale. Seule une partie est conservée : les établissements actifs dont
+l'activité correspond à une famille de frais (hôtels, restaurants,
+stations-service, parkings, etc.), soit quelques centaines de milliers de
 lignes au lieu de plusieurs dizaines de millions.
 
 La base est publiée chaque mois sur data.gouv.fr, sous licence ouverte.
-Son import se lance à la main ou par une tâche planifiée du système, hors
-d'Odoo : il dure plusieurs minutes, bien au-delà de ce qu'un processus
-Odoo tolère. Le scan, lui, ne fait qu'une recherche en base, sans réseau.
+L'import se lance à la main ou par une tâche planifiée du système, hors
+d'Odoo : il dure plusieurs minutes, plus qu'un processus Odoo n'en tolère.
+Le scan ne fait qu'une recherche en base, sans réseau.
 """
 import csv
 import io
@@ -76,9 +76,9 @@ class ExpenseScanSirene(models.Model):
     def _expense_scan_import(self, path=None):
         """Remplace la table par le contenu du fichier Sirene téléchargé.
 
-        Lecture en flux : l'archive n'est jamais décompressée sur le disque,
-        et la table n'est vidée qu'une fois le fichier entièrement lu — un
-        fichier tronqué laisse l'ancienne table en place.
+        Lecture en flux : l'archive n'est pas décompressée sur le disque. La
+        table n'est vidée qu'une fois le fichier entièrement lu : un fichier
+        tronqué laisse l'ancienne table en place.
         """
         path = path or self._expense_scan_default_path()
         cr = self.env.cr
@@ -105,9 +105,9 @@ class ExpenseScanSirene(models.Model):
                 state_at = column['etatAdministratifEtablissement']
                 code_at = column['activitePrincipaleEtablissement']
                 kind_at = column.get('nomenclatureActivitePrincipaleEtablissement')
-                # La NAF 2025 remplace peu à peu la rév. 2 : sa colonne est
-                # lue quand elle existe, les classes qui nous concernent
-                # figurant dans la table des familles.
+                # La NAF 2025 remplace peu à peu la rév. 2 : sa colonne est lue
+                # quand elle existe, si la classe figure dans la table des
+                # familles.
                 naf25_at = column.get('activitePrincipaleNAF25Etablissement')
                 for row in reader:
                     read += 1
@@ -132,7 +132,7 @@ class ExpenseScanSirene(models.Model):
             INSERT INTO expense_scan_sirene (siret, naf)
             SELECT siret, naf FROM expense_scan_sirene_load
         """)
-        # La table a changé sous l'ORM : son cache ne vaut plus rien.
+        # La table a été modifiée hors ORM : le cache est invalidé.
         self.env.invalidate_all()
         parameters = self.env['ir.config_parameter'].sudo()
         parameters.set_param('expense_scan.sirene_rows', str(kept))

@@ -6,14 +6,14 @@
 Les indices, du plus sûr au moins sûr :
 
 1. **L'historique partagé des enseignes.** Une dépense soumise porte son
-   enseigne et sa catégorie, confirmées par le salarié. La suivante qui
-   vient de la même enseigne prend la même catégorie, quel que soit le
-   salarié. L'enseigne telle que l'OCR l'a lue est gardée à part : un logo
-   se lit mal, mais toujours de la même façon, et « Rchan » renvoie ainsi à
-   Auchan dès qu'une personne a corrigé une fois. C'est l'indice le plus
-   lourd, sans être un veto : un ticket qui dit nettement autre chose
+   enseigne et sa catégorie, confirmées par le salarié. La dépense suivante
+   de la même enseigne prend la même catégorie, quel que soit le salarié.
+   L'enseigne telle que l'OCR l'a lue est conservée à part : un logo est
+   mal lu, mais de façon stable, donc « Rchan » renvoie à Auchan dès qu'une
+   personne l'a corrigé une fois. C'est l'indice de plus fort poids, sans
+   être éliminatoire : un ticket qui indique nettement une autre catégorie
    l'emporte.
-2. Viennent s'y ajouter :
+2. Indices complémentaires :
 
    * le **code d'activité** imprimé (APE, MCC) ou retrouvé dans la base
      Sirene grâce au SIRET ;
@@ -22,11 +22,11 @@ Les indices, du plus sûr au moins sûr :
    * une **marque connue** en tête du ticket, d'après le Name Suggestion
      Index d'OpenStreetMap.
 
-Sans certitude, rien n'est choisi : la catégorie par défaut reste, et le
-champ est signalé à la vérification. Les forfaits — kilométrage, barèmes —
-ne sont jamais proposés : ils ne naissent pas d'un ticket. Ils se
-reconnaissent à leur prix fixé ou à leur unité de distance ; une catégorie
-simplement « sans TVA », comme l'hôtel, reste proposable.
+Sans certitude, aucune catégorie n'est choisie : la catégorie par défaut
+est conservée et le champ est signalé à la vérification. Les forfaits
+(kilométrage, barèmes) ne sont pas proposés : ils ne viennent pas d'un
+ticket. Ils se reconnaissent à leur prix fixé ou à leur unité de distance ;
+une catégorie simplement « sans TVA », comme l'hôtel, reste proposable.
 """
 import base64
 import logging
@@ -45,8 +45,8 @@ _logger = logging.getLogger(__name__)
 #: pour qu'elle s'impose à la suivante.
 HISTORY_MAJORITY = 0.6
 #: Poids de l'historique d'une enseigne lue à l'identique, puis d'une
-#: enseigne seulement ressemblante : décisif seul, mais pas contre un
-#: ticket qui dit nettement autre chose.
+#: enseigne seulement ressemblante : suffisant seul, mais battu par un
+#: ticket qui indique nettement une autre catégorie.
 HISTORY_WEIGHT = 5.0
 HISTORY_FUZZY_WEIGHT = 3.0
 #: États où la catégorie a été confirmée par quelqu'un.
@@ -71,9 +71,9 @@ class ProductTemplate(models.Model):
     def _expense_scan_seed_keywords(self):
         """Propose des mots aux catégories qui n'en ont pas.
 
-        Chaque famille de frais — hôtel, repas, carburant… — ne sert qu'une
-        catégorie, la première qui s'y reconnaît. Une fiche déjà remplie,
-        même par un seul mot, n'est jamais touchée.
+        Chaque famille de frais (hôtel, repas, carburant…) est affectée à une
+        seule catégorie. Une fiche déjà remplie, même d'un seul mot, n'est
+        pas modifiée.
         """
         to_fill = [(template, family)
                    for template, family in self._expense_scan_family_templates().items()
@@ -109,7 +109,7 @@ class ProductTemplate(models.Model):
 
         Mêmes couleurs et même trait que les icônes qu'Odoo fournit pour ses
         catégories d'origine. Une catégorie qui a déjà une image, choisie
-        par quelqu'un ou livrée par Odoo, n'est jamais touchée.
+        par un utilisateur ou livrée par Odoo, n'est pas modifiée.
         """
         seeded = 0
         for template in self.search([('can_be_expensed', '=', True), ('image_1920', '=', False)]):
@@ -128,8 +128,8 @@ class ProductTemplate(models.Model):
     def _expense_scan_add_keywords(self, additions):
         """Ajoute des mots, par famille, aux catégories qui les servent.
 
-        Seuls les mots absents sont ajoutés, à la fin : ce que chacun a
-        retiré ou ajouté sur la fiche reste tel quel.
+        Seuls les mots absents sont ajoutés, à la fin : les modifications
+        déjà faites sur la fiche sont conservées.
         """
         for template, family in self._expense_scan_family_templates().items():
             words = additions.get(family)
@@ -144,7 +144,7 @@ class ProductTemplate(models.Model):
     def _expense_scan_remove_keywords(self, removals):
         """Retire des mots, par famille, des catégories qui les servent.
 
-        Seuls ces mots-là partent ; les autres gardent leur écriture et
+        Seuls ces mots sont retirés ; les autres gardent leur écriture et
         leur ordre.
         """
         for template, family in self._expense_scan_family_templates().items():
@@ -159,10 +159,10 @@ class ProductTemplate(models.Model):
 
     @api.model
     def _expense_scan_family_templates(self):
-        """``{catégorie: famille}`` — la première catégorie active de chaque famille.
+        """``{catégorie: famille}`` : la première catégorie active de chaque famille.
 
-        Les catégories archivées n'entrent pas en compte : l'ancienne
-        « Travel & Accommodation » d'Odoo prenait sinon la place de l'hôtel.
+        Les catégories archivées sont ignorées : sinon l'ancienne
+        « Travel & Accommodation » d'Odoo prendrait la place de l'hôtel.
         """
         distances = self.env['uom.uom']
         for xmlid in ('uom.product_uom_km', 'uom.product_uom_mile'):
@@ -171,9 +171,9 @@ class ProductTemplate(models.Model):
         result = {}
         taken = set()
         for template in templates:
-            # Les forfaits ont un prix fixé ; le kilométrage, une distance.
-            # « Sans TVA » n'en fait pas un forfait : l'hôtel et le train
-            # n'ont pas de TVA récupérable, mais bien un ticket.
+            # Forfait : prix fixé ; kilométrage : unité de distance. Une
+            # catégorie « sans TVA » n'est pas un forfait (hôtel, train : pas
+            # de TVA récupérable, mais un ticket).
             if template.standard_price or template.uom_id in distances:
                 continue
             labels = [template.default_code, template.name]
@@ -238,18 +238,15 @@ class HrExpense(models.Model):
     def _expense_scan_known_merchants(self):
         """Enseignes déjà classées : ``{clé: {'names': …, 'products': …}}``.
 
-        Lu en droits élevés : l'historique est commun à toute l'équipe, et un
-        salarié ne voit que ses propres dépenses. Seuls en sortent des noms
-        d'enseignes et des catégories, rien de ce que la dépense contenait.
+        Lu en droits élevés : l'historique est commun à l'équipe, alors qu'un
+        salarié ne voit que ses propres dépenses. Seuls des noms d'enseignes
+        et des catégories sont renvoyés.
 
-        Cloisonné par société : les habitudes de l'une n'orientent pas le
-        classement d'une autre, même si le filtre de droits est levé ici.
+        Limité à la société : l'historique d'une société n'influence pas le
+        classement d'une autre, bien que le filtre de droits soit levé ici.
 
-        Cloisonné par société : les habitudes de l'une n'orientent pas le
-        classement d'une autre, même si le filtre de droits est levé ici.
-
-        La dépense analysée n'en fait pas partie : relancée après
-        approbation, elle se reconnaissait elle-même et ne corrigeait plus rien.
+        La dépense analysée est exclue : relancée après approbation, elle
+        se reconnaîtrait elle-même et ne corrigerait plus rien.
         """
         companies = self.company_id or self.env.company
         groups = self.sudo()._read_group(
@@ -277,10 +274,10 @@ class HrExpense(models.Model):
     # ------------------------------------------------------------------
 
     def _expense_scan_category_is_free(self, company):
-        """La catégorie peut-elle encore être choisie par l'analyse ?
+        """Indique si la catégorie peut encore être choisie par l'analyse.
 
-        Oui tant que personne ne l'a choisie : vide, catégorie par défaut,
-        ou celle que l'analyse avait elle-même proposée.
+        Vrai tant que personne ne l'a choisie : vide, catégorie par défaut,
+        ou celle que l'analyse a proposée.
         """
         self.ensure_one()
         product = self.product_id
@@ -295,7 +292,7 @@ class HrExpense(models.Model):
         return self.product_id
 
     def _expense_scan_product_no_vat(self, product):
-        """Cette catégorie exclut-elle toute TVA récupérable ?"""
+        """Indique si cette catégorie exclut toute TVA récupérable."""
         if not product:
             return False
         distances = self.env['uom.uom']
@@ -333,7 +330,7 @@ class HrExpense(models.Model):
         }
 
     def _expense_scan_reason(self, reason, number=None):
-        """Phrase qui dit pourquoi un indice de catégorie a été retenu.
+        """Phrase qui explique l'indice de catégorie retenu.
 
         ``reason`` : ``(nature, détail)``, tel que le rend ``categorize.score``.
         """
@@ -384,10 +381,10 @@ class HrExpense(models.Model):
                                 for weight, reason in found]
                    for product_id, found in signals.items()}
 
-        # La catégorie par défaut ne dit rien de l'enseigne : c'est celle
-        # que garde une dépense qu'on n'a pas su classer. La compter comme
-        # un classement apprenait à la reproduire — un restaurant scanné
-        # quand la reconnaissance échouait restait ensuite « Dépenses ».
+        # La catégorie par défaut n'indique rien sur l'enseigne : c'est celle
+        # d'une dépense non classée. La compter dans l'historique la ferait
+        # se reproduire (un restaurant scanné pendant un échec de
+        # reconnaissance resterait « Dépenses »).
         history = Counter(known[key]['products']) if key else Counter()
         history.pop(company.expense_scan_product_id.id, None)
         if history:
@@ -396,21 +393,21 @@ class HrExpense(models.Model):
             product = Product.browse(product_id).exists()
             share = count / sum(products.values())
             if share >= HISTORY_MAJORITY and self._expense_scan_guessable(product, company):
-                # L'enseigne lue à l'identique pèse plus lourd qu'une
-                # ressemblance ; dans les deux cas, un ticket qui dit
-                # nettement autre chose — code APE, marque, mots — l'emporte.
+                # L'enseigne lue à l'identique pèse plus qu'une ressemblance.
+                # Dans les deux cas, un ticket qui indique nettement une autre
+                # catégorie (code APE, marque, mots) l'emporte.
                 weight = (HISTORY_WEIGHT if key == read_key else HISTORY_FUZZY_WEIGHT) * share
                 scores[product.id] = scores.get(product.id, 0.0) + weight
                 reasons.setdefault(product.id, []).append((weight, _(
                     "d'après l'enseigne « %s », déjà classée ainsi", merchant or key)))
         if brand and not key:
-            # Une marque reconnue est mieux écrite que la première ligne du
-            # ticket, souvent un logo mal lu ou une adresse.
+            # La marque reconnue est préférée à la première ligne du ticket
+            # (souvent un logo mal lu ou une adresse).
             merchant = brand
 
         product_id = lexicon.pick_category(scores)
-        # Une ligne par scan : de quoi comprendre pourquoi une catégorie a
-        # été choisie, ou pourquoi aucune ne l'a été.
+        # Une ligne de log par scan, pour diagnostiquer le choix d'une
+        # catégorie ou l'absence de choix.
         _logger.info(
             "expense_scan : catégorie scores=%s activité=%s enseigne=%s retenue=%s",
             {Product.browse(pid).display_name: round(score, 1) for pid, score in scores.items()},
@@ -426,13 +423,13 @@ class HrExpense(models.Model):
         merchant, read_key, product, reason = self._expense_scan_recognize(result, company)
         values = {'expense_scan_merchant_read': read_key}
         # Une enseigne corrigée à la main reste celle du salarié, même si
-        # l'on relance l'analyse.
+        # l'analyse est relancée.
         corrected = (self.expense_scan_merchant and self.expense_scan_merchant_key
                      != (self.expense_scan_merchant_read or False)
                      and self.expense_scan_merchant_key != lexicon.merchant_key(merchant))
         if not corrected:
-            # Sans enseigne lisible, l'ancienne lecture automatique s'efface
-            # plutôt que de survivre à la relance.
+            # Sans enseigne lisible, l'ancienne lecture automatique est
+            # effacée.
             values['expense_scan_merchant'] = merchant or False
         if self._expense_scan_category_is_free(company):
             if product:
@@ -449,17 +446,17 @@ class HrExpense(models.Model):
                 if not self.product_id and company.expense_scan_product_id:
                     values['product_id'] = company.expense_scan_product_id.id
         else:
-            # Catégorie choisie par quelqu'un : la raison d'un ancien choix
-            # automatique ne la décrit plus.
+            # Catégorie choisie manuellement : la raison d'un ancien choix
+            # automatique ne s'applique plus.
             values['expense_scan_category_reason'] = False
         return values
 
     @api.model
     def _expense_scan_backfill_merchants(self):
-        """Tire l'enseigne du texte déjà lu des dépenses passées.
+        """Extrait l'enseigne du texte déjà lu des dépenses passées.
 
-        L'historique démarre ainsi avec toutes les dépenses scannées depuis
-        l'installation du module, et non à zéro.
+        L'historique est ainsi alimenté par toutes les dépenses scannées
+        depuis l'installation du module.
         """
         expenses = self.sudo().search([
             ('scan_raw_text', '!=', False),

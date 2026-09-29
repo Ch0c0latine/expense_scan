@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Mots du ticket ajoutés, ou retirés, des catégories déjà renseignées."""
+"""Mots du ticket ajoutés ou retirés sur les catégories déjà renseignées."""
 from odoo import SUPERUSER_ID, api
 
 from odoo.addons.expense_scan.ocr import lexicon

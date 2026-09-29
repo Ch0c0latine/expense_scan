@@ -144,7 +144,7 @@ class TestExpenseSheet(common.TransactionCase):
         openpyxl, template = self.workbook()
         expense = self.expense("Seul", 5, total=12.5, reinvoice_mode='project',
                                project_id=self.project.id)
-        # La mission n'est citée que si l'on a filtré dessus.
+        # La mission n'est citée que si un filtre par mission est appliqué.
         content = self.Sheet.with_context(
             expense_scan_sheet_project_ids=self.project.ids)._excel(template, expense)
         sheet = openpyxl.load_workbook(io.BytesIO(content)).active
@@ -271,7 +271,7 @@ class TestExpenseSheet(common.TransactionCase):
         self.assertEqual(wizard.selected_count, 1)
 
     def test_reset_buttons_are_renamed(self):
-        """Les deux « Réinitialiser » d'Odoo — comptable ou non — sont renommés."""
+        """Les deux boutons « Réinitialiser » d'Odoo (comptable ou non) sont renommés."""
         arch = self.env.ref('hr_expense.hr_expense_view_form').sudo()._get_combined_arch()
         buttons = arch.xpath("//header/button[@name='action_reset']")
         self.assertEqual(len(buttons), 2)
@@ -295,7 +295,7 @@ class TestExpenseSheet(common.TransactionCase):
         self.assertNotIn("sale_order_id", values)
 
     def test_mission_change_moves_the_automatic_analytic(self):
-        """L'imputation d'office suit la mission ; une répartition manuelle reste."""
+        """L'imputation automatique suit la mission ; une répartition manuelle est conservée."""
         first = self.env["project.project"].create({"name": "Mission A analytique"})
         second = self.env["project.project"].create({"name": "Mission B analytique"})
         expense = self.expense("Imputée", 3, reinvoice_mode="none", project_id=first.id)

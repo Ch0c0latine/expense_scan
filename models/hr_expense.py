@@ -29,26 +29,20 @@ SUPPORTED_IMAGE_PREFIX = 'image/'
 PDF_MIMETYPE = 'application/pdf'
 #: Pages supplémentaires converties et lues sur un PDF dont la première ne
 #: donne pas de total : une facture de plusieurs pages porte le sien en
-#: pied de la dernière. Borné, comme les autres plafonds d'entrée : une
-#: page de plus ne coûte rien, cinquante en coûteraient beaucoup pour un
-#: gain qui ne grandit pas d'autant.
+#: pied de la dernière. Plafond, comme les autres limites d'entrée, pour
+#: borner le temps de traitement.
 PDF_MAX_PAGES_READ = 5
 #: Écart, en jours, entre deux dépenses d'un même déplacement.
 TRIP_DAYS = 3
 
 
 class Stopwatch:
-    """Durée de chaque étape d'une analyse, pour le journal.
-
-    Une ligne par scan suffit à voir où passe le temps — lecture,
-    relecture, catégorie — et à suivre la vitesse sur la durée.
-    """
+    """Chronométrage des étapes d'une analyse pour le journal."""
 
     def __init__(self, on_lap=None):
         self.started = self.last = time.time()
         self.laps = []
-        # Appelé à la fin de chaque étape : c'est ce qui fait avancer la
-        # progression affichée sur la fiche pendant l'analyse.
+        # Appelé à la fin de chaque étape pour avancer la progression affichée.
         self.on_lap = on_lap
 
     def lap(self, name):
@@ -92,11 +86,11 @@ class HrExpense(models.Model):
     )
     scan_message = fields.Char(string="Détail de l'analyse", readonly=True, copy=False)
     scan_todo = fields.Char(string="Champs à vérifier", readonly=True, copy=False)
-    #: Un code par point listé dans ``scan_todo``, dans le même ordre —
-    #: « à refacturer,tax_incompatible » — pour savoir lesquels sont encore
-    #: d'actualité une fois la dépense modifiée. ``static`` marque les
-    #: points qu'on ne sait pas rouvrir automatiquement (date, catégorie…) :
-    #: ils comptent comme toujours d'actualité, comme avant ce champ.
+    #: Un code par point listé dans ``scan_todo``, dans le même ordre
+    #: (« à refacturer,tax_incompatible »), pour savoir lesquels restent
+    #: à traiter une fois la dépense modifiée. ``static`` marque les points
+    #: qui ne peuvent pas être rouverts automatiquement (date, catégorie…) :
+    #: ils restent à traiter, comme avant l'existence de ce champ.
     expense_scan_todo_codes = fields.Char(readonly=True, copy=False)
     #: Phrase d'aide de chaque point, en JSON : ``{code: phrase}``.
     expense_scan_hints = fields.Text(readonly=True, copy=False)
@@ -179,26 +173,24 @@ class HrExpense(models.Model):
     )
 
     # ------------------------------------------------------------------
-    # Bandeau de relecture : disparaît au fil de l'eau
+    # Bandeau de relecture : se ferme quand les champs sont corrigés
     #
-    # « Ticket analysé, vérifiez : À refacturer » restait affiché même une
-    # fois le champ renseigné — rien ne le recalculait avant un nouveau
-    # scan. expense_scan_todo_codes retient, à côté du texte affiché, un
-    # code par point ; ce calcul rouvre ou referme le bandeau à chaque
-    # changement d'un champ qu'il surveille, y compris avant tout
-    # enregistrement.
+    # Sans recalcul, le bandeau reste affiché après correction jusqu'au
+    # scan suivant. expense_scan_todo_codes retient un code par point, à
+    # côté du texte affiché ; le bandeau est recalculé à chaque changement
+    # d'un champ surveillé, y compris avant l'enregistrement.
     # ------------------------------------------------------------------
 
     #: Un point est résolu quand son champ surveillé prend une valeur qui
-    #: lève le doute que le scan avait signalé. Date, total, catégorie et
-    #: devise : dès que la valeur diffère de celle que l'analyse avait posée
-    #: — quelqu'un l'a corrigée. « static », des anciennes analyses, ne se
-    #: résout jamais seul.
+    #: lève le doute signalé par le scan. Pour date, total, catégorie et
+    #: devise, la valeur doit différer de celle posée par l'analyse (elle
+    #: a été corrigée). Les points « static » (anciennes analyses) ne se
+    #: résolvent jamais seuls.
     TODO_RESOLVED_WHEN = {
         'reinvoice': lambda expense: expense.reinvoice_mode != 'todo',
         'tax_category': lambda expense: bool(expense.tax_ids),
-        # Foreign/none/incompatible : les trois se corrigent de la même
-        # façon, en saisissant soi-même le montant de TVA du ticket.
+        # Foreign/none/incompatible : les trois se résolvent en saisissant
+        # le montant de TVA du ticket (scan_tax_amount).
         'tax_amount': lambda expense: bool(expense.scan_tax_amount),
         'tax_total': lambda expense: bool(expense.total_amount_currency),
         'date': lambda expense: expense._expense_scan_changed('date'),
@@ -206,7 +198,7 @@ class HrExpense(models.Model):
         'category': lambda expense: expense._expense_scan_changed('product_id'),
         'currency': lambda expense: expense._expense_scan_changed('currency_id'),
     }
-    #: Où s'affiche l'indication de chaque point : sous quel champ.
+    #: Champ sous lequel s'affiche l'indication de chaque point.
     HINT_PLACES = {
         'date': 'date',
         'total': 'total', 'currency': 'total',
@@ -214,8 +206,8 @@ class HrExpense(models.Model):
         'category': 'category',
         'reinvoice': 'reinvoice',
     }
-    #: Champs dont l'analyse retient la valeur posée, pour savoir ensuite si
-    #: quelqu'un l'a corrigée.
+    #: Champs dont l'analyse retient la valeur posée, pour détecter une
+    #: correction ultérieure.
     READ_VALUE_FIELDS = ('date', 'total_amount_currency', 'product_id', 'currency_id')
 
     @api.depends('expense_scan_todo_codes', 'expense_scan_read_values', 'reinvoice_mode',
@@ -240,7 +232,7 @@ class HrExpense(models.Model):
             return None
 
     def _expense_scan_changed(self, name):
-        """Le champ a-t-il quitté la valeur posée par l'analyse ?"""
+        """Indique si le champ a quitté la valeur posée par l'analyse."""
         read = self._expense_scan_read_value(name)
         if read is None:
             return False
@@ -263,9 +255,10 @@ class HrExpense(models.Model):
     def _compute_expense_scan_field_hints(self):
         """Une indication sous chaque champ à vérifier, tant qu'il l'est.
 
-        Remplace le bandeau « vérifiez ces champs » : l'indication est là où
-        l'on corrige, et s'efface dès la correction — le formulaire recalcule
-        ces champs à chaque modification, avant même l'enregistrement.
+        Remplace le bandeau « vérifiez ces champs » : l'indication est
+        affichée là où l'utilisateur corrige et disparaît avec la correction.
+        Le formulaire recalcule ces champs à chaque modification, avant
+        l'enregistrement.
         """
         for expense in self:
             texts = {}
@@ -280,19 +273,18 @@ class HrExpense(models.Model):
                         texts.setdefault(place, []).append(hints[code])
             for place in ('date', 'total', 'tax', 'category', 'reinvoice'):
                 expense['expense_scan_hint_%s' % place] = " ".join(texts.get(place, [])) or False
-            # Le bandeau ne reste que pour les points sans place attitrée :
-            # ceux des analyses faites avant les indications par champ.
+            # Le bandeau ne reste que pour les points sans champ attitré
+            # (analyses antérieures aux indications par champ).
             expense.expense_scan_todo_unplaced = any(
                 code not in self.HINT_PLACES for code in expense._expense_scan_open_codes())
 
     # ------------------------------------------------------------------
     # TVA du ticket : le montant prime sur le taux
     #
-    # Odoo dérive la TVA du taux appliqué au total. Un ticket de caisse fait
-    # l'inverse : il imprime un montant, souvent issu de plusieurs taux
-    # mêlés, et c'est ce montant qui doit se retrouver en comptabilité. Le
-    # taux reste sélectionné — il porte les tags fiscaux — mais il ne
-    # commande plus le montant.
+    # Odoo dérive la TVA du taux appliqué au total. Un ticket de caisse
+    # imprime un montant, souvent issu de plusieurs taux mêlés, et c'est ce
+    # montant qui doit arriver en comptabilité. Le taux reste sélectionné
+    # pour les tags fiscaux, mais ne détermine plus le montant.
     # ------------------------------------------------------------------
 
     @api.depends('total_amount_currency', 'tax_ids', 'scan_tax_amount')
@@ -319,16 +311,16 @@ class HrExpense(models.Model):
     @api.depends('employee_id')
     @api.depends_context('uid')
     def _compute_expense_scan_own(self):
-        """La dépense est-elle celle de l'utilisateur qui la regarde ?"""
+        """Indique si la dépense est celle de l'utilisateur qui la consulte."""
         mine = self.env.user.employee_ids
         for expense in self:
             expense.expense_scan_own = expense.employee_id in mine
 
     @api.depends('selectable_payment_method_line_ids')
     def _compute_expense_scan_one_payment_method(self):
-        """Y a-t-il vraiment un mode de paiement à choisir ?
+        """Indique s'il n'y a pas de mode de paiement à choisir (un seul possible).
 
-        Le calcul se fait ici et non dans la vue : l'évaluateur d'expressions
+        Le calcul est fait ici et non dans la vue : l'évaluateur d'expressions
         du client ne connaît pas ``len``.
         """
         for expense in self:
@@ -336,11 +328,10 @@ class HrExpense(models.Model):
                 len(expense.selectable_payment_method_line_ids) < 2)
 
     def _expense_scan_max_rate(self):
-        """Le plus haut taux retenu, ou ``None`` si aucune taxe en pourcentage.
+        """Plus haut taux retenu, ou ``None`` si aucune taxe en pourcentage.
 
-        La distinction compte : « aucune taxe » et « taxe à 0 % » sont deux
-        situations différentes. La première ne permet aucun contrôle, la
-        seconde impose un plafond de zéro.
+        « Aucune taxe » et « taxe à 0 % » sont deux cas distincts : le
+        premier ne permet aucun contrôle, le second impose un plafond nul.
         """
         self.ensure_one()
         rates = self.tax_ids.filtered(
@@ -350,10 +341,10 @@ class HrExpense(models.Model):
     def _expense_scan_tax_ceiling(self):
         """TVA maximale possible : le plus haut taux appliqué au total TTC.
 
-        Un ticket mêlant plusieurs taux porte forcément moins de TVA que si
-        tout était au taux le plus élevé. Ce plafond attrape donc les
-        erreurs de lecture sans jamais gêner une saisie légitime — et il
-        vaut zéro sur une catégorie exonérée, ce qui y interdit toute TVA.
+        Un ticket à plusieurs taux porte moins de TVA que si tout était au
+        taux le plus élevé. Ce plafond détecte les erreurs de lecture sans
+        bloquer une saisie légitime. Il vaut zéro sur une catégorie
+        exonérée, ce qui y interdit toute TVA.
         """
         self.ensure_one()
         rate = self._expense_scan_max_rate()
@@ -363,10 +354,10 @@ class HrExpense(models.Model):
 
     @api.onchange('product_id')
     def _onchange_expense_scan_name(self):
-        """Une description posée d'office suit la catégorie retenue.
+        """Une description posée automatiquement suit la catégorie choisie.
 
-        « Ticket du 12/09 » devient « Péage du 12/09 » quand on choisit le
-        péage ; une description écrite par le salarié ne bouge pas.
+        « Ticket du 12/09 » devient « Péage du 12/09 » quand la catégorie
+        est Péage. Une description saisie par l'employé n'est pas modifiée.
         """
         for expense in self:
             if expense.date and expense.scan_state != 'none' \
@@ -376,28 +367,26 @@ class HrExpense(models.Model):
 
     @api.onchange('total_amount_currency')
     def _onchange_expense_scan_total(self):
-        """Un total revu à la baisse rabote la TVA qui ne tiendrait plus."""
+        """Un total revu à la baisse plafonne la TVA qui ne tiendrait plus."""
         for expense in self:
             expense._expense_scan_clamp_tax()
 
     @api.onchange('tax_ids')
     def _onchange_expense_scan_taxes(self):
-        """Choisir un taux rabote la TVA, ou la remplit si elle est vide.
+        """Choisir un taux plafonne la TVA, ou la remplit si elle est vide.
 
-        Rabote d'abord : passer la dépense en « 0 % EX » laissait le montant
-        lu intact, donc une TVA déductible que le taux retenu ne justifie
-        plus. Ce rabotage ne joue que dans ce sens — remonter le taux
-        n'invente pas de TVA, seul le justificatif dit ce qui a été payé.
+        Plafonnement : passer la dépense en « 0 % EX » laissait le montant lu
+        intact, donc une TVA déductible que le taux retenu ne justifie plus.
+        Il ne joue que dans ce sens : remonter le taux n'invente pas de TVA,
+        seul le justificatif indique ce qui a été payé.
 
-        Remplit ensuite, mais seulement un champ vide : un ticket sans TVA
-        lisible, ou une saisie manuelle, dont l'utilisateur choisit le taux.
-        La TVA retenue est alors celle que contient le total à ce taux — le
-        total est TTC, elle vaut donc total × taux / (100 + taux), et non
-        total × taux, qui la compterait sur une base qui l'inclut déjà.
+        Remplissage, uniquement si le champ est vide (ticket sans TVA
+        lisible, saisie manuelle) : le total étant TTC, la TVA vaut
+        total × taux / (100 + taux), et non total × taux.
 
-        Un montant déjà présent n'est jamais remplacé : c'est souvent celui
-        du ticket, exact même sur plusieurs taux, et le recalculer depuis un
-        seul taux le fausserait.
+        Un montant déjà présent n'est pas remplacé : il vient souvent du
+        ticket et reste exact sur plusieurs taux, ce qu'un calcul depuis un
+        seul taux fausserait.
         """
         for expense in self:
             if expense._expense_scan_clamp_tax():
@@ -405,7 +394,7 @@ class HrExpense(models.Model):
             if expense.scan_tax_amount or not expense.currency_id:
                 continue
             # Plusieurs taxes : Odoo sait les cumuler, un seul taux ne le
-            # peut pas. On laisse alors son calcul faire.
+            # peut pas. Le calcul d'Odoo s'applique alors.
             percent = expense.tax_ids.filtered(lambda tax: tax.amount_type == 'percent')
             if len(percent) != 1 or len(expense.tax_ids) != 1:
                 continue
@@ -414,18 +403,18 @@ class HrExpense(models.Model):
                 expense.scan_tax_amount = expense.currency_id.round(ceiling)
 
     def _expense_scan_clamp_tax(self):
-        """Ramène la TVA du ticket sous le plafond du taux, si elle le dépasse.
+        """Ramène la TVA du ticket au plafond du taux si elle le dépasse.
 
-        Renvoie vrai quand le montant a été raboté.
+        Renvoie ``True`` quand le montant a été modifié.
         """
         self.ensure_one()
         if not self.scan_tax_amount or not self.currency_id:
             return False
         ceiling = self._expense_scan_tax_ceiling()
         if ceiling is None:
-            # Aucune taxe en pourcentage : rien à opposer ici. Le blocage
-            # vient à la comptabilisation, là où l'absence de taux empêche
-            # vraiment de porter la TVA dans l'écriture.
+            # Aucune taxe en pourcentage : pas de plafond à appliquer. Le
+            # blocage a lieu à la comptabilisation, où l'absence de taux
+            # empêche de porter la TVA dans l'écriture.
             return False
         if self.currency_id.compare_amounts(self.scan_tax_amount, ceiling) > 0:
             self.scan_tax_amount = self.currency_id.round(ceiling)
@@ -434,15 +423,14 @@ class HrExpense(models.Model):
 
     @api.constrains('tax_ids', 'scan_state')
     def _check_expense_scan_single_tax(self):
-        """Un seul taux sur une dépense scannée.
+        """Une dépense scannée ne porte qu'une seule taxe.
 
-        La ventilation qui porte la TVA du ticket dans l'écriture n'en
-        connaît qu'un : avec deux taxes, elles s'appliqueraient toutes deux
-        à la même base et le montant comptabilisé ne serait plus celui du
-        justificatif. Mieux vaut le refuser que le produire faux.
+        La ventilation qui porte la TVA du ticket dans l'écriture ne gère
+        qu'un taux : avec deux taxes, les deux s'appliqueraient à la même
+        base et le montant comptabilisé ne serait plus celui du justificatif.
 
-        Un ticket à plusieurs taux se traite justement ainsi : un seul taux
-        retenu, et le montant exact saisi à côté.
+        Un ticket à plusieurs taux se traite avec un seul taux retenu et le
+        montant exact saisi à côté.
         """
         for expense in self:
             if expense.scan_state == 'none':
@@ -464,10 +452,10 @@ class HrExpense(models.Model):
                 raise ValidationError(_("La TVA du ticket ne peut pas être négative."))
             ceiling = expense._expense_scan_tax_ceiling()
             if ceiling is None:
-                # Aucune taxe retenue : pas de plafond à opposer. On laisse
-                # saisir — le montant reste une information du justificatif —
-                # et on s'y oppose à la validation comptable, là où l'absence
-                # de taux devient réellement bloquante.
+                # Aucune taxe retenue : pas de plafond à contrôler. La saisie
+                # est acceptée (le montant reste une information du
+                # justificatif) ; le blocage a lieu à la validation
+                # comptable, où l'absence de taux empêche de porter la TVA.
                 continue
             if expense.currency_id.compare_amounts(expense.scan_tax_amount, ceiling) > 0:
                 raise ValidationError(_(
@@ -484,19 +472,19 @@ class HrExpense(models.Model):
     def _prepare_receipts_vals(self):
         """Ventile la base pour que l'écriture porte la TVA du ticket.
 
-        Odoo bâtit l'écriture en appliquant le taux au total : le montant lu
-        sur le justificatif n'y arriverait jamais. Plutôt que de retoucher
-        la ligne de taxe après coup — fragile, et recalculée à la moindre
-        écriture —, on scinde la base en deux : la part qui, au taux retenu,
-        produit exactement le montant voulu, et le reste hors taxe.
+        Odoo construit l'écriture en appliquant le taux au total : le montant
+        lu sur le justificatif n'y figurerait pas. Retoucher la ligne de taxe
+        après coup est fragile (elle est recalculée à chaque modification).
+        La base est donc scindée en deux : la part qui produit exactement le
+        montant voulu au taux retenu, et le reste hors taxe.
 
-        L'écriture reste équilibrée, la TVA déductible est celle du ticket,
+        L'écriture reste équilibrée, la TVA déductible est celle du ticket
         et les tags fiscaux sont posés par le moteur de taxes habituel.
         """
         vals_list = super()._prepare_receipts_vals()
-        # `_prepare_receipts_vals` regroupe par employé et crée une ligne par
-        # dépense, dans cet ordre : on refait le même groupement pour
-        # retrouver quelle ligne appartient à quelle dépense.
+        # _prepare_receipts_vals regroupe par employé et crée une ligne par
+        # dépense, dans cet ordre : le même groupement est refait ici pour
+        # associer chaque ligne à sa dépense.
         for vals, expenses in zip(vals_list, self.sudo().grouped('employee_id').values()):
             extra_lines = []
             for command, expense in zip(vals.get('line_ids') or [], expenses):
@@ -508,15 +496,15 @@ class HrExpense(models.Model):
         return vals_list
 
     def _expense_scan_split_base(self, command):
-        """Ajuste la ligne de base, et renvoie la ligne du reliquat s'il y en a."""
+        """Ajuste la ligne de base et renvoie la ligne du reliquat s'il y en a une."""
         self.ensure_one()
         if not self.scan_tax_amount:
             return None
         rate = self._expense_scan_max_rate()
         if not rate:
-            # C'est ici que l'absence de taux devient bloquante : sans lui,
-            # la TVA du ticket n'a aucun moyen d'entrer dans l'écriture, et
-            # la comptabiliser sans le dire serait la perdre en silence.
+            # L'absence de taux est bloquante ici : sans taux, la TVA du
+            # ticket ne peut pas entrer dans l'écriture, et comptabiliser
+            # sans elle la perdrait sans avertissement.
             raise UserError(_(
                 "La dépense « %(nom)s » porte une TVA de ticket de "
                 "%(montant).2f, mais aucune taxe à un taux exploitable. "
@@ -527,11 +515,11 @@ class HrExpense(models.Model):
 
         line_vals = command[2]
         currency = self.company_currency_id
-        # Le prix d'une ligne d'écriture portant un `expense_id` est traité
-        # comme TTC par Odoo — c'est la convention des notes de frais, et
-        # elle est explicite dans hr_expense/models/account_move_line.py.
-        # On lui passe donc le TTC de la part taxée, pas sa base : lui
-        # donner la base reviendrait à en retirer la TVA une seconde fois.
+        # Odoo traite le prix d'une ligne d'écriture portant un expense_id
+        # comme TTC (convention des notes de frais, explicite dans
+        # hr_expense/models/account_move_line.py). Il faut donc lui passer
+        # le TTC de la part taxée et non sa base, sinon la TVA serait
+        # retirée une seconde fois.
         taxed_total = currency.round(self.tax_amount * (100.0 + rate) / rate)
         remainder = currency.round(self.total_amount - taxed_total)
 
@@ -549,12 +537,12 @@ class HrExpense(models.Model):
         return Command.create(untaxed)
 
     def _prepare_payments_vals(self):
-        """Refuse de comptabiliser une TVA de ticket qu'on ne sait pas porter.
+        """Refuse de comptabiliser une TVA de ticket qui ne peut pas être portée.
 
         Le chemin « payé par la société » construit ses lignes d'écriture
         avec des soldes explicites, sans passer par la ventilation de base
-        ci-dessus. Plutôt que d'y comptabiliser silencieusement la TVA du
-        taux à la place de celle du ticket, on s'arrête net.
+        ci-dessus. Il comptabiliserait la TVA du taux à la place de celle du
+        ticket sans avertir.
         """
         if self.scan_tax_amount:
             raise UserError(_(
@@ -573,27 +561,26 @@ class HrExpense(models.Model):
     def create_expense_from_attachments(self, attachment_ids=None, view_type='list'):
         """Analyse chaque justificatif juste après la création de la dépense.
 
-        Odoo crée déjà une dépense vide par pièce jointe : on se greffe
-        derrière pour la remplir, plutôt que de réécrire ce comportement.
+        Odoo crée déjà une dépense vide par pièce jointe : l'analyse la
+        remplit, sans réécrire ce comportement.
         """
         expense_ids = super().create_expense_from_attachments(
             attachment_ids=attachment_ids, view_type=view_type)
         expenses = self.browse(expense_ids)
         company = self.env.company
 
-        # Odoo choisit la catégorie en cherchant la référence interne
-        # « EXP_GEN », puis, faute de la trouver, la première catégorie venue
-        # par ordre alphabétique — « Cadeau » par exemple. Renommer cette
-        # référence suffit donc à envoyer tous les tickets ailleurs. Le
-        # réglage de la société, lui, ne dépend d'aucune référence.
+        # Odoo choisit la catégorie par la référence interne « EXP_GEN »,
+        # sinon la première par ordre alphabétique (« Cadeau » par exemple) :
+        # renommer cette référence redirige tous les tickets. Le réglage de
+        # la société ne dépend d'aucune référence.
         if company.expense_scan_product_id:
             expenses.product_id = company.expense_scan_product_id
 
         if company.expense_scan_enabled:
             if self.env.context.get('expense_scan_async') and len(expenses) == 1:
-                # Un seul ticket, depuis l'interface : la fiche s'ouvre tout
-                # de suite, et c'est elle qui lance l'analyse en affichant
-                # sa progression (action_expense_scan_start).
+                # Un seul ticket, depuis l'interface : la fiche s'ouvre
+                # aussitôt et lance l'analyse en affichant sa progression
+                # (action_expense_scan_start).
                 expenses.write({'scan_state': 'running'})
             else:
                 expenses._expense_scan_run()
@@ -603,21 +590,23 @@ class HrExpense(models.Model):
     # Analyse lancée par la fiche, avec sa progression
     # ------------------------------------------------------------------
 
-    #: Délai au-delà duquel une analyse restée en attente est reprise par la
-    #: tâche planifiée : l'application a pu se fermer avant de la lancer.
+    #: Délai (minutes) au-delà duquel une analyse restée en attente est
+    #: reprise par la tâche planifiée : l'application a pu se fermer avant
+    #: de la lancer.
     PENDING_SCAN_MINUTES = 3
-    #: Délai au-delà duquel on renonce. Un justificatif qui fait tuer son
-    #: worker (mémoire, processeur) le ferait sinon tuer indéfiniment : la
-    #: fiche relance l'analyse à chaque ouverture, la tâche planifiée toutes
-    #: les cinq minutes. Une limite de durée plutôt qu'un compte d'essais :
-    #: Odoo rejoue lui-même une requête en conflit, ce qui fausserait le
-    #: compte, et le compteur devrait s'écrire hors de la transaction.
+    #: Délai (minutes) au-delà duquel l'analyse est abandonnée. Un
+    #: justificatif qui fait tuer son worker (mémoire, processeur) le ferait
+    #: sinon tuer à chaque tentative : la fiche relance l'analyse à chaque
+    #: ouverture, la tâche planifiée toutes les cinq minutes. Limite de
+    #: durée plutôt que nombre d'essais : Odoo rejoue lui-même une requête
+    #: en conflit, ce qui fausserait un compteur, et le compteur devrait
+    #: être écrit hors de la transaction.
     EXPIRE_SCAN_MINUTES = 15
 
     def _expense_scan_expire(self):
         """Passe en erreur les analyses en cours depuis trop longtemps.
 
-        Renvoie celles qu'elle vient d'abandonner.
+        Renvoie les dépenses concernées.
         """
         limit = fields.Datetime.subtract(fields.Datetime.now(), minutes=self.EXPIRE_SCAN_MINUTES)
         stale = self.filtered(lambda e: e.scan_state == 'running' and e.create_date < limit)
@@ -634,20 +623,19 @@ class HrExpense(models.Model):
     def action_expense_scan_start(self, specification=None):
         """Analyse le ticket que la fiche vient d'ouvrir, étape par étape.
 
-        Chaque étape est annoncée à l'utilisateur au fil de l'eau, avec les
-        premières valeurs lues, pour que la fiche se remplisse pendant
-        l'analyse. Renvoie les valeurs finales au format de ``web_read``
-        (``specification`` : les champs de la fiche) ; la fiche les applique
-        sans toucher à ce que l'utilisateur a déjà modifié.
+        Chaque étape est annoncée à l'utilisateur avec les premières valeurs
+        lues, pour que la fiche se remplisse pendant l'analyse. Renvoie les
+        valeurs finales au format de ``web_read`` (``specification`` : les
+        champs de la fiche) ; la fiche les applique sans écraser les
+        modifications de l'utilisateur.
 
-        Le verrou sur la ligne garantit une seule analyse à la fois ; il
-        fait aussi patienter un enregistrement de la fiche jusqu'à la fin
-        de l'analyse, si bien que les corrections de l'utilisateur passent
-        toujours après elle.
+        Le verrou de ligne garantit une seule analyse à la fois. Il retient
+        aussi l'enregistrement de la fiche jusqu'à la fin de l'analyse : les
+        corrections de l'utilisateur passent donc après elle.
         """
         self.ensure_one()
-        # Les droits d'abord : le verrou de ligne se pose sans passer par
-        # l'ORM, donc sans contrôle d'accès.
+        # Droits vérifiés d'abord : le verrou de ligne est posé en SQL, sans
+        # contrôle d'accès de l'ORM.
         self.check_access('write')
         if self._expense_scan_expire():
             return {'started': False, 'values': self._expense_scan_web_values(specification)}
@@ -672,9 +660,9 @@ class HrExpense(models.Model):
     def _expense_scan_progress_sender(self):
         """Fonction qui annonce une étape de l'analyse à l'utilisateur.
 
-        Sur un curseur à part, validé aussitôt : une notification émise dans
-        la transaction de l'analyse n'arriverait qu'à sa fin, toutes étapes
-        confondues.
+        Elle utilise un curseur à part, validé aussitôt : une notification
+        émise dans la transaction de l'analyse n'arriverait qu'à la fin,
+        toutes étapes confondues.
         """
         registry, uid = self.env.registry, self.env.uid
         partner_id, expense_id = self.env.user.partner_id.id, self.id
@@ -688,7 +676,7 @@ class HrExpense(models.Model):
                     env['bus.bus']._sendone(
                         env['res.partner'].browse(partner_id), 'expense_scan/progress',
                         {'expense_id': expense_id, 'step': step, 'values': values or {}})
-            except Exception:  # noqa: BLE001 — la progression n'est qu'un confort
+            except Exception:  # noqa: BLE001 (la progression n'est qu'un confort)
                 _logger.debug("Progression de l'analyse non envoyée", exc_info=True)
         return send
 
@@ -705,7 +693,7 @@ class HrExpense(models.Model):
 
     @api.model
     def _cron_expense_scan_pending(self):
-        """Reprend les analyses restées en attente : fiche fermée trop tôt."""
+        """Reprend les analyses restées en attente (fiche fermée avant la fin)."""
         limit = fields.Datetime.subtract(fields.Datetime.now(), minutes=self.PENDING_SCAN_MINUTES)
         running = self.search([('scan_state', '=', 'running')])
         running -= running._expense_scan_expire()
@@ -719,9 +707,9 @@ class HrExpense(models.Model):
     def _cron_expense_scan_purge_texts(self, batch=1000):
         """Efface le texte lu des dépenses soumises depuis assez longtemps.
 
-        Le texte d'un justificatif porte des données personnelles — noms,
-        adresses, fin de numéro de carte — dont on n'a plus besoin une fois
-        la dépense soumise : il ne sert qu'à l'analyse et au rattachement des
+        Le texte d'un justificatif contient des données personnelles (noms,
+        adresses, fin de numéro de carte) inutiles une fois la dépense
+        soumise : il ne sert qu'à l'analyse et au rattachement des
         déplacements voisins. La durée est un réglage de la société.
         """
         for company in self.env['res.company'].search([]):
@@ -744,17 +732,16 @@ class HrExpense(models.Model):
 
         Odoo ne regarde que l'e-mail professionnel et celui du compte
         utilisateur. Un salarié qui transfère un justificatif depuis son
-        téléphone personnel n'est donc pas reconnu, et Odoo crée alors une
-        dépense sans employé — un enregistrement qu'il faut rattraper à la
-        main, sans que personne ne soit prévenu.
+        téléphone personnel n'est pas reconnu : Odoo crée une dépense sans
+        employé, à rattraper à la main, sans avertissement.
 
-        L'adresse privée de la fiche employé suffit à couvrir ce cas, et
-        elle existe déjà : un champ de plus sur ``hr.employee`` se serait
-        heurté au profil public des employés, qui ne le connaîtrait pas et
-        refuserait dès lors toute lecture aux utilisateurs non-RH.
+        L'adresse privée de la fiche employé couvre ce cas et existe déjà.
+        Un champ supplémentaire sur ``hr.employee`` serait inconnu du profil
+        public des employés, qui refuserait alors toute lecture aux
+        utilisateurs non-RH.
 
-        Lecture en droits élevés, car l'adresse privée est réservée au
-        groupe RH : l'appelant, lui, est la passerelle de messagerie.
+        Lecture en droits élevés : l'adresse privée est réservée au groupe
+        RH, et l'appelant est la passerelle de messagerie.
         """
         employee = super()._get_employee_from_email(email_address)
         if employee:
@@ -768,9 +755,9 @@ class HrExpense(models.Model):
         if 'private_email' not in Employee._fields:
             return employee
 
-        # Le « ilike » ne sert qu'à réduire la recherche ; la comparaison
-        # qui tranche porte sur l'adresse entière, normalisée de part et
-        # d'autre — un fragment ne désigne personne.
+        # Le « ilike » ne fait que restreindre la recherche ; la comparaison
+        # décisive porte sur l'adresse entière, normalisée des deux côtés
+        # (un fragment n'identifie personne).
         for candidate in Employee.search([('private_email', 'ilike', normalized)]):
             if email_normalize(candidate.private_email) == normalized:
                 return candidate
@@ -779,10 +766,10 @@ class HrExpense(models.Model):
     def _alias_get_error(self, message, message_dict, alias):
         """Laisse passer l'adresse privée jusqu'à l'alias « employés ».
 
-        Le filtre du module RH, qui s'applique avant toute création, ne
-        connaît que l'e-mail professionnel et celui du compte : un envoi
-        depuis l'adresse privée était renvoyé à l'expéditeur, sans jamais
-        atteindre la reconnaissance ci-dessus.
+        Le filtre du module RH, appliqué avant toute création, ne connaît
+        que l'e-mail professionnel et celui du compte : un envoi depuis
+        l'adresse privée était refusé avant d'atteindre la reconnaissance
+        ci-dessus.
         """
         error = super()._alias_get_error(message, message_dict, alias)
         if error and alias.alias_contact == 'employees':
@@ -794,15 +781,14 @@ class HrExpense(models.Model):
     def action_expense_scan_retouch(self, image_base64):
         """Remplace le justificatif courant par une image retouchée.
 
-        La retouche — rotation fine, recadrage — se fait dans le
-        navigateur, sur un canevas : le serveur ne reçoit que le résultat,
-        déjà en JPEG. Le justificatif courant est corrigé sur place, comme
-        une relance d'analyse le fait pour l'image qu'elle recadre elle-même
-        (voir ``_expense_scan_store_image``) : ici, c'est l'utilisateur qui
-        vient d'ajuster l'image, pas l'analyse.
+        La retouche (rotation fine, recadrage) est faite dans le navigateur,
+        sur un canevas : le serveur reçoit uniquement le résultat, en JPEG.
+        Le justificatif est corrigé sur place, comme une relance d'analyse le
+        fait pour l'image qu'elle recadre (voir ``_expense_scan_store_image``),
+        car ici l'utilisateur a ajusté l'image lui-même.
 
-        Ne relance rien : c'est au bouton « Relancer l'analyse » de le
-        faire, sur cette image déjà corrigée.
+        Ne relance pas l'analyse : c'est le rôle du bouton « Relancer
+        l'analyse », sur cette image corrigée.
         """
         self.ensure_one()
         self.check_access('write')
@@ -826,24 +812,24 @@ class HrExpense(models.Model):
     def action_expense_scan_rescan(self):
         """Relance l'analyse sur le ou les justificatifs courants.
 
-        Volontairement pas sur la photo d'origine : si l'utilisateur relance,
-        c'est le plus souvent qu'il a retouché ou remplacé le ticket recadré,
-        et repartir de l'original perdrait sa correction.
+        L'analyse ne repart pas de la photo d'origine : l'utilisateur a le
+        plus souvent retouché ou remplacé le ticket recadré, et repartir de
+        l'original perdrait sa correction.
 
-        Passe par la comparaison des morceaux dès qu'il y en a plusieurs :
-        ajouter une seconde photo à une dépense puis relancer est la façon
-        naturelle de dire « ces deux-là vont ensemble ».
+        S'il y a plusieurs pièces, elles passent par la comparaison des
+        morceaux : ajouter une seconde photo puis relancer indique que les
+        deux vont ensemble.
         """
         for expense in self:
             expense._expense_scan_run_pieces(force=True, from_original=False)
         return True
 
     def action_expense_scan_done(self):
-        """Vérification terminée : on rend la main à la liste.
+        """Marque la vérification comme terminée et revient à la liste.
 
-        « Terminé » vaut relecture : les indications encore affichées sous
-        les champs — une date jugée peu lisible et pourtant juste — n'ont
-        plus lieu d'être. Le libellé des points reste, pour mémoire.
+        Terminer vaut relecture : les indications encore affichées sous les
+        champs (par exemple une date jugée peu lisible mais exacte) sont
+        effacées. Le libellé des points reste, pour mémoire.
         """
         self.filtered(lambda e: e.state == 'draft' and e.expense_scan_todo_codes).write({
             'expense_scan_todo_codes': False,
@@ -858,11 +844,10 @@ class HrExpense(models.Model):
         return action
 
     def _expense_scan_expense_list(self):
-        """L'action « Mes frais », ou un équivalent si l'écran a changé.
+        """Action « Mes frais », ou un équivalent si l'écran a changé.
 
-        ``target: main`` remet le fil d'ariane à zéro. Sans lui, la fiche
-        qu'on vient de quitter — ou de supprimer — y reste inscrite, avec
-        un lien qui ne mène plus nulle part.
+        ``target: main`` réinitialise le fil d'ariane. Sans lui, la fiche
+        quittée ou supprimée y reste, avec un lien qui ne mène nulle part.
         """
         action = self.env.ref('hr_expense.hr_expense_actions_my_all',
                               raise_if_not_found=False)
@@ -883,11 +868,11 @@ class HrExpense(models.Model):
     # ------------------------------------------------------------------
 
     def _expense_scan_run(self, force=False, from_original=True, progress=None):
-        """Analyse les dépenses du recordset, sans jamais interrompre l'import.
+        """Analyse les dépenses sans interrompre l'import.
 
-        Un ticket illisible ou une dépendance manquante ne doit pas faire
-        échouer l'envoi de la photo : l'erreur est enregistrée sur la
-        dépense et l'utilisateur saisit à la main.
+        Un ticket illisible ou une dépendance manquante ne fait pas échouer
+        l'envoi de la photo : l'erreur est enregistrée sur la dépense et
+        l'utilisateur saisit les données à la main.
         """
         for expense in self:
             attachment = expense._expense_scan_source_attachment(from_original)
@@ -896,21 +881,21 @@ class HrExpense(models.Model):
             if not force and expense.scan_state in ('done', 'partial'):
                 continue
             try:
-                # Le report des valeurs est dans le filet, lui aussi : une
-                # contrainte du modèle ne doit pas faire échouer l'envoi de
-                # la photo, sur laquelle l'utilisateur n'a aucune prise. Le
-                # point de sauvegarde permet d'écrire l'erreur ensuite, sur
-                # un curseur redevenu sain.
+                # Le report des valeurs est protégé lui aussi : une contrainte
+                # du modèle ne doit pas faire échouer l'envoi de la photo,
+                # sur laquelle l'utilisateur n'a aucune prise. Le point de
+                # sauvegarde permet d'écrire l'erreur ensuite sur un curseur
+                # sain.
                 with self.env.cr.savepoint():
                     result = expense._expense_scan_process(attachment, progress=progress)
                     if progress:
                         progress('valeurs', expense._expense_scan_preview(result))
                     expense._expense_scan_apply(result, attachment)
             except PG_CONCURRENCY_EXCEPTIONS_TO_RETRY:
-                # Une autre requête a écrit la même ligne pendant l'analyse —
-                # la fiche qui s'ouvre pose par exemple un jeton d'accès sur
-                # la photo. Ce n'est pas un échec de l'analyse : Odoo rejoue
-                # toute la requête, analyse comprise, si on le laisse faire.
+                # Une autre requête a écrit la même ligne pendant l'analyse
+                # (la fiche qui s'ouvre pose par exemple un jeton d'accès sur
+                # la photo). Ce n'est pas un échec de l'analyse : Odoo rejoue
+                # toute la requête, analyse comprise.
                 raise
             except Exception as error:  # noqa: BLE001
                 _logger.exception("Analyse du ticket impossible (dépense %s)", expense.id)
@@ -923,13 +908,12 @@ class HrExpense(models.Model):
                 })
 
     def _expense_scan_source_attachment(self, from_original=True):
-        """La pièce jointe à lire.
+        """Pièce jointe à lire.
 
-        Au premier passage, la photo d'origine : elle a toute la résolution,
-        et le module se charge de la redresser. À la relance en revanche, on
-        repart du justificatif courant — c'est celui que l'utilisateur a
-        éventuellement retouché ou remplacé, et relire l'original reviendrait
-        à effacer sa correction.
+        Premier passage : la photo d'origine, qui a toute la résolution ; le
+        module la redresse. Relance : le justificatif courant, que
+        l'utilisateur a pu retoucher ou remplacer ; relire l'original
+        effacerait sa correction.
         """
         self.ensure_one()
         attachment = self.message_main_attachment_id
@@ -943,7 +927,7 @@ class HrExpense(models.Model):
 
     @staticmethod
     def _expense_scan_readable(attachment):
-        """Cette pièce jointe se laisse-t-elle lire par le moteur ?"""
+        """Indique si la pièce jointe peut être lue par le moteur."""
         mimetype = (attachment.mimetype or '').lower()
         name = (attachment.name or '').lower()
         return bool(mimetype.startswith(SUPPORTED_IMAGE_PREFIX)
@@ -976,10 +960,10 @@ class HrExpense(models.Model):
         return data
 
     def _expense_scan_process(self, attachment, progress=None):
-        """Pré-traite l'image, la lit, en extrait les champs.
+        """Pré-traite l'image, la lit, puis en extrait les champs.
 
-        ``progress`` : appelé à la fin de chaque étape, avec son nom — voir
-        _expense_scan_progress_sender.
+        ``progress`` : appelé à la fin de chaque étape avec son nom (voir
+        _expense_scan_progress_sender).
         """
         self.ensure_one()
         ok, message = preprocess.dependencies_status()
@@ -1001,11 +985,11 @@ class HrExpense(models.Model):
         engine = engines.resolve_engine(
             company.expense_scan_engine, **company._expense_scan_engine_options())
 
-        # Une lecture, puis le redressement sur ses boîtes : le moteur lit
-        # une ligne dans n'importe quel sens (il redresse chaque boîte avant
-        # de la reconnaître), et les boîtes se transposent sans relire. Une
-        # seconde lecture n'a lieu que si elle apporte quelque chose — voir
-        # _expense_scan_straighten.
+        # Une lecture, puis redressement d'après les boîtes : le moteur
+        # redresse chaque boîte avant de la reconnaître (il lit une ligne
+        # dans n'importe quel sens) et les boîtes se transposent sans
+        # relecture. Une seconde lecture n'a lieu que si elle apporte
+        # quelque chose (voir _expense_scan_straighten).
         words = engine.recognize(image)
         timer.lap('lecture')
         image, words, reread = self._expense_scan_straighten(engine, image, words, info, company)
@@ -1016,26 +1000,24 @@ class HrExpense(models.Model):
             timer.lap('redressement')
         duration = timer.sum('lecture', 'relecture')
 
-        # Dernier mot sur l'orientation, sur les boîtes de la lecture
-        # définitive : plus nombreuses et mieux placées que celles de
-        # l'essai, elles rattrapent un quart de tour mal choisi.
+        # Décision finale sur l'orientation, d'après les boîtes de la lecture
+        # définitive : plus nombreuses et mieux placées que celles de l'essai,
+        # elles corrigent un quart de tour mal choisi.
         #
-        # Sauf pour l'endroit/l'envers d'un PDF : contrairement à une
-        # photo, dont le téléphone ne dit pas toujours le sens, une page
-        # PDF est rendue telle que le document la déclare — vérifié sur ce
-        # point précis. Deviner quand même, sur un texte dense où l'OCR
-        # varie d'une lecture à l'autre, retournait parfois une page qui
-        # n'en avait pas besoin.
+        # Exception : le sens haut/bas (180°) d'un PDF. Contrairement à une
+        # photo, dont le téléphone n'indique pas toujours le sens, une page
+        # PDF est rendue telle que le document la déclare (vérifié). Décider
+        # quand même, sur un texte dense où l'OCR varie d'une lecture à
+        # l'autre, retournerait parfois une page qui n'en a pas besoin.
         if company.expense_scan_auto_rotate:
             words, image = self._expense_scan_reorient(
                 words, image, info, decide_180=not self._expense_scan_is_pdf(attachment))
 
-        # Second passage de mise en forme, cette fois guidé par le texte
-        # reconnu. La détection de contours d'avant-OCR échoue sur un ticket
-        # clair posé sur un fond clair ; la position du texte, elle, est
-        # désormais connue. On ne relance pas l'OCR pour autant : la lecture
-        # est déjà faite, il s'agit d'obtenir l'image que l'utilisateur aura
-        # sous les yeux pour vérifier les champs.
+        # Second passage de mise en forme, guidé par le texte reconnu. La
+        # détection de contours avant OCR échoue sur un ticket clair posé sur
+        # un fond clair ; la position du texte est maintenant connue.
+        # L'OCR n'est pas relancé : la lecture est faite, il s'agit de
+        # produire l'image que l'utilisateur verra pour vérifier les champs.
         image = self._expense_scan_tighten(image, words, info, company)
         timer.lap('recadrage')
 
@@ -1046,9 +1028,9 @@ class HrExpense(models.Model):
         )
         result = parser.parse(words, **parse_kwargs)
         if self._expense_scan_is_pdf(attachment) and parser.fields_to_check(result, names=('total',)):
-            # Repli, pas la règle : la plupart des PDF donnent leur total
-            # dès la première page, seule lue jusqu'ici. Une facture de
-            # plusieurs pages le porte parfois en pied de la dernière.
+            # Repli : la plupart des PDF donnent leur total dès la première
+            # page, seule lue jusqu'ici. Une facture de plusieurs pages le
+            # porte parfois en pied de la dernière.
             words = self._expense_scan_extra_pdf_pages(attachment, engine, words, timer)
             result = parser.parse(words, **parse_kwargs)
         result.engine = getattr(engine, 'description', engine.label)
@@ -1061,22 +1043,21 @@ class HrExpense(models.Model):
         return result
 
     def _expense_scan_extra_pdf_pages(self, attachment, engine, words, timer):
-        """Complète les mots lus avec les pages suivantes d'un PDF.
+        """Complète les mots lus avec ceux des pages suivantes d'un PDF.
 
-        Appelée seulement si la première page ne donne pas de total : une
-        facture de plusieurs pages porte souvent le sien en pied de la
-        dernière. Les pages ajoutées ne reçoivent pas le raffinement
-        réservé à l'image affichée (redressement, recadrage) — ce ne sont
-        pas des photos à main levée, et elles ne servent qu'à compléter
-        l'analyse, jamais l'aperçu.
+        Appelée quand la première page ne donne pas de total : une facture
+        de plusieurs pages porte souvent le sien en pied de la dernière. Les
+        pages ajoutées ne reçoivent pas les traitements réservés à l'image
+        affichée (redressement, recadrage) : ce ne sont pas des photos à
+        main levée, et elles ne servent qu'à l'analyse, pas à l'aperçu.
         """
         self.ensure_one()
         data = attachment.raw
         count = preprocess.pdf_page_count(data)
         if count <= 1:
             return words
-        # Un grand décalage vertical par page : les mots de deux pages ne
-        # doivent jamais se mêler à ceux d'une ligne de l'autre.
+        # Grand décalage vertical par page : les mots de deux pages ne
+        # doivent pas se mêler à une ligne de l'autre.
         step = max((word.bottom for word in words), default=0.0) + 1000.0
         combined = list(words)
         for page in range(2, min(count, PDF_MAX_PAGES_READ) + 1):
@@ -1085,7 +1066,7 @@ class HrExpense(models.Model):
                 continue
             try:
                 page_image = preprocess.load_image(page_bytes)
-            except Exception:  # noqa: BLE001 — une page illisible n'arrête pas les autres
+            except Exception:  # noqa: BLE001 (une page illisible n'arrête pas les autres)
                 _logger.warning("Page %s du PDF illisible", page, exc_info=True)
                 continue
             page_words = engine.recognize(page_image)
@@ -1093,38 +1074,39 @@ class HrExpense(models.Model):
         timer.lap('pages suivantes')
         return combined
 
-    #: Hauteur médiane des mots, en pixels de travail du moteur, en dessous
-    #: de laquelle la lecture perd des caractères : un ticket photographié
-    #: de loin, une page A4 entière au texte dense.
+    #: Hauteur médiane des mots (pixels de travail du moteur) en dessous de
+    #: laquelle la lecture se dégrade : ticket photographié de loin, page A4
+    #: entière à texte dense.
     SMALL_TEXT_PX = 20
     #: Agrandissement minimal du texte qui justifie de relire le ticket
-    #: recadré : en deçà, la seconde lecture coûte autant que la première
-    #: pour un gain négligeable.
+    #: recadré : en dessous, la seconde lecture coûte autant que la
+    #: première pour un gain négligeable.
     REREAD_MIN_GAIN = 1.3
-    #: Inclinaison au-delà de laquelle relire l'image redressée : les boîtes
-    #: de la première lecture sont droites, et sur un texte penché elles se
-    #: chevauchent d'une ligne à l'autre, ce qui brouille leur regroupement.
+    #: Inclinaison (degrés) au-delà de laquelle l'image redressée est
+    #: relue : les boîtes de la première lecture sont droites et, sur un
+    #: texte penché, elles se chevauchent d'une ligne à l'autre, ce qui
+    #: brouille leur regroupement.
     REREAD_ANGLE = 4.0
 
     def _expense_scan_straighten(self, engine, image, words, info, company):
-        """Remet le ticket d'aplomb, sur les boîtes de la première lecture.
+        """Redresse le ticket d'après les boîtes de la première lecture.
 
         Toute orientation se ramène à un quart de tour plus un résidu dans
-        ±45°. Le quart de tour se lit sur la **forme des boîtes**, pas sur
-        la qualité de la lecture : le moteur redresse chaque boîte avant de
-        la reconnaître, il lit donc aussi bien dans les quatre sens. Image et
-        boîtes tournent ensemble, sans relire.
+        ±45°. Le quart de tour se déduit de la **forme des boîtes** et non de
+        la qualité de lecture : le moteur redresse chaque boîte avant de la
+        reconnaître, donc il lit dans les quatre sens. L'image et les boîtes
+        tournent ensemble, sans relecture.
 
-        L'endroit/l'envers n'est volontairement pas tranché ici (voir
-        _expense_scan_quarters) : il l'est une seule fois, après.
+        Le sens haut/bas (180°) n'est pas tranché ici (voir
+        _expense_scan_quarters) : il l'est une seule fois, ensuite.
 
-        Renvoie ``(image, mots, relire)``. Relire ne sert que dans deux cas :
-        un ticket nettement penché, et un texte trop petit dans la photo
-        entière que le recadrage agrandirait vraiment — le moteur ramenant
-        l'image à sa taille de travail, autant que ce budget se dépense sur
-        le ticket plutôt que sur la table. Tout le reste se lit bien du
+        Renvoie ``(image, mots, relire)``. La relecture n'a lieu que dans
+        deux cas : un ticket nettement penché, ou un texte trop petit dans la
+        photo entière que le recadrage agrandirait. Le moteur ramenant
+        l'image à sa taille de travail, ce budget est mieux employé sur le
+        ticket que sur la table. Tout le reste se lit correctement du
         premier coup : l'ancienne lecture d'essai doublait le temps
-        d'analyse de chaque ticket pour rien.
+        d'analyse pour rien.
         """
         if not company.expense_scan_auto_rotate:
             return image, words, False
@@ -1148,10 +1130,10 @@ class HrExpense(models.Model):
             else:
                 angle = 0.0
 
-        # Un ticket couché se relit toujours : le moteur lit mal une ligne
-        # debout (« aiement P » pour « Paiement »), même s'il en retrouve
-        # bien la place. Les boîtes suffisaient à choisir le quart de tour,
-        # pas le texte.
+        # Un ticket tourné est toujours relu : le moteur lit mal une ligne
+        # verticale (« aiement P » pour « Paiement »), même quand il en
+        # trouve bien la position. Les boîtes suffisent à choisir le quart
+        # de tour, pas à lire le texte.
         reread = bool(quarters) or abs(angle) > self.REREAD_ANGLE
         if company.expense_scan_autocrop:
             # Sur les boîtes retenues pour l'angle : un caractère du décor
@@ -1173,7 +1155,7 @@ class HrExpense(models.Model):
 
     @staticmethod
     def _expense_scan_working_scale(engine, width, height):
-        """Facteur de réduction qu'appliquera le moteur à cette image."""
+        """Facteur de réduction que le moteur applique à cette image."""
         side = engine.working_side
         longest = max(width, height)
         return min(1.0, side / float(longest)) if side and longest else 1.0
@@ -1200,10 +1182,10 @@ class HrExpense(models.Model):
     def _expense_scan_reorient(self, words, image, info, decide_180=True):
         """Applique le quart de tour manquant, sans relire l'image.
 
-        Seul endroit qui tranche l'endroit/l'envers (``decide_180``) : sur
-        les boîtes de la lecture définitive, bien plus nombreuses et mieux
-        placées que celles de l'essai. Une seule décision, jamais
-        recroisée avec une précédente — voir _expense_scan_quarters.
+        Seul endroit qui décide du sens haut/bas (``decide_180``) : sur les
+        boîtes de la lecture définitive, bien plus nombreuses et mieux
+        placées que celles de l'essai. Une seule décision, non recroisée
+        avec une décision antérieure (voir _expense_scan_quarters).
         """
         quarters = self._expense_scan_quarters(words, image, decide_180=decide_180)
         if not quarters:
@@ -1215,29 +1197,28 @@ class HrExpense(models.Model):
                 preprocess.rotate_quarters(image, quarters))
 
     def _expense_scan_quarters(self, words, image, decide_180=True):
-        """Quart de tour à appliquer, déduit des seules boîtes reconnues.
+        """Quart de tour à appliquer, déduit des seules formes de boîtes.
 
-        Deux critères, dans cet ordre. La **direction des lignes** d'abord,
-        celle que le détecteur donne à chaque boîte : elle sépare les quarts
-        pairs des impairs, un ticket debout n'ayant pas la même que couché. Le
-        **sens de lecture** ensuite, pour départager l'endroit de l'envers :
-        un montant suit son libellé, l'enseigne est en haut, le règlement
-        en bas.
+        Deux critères, dans cet ordre. **Direction des lignes** d'abord,
+        fournie par le détecteur pour chaque boîte : elle sépare les quarts
+        pairs des impairs, un ticket debout n'ayant pas la même direction
+        qu'un ticket couché. **Sens de lecture** ensuite, pour départager
+        l'endroit de l'envers : un montant suit son libellé, l'enseigne est
+        en haut, le règlement en bas.
 
-        Rien de tout cela ne relit l'image : les boîtes se transposent, et
-        leur texte est déjà juste puisque le moteur redresse chaque boîte
-        avant de la lire. C'est aussi pourquoi la qualité de reconnaissance
-        ne dit rien de l'orientation, et pourquoi cette méthode a remplacé
-        quatre relectures qui ne tranchaient rien.
+        L'image n'est pas relue : les boîtes se transposent et leur texte
+        est déjà juste, le moteur redressant chaque boîte avant de la lire.
+        La qualité de reconnaissance n'indique rien sur l'orientation ; cette
+        méthode a remplacé quatre relectures qui ne tranchaient pas.
 
-        ``decide_180`` : à faux, ne corrige que le premier critère — debout
-        devient couché — et laisse le second à un appel ultérieur sur de
-        meilleures boîtes. Basculer l'endroit/l'envers ne sert à rien avant
-        la lecture définitive (une ligne couchée se lit aussi bien dans les
-        deux sens) ; l'ignorer ici évite qu'une décision prise sur un essai
-        en basse résolution — une page dense s'y relit mal — soit
-        « confirmée » par une seconde décision prise sur les mêmes indices,
-        tout aussi trompeurs une fois qu'elle a elle-même tourné la page.
+        ``decide_180=False`` : ne corrige que le premier critère (debout
+        devient couché) et laisse le second à un appel ultérieur, sur de
+        meilleures boîtes. Basculer le sens haut/bas n'apporte rien avant la
+        lecture définitive (une ligne couchée se lit aussi bien dans les deux
+        sens). L'ignorer ici évite qu'une décision prise sur l'essai (basse
+        résolution, où une page dense se relit mal) soit « confirmée » par
+        une seconde décision sur les mêmes indices, aussi trompeurs une fois
+        la page tournée par la première.
         """
         if not words:
             return 0
@@ -1250,33 +1231,32 @@ class HrExpense(models.Model):
             candidates.append((quarters, turned))
 
         if not decide_180 and any(quarters == 0 for quarters, _turned in candidates):
-            # Déjà couché dans son orientation d'origine : rien à faire,
-            # l'endroit/l'envers se tranchera une fois pour toutes plus tard.
+            # Déjà couché dans son orientation d'origine : rien à faire, le
+            # sens haut/bas sera décidé une seule fois, plus tard.
             return 0
 
-        # Le sens de lecture de chaque candidat couché, une fois pour
-        # toutes : -1 (envers), 0 (aucun avis), 1 (endroit).
+        # Sens de lecture de chaque candidat couché, définitif :
+        # -1 (envers), 0 (aucun avis), 1 (endroit).
         verdicts = [(quarters, parser.reading_direction(parser.build_lines(turned)))
                     for quarters, turned in candidates]
         chosen = self._expense_scan_pick_quarter(verdicts)
-        # Une ligne par scan, pas plus : assez pour rejouer une décision
-        # d'orientation contestée sans avoir à relancer le scan en debug.
+        # Une ligne par scan : suffit à rejouer une décision d'orientation
+        # contestée sans relancer le scan en debug.
         _logger.info("expense_scan : orientation (decide_180=%s) candidats=%s retenu=%s",
                      decide_180, verdicts, chosen)
         return chosen
 
     @api.model
     def _expense_scan_pick_quarter(self, verdicts):
-        """Choisit le quart à partir du sens de lecture de chaque candidat.
+        """Choisit le quart d'après le sens de lecture de chaque candidat.
 
-        ``verdicts`` : ``[(quart, -1|0|1), ...]``, dans l'ordre où les
-        quarts ont été essayés (0 d'abord). Un avis franc (+1) l'emporte
-        aussitôt. À défaut, le premier quart qui n'inspire pas lui-même une
-        franche méfiance (-1) est gardé — jamais, en revanche, le premier
-        de la liste sans regarder son propre avis : un ticket dont le sens
-        ne se lit qu'à moitié (un péage, par exemple) ne doit pas se
-        retourner sur un solde à peine négatif quand l'orientation d'origine
-        n'en inspire aucun.
+        ``verdicts`` : ``[(quart, -1|0|1), ...]``, dans l'ordre d'essai
+        (0 d'abord). Un avis franc (+1) l'emporte aussitôt. Sinon, le premier
+        quart qui n'inspire pas de doute franc (-1) est retenu. Le premier de
+        la liste n'est pas pris sans examiner son propre avis : un ticket
+        dont le sens n'est lisible qu'à moitié (un péage, par exemple) ne
+        doit pas être retourné sur un solde à peine négatif quand
+        l'orientation d'origine ne suscite aucun doute.
         """
         for quarters, verdict in verdicts:
             if verdict > 0:
@@ -1289,18 +1269,18 @@ class HrExpense(models.Model):
     def _expense_scan_tighten(self, image, words, info, company):
         """Redresse puis recadre, une fois l'OCR passé.
 
-        Cet ordre est important : la rotation agrandit le cadre pour ne rien
-        rogner, donc recadrer avant elle laisse forcément de la marge. On
-        redresse d'abord, en faisant suivre les boîtes de mots, et on
-        recadre sur leur nouvelle position.
+        L'ordre compte : la rotation agrandit le cadre pour ne rien rogner,
+        donc recadrer avant elle laisse de la marge. Le redressement vient
+        d'abord (les boîtes de mots suivent), puis le recadrage sur leur
+        nouvelle position.
         """
         if company.expense_scan_deskew:
-            # L'inclinaison se mesure sur les lignes de texte reconnues, et
-            # non sur l'image : les bords du papier sont des droites bien
-            # plus marquées que l'impression, et rarement parallèles à elle.
-            # L'orientation des boîtes du détecteur d'abord ; la régression
-            # sur les mots ne sert que de repli, pour un moteur comme
-            # Tesseract qui ne rend que des rectangles droits.
+            # L'inclinaison est mesurée sur les lignes de texte reconnues et
+            # non sur l'image : les bords du papier sont des droites plus
+            # marquées que l'impression, et rarement parallèles à elle.
+            # Angle des boîtes du détecteur d'abord ; la régression sur les
+            # mots sert de repli pour un moteur comme Tesseract, qui ne
+            # renvoie que des rectangles droits.
             angle = preprocess.skew_angle_from_words(words) \
                 or preprocess.skew_angle_from_lines(parser.build_lines(words))
             if preprocess.MIN_DESKEW_ANGLE < abs(angle) <= preprocess.MAX_DESKEW_ANGLE:
@@ -1339,11 +1319,11 @@ class HrExpense(models.Model):
         if result.timer:
             result.timer.lap('catégorie')
 
-        # (texte, code) par point à vérifier — le code, gardé à part du
-        # texte affiché, dit quand le rouvrir une fois résolu (voir
+        # (texte, code) par point à vérifier. Le code, gardé à part du texte
+        # affiché, indique si le point est encore ouvert (voir
         # TODO_RESOLVED_WHEN et _compute_expense_scan_todo_pending).
-        # « static » marque les points qu'on ne sait pas rouvrir tout
-        # seuls : ils restent affichés tant que personne ne relance
+        # « static » marque les points qui ne peuvent pas être rouverts
+        # automatiquement : ils restent affichés jusqu'à une relance de
         # l'analyse, comme avant ce mécanisme.
         #
         # Chaque point porte aussi sa phrase d'aide, affichée sous le champ
@@ -1367,14 +1347,14 @@ class HrExpense(models.Model):
         if code and code != company.currency_id.name and not values.get('currency_id') \
                 and result.confidence('currency') >= 0.5:
             # Ticket en zlotys, devise inactive : le montant serait compté
-            # en euros sans que personne ne le voie.
+            # en euros sans avertissement.
             items.append((_("Devise (%s à activer dans Odoo)", code), 'currency',
                           _("Ticket en %s : cette devise est à activer dans Odoo, "
                             "sans quoi le montant compte en euros.", code)))
         if company.expense_scan_reinvoice and not values.get('project_id'):
-            # Aucune mission ne couvre cette date, ou plusieurs : dans les
-            # deux cas c'est au salarié de trancher — y compris pour dire
-            # que le frais n'est pas refacturable. Résolu dès qu'il choisit.
+            # Aucune mission ne couvre cette date, ou plusieurs : le salarié
+            # tranche (y compris pour indiquer que le frais n'est pas
+            # refacturable). Résolu dès qu'il choisit.
             items.append((_("À refacturer"), 'reinvoice',
                           _("Aucune mission trouvée pour cette date : "
                             "indiquez si ce frais est à refacturer.")))
@@ -1394,15 +1374,15 @@ class HrExpense(models.Model):
                               _("TVA de %.2f lue : saisissez le total pour la reporter.",
                                 result.value('tax_amount'))))
             elif not values.get('scan_tax_amount'):
-                # Lecture écartée parce qu'elle dépasse le plafond du taux :
-                # c'est presque toujours un montant pris pour un autre.
+                # Lecture écartée car elle dépasse le plafond du taux : en
+                # général un autre montant lu à la place de la TVA.
                 items.append((_("TVA (lecture incompatible avec le taux)"), 'tax_amount',
                               _("La TVA lue ne colle pas avec le taux : "
                                 "saisissez le montant imprimé sur le ticket.")))
             else:
-                # La TVA lue ne pourra pas être comptabilisée tant qu'aucune
-                # taxe ne porte les tags fiscaux : vérifié après écriture,
-                # la catégorie reconnue pouvant apporter la sienne.
+                # La TVA lue n'est comptabilisable qu'avec une taxe portant
+                # des tags fiscaux : vérifié après écriture, la catégorie
+                # reconnue pouvant en apporter une.
                 check_category_tax = True
         values.update({
             'scan_state': 'partial' if items else 'done',
@@ -1418,12 +1398,11 @@ class HrExpense(models.Model):
         if result.timer:
             result.timer.lap('image')
 
-        # Les champs déduits de la mission s'écrivent en droits élevés, pour
-        # la même raison qu'ils se lisent ainsi : ils appartiennent aux
-        # groupes Ventes et Analytique, dont le salarié qui photographie son
-        # ticket ne fait pas partie. Ce ne sont pas des valeurs qu'il
-        # choisit — le module les déduit — et elles atterrissent sur sa
-        # propre dépense, en brouillon.
+        # Les champs de mission sont écrits en droits élevés, comme pour leur
+        # lecture : ils relèvent des groupes Ventes et Analytique, dont le
+        # salarié qui photographie son ticket ne fait pas partie. Le module
+        # les déduit (l'utilisateur ne les choisit pas) et ils sont posés sur
+        # sa propre dépense, en brouillon.
         reinvoice_values = {name: values.pop(name)
                             for name in self.REINVOICE_FIELDS if name in values}
         self.write(values)
@@ -1439,7 +1418,7 @@ class HrExpense(models.Model):
                           _("Cette catégorie n'a pas de taxe : choisissez le taux "
                             "pour que la TVA lue soit déduite.")))
             after.update({'scan_state': 'partial', **self._expense_scan_todo_values(items)})
-        # Ce que l'analyse a posé, pour reconnaître ensuite une correction.
+        # Valeurs posées par l'analyse, pour reconnaître ensuite une correction.
         after['expense_scan_read_values'] = json.dumps({
             name: self._expense_scan_comparable(name) for name in self.READ_VALUE_FIELDS})
         self.write(after)
@@ -1449,7 +1428,7 @@ class HrExpense(models.Model):
 
     @staticmethod
     def _expense_scan_todo_values(items):
-        """Champs qui décrivent les points à vérifier : libellés, codes, phrases."""
+        """Champs décrivant les points à vérifier : libellés, codes, phrases."""
         return {
             'scan_todo': ", ".join(text for text, _code, _hint in items) or False,
             'expense_scan_todo_codes': ",".join(code for _text, code, _hint in items) or False,
@@ -1464,9 +1443,9 @@ class HrExpense(models.Model):
         française : elle se récupère, le cas échéant, auprès du pays
         concerné. La reporter en TVA déductible fausserait la comptabilité.
 
-        Trois indices : une taxe qui ne s'appelle pas TVA (IVA, MwSt, PTU…),
-        une devise étrangère, ou un taux qu'aucune taxe de la société ne
-        connaît — c'est le cas de la TVA belge à 21 %, imprimée « TVA ».
+        Trois indices : une taxe qui ne s'appelle pas TVA (IVA, MwSt,
+        PTU…), une devise étrangère, ou un taux qu'aucune taxe de la société
+        ne connaît (par exemple la TVA belge à 21 %, imprimée « TVA »).
         """
         label = result.value('tax_label')
         if not (label or result.value('tax_amount') or result.value('tax_rate_max')):
@@ -1489,10 +1468,10 @@ class HrExpense(models.Model):
         return False
 
     def _expense_scan_name_is_automatic(self):
-        """La description est-elle encore celle qu'Odoo ou l'analyse a posée ?
+        """Indique si la description est encore celle posée par Odoo ou l'analyse.
 
-        Les salariés y inscrivent la mission — « FAI chez Bidule » — et une
-        relance d'analyse ne doit jamais l'écraser.
+        Les salariés y inscrivent la mission (« FAI chez Bidule »), qu'une
+        relance d'analyse ne doit pas écraser.
         """
         self.ensure_one()
         name = (self.name or '').strip()
@@ -1503,9 +1482,8 @@ class HrExpense(models.Model):
                 or name == (self.product_id.display_name or '') \
                 or name == (self.expense_scan_merchant or ''):
             return True
-        # « Ticket du 12/09/2026 », « Péage du 12/09/2026 » : une date seule
-        # derrière le nom d'une catégorie, quelle qu'elle soit — la
-        # catégorie a pu changer depuis.
+        # « Ticket du 12/09/2026 », « Péage du 12/09/2026 » : le nom d'une
+        # catégorie quelconque (elle a pu changer depuis), suivi d'une date.
         pattern = re.escape(self._expense_scan_date_name('XCATEGORYX', 'XDATEX'))
         pattern = pattern.replace('XCATEGORYX', r'(?P<label>.+?)').replace('XDATEX', r'.*\d.*')
         match = re.fullmatch(pattern, name)
@@ -1518,10 +1496,11 @@ class HrExpense(models.Model):
             ('can_be_expensed', '=', True), ('name', '=ilike', label)], limit=1))
 
     def _expense_scan_home_places(self):
-        """Lieux qui ne disent rien d'un déplacement : la société, le domicile.
+        """Lieux sans lien avec un déplacement : la société, le domicile.
 
         « GREEN ENGINE … 31790 ST JORY » figure au pied de chaque facture
-        adressée à la société : son code postal relierait toutes les dépenses.
+        adressée à la société : son code postal relierait toutes les
+        dépenses.
         """
         self.ensure_one()
         employee = self.employee_id.sudo()
@@ -1540,22 +1519,22 @@ class HrExpense(models.Model):
                 {city for city in home_cities if len(city) >= 4})
 
     def _expense_scan_trip_reason(self, scan_date, lines):
-        """La raison d'un déplacement déjà écrite sur une dépense voisine.
+        """Raison d'un déplacement, déjà écrite sur une dépense voisine.
 
-        Toutes les dépenses d'un même déplacement partagent sa raison —
-        « Déplacement commercial Mécaprec ». Sont du même déplacement, à
+        Toutes les dépenses d'un même déplacement partagent sa raison
+        (« Déplacement commercial Mécaprec »). Sont du même déplacement, à
         quelques jours près :
 
         * une dépense du même jour ;
-        * une dépense d'un même lieu : même code postal, même gare de
-          péage (l'aller et le retour), ou une ville de l'une citée par
-          l'autre — le billet « Lille à Bordeaux », l'hôtel de Bordeaux,
-          le péage « Sortie Bordeaux » ;
+        * une dépense du même lieu : même code postal, même gare de péage
+          (aller et retour), ou ville de l'une citée par l'autre (billet
+          « Lille à Bordeaux », hôtel de Bordeaux, péage « Sortie Bordeaux ») ;
         * une journée encadrée par deux dépenses de même raison.
 
-        Chaque dépense qui reprend la raison relaie à son tour : un long
-        déplacement se couvre de proche en proche. La ville de la société
-        et celle du domicile ne relient rien : elles figurent partout.
+        Chaque dépense qui reprend la raison sert à son tour de relais : un
+        long déplacement se couvre de proche en proche. La ville de la
+        société et celle du domicile ne relient rien : elles figurent sur
+        tous les justificatifs.
         """
         self.ensure_one()
         if not (scan_date and self.employee_id):
@@ -1572,7 +1551,7 @@ class HrExpense(models.Model):
             return False
 
         def most_common(expenses):
-            # La raison la plus répandue, la plus proche en date à égalité.
+            # Raison la plus fréquente ; à égalité, la plus proche en date.
             counts = Counter(expenses.mapped('name'))
             return max(expenses, key=lambda e: (
                 counts[e.name], -abs((e.date - scan_date).days), e.id)).name
@@ -1608,7 +1587,7 @@ class HrExpense(models.Model):
         return _("%(category)s du %(date)s", category=label, date=date_text)
 
     def _expense_scan_auto_name(self, product, scan_date):
-        """Description posée d'office : la catégorie reconnue, sinon « Ticket »."""
+        """Description posée automatiquement : la catégorie reconnue, sinon « Ticket »."""
         company_default = self.company_id.expense_scan_product_id
         label = product.name if product and product != company_default else _("Ticket")
         return self._expense_scan_date_name(label, format_date(self.env, scan_date))
@@ -1619,7 +1598,7 @@ class HrExpense(models.Model):
         if foreign is None:
             foreign = self._expense_scan_foreign_tax(result, company)
 
-        # La catégorie d'abord : sa taxe sert de repli au contrôle de la TVA.
+        # Catégorie d'abord : sa taxe sert de repli au contrôle de la TVA.
         values.update(self._expense_scan_category_values(result, company))
         guessed = self.env['product.product'].browse(
             values.get('expense_scan_guessed_product_id') or [])
@@ -1634,15 +1613,15 @@ class HrExpense(models.Model):
         if scan_date:
             values['scan_datetime'] = self._expense_scan_moment(scan_date, scan_time)
 
-        # La description est celle du salarié — la mission, le plus souvent.
-        # L'enseigne a son propre champ ; la description ne reçoit au plus
-        # que la date du ticket, tant que personne n'y a rien écrit.
-        # Tant que la catégorie n'est pas celle, générique, de la société,
-        # elle nomme la dépense : « Péage du 12/09/2026 ».
+        # La description appartient au salarié (la mission, le plus souvent).
+        # L'enseigne a son propre champ ; la description ne reçoit au plus que
+        # la date du ticket, tant que personne n'y a écrit. Dès que la
+        # catégorie n'est plus la catégorie générique de la société, elle
+        # nomme la dépense : « Péage du 12/09/2026 ».
         if scan_date and not self.expense_scan_keep_name \
                 and self._expense_scan_name_is_automatic():
-            # La raison d'un même déplacement, déjà écrite ailleurs, passe
-            # avant la description automatique.
+            # La raison d'un même déplacement, déjà écrite ailleurs, prime sur
+            # la description automatique.
             values['name'] = self._expense_scan_trip_reason(
                 scan_date, [line.text for line in result.lines]) \
                 or self._expense_scan_auto_name(self._expense_scan_target_product(values), scan_date)
@@ -1653,40 +1632,38 @@ class HrExpense(models.Model):
 
         total = result.value('total')
         if total:
-            # Champ calculé mais réinscriptible : c'est le point d'entrée
-            # prévu par Odoo pour un montant saisi tel quel, TTC.
+            # Champ calculé mais modifiable : point d'entrée prévu par Odoo
+            # pour un montant saisi tel quel, TTC.
             values['total_amount_currency'] = total
 
         no_vat = self._expense_scan_product_no_vat(self._expense_scan_target_product(values))
         if company.expense_scan_apply_tax and (foreign or no_vat):
-            # TVA étrangère, ou catégorie sans TVA récupérable — hôtel,
-            # transport de personnes : aucune taxe, aucun montant déductible.
+            # TVA étrangère, ou catégorie sans TVA récupérable (hôtel,
+            # transport de personnes) : aucune taxe, aucun montant déductible.
             values['tax_ids'] = [Command.clear()]
             values['scan_tax_amount'] = 0.0
         elif company.expense_scan_apply_tax:
-            # Le taux lu sur le ticket prime sur celui de la catégorie —
-            # un repas à 10 % ne doit pas être déclaré à 20 % parce que la
-            # catégorie générique le prévoit. Encore faut-il qu'une seule
-            # taxe corresponde à ce taux : sur un plan comptable chargé, le
-            # choix entre biens et services appartient au comptable.
+            # Le taux lu sur le ticket prime sur celui de la catégorie : un
+            # repas à 10 % ne doit pas être déclaré à 20 % parce que la
+            # catégorie générique le prévoit. Condition : une seule taxe
+            # correspond à ce taux ; sur un plan comptable chargé, le choix
+            # entre biens et services revient au comptable.
             tax = self._expense_scan_tax(result.value('tax_rate'), company)
             if not tax and result.value('tax_rate_max'):
-                # Plusieurs taux sur le même ticket (un repas à 5,5 % et un
-                # autre à 10 %, par exemple) : aucun ne vaut pour la dépense
-                # entière, mais il faut néanmoins choisir une taxe à poser.
-                # Le plus élevé l'emporte — position prudente pour la TVA
-                # déductible, que le comptable pourra toujours corriger.
+                # Plusieurs taux sur le même ticket (repas à 5,5 % et 10 %) :
+                # aucun ne vaut pour la dépense entière, mais une taxe doit
+                # être posée. Le plus élevé est retenu (position prudente pour
+                # la TVA déductible ; le comptable peut corriger).
                 tax = self._expense_scan_tax(result.value('tax_rate_max'), company)
             if tax:
                 values['tax_ids'] = [Command.set(tax.ids)]
                 effective_rate = tax.amount
             else:
                 # Taux introuvable au plan comptable : la dépense garde la
-                # taxe de sa catégorie, qui portera l'écriture. Pour juger
-                # de la TVA lue, en revanche, le plafond du ticket vaut
-                # mieux que celui de la catégorie — un repas à 10 % + 20 %
-                # dépasse le plafond d'une catégorie à 10 % sans être faux
-                # pour autant.
+                # taxe de sa catégorie, qui porte l'écriture. Pour juger la
+                # TVA lue, le plafond du ticket vaut mieux que celui de la
+                # catégorie : un repas à 10 % + 20 % dépasse le plafond d'une
+                # catégorie à 10 % sans être erroné.
                 category_rates = (guessed.supplier_taxes_id.filtered(
                     lambda t: t.company_id == company and t.amount_type == 'percent'
                 ).mapped('amount') if guessed else None)
@@ -1696,33 +1673,33 @@ class HrExpense(models.Model):
 
             tax_amount = result.value('tax_amount')
             total_known = values.get('total_amount_currency') or self.total_amount_currency
-            # Une TVA lue de travers ne doit jamais faire échouer tout le
-            # scan sur ma propre contrainte : on la laisse alors de côté et
-            # on la signale, plutôt que d'écrire une valeur inenregistrable.
+            # Une TVA mal lue ne doit pas faire échouer tout le scan sur la
+            # contrainte du module : elle est écartée et signalée plutôt
+            # qu'écrite sous une valeur inenregistrable.
             if tax_amount and not total_known:
-                # Total illisible : aucun plafond ne permet de juger la TVA,
-                # et la comparer à un total nul la déclarait « incompatible ».
-                # On ne touche à rien ; le salarié saisira les deux.
+                # Total illisible : aucun plafond ne permet de juger la TVA, et
+                # la comparer à un total nul la déclarerait « incompatible ».
+                # Rien n'est modifié ; le salarié saisit les deux.
                 pass
             elif tax_amount and self._expense_scan_tax_fits(
                     tax_amount, values.get('total_amount_currency'), effective_rate):
                 values['scan_tax_amount'] = tax_amount
             else:
-                # Aucune TVA exploitable — le justificatif n'en porte pas,
-                # comme un ticket de carte bancaire, ou la lecture est
-                # incohérente. Dans les deux cas, laisser la taxe de la
-                # catégorie ferait apparaître une TVA déductible calculée
-                # depuis un taux, que rien dans le justificatif ne fonde.
-                # Pas de TVA lisible, donc pas de TVA : zéro.
+                # Aucune TVA exploitable : le justificatif n'en porte pas
+                # (ticket de carte bancaire) ou la lecture est incohérente.
+                # Dans les deux cas, garder la taxe de la catégorie ferait
+                # apparaître une TVA déductible calculée depuis un taux que
+                # rien dans le justificatif ne fonde. Pas de TVA lisible :
+                # zéro.
                 values['tax_ids'] = [Command.clear()]
                 values['scan_tax_amount'] = 0.0
 
         if company.expense_scan_reinvoice:
-            # La mission se cherche à la date du ticket, pas à celle de la
-            # saisie : un frais scanné le lundi peut dater du vendredi, sur
+            # La mission est cherchée à la date du ticket et non à celle de
+            # la saisie : un frais scanné le lundi peut dater du vendredi, sur
             # une autre mission.
             # « Non » est une décision du salarié : la mission retrouvée ne
-            # sert plus alors qu'au suivi du budget, sans refacturation.
+            # sert alors qu'au suivi du budget, sans refacturation.
             values.update(self._expense_scan_project_values(
                 self._expense_scan_find_project(scan_date),
                 reinvoice=self.reinvoice_mode != 'none'))
@@ -1741,8 +1718,8 @@ class HrExpense(models.Model):
     def _expense_scan_moment(self, scan_date, scan_time):
         """Horodatage du ticket, converti en UTC comme le stocke Odoo.
 
-        L'heure imprimée sur un ticket est une heure locale ; la stocker
-        telle quelle décalerait l'affichage de deux heures en été.
+        L'heure imprimée est une heure locale : la stocker telle quelle
+        décalerait l'affichage de deux heures en été.
         """
         moment = datetime.combine(scan_date, scan_time or dtime(0, 0))
         zone = self.env.user.tz or self.env.context.get('tz')
@@ -1755,7 +1732,7 @@ class HrExpense(models.Model):
             return moment
 
     def _expense_scan_tax(self, rate, company):
-        """Taxe d'achat au taux lu, si une seule y correspond."""
+        """Taxe d'achat au taux lu, si une seule correspond."""
         if rate is None:
             return self.env['account.tax']
         taxes = self.env['account.tax'].search([
@@ -1765,14 +1742,14 @@ class HrExpense(models.Model):
             ('amount', '=', rate),
         ], limit=2)
         # Une correspondance ambiguë est pire qu'aucune : elle passerait
-        # inaperçue à la relecture. On garde alors celle de la catégorie.
+        # inaperçue. La taxe de la catégorie est conservée.
         return taxes if len(taxes) == 1 else self.env['account.tax']
 
     def _expense_scan_tax_fits(self, amount, total=None, rate=None):
-        """La TVA lue tient-elle sous le plafond du taux de la dépense ?
+        """Indique si la TVA lue tient sous le plafond du taux de la dépense.
 
-        Le total et le taux sont passés en argument : au moment où l'on
-        décide, ni l'un ni l'autre n'est encore écrit sur la dépense, et un
+        Le total et le taux sont passés en argument : au moment de la
+        décision, ni l'un ni l'autre n'est encore écrit sur la dépense, et un
         plafond calculé sur les anciennes valeurs serait faux.
         """
         self.ensure_one()
@@ -1806,7 +1783,7 @@ class HrExpense(models.Model):
         return partners if len(partners) == 1 else self.env['res.partner']
 
     def _expense_scan_store_image(self, result, attachment, company):
-        """Attache l'image recadrée et la met en aperçu principal."""
+        """Attache l'image recadrée et la définit comme aperçu principal."""
         self.ensure_one()
         if not result.image_bytes:
             return {}
@@ -1819,15 +1796,15 @@ class HrExpense(models.Model):
             return {}
 
         # Relance sur le justificatif courant : l'image lue est déjà celle
-        # que le formulaire affiche. On la corrige sur place — en créer une
-        # autre en ferait la « photo d'origine » à la place de la vraie, et
-        # celle-ci disparaîtrait pour de bon.
+        # que le formulaire affiche. Elle est corrigée sur place : en créer
+        # une autre en ferait la « photo d'origine » à la place de la vraie,
+        # qui serait définitivement perdue.
         if attachment == self.scan_cropped_attachment_id:
             attachment.write({'raw': result.image_bytes, 'mimetype': 'image/jpeg'})
             return {}
 
-        # Une relance d'analyse produit une nouvelle image : on remplace la
-        # précédente au lieu d'empiler les pièces jointes sur la dépense.
+        # Une relance produit une nouvelle image : elle remplace la
+        # précédente au lieu d'ajouter des pièces jointes à la dépense.
         previous = self.scan_cropped_attachment_id
         if previous and previous != attachment:
             previous.unlink()
@@ -1841,15 +1818,15 @@ class HrExpense(models.Model):
             'res_id': self.id,
         })
         # L'aperçu du formulaire suit la pièce jointe principale : c'est le
-        # ticket redressé que l'utilisateur doit avoir sous les yeux pour
-        # relire les champs, pas la photo de travers.
+        # ticket redressé que l'utilisateur doit voir pour relire les champs,
+        # pas la photo de travers.
         self.sudo()._message_set_main_attachment_id(cropped, force=True)
 
         # La photo d'origine devient une pièce jointe « de champ » : Odoo
-        # exclut d'office celles-ci de ses recherches, donc elle disparaît
-        # de la liste des justificatifs et n'est plus recopiée sur l'écriture
-        # comptable. Elle reste intégralement accessible par le champ
-        # « Photo d'origine », qui la désigne par son identifiant.
+        # les exclut de ses recherches, donc elle disparaît de la liste des
+        # justificatifs et n'est plus recopiée sur l'écriture comptable. Elle
+        # reste accessible en entier par le champ « Photo d'origine », qui la
+        # désigne par son identifiant.
         attachment.sudo().write({'res_field': 'scan_original_attachment_id'})
         return {
             'scan_original_attachment_id': attachment.id,
@@ -1884,7 +1861,7 @@ class HrExpense(models.Model):
         """Résumé de la TVA lue, à titre indicatif.
 
         Un ticket à plusieurs taux n'en fournit aucun pour la dépense, mais
-        il faut le dire : sans cette mention, la TVA du ticket paraîtrait
+        la mention est nécessaire : sans elle, la TVA du ticket paraîtrait
         incohérente avec le taux affiché sur la fiche.
         """
         rate = result.value('tax_rate')

@@ -8,10 +8,10 @@ sont des données personnelles, jamais versionnées. Chaque fichier donne une
 ligne « CORPUS| » dans le journal, sans le texte du justificatif.
 
 Si ``/tmp/expense_scan_snapshot`` existe aussi, chaque justificatif y laisse
-un instantané de ses mots lus (voir ``tools/bench.py``) : c'est ce qui permet
-de rejouer l'analyse en quelques secondes sans repasser par l'OCR. Le texte
-lu est une donnée personnelle ; il va dans ce dossier, jamais dans le
-journal, que d'autres lisent.
+un instantané de ses mots lus (voir ``tools/bench.py``), ce qui permet de
+rejouer l'analyse en quelques secondes sans repasser par l'OCR. Le texte
+lu est une donnée personnelle : il est écrit dans ce dossier et jamais dans
+le journal, que d'autres personnes lisent.
 """
 import gc
 import hashlib
@@ -29,7 +29,8 @@ from ..ocr import parser
 _logger = logging.getLogger(__name__)
 CORPUS_DIR = '/tmp/expense_scan_corpus'
 SNAPSHOT_DIR = '/tmp/expense_scan_snapshot'
-#: Au-delà, on arrête : la machine de test héberge aussi la production.
+#: Limite de mémoire au-delà de laquelle le test s'arrête (la machine de
+#: test héberge aussi la production).
 RSS_LIMIT_MB = 3000
 
 
@@ -58,11 +59,11 @@ def _code(product):
 class TestCorpus(common.TransactionCase):
 
     def _category_meta(self, company):
-        """Ce dont le banc a besoin pour deviner une catégorie sans Odoo.
+        """Données dont le banc a besoin pour deviner une catégorie sans Odoo.
 
-        Les catégories que des mots désignent, et la catégorie de chaque
-        famille de frais : sans elles, l'instantané ne dirait rien de la
-        catégorie.
+        Les catégories désignées par des mots et la catégorie de chaque
+        famille de frais. Sans elles, l'instantané ne permettrait pas de
+        déterminer la catégorie.
         """
         Expense = self.env['hr.expense']
         Product = self.env['product.product'].sudo()
@@ -90,8 +91,8 @@ class TestCorpus(common.TransactionCase):
             'group_ids': [(6, 0, [self.env.ref('base.group_user').id])]})
         employee = self.env['hr.employee'].create({'name': "Corpus", 'user_id': user.id})
         env = self.env(user=user)
-        # Un corpus d'archives remonte à plusieurs années : la limite
-        # d'ancienneté ne doit pas faire écarter la date d'un ticket de 2023.
+        # Le corpus remonte à plusieurs années : la limite d'ancienneté ne
+        # doit pas faire écarter la date d'un ticket de 2023.
         self.env.company.expense_scan_max_age_days = 3650
         if snapshot:
             module = self.env['ir.module.module'].sudo().search([('name', '=', 'expense_scan')])
@@ -137,16 +138,16 @@ class TestCorpus(common.TransactionCase):
             except Exception as error:  # noqa: BLE001
                 _logger.warning("CORPUS|%s|ERREUR|%s", name, error, exc_info=True)
                 continue
-            # Tout garder en cache d'un bout à l'autre du corpus, dans une
-            # seule transaction, n'est pas ce que vit un worker : on repart
-            # d'un cache vide, et la mémoire restante mesure la chaîne seule.
+            # Un cache conservé sur tout le corpus, dans une seule
+            # transaction, ne correspond pas à un worker : le cache est vidé
+            # pour que la mémoire mesurée ne concerne que la chaîne.
             self.env.flush_all()
             self.env.invalidate_all()
             gc.collect()
             rss = _rss_mb()
             _logger.info("%s|rss=%dMo", line, rss)
             if rss > RSS_LIMIT_MB:
-                # Le serveur de développement est celui de la production.
+                # Le serveur de développement héberge aussi la production.
                 _logger.warning("CORPUS|arrêt : %d Mo de mémoire après %s", rss, name)
                 break
 
@@ -165,7 +166,8 @@ class TestCorpus(common.TransactionCase):
             'words': [[w.text, round(w.score, 4), round(w.left, 2), round(w.top, 2),
                        round(w.right, 2), round(w.bottom, 2), round(w.angle, 2)]
                       for w in captured['words']],
-            # Ce qu'Odoo a écrit : de quoi vérifier que le rejeu lui ressemble.
+            # Valeurs écrites par Odoo, pour vérifier que le rejeu donne le
+            # même résultat.
             'odoo': {
                 'total': expense.total_amount_currency,
                 'tax': expense.scan_tax_amount,

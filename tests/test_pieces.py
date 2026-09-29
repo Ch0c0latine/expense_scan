@@ -4,9 +4,8 @@
 """Justificatifs en plusieurs morceaux : comparaison et fusion.
 
 Ces règles décident si deux photos jointes au même courriel décrivent un
-seul achat ou deux, et elles le font sans personne devant l'écran. Une
-erreur de leur part passe donc inaperçue : d'où le soin mis à ne séparer
-que sur une différence franche.
+seul achat ou deux, sans intervention de l'utilisateur. Une erreur passe
+donc inaperçue : la séparation n'a lieu que sur une différence franche.
 """
 from datetime import date
 
@@ -16,7 +15,7 @@ from ..ocr.types import ExtractedField, ScanResult
 
 
 def reading(**values):
-    """Fabrique une lecture, sans passer par l'OCR."""
+    """Construit une lecture sans passer par l'OCR."""
     return ScanResult(fields={
         name: ExtractedField(value=value, confidence=0.9)
         for name, value in values.items()
@@ -83,10 +82,11 @@ class TestExpenseScanPieces(common.TransactionCase):
         self.assertEqual(merged.value('tax_amount'), 3.32)
 
     def test_merge_fills_the_gaps_only(self):
-        """Les morceaux se complètent, ils ne se contredisent pas.
+        """Les morceaux se complètent sans se contredire.
 
-        L'heure vient de la bande de carte, l'enseigne du ticket — mais le
-        total du plus complet fait foi, quoi qu'affiche l'autre.
+        L'heure vient de la bande de carte et l'enseigne du ticket ; le
+        total de la lecture la plus complète est conservé, même si l'autre
+        en affiche un différent.
         """
         card = reading(total=33.15, time="20:42")
         till = reading(total=33.10, date=date(2026, 9, 7),

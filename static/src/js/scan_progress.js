@@ -1,14 +1,13 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Progression de l'analyse, affichée sur la fiche qui vient de s'ouvrir.
+ * Progression de l'analyse, affichée sur la fiche ouverte après l'envoi.
  *
- * La fiche s'ouvre dès l'envoi du ticket, avant toute lecture : ce widget
- * lance alors l'analyse (action_expense_scan_start), en suit les étapes
- * annoncées par le serveur, et remplit les champs au fil de l'eau — date,
- * montant et enseigne dès qu'ils sont lus, le reste à la fin. On peut donc
- * écrire la description pendant ce temps : ce que l'utilisateur a modifié
- * n'est jamais remplacé, ni à l'écran ni en base.
+ * La fiche s'ouvre avant toute lecture. Le widget lance l'analyse
+ * (action_expense_scan_start), suit les étapes annoncées par le serveur et
+ * remplit les champs au fur et à mesure : date, montant et enseigne dès
+ * qu'ils sont lus, le reste à la fin. Les champs modifiés par l'utilisateur
+ * pendant l'analyse ne sont pas remplacés, ni à l'écran ni en base.
  */
 import { _t } from "@web/core/l10n/translation";
 import { Component, onMounted, onWillUnmount, useState } from "@odoo/owl";
@@ -68,16 +67,16 @@ export class ScanProgress extends Component {
             const result = await this.orm.call(
                 "hr.expense", "action_expense_scan_start", [[record.resId]], { specification });
             if (result.busy) {
-                // Déjà lancée ailleurs (un autre onglet) : la fiche se
-                // rechargera avec ses résultats.
+                // Analyse déjà lancée ailleurs (autre onglet) : rechargement
+                // différé pour récupérer les résultats.
                 setTimeout(() => record.model.load(), 3000);
                 return;
             }
             if (await record.isDirty()) {
-                // Des saisies en cours : on ne touche qu'aux autres champs.
+                // Saisies en cours : seuls les champs non modifiés sont mis à jour.
                 this.apply(result.values);
             } else {
-                // Rien de saisi : rechargement complet, qui rafraîchit aussi
+                // Aucune saisie : rechargement complet, qui met aussi à jour
                 // le titre et le justificatif recadré dans le volet.
                 await record.model.load();
             }
@@ -106,9 +105,9 @@ export class ScanProgress extends Component {
     }
 
     /**
-     * Valeurs du serveur, appliquées comme un rechargement : Odoo les pose
-     * sous les modifications en cours de l'utilisateur, qui restent visibles
-     * et seront seules enregistrées.
+     * Applique les valeurs du serveur comme un rechargement : Odoo les place
+     * sous les modifications en cours de l'utilisateur, qui restent affichées
+     * et sont seules enregistrées.
      */
     apply(values) {
         const record = this.props.record;

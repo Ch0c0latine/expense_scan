@@ -1,26 +1,26 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Ce que dit un ticket de sa catégorie, sans Odoo.
+"""Indices de catégorie fournis par un ticket, sans dépendance à Odoo.
 
-Le modèle ajoute à ces indices l'historique des enseignes, qui vit en base ;
-tout le reste — mots du ticket, code d'activité, prix à l'unité, marque —
-est calculé ici, pour que le banc d'évaluation (``tools/bench.py``) rejoue
-exactement ce que fait le module.
+Le modèle ajoute à ces indices l'historique des enseignes, qui vit en base.
+Tout le reste (mots du ticket, code d'activité, prix à l'unité, marque) est
+calculé ici, pour que le banc d'évaluation (``tools/bench.py``) rejoue
+exactement le comportement du module.
 
 Les catégories sont désignées par une clé quelconque : l'identifiant du
 produit dans Odoo, son code dans le banc.
 """
 from . import lexicon
 
-#: Poids d'un code d'activité (APE, MCC, ou SIRET retrouvé dans Sirene) : 4 —
-#: assez pour l'emporter d'au moins 1,5 sur un mot isolé du ticket (deux points) :
-#: décisif à lui seul, sauf si les mots du ticket disent nettement autre
-#: chose — le restaurant d'un hôtel reste un repas.
+#: Poids d'un code d'activité (APE, MCC, ou SIRET retrouvé dans Sirene) : 4.
+#: C'est assez pour l'emporter d'au moins 1,5 sur un mot isolé du ticket (deux
+#: points) : le code est décisif à lui seul, sauf si les mots du ticket
+#: indiquent nettement autre chose (le restaurant d'un hôtel reste un repas).
 CODE_WEIGHT = 4.0
-#: Poids d'une marque connue en tête du ticket : 3 — plus qu'un mot
-#: d'en-tête. À 2, un mot égaré (« route », « aéroport ») suffisait à
-#: laisser sans catégorie un KFC ou un Starbucks d'aérogare.
+#: Poids d'une marque connue en tête du ticket : 3, soit plus qu'un mot
+#: d'en-tête. À 2, un mot égaré (« route », « aéroport ») suffisait à laisser
+#: sans catégorie un KFC ou un Starbucks d'aérogare.
 BRAND_WEIGHT = 3.0
 #: Poids d'un prix au litre ou au kWh : celui d'une marque. Une recharge
 #: payée à la borne d'un supermarché (« ALDI ») reste une recharge.
@@ -31,14 +31,14 @@ WORDS, ACTIVITY, SIRET, UNIT, BRAND = 'words', 'activity', 'siret', 'unit', 'bra
 
 
 def score(lines, keyword_categories, family_keys, activity=None, naf_of=None):
-    """Score de chaque catégorie, et pourquoi.
+    """Score de chaque catégorie, et la raison de ce score.
 
     ``lines`` : le texte du ticket, ligne à ligne. ``keyword_categories`` :
     ``{clé: mots}`` des catégories que des mots désignent. ``family_keys`` :
     ``{famille: clé}``, la catégorie de chaque famille de frais (hôtel,
     repas, carburant…). ``activity`` : le code d'activité imprimé,
     ``"APE:5610A"``. ``naf_of`` : appelée, s'il n'y a pas de code imprimé,
-    pour retrouver le code d'après le SIRET — une requête, donc paresseuse.
+    pour retrouver le code d'après le SIRET (une requête, donc paresseuse).
 
     Renvoie ``(scores, raisons, marque)`` : ``raisons`` associe à chaque
     clé ses ``(poids, (nature, détail))``, et ``marque`` est la marque

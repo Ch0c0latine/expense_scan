@@ -3,10 +3,7 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- Tarif kilométrique, à côté de l'approbateur des notes de frais
-         qu'hr_expense place déjà dans le groupe « managers ». Réservé aux
-         RH, comme le champ lui-même : un nœud visible par tous obligerait
-         Odoo à lire le champ pour des utilisateurs qui n'y ont pas droit. -->
+    <!-- Tarif kilométrique, après l'approbateur des frais. Réservé aux RH, comme le champ. -->
     <record id="hr_employee_view_form_expense_scan" model="ir.ui.view">
         <field name="name">hr.employee.form.expense.scan</field>
         <field name="model">hr.employee</field>

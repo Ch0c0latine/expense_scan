@@ -3,11 +3,10 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Ordre des catégories de dépenses dans la liste déroulante.
 
-Odoo trie les articles par référence interne. Sur des catégories de
-dépenses, cela range « CADEAU » et « COMM » en tête et relègue le repas ou
-le train derrière « Rechercher plus » — l'inverse de l'usage. L'ordre suit
-désormais la séquence fixée dans la liste des catégories, par glisser-
-déposer : celui des frais de déplacement, pour qui l'a réglé ainsi.
+Odoo trie les articles par référence interne. Pour des catégories de
+dépenses, « CADEAU » et « COMM » passent avant le repas ou le train, qui se
+retrouvent derrière « Rechercher plus ». L'ordre suit la séquence définie
+dans la liste des catégories (glisser-déposer).
 """
 import unicodedata
 
@@ -42,10 +41,11 @@ class ProductTemplate(models.Model):
     @api.depends('name', 'default_code')
     @api.depends_context('lang')
     def _compute_expense_scan_nights_required(self):
-        """Seul l'hôtel compte ses nuits.
+        """Vrai pour les seules catégories d'hôtel.
 
-        Déduit du nom plutôt que coché : une case offerte sur chaque
-        catégorie invitait à demander des nuitées au taxi ou au repas.
+        Déduit du nom ou de la référence plutôt que d'une case à cocher : une
+        case sur chaque catégorie inviterait à demander des nuitées pour un
+        taxi ou un repas.
         """
         for template in self:
             text = ' '.join(filter(None, (template.name, template.default_code)))
@@ -58,11 +58,11 @@ class ProductProduct(models.Model):
 
     @api.onchange('expense_scan_no_vat')
     def _onchange_expense_scan_no_vat(self):
-        """Un forfait sans TVA ne garde pas de taxe par défaut.
+        """Retire les taxes fournisseur par défaut d'un forfait sans TVA.
 
-        La laisser ferait croire qu'une TVA s'applique, et elle
-        réapparaîtrait sur toute dépense saisie ailleurs que par le
-        formulaire, qui la masque.
+        Conservées, elles feraient croire qu'une TVA s'applique et
+        réapparaîtraient sur toute dépense saisie hors du formulaire, qui
+        masque les champs de TVA.
         """
         for product in self:
             if product.expense_scan_no_vat:
@@ -75,7 +75,7 @@ class ProductProduct(models.Model):
 
         # Toutes les correspondances d'abord, triées ensuite : tronquer avant
         # de trier garderait les premières par référence, pas par séquence.
-        # Le filtre des catégories de dépenses en laisse une poignée.
+        # Le filtre des catégories de dépenses limite le nombre de résultats.
         found = super().name_search(name, domain, operator, limit=None)
         products = self.browse([product_id for product_id, _name in found])
         rank = {
@@ -89,13 +89,11 @@ class ProductProduct(models.Model):
     @api.readonly
     def web_search_read(self, domain, specification, offset=0, limit=None,
                         order=None, count_limit=None):
-        """Même ordre pour la fenêtre de recherche complète, sur mobile.
+        """Applique l'ordre par séquence à la fenêtre de recherche complète (mobile).
 
-        Le clavier tactile ouvre une liste plein écran plutôt que le fil de
-        suggestions du champ : elle passe par ``web_search_read``, pas par
-        ``name_search`` — c'est elle qui restait triée par référence,
-        « CADEAU » et « COMM » en tête, quand on changeait de catégorie
-        depuis un téléphone.
+        Le clavier tactile ouvre une liste plein écran au lieu des suggestions
+        du champ. Cette liste passe par ``web_search_read`` et non par
+        ``name_search``, et restait triée par référence.
         """
         if self.env.context.get('expense_scan_category_order'):
             order = 'sequence, name'

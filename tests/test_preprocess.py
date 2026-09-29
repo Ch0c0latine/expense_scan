@@ -3,11 +3,10 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Tests du pré-traitement d'image.
 
-Ils construisent une fausse photo de ticket — un rectangle blanc incliné sur
-fond sombre — et vérifient que la chaîne le retrouve, le découpe et le
-redresse. Ils s'effacent d'eux-mêmes si OpenCV n'est pas installé, pour ne
-pas faire échouer la suite de tests sur un serveur qui n'utiliserait que
-Tesseract.
+Les tests construisent une fausse photo de ticket (un rectangle blanc
+incliné sur fond sombre) et vérifient que la chaîne le retrouve, le découpe
+et le redresse. Ils sont ignorés si OpenCV n'est pas installé, pour ne pas
+faire échouer la suite sur un serveur qui n'utilise que Tesseract.
 """
 from odoo.tests import common, tagged
 
@@ -104,9 +103,8 @@ class TestPreprocess(common.TransactionCase):
     def test_skew_is_measured_and_corrected(self):
         """L'inclinaison est mesurée, puis réellement annulée.
 
-        Le test porte sur le résultat et non sur le signe de l'angle : c'est
-        justement ce que la convention d'OpenCV ne garantit pas d'une
-        version à l'autre.
+        Le test porte sur le résultat et non sur le signe de l'angle, que la
+        convention d'OpenCV ne garantit pas d'une version à l'autre.
         """
         import cv2
         import numpy as np
@@ -134,18 +132,18 @@ class TestPreprocess(common.TransactionCase):
             preprocess.skew_angle_from_words(make_words(angle=-4.5)), -4.5, places=3)
 
     def test_skew_angle_without_orientation(self):
-        """Un moteur qui ne rend que des rectangles droits ne conclut rien.
+        """Un moteur qui ne rend que des rectangles droits ne permet aucune conclusion.
 
-        Mieux vaut ne pas tourner l'image que la tourner au hasard ; c'est
-        alors la régression sur les lignes qui prend le relais.
+        L'image n'est pas tournée dans ce cas ; la régression sur les lignes
+        est utilisée à la place.
         """
         self.assertEqual(preprocess.skew_angle_from_words(make_words(angle=0.0)), 0.0)
 
     def test_skew_ignores_outliers(self):
-        """Un caractère du décor ne doit pas emporter la moyenne.
+        """Une valeur aberrante ne doit pas fausser la moyenne.
 
-        Quatre lignes du ticket à 6°, un intrus à 40° : la médiane le
-        désigne, et la moyenne pondérée n'en tient plus compte.
+        Quatre lignes à 6° et un mot isolé à 40° : la médiane l'identifie
+        et la moyenne pondérée l'exclut.
         """
         words = make_words(angle=6.0, count=4)
         words.append(OcrWord(text="X", score=0.9, angle=40.0,
@@ -156,11 +154,11 @@ class TestPreprocess(common.TransactionCase):
     # -- Orientation ------------------------------------------------------
 
     def test_horizontal_text_score_tells_lying_from_standing(self):
-        """Le seul indice fiable du quart de tour : la direction des boîtes.
+        """Seul indice fiable du quart de tour : la direction des boîtes.
 
-        Le moteur redresse chaque boîte avant de la lire, donc il lit aussi
-        bien un ticket debout qu'un ticket couché — la qualité de lecture ne
-        dit rien de l'orientation, sa géométrie si.
+        Le moteur redresse chaque boîte avant de la lire et lit donc aussi
+        bien un ticket debout que couché : la qualité de lecture ne
+        renseigne pas sur l'orientation, la géométrie des boîtes si.
         """
         self.assertGreater(
             preprocess.horizontal_text_score(make_words(angle=2.0)), 0.0)
@@ -222,5 +220,5 @@ class TestPreprocess(common.TransactionCase):
                 preprocess.load_image(buffer.getvalue())
 
     def test_pdf_resolution_falls_back_without_page_size(self):
-        """Un PDF dont on ne lit pas la taille est rendu à la résolution demandée."""
+        """Un PDF dont la taille est illisible est rendu à la résolution demandée."""
         self.assertEqual(preprocess._pdf_dpi(b"pas un pdf", 200), 200)

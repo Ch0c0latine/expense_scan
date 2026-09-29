@@ -3,10 +3,7 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- Les membres de l'équipe, pour choisir pour qui l'on saisit.
-         Profil public des employés : un chef d'équipe n'a pas forcément
-         accès aux fiches complètes, et n'en a pas besoin ici. Un appui sur
-         la carte ouvre les dépenses du salarié. -->
+    <!-- Membres de l'équipe en vue kanban (profil public) ; clic pour ouvrir les dépenses du salarié. -->
     <record id="hr_employee_public_view_kanban_expense_team" model="ir.ui.view">
         <field name="name">hr.employee.public.kanban.expense.team</field>
         <field name="model">hr.employee.public</field>
@@ -16,9 +13,7 @@
                     create="0" delete="0" edit="0">
                 <templates>
                     <t t-name="card" class="flex-row align-items-center">
-                        <!-- Petit avatar : sur un écran étroit, l'image
-                             étirée sur toute la hauteur de la carte ne
-                             montrait plus qu'une initiale géante. -->
+                        <!-- Avatar 48x48 px : taille fixe pour éviter affichage partiel sur écran étroit. -->
                         <aside>
                             <field name="avatar_128" widget="image"
                                    options="{'size': [48, 48]}" class="rounded"/>
@@ -35,9 +30,7 @@
         </field>
     </record>
 
-    <!-- Un chemin, pour que la page se recharge ou que le fil d'Ariane y
-         revienne : sans lui, Odoo ne sait pas reconstruire l'action et lève
-         « Attempted to restore a virtual controller whose state is invalid ». -->
+    <!-- path requis : permet à Odoo de reconstruire l'action lors de la navigation. -->
     <record id="action_expense_scan_team" model="ir.actions.server">
         <field name="name">Dépenses de mon équipe</field>
         <field name="path">my-team-expenses</field>

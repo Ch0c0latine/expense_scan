@@ -1,20 +1,15 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Prix unitaire des catégories à coût fixe — le kilométrage au premier chef.
+"""Prix unitaire des catégories à coût fixe, en particulier le kilométrage.
 
-Odoo recalcule ce prix chaque fois que le total change, et le ramène alors
-au coût standard de la catégorie (`_needs_product_price_computation`). Or le
-total dépend lui-même du prix : saisir un tarif relançait la boucle, et le
-tarif saisi retombait aussitôt à la valeur de la catégorie.
+Odoo recalcule le prix d'après le total, ce qui écrase le tarif saisi. Sur
+une catégorie à coût fixe, le prix n'est plus recalculé une fois posé : il
+reçoit une valeur initiale (tarif du salarié pour une distance, coût de la
+catégorie sinon), puis la saisie fait foi et le total en découle.
 
-Repartir du total ne vaudrait pas mieux : ce chemin arrondit le prix au
-centime, et un barème de 0,636 €/km glisserait vers 0,64 € — quarante
-centimes d'écart sur cent kilomètres.
-
-Le prix d'une catégorie à coût fixe n'est donc plus recalculé du tout une
-fois posé. Il reçoit une valeur initiale — le tarif du salarié pour une
-distance, le coût de la catégorie sinon — puis c'est la saisie qui fait foi.
+Repartir du total arrondirait le prix au centime : 0,636 €/km deviendrait
+0,64 €.
 """
 from odoo import Command, api, fields, models
 
@@ -36,11 +31,11 @@ class HrExpense(models.Model):
             expense.expense_scan_no_vat = expense._expense_scan_no_vat()
 
     def _expense_scan_no_vat(self):
-        """Cette dépense est-elle un forfait, sans TVA à récupérer ?
+        """Vrai si la dépense est un forfait sans TVA récupérable.
 
-        Le kilométrage l'est d'office — le barème est un forfait. Les autres
-        forfaits, eux, ne se reconnaissent pas à leur unité : c'est la
-        catégorie qui le dit.
+        Le kilométrage l'est d'office (le barème est un forfait). Pour les
+        autres forfaits, l'unité ne suffit pas : la case de la catégorie
+        décide.
         """
         self.ensure_one()
         return bool(self.product_id.expense_scan_no_vat) or self._expense_scan_is_distance()
@@ -50,8 +45,7 @@ class HrExpense(models.Model):
         """Aucune taxe sur un forfait.
 
         Une indemnité kilométrique ou un barème Urssaf n'ont pas de TVA à
-        récupérer : une catégorie qui porterait une taxe par défaut en
-        ferait apparaître une que rien ne justifie.
+        récupérer, même si la catégorie porte une taxe par défaut.
         """
         super()._compute_tax_ids()
         for expense in self:
@@ -60,12 +54,11 @@ class HrExpense(models.Model):
 
     @api.depends('product_id')
     def _compute_from_product(self):
-        """Une distance se saisit toujours en quantité fois tarif.
+        """Une distance se saisit en quantité et prix unitaire.
 
-        Odoo ne propose quantité et prix unitaire qu'aux catégories dotées
-        d'un coût. Une catégorie kilométrique laissée à 0 €, parce que le
-        tarif est porté par chaque salarié, n'affichait plus qu'un total :
-        plus de kilomètres à saisir, ni de tarif proposé.
+        Odoo n'affiche ces deux champs que pour les catégories ayant un coût.
+        Une catégorie kilométrique à 0 € (le tarif est porté par le salarié)
+        n'aurait qu'un total : ni kilomètres à saisir, ni tarif proposé.
         """
         super()._compute_from_product()
         for expense in self:
@@ -80,42 +73,39 @@ class HrExpense(models.Model):
                               and expense.company_id)
         super(HrExpense, self - fixed)._compute_price_unit()
         for expense in fixed:
-            # Un prix déjà posé est celui du salarié : on le laisse. Seule
-            # une fiche qui n'en a pas encore reçoit la valeur initiale.
+            # Un prix déjà défini est conservé. La valeur initiale n'est posée
+            # que sur une dépense qui n'en a pas.
             expense.price_unit = expense.price_unit \
                 or expense._expense_scan_default_unit_price()
 
     @api.onchange('total_amount_currency')
     def _inverse_total_amount_currency(self):
-        """Ne déduit plus le prix du total sur une catégorie à coût fixe.
+        """Ne pas recalculer le prix d'une catégorie à coût fixe.
 
-        Odoo remonte ici du total au prix, en divisant un total arrondi au
-        centime par la quantité — d'où un prix à quatre décimales pour cent
-        kilomètres, et un prix qui dérive à chaque aller-retour. Or sur une
-        catégorie à coût fixe, c'est le total qui découle du prix, jamais
-        l'inverse ; et comme cette méthode se déclenche aussi quand le total
-        change *parce que* le prix a changé, elle réécrivait la saisie même.
+        Odoo divise un total arrondi par la quantité, ce qui fait dériver le
+        prix. Sur une catégorie à coût fixe, le total découle du prix ; comme
+        cette méthode se déclenche aussi quand le total change à cause du
+        prix, elle réécrivait la saisie.
 
-        Le décorateur est répété à dessein : sans lui, la méthode d'Odoo
-        cesserait d'être enregistrée comme onchange pour toutes les autres
-        dépenses.
+        Le décorateur est répété : sans lui, la méthode d'Odoo ne serait plus
+        enregistrée comme onchange pour les autres dépenses.
         """
         fixed = self.filtered('product_has_cost')
         return super(HrExpense, self - fixed)._inverse_total_amount_currency()
 
     @api.onchange('product_id', 'employee_id')
     def _onchange_expense_scan_unit_price(self):
-        """Changer de catégorie ou de salarié repose le tarif initial.
+        """Changer de catégorie ou de salarié rétablit le tarif initial.
 
-        Sans quoi une dépense passée en kilométrage garderait le prix issu
-        du total saisi avant — cinquante euros le kilomètre.
+        Sans cela, une dépense passée en kilométrage garderait le prix issu
+        du total saisi avant.
         """
         for expense in self:
             if expense.state != 'draft' or not expense.product_id:
                 continue
             if expense._expense_scan_no_vat():
-                # Une TVA saisie avant de passer sur un forfait n'a plus
-                # d'objet : on la vide, taux et montant.
+                # Une TVA saisie avant le passage à un forfait n'a plus lieu
+                # d'être : taux et montant sont vidés.
                 expense.tax_ids = [Command.clear()]
                 expense.scan_tax_amount = 0.0
             if not expense.product_has_cost:
@@ -127,8 +117,8 @@ class HrExpense(models.Model):
         self.ensure_one()
         product = self.product_id
         if self._expense_scan_is_distance():
-            # Droits élevés : le tarif est réservé aux RH, et c'est le
-            # salarié lui-même qui saisit sa dépense.
+            # sudo : le tarif est réservé aux RH, alors que le salarié saisit
+            # lui-même sa dépense.
             rate = self.employee_id.sudo().expense_mileage_rate
             if rate:
                 return rate
@@ -139,10 +129,10 @@ class HrExpense(models.Model):
         )[product.id]
 
     def _expense_scan_is_distance(self):
-        """La catégorie se compte-t-elle en kilomètres ou en miles ?
+        """Vrai si l'unité de la catégorie est le kilomètre ou le mile.
 
-        Le tarif du salarié ne vaut que pour les distances : une indemnité
-        de repas à coût fixe ne doit pas prendre le prix du kilomètre.
+        Le tarif du salarié ne s'applique qu'aux distances : une indemnité de
+        repas à coût fixe ne doit pas prendre le prix du kilomètre.
         """
         self.ensure_one()
         distances = self.env['uom.uom']

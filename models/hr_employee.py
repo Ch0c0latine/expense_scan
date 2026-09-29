@@ -5,7 +5,7 @@
 
 Le barème fiscal dépend de la puissance du véhicule et de la distance
 annuelle : un tarif unique porté par la catégorie « Kilométrage » ne
-convient à personne en particulier.
+convient pas.
 """
 from odoo import fields, models
 
@@ -13,16 +13,15 @@ from odoo import fields, models
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
 
-    # `groups` est indispensable, et c'est ce qui manquait à un champ
-    # précédent : Odoo exige que tout champ absent du profil public des
-    # employés en soit pourvu. Sans lui, le champ est préchargé pour tout
-    # utilisateur, et la moindre lecture d'un employé par un non-RH échoue —
-    # ouvrir une dépense suffisait à le déclencher.
+    # `groups` est obligatoire : Odoo exige que tout champ absent du profil
+    # public des employés en soit muni. Sans lui, le champ est préchargé pour
+    # tout utilisateur et la lecture d'un employé par un non-RH échoue
+    # (ouvrir une dépense suffit).
     #
     # Aucune précision imposée au stockage : « Product Price » vaut deux
-    # décimales sur une base standard, et arrondissait 0,636 à 0,64 dès
-    # l'enregistrement. `min_display_digits` seul garde le nombre entier et
-    # en affiche au moins trois décimales — davantage s'il en porte.
+    # décimales sur une base standard et arrondirait 0,636 à 0,64 à
+    # l'enregistrement. `min_display_digits` conserve le nombre entier et en
+    # affiche au moins trois décimales.
     expense_mileage_rate = fields.Float(
         string="Tarif kilométrique",
         min_display_digits=3,

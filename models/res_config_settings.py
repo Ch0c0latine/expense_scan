@@ -65,9 +65,8 @@ class ResConfigSettings(models.TransientModel):
     def action_expense_scan_self_test(self):
         """Charge les modèles et lit une image de test.
 
-        Sert aussi de préchauffage : le téléchargement initial des modèles
-        se fait ici plutôt que devant l'utilisateur qui vient de
-        photographier son ticket.
+        Sert aussi de préchargement : le téléchargement initial des modèles
+        se fait ici, avant la première photo de l'utilisateur.
         """
         self.ensure_one()
         company = self.company_id

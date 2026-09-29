@@ -5,19 +5,19 @@
 
 Plusieurs sources, sans réseau ni modèle :
 
-* les **mots du ticket** que chaque catégorie déclare (« nuitée »,
+* les mots du ticket que chaque catégorie déclare (« nuitée »,
   « benzyna », « pedaggio »…), rapprochés avec une tolérance aux fautes de
   lecture ;
-* les **enseignes déjà classées** : l'historique des dépenses, que le module
-  Odoo fournit, et qui apprend des corrections des salariés ;
-* les **codes d'activité** APE/NAF et MCC ;
-* les **marques européennes** du Name Suggestion Index d'OpenStreetMap.
+* les enseignes déjà classées : l'historique des dépenses, fourni par le
+  module Odoo, qui apprend des corrections des salariés ;
+* les codes d'activité APE/NAF et MCC ;
+* les marques européennes du Name Suggestion Index d'OpenStreetMap.
 
-Les tickets arrivent de toute l'Europe : le texte est donc replié — sans
+Les tickets arrivent de toute l'Europe : le texte est donc replié (sans
 accent, sans casse, lettres polonaises ou nordiques ramenées à l'alphabet
-latin — avant toute comparaison, et les mots par défaut couvrent le
-français, l'anglais, l'allemand, l'italien, l'espagnol, le polonais, le
-néerlandais et le portugais.
+latin) avant toute comparaison. Les mots par défaut couvrent le français,
+l'anglais, l'allemand, l'italien, l'espagnol, le polonais, le néerlandais et
+le portugais.
 
 Aucune dépendance à Odoo, comme le reste du paquet.
 """
@@ -62,11 +62,11 @@ def split_keywords(raw):
 # ---------------------------------------------------------------------------
 
 #: Mots proposés à la création des catégories. Ils ne servent qu'à remplir
-#: une fiche vide : ensuite, c'est la fiche qui fait foi, et chacun y
-#: ajoute ses enseignes. Les marques y figurent parce qu'elles sont souvent
-#: la seule chose lisible d'un en-tête.
+#: une fiche vide : ensuite, la fiche fait foi et chacun y ajoute ses
+#: enseignes. Les marques y figurent parce qu'elles sont souvent la seule
+#: chose lisible d'un en-tête.
 #:
-#: « total » n'y est pas, bien que ce soit une marque de carburant : c'est
+#: « total » n'y figure pas, bien que ce soit une marque de carburant : c'est
 #: aussi le libellé du montant sur tous les tickets.
 DEFAULT_KEYWORDS = {
     'lodging': [
@@ -138,7 +138,7 @@ DEFAULT_KEYWORDS = {
         # fr
         "péage", "autoroute", "autoroutes", "stationnement", "parking", "horodateur",
         # Mentions propres aux reçus de péage, qui n'impriment souvent pas
-        # le mot « péage » — et dont l'OCR colle volontiers le sigle
+        # le mot « péage » et dont l'OCR colle volontiers le sigle
         # (« ASFLieu-dit ») au mot suivant.
         "classe tarif", "classe de véhicule", "gare de péage", "bip&go", "ulys",
         "barrière de vallesque",
@@ -228,9 +228,9 @@ DEFAULT_KEYWORDS = {
 #: ``{'19.0.x.y.z': {famille: [mots]}}``. Le script de migration de la
 #: version les ajoute aux fiches déjà remplies, sans rien y retirer.
 ADDED_KEYWORDS = {
-    # Justificatifs réels que la première liste ratait : un hot-dog d'aérogare
-    # classé en transport, un café de distributeur, une borne de recharge
-    # facturée en kWh, un vol payé en ligne.
+    # Justificatifs réels que la première liste ne reconnaissait pas : un
+    # hot-dog d'aérogare classé en transport, un café de distributeur, une
+    # borne de recharge facturée en kWh, un vol payé en ligne.
     '19.0.2.3.0': {
         'meal': ["repas", "hot dog", "fricadelle", "sandwich", "kebab",
                  "boulangerie", "viennoiserie", "baguette", "croissant",
@@ -246,17 +246,17 @@ ADDED_KEYWORDS = {
         'lodging': ["b&b", "bed and breakfast", "bnb"],
     },
     # Restaurant d'aéroport allemand : « Aichinger Gastro GmbH … Tisch 1122 ».
-    # Station italienne dont la raison sociale dit « risto » (restaurant).
+    # Station italienne dont la raison sociale contient « risto » (restaurant).
     '19.0.2.4.2': {
         'meal': ["gastro", "tisch"],
         'fuel': ["senza piombo", "pompa", "stazione di servizio", "erogatore"],
     },
 }
 #: Mots retirés d'une version à l'autre, même forme. La migration ne retire
-#: que ces mots-là : le reste de chaque fiche ne bouge pas.
+#: que ces mots-là : le reste de chaque fiche n'est pas modifié.
 REMOVED_KEYWORDS = {
-    # « Aéroport » est un lieu, pas un achat : il faisait passer pour un billet
-    # d'avion le sandwich d'une aérogare (Starbucks, Pokawa).
+    # « Aéroport » est un lieu, pas un achat : le mot faisait classer en
+    # billet d'avion le sandwich d'une aérogare (Starbucks, Pokawa).
     '19.0.2.4.2': {
         'train_air': ["aeroport", "aéroport"],
     },
@@ -292,7 +292,7 @@ def family_of(*labels):
     for family, hints in FAMILY_HINTS:
         for hint in hints:
             # Indice court : mot entier, sans quoi « air » reconnaîtrait
-            # « affaires » et « mob » n'importe quoi.
+            # « affaires » et « mob » reconnaîtrait n'importe quoi.
             if any(word == hint if len(hint) <= 4 else word.startswith(hint)
                    for word in words):
                 return family
@@ -305,10 +305,10 @@ def family_of(*labels):
 
 #: Seuil de ressemblance d'un mot mal lu avec un mot déclaré.
 FUZZY_RATIO = 0.84
-#: En deçà, un mot n'est comparé qu'à l'identique : « eni », « ada », « g7 »
-#: ressemblent à trop de choses.
+#: En deçà de cette longueur, un mot n'est comparé qu'à l'identique : « eni »,
+#: « ada », « g7 » ressemblent à trop de choses.
 FUZZY_MIN_LENGTH = 5
-#: Nombre de lignes considérées comme l'en-tête — là où l'enseigne s'imprime.
+#: Nombre de lignes considérées comme l'en-tête, là où l'enseigne s'imprime.
 HEADER_LINES = 8
 #: Poids d'un mot trouvé dans l'en-tête, puis ailleurs.
 HEADER_WEIGHT = 2.0
@@ -343,9 +343,9 @@ def resembles(first, second, threshold):
 def _same_start(candidate, keyword):
     """Une faute de lecture change rarement la première lettre d'un mot court.
 
-    « Selecta » ressemble à « electra » à 86 % : un distributeur de café
-    passait pour une borne de recharge. Au-delà de sept lettres, la
-    ressemblance seule suffit.
+    « Selecta » ressemble à « electra » à 86 % : sans ce contrôle, un
+    distributeur de café est pris pour une borne de recharge. À partir de
+    huit lettres, la ressemblance seule suffit.
     """
     return len(keyword) >= 8 or candidate[:1] == keyword[:1]
 
@@ -353,9 +353,9 @@ def _same_start(candidate, keyword):
 def _same_start(candidate, keyword):
     """Une faute de lecture change rarement la première lettre d'un mot court.
 
-    « Selecta » ressemble à « electra » à 86 % : un distributeur de café
-    passait pour une borne de recharge. Au-delà de sept lettres, la
-    ressemblance seule suffit.
+    « Selecta » ressemble à « electra » à 86 % : sans ce contrôle, un
+    distributeur de café est pris pour une borne de recharge. À partir de
+    huit lettres, la ressemblance seule suffit.
     """
     return len(keyword) >= 8 or candidate[:1] == keyword[:1]
 
@@ -383,9 +383,9 @@ def score_categories(lines, categories):
     """Score de chaque catégorie sur les lignes du ticket.
 
     ``categories`` associe un identifiant à ses mots repliés. Un mot ne
-    compte qu'une fois par catégorie, au meilleur de ses emplacements : un
+    compte qu'une fois par catégorie, à son meilleur emplacement : un
     « PARKING » répété dix fois en bas de ticket ne vaut pas mieux qu'une
-    fois.
+    seule fois.
     """
     folded = [fold(line).split() for line in lines]
     scores = {}
@@ -397,15 +397,15 @@ def score_categories(lines, categories):
                 if best >= HEADER_WEIGHT:
                     break
                 if _find(keyword, words):
-                    # Une expression de plusieurs mots — « classe tarif »,
-                    # « taxe de séjour » — est assez parlante pour valoir,
-                    # où qu'elle soit, un mot d'en-tête : sur un reçu de
-                    # péage, elle n'arrive qu'à la neuvième ligne.
+                    # Une expression de plusieurs mots (« classe tarif »,
+                    # « taxe de séjour ») est assez parlante pour valoir un
+                    # mot d'en-tête où qu'elle soit : sur un reçu de péage,
+                    # elle n'apparaît qu'à la neuvième ligne.
                     header = position < HEADER_LINES or " " in keyword
                     best = max(best, HEADER_WEIGHT if header else BODY_WEIGHT)
             if best:
                 # Une expression de plusieurs mots est plus parlante qu'un
-                # mot isolé.
+                # mot isolé : son poids est multiplié par 1,25.
                 score += best * (1.25 if " " in keyword else 1.0)
         if score:
             scores[category] = score
@@ -448,9 +448,9 @@ def merchant_key(name):
 def match_merchant(lines, known_keys, max_lines=HEADER_LINES + 4):
     """L'enseigne connue que l'en-tête du ticket désigne, ou ``None``.
 
-    Compare chaque ligne du haut du ticket — et chaque groupe de mots de
-    cette ligne — aux enseignes déjà rencontrées. C'est ce qui rattrape
-    « Rchan » pour « Auchan », dès qu'un Auchan a été classé une fois.
+    Compare chaque ligne du haut du ticket, et chaque groupe de mots de
+    cette ligne, aux enseignes déjà rencontrées. Cela permet de retrouver
+    « Auchan » à partir de « Rchan » dès qu'un Auchan a été classé une fois.
     """
     keys = [key for key in known_keys if len(key) >= MERCHANT_MIN_LENGTH]
     if not keys:
@@ -471,8 +471,8 @@ def match_merchant(lines, known_keys, max_lines=HEADER_LINES + 4):
                     continue
                 elif not resembles(candidate.split()[0], key.split()[0], FIRST_WORD_RATIO):
                     # « Nord Villefranche d'Orbec » ressemble à « Dormizz
-                    # Villefranche d'Orbec » par la ville seule : c'est le nom
-                    # du commerce, en tête, qui doit se ressembler.
+                    # Villefranche d'Orbec » par la ville seule : le nom du
+                    # commerce, en tête, doit aussi se ressembler.
                     continue
                 else:
                     ratio = similar(candidate, key)
@@ -552,8 +552,8 @@ def activity_family(code):
 
 BRANDS_FILE = os.path.join(os.path.dirname(__file__), 'brands_europe.json')
 
-#: Quand une marque relève de plusieurs familles — Esso vend du carburant et
-#: des sandwichs, Indigo gère des parkings et des bornes —, la première de
+#: Quand une marque relève de plusieurs familles (Esso vend du carburant et
+#: des sandwichs, Indigo gère des parkings et des bornes), la première de
 #: cette liste l'emporte : la boutique d'une station reste une station.
 BRAND_FAMILY_PRIORITY = ('lodging', 'toll_parking', 'car_rental', 'taxi', 'fuel', 'meal')
 
@@ -563,7 +563,7 @@ BRAND_FAMILY_PRIORITY = ('lodging', 'toll_parking', 'car_rental', 'taxi', 'fuel'
 BRAND_SHORT_ALLOWED = {'q8', 'omv', 'kfc', 'ada', 'eni', 'erg', 'jet', 'ina', 'mol', 'dia'}
 
 #: Marques qui sont aussi des mots courants d'un ticket, d'une adresse ou
-#: d'un prénom, et que l'on ne cherche donc pas.
+#: d'un prénom, et qui ne sont donc pas cherchées.
 BRAND_STOPWORDS = {
     'total', 'best', 'delta', 'element', 'edition', 'motto', 'greet', 'tribe',
     'petrol', 'power', 'star', 'classic', 'mobile', 'metano', 'sprint', 'pace',
@@ -628,7 +628,10 @@ def _nicer(name, other):
 
 
 def brand_index():
-    """``{marque repliée: (famille, nom affiché)}``, chargé une fois pour toutes."""
+    """Index des marques, chargé une seule fois.
+
+    Forme : ``{marque repliée: (famille, nom affiché)}``.
+    """
     global _BRAND_INDEX
     if _BRAND_INDEX is not None:
         return _BRAND_INDEX
@@ -676,9 +679,9 @@ def brand_family(lines, max_lines=HEADER_LINES, max_words=4):
     """``(famille, marque affichée)`` d'après l'en-tête, ou ``(None, None)``.
 
     Une marque courte doit ouvrir une ligne de l'en-tête ; une marque
-    longue peut y figurer n'importe où. Toujours telle quelle : une base de
-    milliers de noms, dont beaucoup ressemblent à des mots, ne supporte pas
-    l'approximation.
+    longue peut y figurer n'importe où. La comparaison est toujours exacte :
+    une base de milliers de noms, dont beaucoup ressemblent à des mots, ne
+    supporte pas l'approximation.
     """
     index = brand_index()
     for line in lines[:max_lines]:

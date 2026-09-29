@@ -5,22 +5,21 @@
 //
 // mail/core/common/attachment_view.scss ne met en forme le volet
 // `.o_attachment_preview` qu'à partir du point de rupture XXL (1400 px).
-// Le contrôleur, lui, sait afficher ce volet dès MD grâce au correctif
-// JavaScript ; il ne lui manque donc que la mise en forme sur cette plage.
-// On la réécrit ici plutôt que de réutiliser le mixin d'Odoo, dont dépendrait
-// alors la compilation de tout le paquet d'assets.
+// Le correctif JavaScript affiche ce volet dès MD ; seule la mise en forme
+// manque sur cette plage. Elle est réécrite ici sans réutiliser le mixin
+// d'Odoo, pour ne pas faire dépendre la compilation du paquet d'assets de ce
+// mixin.
 // ---------------------------------------------------------------------------
 @media (min-width: 768px) and (max-width: 1399.98px) {
-    // Le volet était bien rendu, mais sous le formulaire : Odoo ne bascule
-    // son conteneur en ligne — `flex-nowrap h-100` au lieu de
-    // `flex-column` — qu'à partir de 1400 px. Le justificatif atterrissait
-    // donc tout en bas de la page, sur trente pixels de haut, et semblait
-    // absent. On impose ici la même disposition qu'en XXL.
+    // Odoo ne passe le conteneur en disposition en ligne (`flex-nowrap h-100`
+    // au lieu de `flex-column`) qu'à partir de 1400 px. Sans cette règle, le
+    // volet est rendu sous le formulaire, sur une trentaine de pixels de
+    // haut. La règle applique la disposition XXL.
     //
     // Les classes d'Odoo sont des utilitaires Bootstrap en `!important` :
-    // les contrer demande la même arme. `:has()` limite l'effet aux seuls
-    // formulaires qui rendent effectivement ce volet sur cette plage, soit
-    // les dépenses, par le correctif JavaScript.
+    // les règles ci-dessous le sont aussi. `:has()` limite l'effet aux
+    // formulaires qui rendent ce volet sur cette plage, soit les dépenses
+    // (correctif JavaScript).
     .o_form_view .o_form_renderer:has(> .o_attachment_preview) {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
@@ -66,9 +65,8 @@
         }
     }
 
-    // Le détachement du justificatif dans une fenêtre séparée n'a de mise en
-    // forme que dans le bloc XXL d'Odoo : on l'écarte plutôt que de le
-    // laisser apparaître en bouton brut.
+    // Le bouton de détachement du justificatif dans une fenêtre séparée n'est
+    // mis en forme que dans le bloc XXL d'Odoo : il est masqué ici.
     .o_attachment_control {
         display: none;
     }
@@ -77,21 +75,20 @@
 // ---------------------------------------------------------------------------
 // Montant et devise
 //
-// Dans leur ligne `o_row`, les deux champs grandissent à parts égales. La
-// devise, dont la liste déroulante réclame toute la place disponible,
-// écrasait le montant jusqu'à zéro pixel sur téléphone : le chiffre
-// débordait alors de sa boîte vide et passait sous la devise.
+// Dans leur ligne `o_row`, les deux champs grandissent à parts égales. Le
+// menu déroulant de la devise réclame toute la place disponible : sur
+// téléphone, le montant est réduit à zéro pixel et son contenu déborde sous
+// la devise.
 //
-// Une base fixe à chacun règle le problème à toutes les largeurs — la
-// largeur du montant ne peut pas se déduire de son contenu, celui-ci étant
-// lui-même dimensionné en pourcentage de son parent.
+// Une base fixe pour chaque champ règle le problème à toutes les largeurs.
+// La largeur du montant ne peut pas se déduire de son contenu, dimensionné
+// en pourcentage de son parent.
 //
-// La spécificité est ici décisive, et c'est ce qui avait fait échouer la
-// première version : en édition, Odoo impose `flex: 1 1 auto` par
-// `.o_form_view .o_form_editable .o_row > .o_field_widget`, soit quatre
-// classes. Une règle à trois classes perd quel que soit son rang dans la
-// feuille ; il en faut cinq. La variante sans `.o_form_editable` couvre la
-// lecture seule, où la règle d'Odoo ne s'applique pas.
+// Spécificité : en édition, Odoo impose `flex: 1 1 auto` par
+// `.o_form_view .o_form_editable .o_row > .o_field_widget` (quatre classes).
+// Une règle à trois classes perd quel que soit son rang dans la feuille ;
+// il en faut cinq. La variante sans `.o_form_editable` couvre la lecture
+// seule, où la règle d'Odoo ne s'applique pas.
 // ---------------------------------------------------------------------------
 .o_form_view .o_row,
 .o_form_view .o_form_editable .o_row {
@@ -159,13 +156,12 @@
 // Historique du fil de discussion sur une note de frais
 //
 // Les trois boutons sont retirés par héritage de gabarit (voir
-// static/src/xml/chatter_patch.xml). L'historique, lui, est rendu par un
-// composant placé en `t-else` : impossible d'y ajouter une condition. Son
-// conteneur porte donc une classe, posée par le même héritage.
+// static/src/xml/chatter_patch.xml). L'historique est rendu par un composant
+// placé en `t-else`, sur lequel aucune condition ne peut être ajoutée : son
+// conteneur reçoit une classe, posée par le même héritage.
 //
-// `!important` est nécessaire : le fil porte l'utilitaire Bootstrap
-// `d-flex`, lui-même en `!important`, contre lequel une règle ordinaire
-// perd quelle que soit sa spécificité.
+// `!important` est nécessaire : le fil porte l'utilitaire Bootstrap `d-flex`,
+// en `!important`, qu'une règle ordinaire ne peut pas surcharger.
 // ---------------------------------------------------------------------------
 .o_expense_scan_slim .o-mail-Thread {
     display: none !important;
@@ -190,8 +186,8 @@
 // ---------------------------------------------------------------------------
 // Indication sous un champ à vérifier
 // ---------------------------------------------------------------------------
-// Discrète mais visible : une ligne en couleur d'alerte, sans pictogramme,
-// qui s'efface d'elle-même dès que le champ est corrigé.
+// Ligne en couleur d'alerte, sans pictogramme, qui disparaît quand le champ
+// est corrigé.
 .o_expense_scan_hint {
     margin-top: -0.35rem;
     margin-bottom: 0.35rem;
@@ -200,8 +196,8 @@
     color: color-mix(in srgb, #{$warning} 75%, black);
 }
 
-// Canevas de retouche : touch-action désactive le défilement de la page
-// pendant le glissement d'une poignée sur téléphone.
+// Canevas de retouche : `touch-action: none` désactive le défilement de la
+// page pendant le glissement d'une poignée sur téléphone.
 .o_expense_scan_retouch_canvas {
     max-width: 100%;
     touch-action: none;
@@ -212,8 +208,8 @@
     }
 }
 
-// Bouton « Retouche » en bas du volet d'aperçu. La zone de l'image est
-// réduite de la hauteur du bouton pour qu'il ne la recouvre pas.
+// Bouton « Retouche » en bas du volet d'aperçu. La hauteur de la zone de
+// l'image est réduite de celle du bouton pour qu'il ne la recouvre pas.
 .o-mail-Attachment:has(> .o_expense_scan_retouch_control) .o-mail-Attachment-imgContainer {
     bottom: 3rem;
 }

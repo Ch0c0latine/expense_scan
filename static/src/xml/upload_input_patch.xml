@@ -4,17 +4,17 @@
 <templates xml:space="preserve">
 
     <!--
-        Odoo déclare le champ fichier avec accept="*". Sur téléphone, un
-        sélecteur générique propose « Fichiers » et enterre l'appareil photo.
-        En restreignant aux images et aux PDF, iOS et Android ouvrent
+        Odoo déclare le champ fichier avec accept="*". Sur téléphone, le
+        sélecteur générique propose « Fichiers » et masque l'appareil photo.
+        Avec une restriction aux images (et aux PDF), iOS et Android ouvrent
         directement la feuille « Appareil photo / Photothèque / Fichiers » :
-        le scan tient alors en un seul appui.
+        le scan se fait en un seul appui.
 
-        Sur petit écran seulement, l'accept se limite aux images : mélanger
-        un type non-image (le PDF) fait basculer Android sur son sélecteur
-        de fichiers générique, sans l'onglet Photos — la galerie disparaît,
-        justement ce qu'on cherche à éviter. Le bureau, sans ce travers,
-        garde le PDF : c'est là qu'arrive le justificatif reçu par mail.
+        Sur petit écran, accept se limite aux images : avec un type non-image
+        (PDF), Android ouvre son sélecteur de fichiers générique, sans
+        l'onglet Photos, et la galerie n'est plus proposée. Sur ordinateur,
+        le PDF reste accepté, car c'est là que le justificatif reçu par mail
+        est déposé.
     -->
     <t t-name="expense_scan.ListViewAccept" t-inherit="hr_expense.ListView" t-inherit-mode="extension">
         <xpath expr="//input[@name='ufile']" position="attributes">

@@ -5,7 +5,7 @@
 
 Les trois sorties partagent la même numérotation : chronologique, de 1 à n
 pour chaque fiche, et n.1 à n.x quand une dépense porte plusieurs
-justificatifs. Les forfaits — kilométrage, barèmes — figurent dans les
+justificatifs. Les forfaits (kilométrage, barèmes) figurent dans les
 tableaux mais n'ont pas de justificatif.
 
 Une fiche par salarié : plusieurs salariés sélectionnés donnent plusieurs
@@ -115,9 +115,9 @@ class ExpenseScanExportTemplate(models.Model):
     def action_expense_scan_generate_file(self):
         """Classeur vierge qui suit les correspondances du modèle.
 
-        Point de départ à télécharger, mettre aux couleurs de l'entreprise
-        puis redéposer : titres de colonnes, libellés d'en-tête, lignes de
-        dépenses encadrées et totaux.
+        À télécharger, mettre aux couleurs de l'entreprise puis redéposer.
+        Contient les titres de colonnes, les libellés d'en-tête, les lignes
+        de dépenses encadrées et les totaux.
         """
         for template in self:
             content = template._expense_scan_blank_workbook()
@@ -161,7 +161,6 @@ class ExpenseScanExportTemplate(models.Model):
         sheet['A1'] = _("Fiche de frais")
         sheet['A1'].font = Font(bold=True, size=14)
 
-        # En-tête : chaque valeur, et son libellé dans la cellule de gauche.
         for column in self.column_ids.filtered(lambda c: c.kind == 'header' and c.value):
             cell = sheet[column.cell.strip().upper()]
             if cell.column > 1:
@@ -223,8 +222,6 @@ class ExpenseScanExportColumn(models.Model):
              "ligne par ligne. Une cellule (« K4 ») : une valeur d'en-tête, "
              "écrite une fois. Pour une cellule fusionnée, sa première "
              "cellule en haut à gauche.")
-    # Le type se déduit de la cellule : une seule chose à saisir, et plus de
-    # colonne de valeur qui reste fermée selon le type choisi.
     kind = fields.Selection(
         [('line', "Dépenses"), ('header', "En-tête")],
         string="Type", compute='_compute_kind', store=True)
@@ -319,8 +316,8 @@ class ExpenseScanSheet(models.AbstractModel):
                 quantity = 1
             rate = self._tax_rate(expense)
             total_ttc = expense.total_amount
-            # Un taux nul veut dire « pas de TVA récupérable » : forfait,
-            # hôtel, transport, ou ticket sans TVA lisible.
+            # Taux nul : pas de TVA récupérable (forfait, hôtel, transport,
+            # ticket sans TVA lisible).
             total_tva = 0.0 if rate == 0.0 else expense.tax_amount
             total_ht = total_ttc - total_tva
             lines.append({
@@ -354,8 +351,8 @@ class ExpenseScanSheet(models.AbstractModel):
     def _header(self, expenses, lines):
         dates = [line['date'] for line in lines if line['date']]
         start, end = (min(dates), max(dates)) if dates else (False, False)
-        # La mission n'est citée que si l'on a filtré dessus : des frais
-        # sélectionnés à la main ne forment pas une prestation.
+        # La mission n'est citée que si un filtre par mission est appliqué :
+        # des frais sélectionnés à la main ne forment pas une prestation.
         projects = self.env['project.project'].browse(
             self.env.context.get('expense_scan_sheet_project_ids') or [])
         return {
@@ -379,9 +376,9 @@ class ExpenseScanSheet(models.AbstractModel):
     def _vat_summary(self, lines):
         """TVA récupérable par taux, pour la déclaration.
 
-        Un taux vaut pour tous ses usages — 10 % de services ou de biens
-        s'additionnent. Un ticket à taux mêlés, dont le détail n'est pas
-        conservé, est compté à 20 %, comme une TVA dont le taux est inconnu.
+        Un taux est regroupé quel que soit l'usage (10 % de services et de
+        biens sont additionnés). Un ticket à taux mêlés, dont le détail n'est
+        pas conservé, est compté à 20 %, comme une TVA de taux inconnu.
         """
         groups = {}
         for line in lines:
@@ -499,10 +496,10 @@ class ExpenseScanSheet(models.AbstractModel):
     def _resize_table(self, sheet, last, delta):
         """Ajoute (``delta`` > 0) ou retire (< 0) des lignes en fin de tableau.
 
-        openpyxl déplace les cellules, mais ni les hauteurs de ligne, ni
-        l'état masqué, ni les fusions, ni les plages des formules situées
-        plus bas : tout cela est recalé ici, pour que la ligne des totaux
-        garde son aspect et somme exactement les lignes du tableau.
+        openpyxl déplace les cellules mais pas les hauteurs de ligne, l'état
+        masqué, les fusions ni les plages des formules situées plus bas.
+        Ces éléments sont recalés ici pour que la ligne des totaux garde son
+        aspect et somme exactement les lignes du tableau.
         """
         if not delta:
             return
@@ -524,7 +521,7 @@ class ExpenseScanSheet(models.AbstractModel):
             if merged.min_row > last:
                 merged.shift(0, delta)
             elif merged.max_row > new_last:
-                # Fusion prise dans les lignes retirées : elle n'a plus lieu d'être.
+                # Fusion située dans les lignes retirées : supprimée.
                 sheet.merged_cells.remove(merged)
         def shift(match):
             start = int(match.group(2))
@@ -615,9 +612,9 @@ class ExpenseScanSheet(models.AbstractModel):
         from reportlab.pdfgen import canvas  # noqa: PLC0415
 
         image = ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert('RGB')
-        # Une photo de téléphone pèse plusieurs Mo : réduite à une taille
-        # lisible à l'impression et passée en JPEG, elle est incorporée telle
-        # quelle au PDF au lieu d'y être stockée pixel par pixel.
+        # Une photo de téléphone pèse plusieurs Mo : réduction à une taille
+        # lisible à l'impression puis JPEG, pour que le PDF n'embarque pas
+        # les pixels bruts.
         image.thumbnail((IMAGE_MAX_SIDE, IMAGE_MAX_SIDE))
         jpeg = io.BytesIO()
         image.save(jpeg, format='JPEG', quality=IMAGE_QUALITY, optimize=True)
@@ -661,7 +658,7 @@ class ExpenseScanSheet(models.AbstractModel):
 
     @api.model
     def _draw_label(self, pdf, label, width, height):
-        """« N° 5.2 » dans un cartouche blanc, en haut à droite."""
+        """Dessine le numéro du justificatif dans un cartouche."""
         text = _("N° %s", label)
         pdf.setFont('Helvetica-Bold', 16)
         text_w = pdf.stringWidth(text, 'Helvetica-Bold', 16)
@@ -748,9 +745,9 @@ class ExpenseScanSheetWizard(models.TransientModel):
     _description = "Édition d'une fiche de frais"
 
     expense_ids = fields.Many2many('hr.expense', string="Dépenses sélectionnées")
-    # Ouvert depuis le menu « Fiches de frais », l'assistant choisit lui-même
-    # les dépenses d'une période : plus besoin de filtrer la liste, tout
-    # sélectionner, puis passer par « Actions ».
+    # Ouvert depuis le menu « Fiches de frais », l'assistant sélectionne
+    # lui-même les dépenses d'une période, sans passer par la liste et
+    # « Actions ».
     period = fields.Selection(
         [('current', "Mois en cours"), ('previous', "Mois précédent"),
          ('custom', "Autre période")],
@@ -832,22 +829,23 @@ class ExpenseScanSheetWizard(models.TransientModel):
 
     @api.onchange('excel')
     def _onchange_excel(self):
-        # Le premier modèle de la liste — son ordre se règle dans la
-        # configuration — est proposé d'office.
+        # Propose par défaut le premier modèle de la liste (l'ordre se règle
+        # dans la configuration).
         if self.excel and not self.template_id:
             self.template_id = self.env['expense.scan.export.template'].search([], limit=1)
 
     @api.onchange('template_id')
     def _onchange_template_id(self):
-        # Un modèle réservé aux frais refacturables règle le filtre d'office.
+        # Un modèle réservé aux frais refacturables impose ce filtre.
         if self.template_id.reinvoice_only:
             self.scope = 'reinvoice'
 
     def _selected(self):
         self.ensure_one()
         # Pendant l'édition du formulaire, les enregistrements liés sont des
-        # copies provisoires : on compare les vrais, sans quoi une mission
-        # choisie ne correspondait à aucune dépense (« 0 dépense »).
+        # copies provisoires. La comparaison porte sur les vrais (_origin) :
+        # sinon une mission choisie ne correspondrait à aucune dépense
+        # (« 0 dépense »).
         expenses = self.expense_ids._origin
         if self.scope == 'reinvoice':
             expenses = expenses.filtered(lambda e: e.reinvoice_mode == 'project')
@@ -890,8 +888,8 @@ class ExpenseScanSheetWizard(models.TransientModel):
             name = "%s.zip" % self.env['expense.scan.sheet']._file_stem(expenses, _("Fiches de frais"))
             content = self.env['expense.scan.sheet']._zip(files)
         self.write({'result_file': base64.b64encode(content), 'result_name': name})
-        # Téléchargé par le client, qui ferme ensuite la fenêtre : un simple
-        # lien la laissait ouverte, et un nouvel onglet serait bloqué.
+        # Le client télécharge le fichier puis ferme la fenêtre. Un simple
+        # lien la laisserait ouverte, et un nouvel onglet serait bloqué.
         return {
             'type': 'ir.actions.client',
             'tag': 'expense_scan_download',

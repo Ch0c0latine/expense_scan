@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Moteurs de reconnaissance de texte, interchangeables.
+"""Moteurs de reconnaissance de texte interchangeables.
 
-Deux implémentations sont fournies, toutes deux 100 % locales, gratuites et
-sans jeton :
+Deux implémentations sont fournies, toutes deux locales, gratuites et sans
+jeton :
 
-* ``rapidocr`` — les réseaux PP-OCR exécutés par ONNX Runtime. Nettement
+* ``rapidocr`` : les réseaux PP-OCR exécutés par ONNX Runtime. Nettement
   meilleur que Tesseract sur un ticket thermique (impression pâle, papier
-  froissé, police condensée) pour un coût CPU de l'ordre de la seconde.
-* ``tesseract`` — repli historique, sans réseau de neurones de détection.
+  froissé, police condensée), pour un coût CPU de l'ordre de la seconde.
+* ``tesseract`` : moteur de repli, sans réseau de neurones de détection.
 
-Ajouter un moteur revient à écrire une sous-classe de :class:`ScanEngine` et
-à l'enregistrer dans ``ENGINE_CLASSES``.
+Pour ajouter un moteur, écrire une sous-classe de :class:`ScanEngine` et
+l'enregistrer dans ``ENGINE_CLASSES``.
 """
 import logging
 import math
@@ -23,8 +23,8 @@ import time
 _logger = logging.getLogger(__name__)
 
 # Les erreurs d'import sont conservées : une dépendance absente doit
-# pouvoir être nommée à l'utilisateur, pas se traduire par un « module
-# requis » qui n'apprend rien sur ce qui manque réellement.
+# pouvoir être nommée à l'utilisateur, et non se traduire par un « module
+# requis » qui n'indique pas ce qui manque réellement.
 try:
     import numpy as np
 except Exception as error:  # noqa: BLE001
@@ -139,15 +139,15 @@ class RapidOcrEngine(ScanEngine):
     code = "rapidocr"
     label = "RapidOCR / PP-OCR (ONNX Runtime)"
 
-    # Essayés dans l'ordre, jusqu'à en trouver un qui relit réellement le
-    # ticket de contrôle.
+    # Candidats essayés dans l'ordre, jusqu'à en trouver un qui relit
+    # réellement le ticket de contrôle.
     #
     # Mesuré sur rapidocr 3.9.2 : les modèles de reconnaissance « latin »
-    # (PP-OCRv5 comme PP-OCRv3) se chargent sans erreur mais ne
-    # reconnaissent rien du tout, tandis que le modèle d'usine lit le
-    # français accentué sans faute — « SUPERMARCHÉ », « NET À PAYER » à 1,00
-    # de score. L'usine passe donc en premier ; les variantes latines
-    # restent en repli au cas où une version ultérieure les corrigerait.
+    # (PP-OCRv5 comme PP-OCRv3) se chargent sans erreur mais ne reconnaissent
+    # rien du tout, tandis que le modèle d'usine lit le français accentué
+    # sans faute (« SUPERMARCHÉ », « NET À PAYER » à 1,00 de score). Le
+    # modèle d'usine passe donc en premier ; les variantes latines restent
+    # en repli au cas où une version ultérieure les corrigerait.
     MODEL_CANDIDATES = [
         (None, None),  # configuration d'usine de la bibliothèque
         ("PP-OCRv5", "latin"),
@@ -181,20 +181,20 @@ class RapidOcrEngine(ScanEngine):
         params = {
             # En dessous de ce score, le texte reconnu est écarté. Un ticket
             # thermique produit beaucoup de lignes moyennement lisibles qu'il
-            # vaut mieux garder : le parseur, lui, sait les pondérer.
+            # vaut mieux garder : le parseur sait les pondérer.
             "Global.text_score": float(self.options.get("text_score", 0.35)),
             "Global.max_side_len": int(self.options.get("max_side_len", 1800)),
         }
         model_dir = self.options.get("model_dir")
         if model_dir:
             params["Global.model_root_dir"] = model_dir
-        # Odoo fait déjà tourner plusieurs workers ; laisser ONNX ouvrir
+        # Odoo fait déjà tourner plusieurs workers : laisser ONNX ouvrir
         # autant de threads que de cœurs dans chacun d'eux dégrade le débit
-        # global au lieu de l'améliorer. Chaque thread de plus fait aussi
-        # réserver à l'allocateur (glibc) sa propre zone de mémoire virtuelle :
-        # c'est ce qui faisait franchir aux workers leur limite à chaque scan
-        # — voir MALLOC_ARENA_MAX dans le README. Quatre threads lisent aussi
-        # vite un ticket, et les opérations s'enchaînent sans en demander
+        # global au lieu de l'améliorer. Chaque thread supplémentaire fait
+        # aussi réserver à l'allocateur (glibc) sa propre zone de mémoire
+        # virtuelle, ce qui faisait franchir aux workers leur limite à chaque
+        # scan (voir MALLOC_ARENA_MAX dans le README). Quatre threads lisent un
+        # ticket aussi vite, et les opérations s'enchaînent sans en demander
         # d'autres.
         threads = int(self.options.get("threads", 0) or 0) or min(DEFAULT_THREADS, os.cpu_count() or 1)
         params["EngineConfig.onnxruntime.intra_op_num_threads"] = threads
@@ -208,17 +208,16 @@ class RapidOcrEngine(ScanEngine):
     def _load(self):
         """Instancie le moteur, charge les modèles et vérifie qu'ils lisent.
 
-        Deux raisons de ne pas se contenter d'instancier :
+        Il ne suffit pas d'instancier, pour deux raisons :
 
-        * le chargement des modèles est paresseux dans RapidOCR, donc une
+        * le chargement des modèles est paresseux dans RapidOCR : une
           combinaison langue/version inexistante n'échouerait qu'au premier
           vrai ticket, hors de portée du repli ;
-        * surtout, un jeu de modèles peut se charger sans erreur et ne rien
-          reconnaître du tout. C'est arrivé avec ``latin/PP-OCRv5`` : la
-          détection trouvait bien les zones de texte, la reconnaissance ne
-          rendait rien, et RapidOCR éliminait alors les boîtes — panne
-          parfaitement silencieuse. Un candidat n'est donc retenu que s'il
-          relit le ticket de contrôle.
+        * un jeu de modèles peut se charger sans erreur et ne rien reconnaître.
+          C'est le cas de ``latin/PP-OCRv5`` : la détection trouve les zones
+          de texte, la reconnaissance ne rend rien et RapidOCR élimine alors
+          les boîtes, sans lever d'erreur. Un candidat n'est donc retenu que
+          s'il relit le ticket de contrôle.
         """
         from rapidocr import RapidOCR
 
@@ -288,10 +287,10 @@ class RapidOcrEngine(ScanEngine):
                 box = np.asarray(boxes[index], dtype="float32")
                 left, top = float(box[:, 0].min()), float(box[:, 1].min())
                 right, bottom = float(box[:, 0].max()), float(box[:, 1].max())
-                # PP-OCR renvoie un quadrilatère orienté, pas un rectangle :
-                # la direction de la ligne se lit sur son plus grand côté.
-                # C'est la mesure la plus directe qui soit, et elle ne coûte
-                # rien puisque la donnée est déjà là.
+                # PP-OCR renvoie un quadrilatère orienté, et non un
+                # rectangle : la direction de la ligne se lit sur son plus
+                # grand côté. La mesure est directe et sans coût, la donnée
+                # étant déjà disponible.
                 if len(box) == 4:
                     # Le détecteur ordonne ses points depuis le coin
                     # supérieur gauche de l'image. Le premier côté est donc
@@ -302,11 +301,11 @@ class RapidOcrEngine(ScanEngine):
                     edge = max(edges, key=lambda side: float(side[0]) ** 2
                                + float(side[1]) ** 2)
                     angle = math.degrees(math.atan2(float(edge[1]), float(edge[0])))
-                    # Ramené dans (-90, 90] : une ligne et la même ligne
-                    # lue à l'envers ont la même direction. On garde en
-                    # revanche l'écart à l'horizontale, qui est la seule
-                    # chose distinguant un ticket couché d'un ticket debout
-                    # — le moteur, lui, lit aussi bien dans les deux sens.
+                    # Ramené dans (-90, 90] : une ligne et la même ligne lue
+                    # à l'envers ont la même direction. L'écart à
+                    # l'horizontale est en revanche conservé, car il est le
+                    # seul à distinguer un ticket couché d'un ticket debout
+                    # (le moteur lit aussi bien dans les deux sens).
                     angle = ((angle + 90.0) % 180.0) - 90.0
             except Exception:  # noqa: BLE001
                 left = top = 0.0
@@ -384,7 +383,7 @@ ENGINE_CLASSES = {
 AUTO_ORDER = [RapidOcrEngine.code, TesseractEngine.code]
 
 # Les modèles pèsent plusieurs dizaines de mégaoctets et leur chargement
-# coûte 1 à 3 secondes : on garde une instance par jeu d'options et par
+# coûte 1 à 3 secondes : une instance est conservée par jeu d'options et par
 # processus worker.
 _ENGINE_CACHE = {}
 _CACHE_LOCK = threading.Lock()
@@ -448,9 +447,9 @@ def engines_status():
 def self_test(preferred="auto", **options):
     """Charge le moteur et lit une image de test. Renvoie un dictionnaire.
 
-    Sert autant de diagnostic que de préchauffage : c'est ici que les
-    modèles sont téléchargés la première fois, plutôt que devant
-    l'utilisateur qui vient de photographier son ticket.
+    Sert à la fois de diagnostic et de préchauffage : les modèles sont
+    téléchargés ici la première fois, et non au moment où l'utilisateur
+    vient de photographier son ticket.
     """
     started = time.time()
     engine = resolve_engine(preferred, **options)

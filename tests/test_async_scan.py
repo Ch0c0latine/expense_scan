@@ -155,9 +155,8 @@ class TestAsyncScan(common.TransactionCase):
 class TestRetouch(common.TransactionCase):
     """Retouche manuelle : rotation fine et recadrage faits dans le navigateur.
 
-    Le serveur ne reçoit que le résultat, déjà en JPEG ; ces tests ne
-    couvrent que ce qu'il en fait — corriger le justificatif sur place —
-    pas le canevas côté client.
+    Le serveur reçoit le résultat en JPEG. Les tests portent sur la
+    correction du justificatif sur place, pas sur le canevas côté client.
     """
 
     @classmethod

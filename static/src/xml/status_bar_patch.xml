@@ -4,14 +4,14 @@
 <templates xml:space="preserve">
 
     <!--
-        Odoo garde un seul bouton visible sur petit écran et pousse le reste
-        dans un menu « … ». On en laisse passer autant que l'annonce
-        `expenseScanMaxSlots`, soit trois sur une dépense et un partout
-        ailleurs, ce qui laisse le comportement d'origine hors de ce module.
+        Sur petit écran, Odoo n'affiche qu'un bouton et place les autres dans
+        un menu « … ». Ce gabarit en affiche `expenseScanMaxSlots` : trois sur
+        une dépense, un partout ailleurs (comportement d'origine hors de ce
+        module).
 
-        La branche est réécrite plutôt qu'ajustée : le gabarit d'Odoo tire
-        un seul nom de slot, là où il en faut désormais une liste. Le menu
-        qui recueille les suivants reprend son balisage à l'identique.
+        La branche est réécrite entièrement : le gabarit d'Odoo utilise un
+        seul nom de slot, alors qu'il faut ici une liste. Le menu qui
+        regroupe les boutons suivants reprend le balisage d'Odoo.
     -->
     <t t-name="expense_scan.StatusBarButtonsWide"
        t-inherit="web.StatusBarButtons" t-inherit-mode="extension">

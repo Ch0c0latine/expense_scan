@@ -3,9 +3,7 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- L'application Dépenses prend l'icône du module : c'est par le scan
-         d'un ticket qu'on y entre désormais. Rechargée après Dépenses à
-         chaque mise à jour, elle survit même à un « -u all ». -->
+    <!-- Icône Dépenses remplacée par celle du module (scan comme point d'entrée). -->
     <record id="hr_expense.menu_hr_expense_root" model="ir.ui.menu">
         <field name="web_icon">expense_scan,static/description/icon.png</field>
     </record>

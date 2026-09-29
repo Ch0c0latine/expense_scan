@@ -3,9 +3,9 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Catégorie reconnue, enseignes apprises, tickets venus d'ailleurs.
 
-Les tests tournent sur une base qui a déjà ses catégories et son
-historique : les mots et les enseignes employés ici sont inventés, pour
-ne rien croiser de réel.
+Les tests s'exécutent sur une base qui contient déjà des catégories et un
+historique : les mots et les enseignes utilisés ici sont inventés, pour
+éviter toute collision avec des données réelles.
 """
 from odoo.tests import common, tagged
 
@@ -47,7 +47,7 @@ class TestLexicon(common.TransactionCase):
         self.assertEqual(lexicon.pick_category(lexicon.score_categories(lines, categories)), 'fuel')
 
     def test_one_body_word_is_not_enough(self):
-        """Un « dessert » en bas de ticket ne fait pas un restaurant."""
+        """Un seul mot (« dessert ») en bas de ticket ne désigne pas un restaurant."""
         categories = {'meal': ["dessert"], 'fuel': ["gazole"]}
         lines = ["SUPERMARCHE"] + ["ARTICLE"] * 10 + ["DESSERT 2,00"]
         self.assertIsNone(lexicon.pick_category(lexicon.score_categories(lines, categories)))
@@ -196,7 +196,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertNotEqual(values.get('product_id'), self.flat.id)
 
     def test_category_without_vat_is_guessed_and_its_vat_dropped(self):
-        """Le train n'a pas de TVA récupérable, mais il a bien un ticket."""
+        """Le train n'a pas de TVA récupérable mais a un ticket."""
         expense = self.expense()
         receipt = reading("GLUMPTRAIN\nTVA 10 % 2,00\nTOTAL 22,00 EUR")
         values = expense._expense_scan_field_values(receipt, self.company)
@@ -206,11 +206,11 @@ class TestCategoryRecognition(common.TransactionCase):
     def test_several_rates_apply_the_highest(self):
         """Deux taux sur le même ticket : le plus élevé est posé sur la dépense.
 
-        Aucun des deux ne vaut pour la dépense entière, mais il en faut
-        néanmoins une : le plus élevé l'emporte plutôt que la taxe de la
+        Aucun des deux taux ne vaut pour toute la dépense, mais une taxe est
+        nécessaire : le plus élevé est retenu plutôt que la taxe de la
         catégorie (ici 5,5 %, qui laisserait passer trop peu de TVA).
 
-        Une seule taxe par taux, sans quoi le module s'abstient à dessein
+        Le module s'abstient s'il existe plusieurs taxes pour un même taux
         (une correspondance ambiguë passerait inaperçue à la relecture) :
         toute autre taxe d'achat à ces deux taux, pour cette société, est
         désactivée le temps du test.
@@ -251,7 +251,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertNotIn('product_id', values)
 
     def test_history_recognises_a_misread_logo(self):
-        """Un « Rchan » corrigé une fois en « Auchan » l'est pour toujours."""
+        """Un « Rchan » corrigé une fois en « Auchan » est ensuite reconnu."""
         past = self.expense(product_id=self.food.id, total_amount_currency=14.0)
         past.write({
             'expense_scan_merchant': "Auchanzz",
@@ -356,7 +356,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertEqual(values['name'], "Chantier Exemple")
 
     def test_company_address_links_nothing(self):
-        """Le pied de facture « … 99999 Exempleville » de la société acheteuse."""
+        """Le pied de facture (« … 99999 Exempleville ») est l'adresse de la société acheteuse."""
         from datetime import date
         self.company.write({'zip': "99999", 'city': "Exempleville"})
         self.expense(name="Formation Exemple", date=date(2026, 9, 9),
@@ -402,7 +402,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertEqual(train.expense_scan_keywords, "Gare\nbillet\nmon mot")
 
     def test_a_brand_outweighs_a_stray_word(self):
-        """KFC en tête, un mot d'hôtel égaré plus bas : c'est un repas."""
+        """Marque (KFC) en tête et mot d'hôtel isolé plus bas : la catégorie est un repas."""
         meal = self.env['product.product'].create({
             'name': "Restaurant test marque", 'can_be_expensed': True, 'sequence': -999,
             'expense_scan_keywords': "zzrepas"})
@@ -418,6 +418,39 @@ class TestCategoryRecognition(common.TransactionCase):
                     "N 43\n25/07/2025\nMerci\nArticle 15,90\n"
                     "ZZCHAMBRE\nTOTAL 15,90"), self.company)
         self.assertEqual(values.get('product_id'), meal.id)
+
+    def test_history_is_kept_per_company(self):
+        """L'historique d'une société n'influence pas le classement d'une autre."""
+        past = self.expense(product_id=self.food.id, total_amount_currency=14.0)
+        past.write({
+            'expense_scan_merchant': "Autresocietezz",
+            'expense_scan_merchant_read': "autresocietezz",
+            'approval_state': 'submitted',
+        })
+        other = self.env['res.company'].create({'name': "Autre société test"})
+        self.env.flush_all()
+        self.env.cr.execute("UPDATE hr_expense SET company_id = %s WHERE id = %s",
+                            [other.id, past.id])
+        self.env.invalidate_all()
+        expense = self.expense()
+        values = expense._expense_scan_category_values(
+            reading("AUTRESOCIETEZZ\nTOTAL 14,00"), self.company)
+        self.assertNotIn('product_id', values)
+
+    def test_the_pure_scoring_matches_the_model(self):
+        """Le banc et le module partagent le même calcul de catégorie."""
+        from ..ocr import categorize
+        scores, reasons, brand = categorize.score(
+            ["ZORBLAX INN", "QUIMBO 2"], {'A': ["zorblax", "quimbo"]}, {}, activity=None)
+        self.assertGreater(scores['A'], 2.0)
+        self.assertEqual(reasons['A'][0][1][0], categorize.WORDS)
+        self.assertIsNone(brand)
+        scores, reasons, _brand = categorize.score(
+            ["Prix 1,85 EUR/L"], {}, {'fuel': 'F'}, activity=None)
+        self.assertEqual(scores['F'], categorize.UNIT_WEIGHT)
+        scores, _reasons, _brand = categorize.score(
+            ["RIEN"], {}, {'lodging': 'H'}, activity="NAF:5510Z")
+        self.assertEqual(scores.get('H'), categorize.CODE_WEIGHT)
 
 
 @tagged('post_install', '-at_install')
@@ -441,8 +474,8 @@ Montant 350,28 €
 
     def test_toll_receipt_without_the_word_toll(self):
         keywords = lexicon.split_keywords("\n".join(lexicon.DEFAULT_KEYWORDS['toll_parking']))
-        # Le texte tel que lu sur un vrai reçu : « Classe-tarif » en
-        # neuvième ligne, hors de l'en-tête.
+        # Texte lu sur un reçu réel : « Classe-tarif » en neuvième ligne,
+        # hors de l'en-tête.
         lines = ["ASFLieu-dit Les Pins BP 10017", "99901 VILLEBOURG Cedex 9", "Te1:3605",
                  "RECU", "N°R1700000000000000000", "Date.. .20/06/26",
                  "Sortie...VILLEBOURG SUD ES", "Entree... .BOURGNEUF",
@@ -475,42 +508,8 @@ class TestCategoryIcons(common.TransactionCase):
 
 
 def bare_png():
-    """Un PNG minimal (1 px), pour dire « une image existe déjà »."""
+    """PNG minimal (1 px) servant d'image déjà présente."""
     import base64
     return base64.b64encode(
         b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89'
         b'\x00\x00\x00\rIDATx\x9cc\xf8\xcf\xc0\x00\x00\x03\x01\x01\x00\xc9\xfe\x92\xef\x00\x00\x00\x00IEND\xaeB`\x82')
-
-
-    def test_history_is_kept_per_company(self):
-        """Les habitudes d'une société n'orientent pas le classement d'une autre."""
-        past = self.expense(product_id=self.food.id, total_amount_currency=14.0)
-        past.write({
-            'expense_scan_merchant': "Autresocietezz",
-            'expense_scan_merchant_read': "autresocietezz",
-            'approval_state': 'submitted',
-        })
-        other = self.env['res.company'].create({'name': "Autre société test"})
-        self.env.flush_all()
-        self.env.cr.execute("UPDATE hr_expense SET company_id = %s WHERE id = %s",
-                            [other.id, past.id])
-        self.env.invalidate_all()
-        expense = self.expense()
-        values = expense._expense_scan_category_values(
-            reading("AUTRESOCIETEZZ\nTOTAL 14,00"), self.company)
-        self.assertNotIn('product_id', values)
-
-    def test_the_pure_scoring_matches_the_model(self):
-        """Le banc et le module partagent le même calcul de catégorie."""
-        from ..ocr import categorize
-        scores, reasons, brand = categorize.score(
-            ["ZORBLAX INN", "QUIMBO 2"], {'A': ["zorblax", "quimbo"]}, {}, activity=None)
-        self.assertGreater(scores['A'], 2.0)
-        self.assertEqual(reasons['A'][0][1][0], categorize.WORDS)
-        self.assertIsNone(brand)
-        scores, reasons, _brand = categorize.score(
-            ["Prix 1,85 EUR/L"], {}, {'fuel': 'F'}, activity=None)
-        self.assertEqual(scores['F'], categorize.UNIT_WEIGHT)
-        scores, _reasons, _brand = categorize.score(
-            ["RIEN"], {}, {'lodging': 'H'}, activity="NAF:5510Z")
-        self.assertEqual(scores.get('H'), categorize.CODE_WEIGHT)

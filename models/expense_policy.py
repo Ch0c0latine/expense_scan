@@ -3,15 +3,15 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Règles de dépenses : bonne conduite de l'entreprise, exigences des clients.
 
-Un ensemble de règles vaut pour toutes les dépenses — plafonds de repas et
-d'hôtel, dépenses personnelles à écarter — ou pour les missions de certains
+Un ensemble de règles vaut pour toutes les dépenses (plafonds de repas et
+d'hôtel, dépenses personnelles à écarter) ou pour les missions de certains
 clients, qui imposent souvent les leurs : classe de transport, catégorie de
 véhicule de location, plafonds propres.
 
-Le contrôle alerte, il ne bloque pas : un dépassement peut être justifié,
-et une lecture de ticket peut se tromper. Deux niveaux donc, la
-transgression (« dépasse ») et le soupçon (« à vérifier »), affichés en tête
-de la dépense et filtrables dans la liste.
+Le contrôle alerte sans bloquer : un dépassement peut être justifié et la
+lecture d'un ticket peut être erronée. Deux niveaux : la transgression
+(« dépasse ») et le soupçon (« à vérifier »), affichés en tête de la dépense
+et filtrables dans la liste.
 """
 import re
 
@@ -36,11 +36,11 @@ MEAL_PERIODS = [
     ('lunch_dinner', "Déjeuner et dîner du même jour"),
     ('day', "Tous les repas du même jour"),
 ]
-#: Code ACRISS d'un véhicule de location : sa première lettre dit la
-#: catégorie (M, N, E, H : mini et économique ; au-delà, plus cher).
+#: Code ACRISS d'un véhicule de location : sa première lettre indique la
+#: catégorie (M, N, E, H : mini et économique ; les autres sont plus chères).
 ACRISS_RE = re.compile(r"\b([MNEHCDIJSRFGPULWOX])[BCDWVLSTFJXPQZEMRHYNGK][MNCABD][RNDQHIECLSABMFVZUX]\b")
 ECONOMY_ACRISS = set("MNEH")
-#: Mots qui, sur un contrat de location, trahissent une catégorie supérieure.
+#: Mots qui, sur un contrat de location, indiquent une catégorie supérieure.
 RENTAL_UPGRADE_WORDS = ("premium", "prestige", "luxe", "luxury", "suv", "full size", "fullsize")
 
 
@@ -84,8 +84,8 @@ class ExpenseScanPolicy(models.Model):
     def _expense_scan_recheck(self):
         """Recalcule les alertes des dépenses encore en cours.
 
-        Le chargement des exemples à l'installation le demande une seule
-        fois, à la fin, plutôt qu'à chaque règle créée.
+        Le chargement des exemples à l'installation le déclenche une seule
+        fois, à la fin, au lieu d'une fois par règle créée.
         """
         if self.env.context.get('expense_scan_no_recheck'):
             return
@@ -228,7 +228,7 @@ class HrExpense(models.Model):
         return families.get(template)
 
     def _expense_scan_meal_period(self):
-        """Petit-déjeuner, déjeuner, dîner — d'après la description, puis l'heure."""
+        """Petit-déjeuner, déjeuner ou dîner, d'après la description puis l'heure."""
         self.ensure_one()
         text = lexicon.fold(self.name)
         if re.search(r"\bpetit\s*dej|\bbreakfast\b|\bcolazione\b|\bfruhstuck", text):
@@ -275,7 +275,7 @@ class HrExpense(models.Model):
             return "%s %s" % (("%.2f" % value).replace('.', ','), currency.symbol or '€')
 
         # Un plafond journalier respecté couvre les repas pris ce jour-là :
-        # un dîner un peu cher après un déjeuner léger reste dans les clous.
+        # un dîner coûteux avec un déjeuner léger peut rester en dessous.
         applicable = policies.rule_ids.filtered(
             lambda rule: self._expense_scan_rule_applies(rule, family))
         daily_rules = applicable.filtered(lambda rule: rule.rule_type == 'daily_max')

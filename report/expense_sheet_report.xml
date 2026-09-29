@@ -15,8 +15,7 @@
         <field name="dpi">90</field>
     </record>
 
-    <!-- Appelé par l'assistant « Fiche de frais », jamais depuis le menu
-         Imprimer : la numérotation dépend de la sélection entière. -->
+    <!-- Appelé par l'assistant (numérotation selon sélection). -->
     <record id="action_report_expense_sheet" model="ir.actions.report">
         <field name="name">Fiche de frais</field>
         <field name="model">hr.expense</field>
@@ -28,8 +27,7 @@
 
     <template id="report_expense_sheet">
         <t t-call="web.html_container">
-            <!-- En-tête interne d'une ligne (date, société, page), sans pied de
-                 page : le tableau a besoin de toute la hauteur. -->
+            <!-- En-tête interne sans pied de page (tableau utilise toute la hauteur). -->
             <t t-call="web.internal_layout">
                 <div class="page o_expense_sheet">
                     <h5 class="mb-1">Fiche de frais — <t t-out="header['salarie']"/></h5>

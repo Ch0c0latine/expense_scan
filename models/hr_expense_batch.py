@@ -3,11 +3,10 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Actions groupées sur la liste des dépenses.
 
-Odoo propose de soumettre et d'approuver plusieurs dépenses à la fois, pas
-de les remettre en brouillon. L'action ajoutée ici applique la remise à
-zéro d'Odoo, avec ses propres contrôles, à chaque dépense qui s'y prête, et
-dit lesquelles elle a dû laisser de côté plutôt que de tout refuser pour
-une seule.
+Odoo permet de soumettre et d'approuver plusieurs dépenses à la fois, mais
+pas de les remettre en brouillon. Cette action applique la remise à zéro
+d'Odoo, avec ses contrôles, à chaque dépense éligible, et indique celles
+qui sont ignorées au lieu de tout refuser à cause d'une seule.
 """
 from odoo import _, models
 

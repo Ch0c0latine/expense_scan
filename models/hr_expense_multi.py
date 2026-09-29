@@ -5,14 +5,12 @@
 
 Un reçu arrive souvent en deux parties : la bande de carte bancaire et le
 ticket de caisse, ou simplement un ticket déchiré. Photographiés séparément
-et joints au même message, ils décrivent une seule dépense — mais rien ne
-garantit que ce soit le cas, et deux justificatifs sans rapport joints au
-même courriel sont tout aussi courants.
+et joints au même message, ils peuvent décrire une seule dépense ou plusieurs
+sans rapport.
 
-On lit donc chaque pièce, on les compare, et on tranche : une dépense si
-elles concordent, autant de dépenses que de justificatifs distincts sinon.
-Sans rien demander à personne, car un envoi par courriel se fait justement
-loin de l'interface.
+Chaque pièce est lue et comparée : une dépense si elles concordent, autant de
+dépenses que de justificatifs distincts sinon. L'analyse se déclenche
+automatiquement par courriel, sans intervention de l'utilisateur.
 """
 import logging
 import re
@@ -22,9 +20,9 @@ from odoo.service.model import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY
 
 _logger = logging.getLogger(__name__)
 
-#: Longueur au-delà de laquelle l'objet d'un courriel est coupé : assez pour
-#: « Hôtel Ibis Lyon Part-Dieu, mission Enedis du 12 au 14 », assez court
-#: pour tenir sur une ligne de liste.
+#: Longueur au-delà de laquelle l'objet d'un courriel est coupé : suffisante
+#: pour « Hôtel Ibis Lyon Part-Dieu, mission Enedis du 12 au 14 », assez
+#: courte pour tenir sur une ligne de liste.
 MAIL_SUBJECT_MAX = 100
 
 #: Préfixes de réponse et de transfert, toutes langues et messageries
@@ -33,10 +31,10 @@ MAIL_SUBJECT_PREFIX = re.compile(
     r'^(?:\s*(?:re|tr|fw|fwd|réf|ref|aw|wg|sv|vs|rv|enc)\s*(?:\[\d+\])?\s*:)+',
     re.IGNORECASE)
 
-#: Deux totaux séparés de plus que cela désignent deux dépenses.
-#: En valeur absolue d'abord, pour les petits montants où deux centimes
-#: d'arrondi pèsent lourd en proportion ; en proportion ensuite, pour les
-#: gros, où deux euros d'écart ne prouvent rien.
+#: Deux totaux dont l'écart dépasse à la fois ces deux seuils désignent deux
+#: dépenses. Le seuil absolu (en euros) protège les petits montants, où
+#: l'arrondi pèse en proportion ; le seuil relatif protège les gros, où
+#: quelques euros d'écart ne prouvent rien.
 DIFFERENT_TOTAL_ABSOLUTE = 0.05
 DIFFERENT_TOTAL_RATIO = 0.02
 
@@ -62,7 +60,7 @@ class HrExpense(models.Model):
     )
 
     # ------------------------------------------------------------------
-    # Déclenchement sur le chemin du courriel
+    # Réception par courriel
     # ------------------------------------------------------------------
 
     @staticmethod
@@ -70,8 +68,8 @@ class HrExpense(models.Model):
         """L'objet d'un courriel, prêt à servir de description.
 
         Sans préfixe de réponse ou de transfert, sur une seule ligne, et
-        coupé à un mot entier s'il est trop long. Chaîne vide s'il ne dit
-        rien — un objet fait de ponctuation ne décrit aucune dépense.
+        coupé à un mot entier s'il est trop long. Vide si l'objet ne
+        contient que de la ponctuation.
         """
         text = MAIL_SUBJECT_PREFIX.sub('', subject or '')
         text = ' '.join(text.split()).strip(' -–—:;,.|')
@@ -79,7 +77,7 @@ class HrExpense(models.Model):
             return ''
         if len(text) > MAIL_SUBJECT_MAX:
             cut = text[:MAIL_SUBJECT_MAX - 1]
-            # À un mot entier, sauf si le seul mot est démesuré.
+            # Coupure à un mot entier, sauf si le seul mot est très long.
             if ' ' in cut[MAIL_SUBJECT_MAX // 2:]:
                 cut = cut.rsplit(' ', 1)[0]
             text = cut.rstrip(' -–—:;,.|') + '…'
@@ -92,10 +90,8 @@ class HrExpense(models.Model):
         L'objet est nettoyé avant qu'Odoo n'y cherche catégorie et montant,
         pour qu'un « TR: » ne masque pas une référence placée en tête.
 
-        L'analyse ne peut pas se lancer ici — la passerelle crée d'abord
-        l'enregistrement, puis y poste le message et ses pièces jointes.
-        On pose donc un repère, et c'est le message qui déclenchera la
-        lecture une fois les photos réellement attachées.
+        L'analyse se déclenche sur le message, une fois les pièces jointes
+        présentes.
         """
         subject = self._expense_scan_mail_subject(msg_dict.get('subject'))
         msg_dict = dict(msg_dict, subject=subject)
@@ -107,8 +103,8 @@ class HrExpense(models.Model):
             description = self._expense_scan_mail_subject(expense.name) if subject else ''
             if description:
                 values.update(name=description, expense_scan_keep_name=True)
-            # Comme au bouton de scan : la catégorie par défaut de la
-            # société, que l'analyse remplacera si le ticket en dit plus.
+            # Comme au bouton de scan : catégorie par défaut de la société,
+            # remplacée par l'analyse si le ticket permet d'en reconnaître une.
             default = expense.company_id.expense_scan_product_id
             if not expense.product_id and default:
                 values['product_id'] = default.id
@@ -123,8 +119,8 @@ class HrExpense(models.Model):
                 continue
             if not expense.company_id.expense_scan_enabled:
                 continue
-            # Le repère ne sert qu'une fois : sans quoi le moindre message
-            # posté ensuite sur la dépense relancerait toute l'analyse.
+            # Le repère est consommé après la première analyse : sinon tout
+            # message posté ensuite sur la dépense relancerait l'analyse.
             expense.expense_scan_from_mail = False
             expense._expense_scan_run_pieces()
         return result
@@ -142,16 +138,15 @@ class HrExpense(models.Model):
     def _expense_scan_run_pieces(self, force=False, from_original=True):
         """Lit chaque justificatif, puis regroupe ceux qui n'en font qu'un.
 
-        Le premier groupe reste sur cette dépense ; chacun des suivants part
-        sur une dépense à lui. C'est le seul choix défendable sans personne
-        devant l'écran : additionner deux tickets sans rapport fausserait la
-        comptabilité en silence, tandis qu'une dépense de trop se remarque
-        et se supprime d'un bouton.
+        Le premier groupe reste sur cette dépense ; chacun des autres est
+        reporté sur une nouvelle dépense. Additionner deux tickets distincts
+        fausserait les comptes ; une dépense surnuméraire se supprime
+        facilement.
         """
         self.ensure_one()
         attachments = self._expense_scan_image_attachments()
         if len(attachments) < 2:
-            # Un seul justificatif : rien à comparer, chemin ordinaire.
+            # Un seul justificatif : rien à comparer, traitement ordinaire.
             return self._expense_scan_run(force=force, from_original=from_original)
 
         pieces = []
@@ -198,13 +193,11 @@ class HrExpense(models.Model):
         return groups
 
     def _expense_scan_same_receipt(self, first, second):
-        """Ces deux lectures décrivent-elles le même achat ?
+        """Indique si ces deux lectures décrivent le même achat.
 
-        Le critère est volontairement prudent : on ne sépare que sur une
-        **franche** différence. Un doute — un total illisible, une date
-        absente d'un des deux morceaux — laisse les pièces ensemble, parce
-        que c'est le cas le plus fréquent : une bande de carte bancaire
-        n'imprime ni enseigne ni détail, seulement un montant.
+        Séparation prudente : seule une **franche** différence les divise.
+        Un total illisible ou une date manquante les laisse ensemble, car
+        une bande de carte bancaire n'imprime que le montant.
         """
         total_first, total_second = first.value('total'), second.value('total')
         if total_first and total_second:
@@ -223,8 +216,8 @@ class HrExpense(models.Model):
 
         Les morceaux d'un même reçu se complètent : la bande de carte donne
         l'heure et le moyen de paiement, le ticket de caisse l'enseigne et
-        la TVA. On part donc du plus riche, et les autres ne comblent que
-        ses vides — jamais ils ne contredisent ce qu'il affirme.
+        la TVA. La plus riche est retenue ; les autres ne comblent que ses
+        champs vides, sans la contredire.
         """
         best = max(results, key=self._expense_scan_completeness)
         for other in results:
@@ -267,10 +260,10 @@ class HrExpense(models.Model):
             })
 
     def _expense_scan_split_off(self, group):
-        """Détache un groupe de morceaux sur une dépense à lui.
+        """Détache un groupe de morceaux sur une nouvelle dépense.
 
-        Le justificatif suit la dépense : le laisser sur la première ferait
-        porter à celle-ci la preuve d'un achat qu'elle ne décrit pas.
+        Les pièces jointes sont déplacées avec le groupe : sinon la première
+        dépense porterait le justificatif d'un achat qu'elle ne décrit pas.
         """
         self.ensure_one()
         expense = self.create({

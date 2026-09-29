@@ -3,11 +3,7 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo noupdate="1">
 
-    <!-- Règles de bonne conduite générales, valables pour toutes les
-         dépenses. Les plafonds reprennent les barèmes URSSAF des frais
-         professionnels : au-delà, le remboursement reste possible sur
-         justificatif, mais doit pouvoir s'expliquer. Archivez l'ensemble
-         pour le suspendre, dupliquez-le pour l'adapter. -->
+    <!-- Règles générales : barèmes URSSAF 2026 (à vérifier chaque 1er janvier). Dupliquer pour adapter. -->
     <record id="policy_good_practice" model="expense.scan.policy"
             context="{'expense_scan_no_recheck': True}">
         <field name="name">Bonnes pratiques (barèmes URSSAF)</field>

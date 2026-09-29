@@ -4,7 +4,7 @@
 """Rattachement d'un frais à une mission, et refacturation.
 
 Séparé de ``hr_expense.py`` : la lecture du ticket et la refacturation sont
-deux sujets distincts, et le second est facultatif — il ne s'active que si
+deux sujets distincts, et le second est facultatif : il ne s'active que si
 la société le demande.
 """
 import logging
@@ -19,8 +19,7 @@ class HrExpense(models.Model):
 
     reinvoice_mode = fields.Selection(
         selection=[
-            # « Oui » d'abord : c'est la réponse la plus fréquente sur un
-            # frais de mission, et celle qu'on veut atteindre sans lire.
+            # « Oui » d'abord : réponse la plus fréquente sur un frais de mission.
             ('project', "Oui"),
             ('none', "Non"),
             ('todo', "À déterminer"),
@@ -83,8 +82,8 @@ class HrExpense(models.Model):
 
     def write(self, vals):
         syncing = 'project_id' in vals and not self.env.context.get('expense_scan_syncing')
-        # L'imputation posée d'office pour l'ancienne mission, relevée avant
-        # qu'elle ne change : c'est elle, et elle seule, qu'on remplacera.
+        # Imputation automatique de l'ancienne mission, relevée avant le
+        # changement : seule celle-ci est remplacée.
         previous = {expense.id: self._expense_scan_auto_distribution(expense.project_id)
                     for expense in self.sudo()} if syncing else {}
         result = super().write(vals)
@@ -103,13 +102,13 @@ class HrExpense(models.Model):
     def _expense_scan_sync_analytic(self, previous=None):
         """Impute sur la mission les dépenses qui y sont rattachées.
 
-        Le coût d'une mission ne remonte dans son tableau de bord qu'au
-        travers de son compte analytique. Une mission qui n'en a pas en
-        reçoit un, comme Odoo le fait pour les feuilles de temps.
+        Le coût d'une mission remonte dans son tableau de bord via son compte
+        analytique. Une mission sans compte en reçoit un, comme Odoo le fait
+        pour les feuilles de temps.
 
-        ``previous`` donne, par dépense, l'imputation d'office de la mission
-        qu'elle quitte : celle-là suit le changement de mission (ou disparaît
-        avec elle) ; une répartition saisie à la main n'est jamais touchée.
+        ``previous`` donne, par dépense, l'imputation automatique de la
+        mission quittée. Elle suit le changement de mission (ou disparaît
+        avec elle) ; une répartition saisie à la main n'est pas modifiée.
         """
         previous = previous or {}
         for expense in self.sudo():
@@ -152,18 +151,18 @@ class HrExpense(models.Model):
     def _compute_expense_scan_project_domain(self):
         """Restreint le choix de mission à celles du salarié de la dépense.
 
-        Sans cela, n'importe qui rattachait son frais à n'importe quel
-        projet, y compris ceux auxquels il n'a jamais participé — et cette
-        imputation remonte dans la rentabilité du projet et sur la facture
-        du client. Un chef de projet ou un administrateur, lui, a de bonnes
-        raisons de voir toute la liste.
+        Sans cette restriction, un frais pourrait être rattaché à n'importe
+        quel projet, y compris ceux auxquels le salarié n'a pas participé,
+        et l'imputation remonte dans la rentabilité du projet et sur la
+        facture du client. Un chef de projet ou un administrateur voit toute
+        la liste.
 
-        Ce sont les missions du **salarié** qui comptent, pas celles de qui
-        regarde : un chef d'équipe qui saisit pour Léon doit voir les
-        missions de Léon.
+        Ce sont les missions du **salarié** qui comptent, pas celles de
+        l'utilisateur connecté : un chef d'équipe qui saisit pour Léon voit
+        les missions de Léon.
 
-        Ce domaine borne ce qui est **proposé**, ce qui n'est pas une
-        barrière de sécurité : il filtre l'interface, pas les écritures.
+        Le domaine borne ce qui est **proposé** : il filtre l'interface, pas
+        les écritures, et ne constitue pas une barrière de sécurité.
         """
         viewer = self.env.user
         if viewer.has_group('project.group_project_manager') \
@@ -184,15 +183,15 @@ class HrExpense(models.Model):
 
     @api.model
     def _expense_scan_employee_project_ids(self, employee):
-        """Les missions d'un salarié, au sens large.
+        """Missions d'un salarié, au sens large.
 
-        Trois sources, réunies : les projets dont il est responsable, ceux
+        Réunit trois sources : les projets dont il est responsable, ceux
         où une tâche lui est assignée, et ceux de ses missions passées ou à
         venir.
 
         Recherche en droits élevés : un chef d'équipe n'a pas forcément
-        accès aux tâches ni aux absences du salarié pour qui il saisit. On
-        n'en retire que des identifiants de projet.
+        accès aux tâches ni aux absences du salarié pour qui il saisit. Seuls
+        des identifiants de projet sont retenus.
         """
         if not employee:
             return []
@@ -204,9 +203,8 @@ class HrExpense(models.Model):
             tasks = sudo.env['project.task'].search([('user_ids', 'in', user.id)])
             projects |= tasks.project_id
 
-        # Les missions sont des absences portant un projet : il faut les
-        # Congés (hr_holidays) et un champ « project_id » sur les absences,
-        # qu'ajoute un module de suivi des missions.
+        # Les missions sont des absences portant un projet : nécessite Congés
+        # (hr_holidays) et un champ « project_id » sur les absences.
         if 'hr.leave' in sudo.env:
             Leave = sudo.env['hr.leave']
             if 'project_id' in Leave._fields:
@@ -221,12 +219,9 @@ class HrExpense(models.Model):
     def _get_view(self, view_id=None, view_type='form', **options):
         """Masque « Client à refacturer » : il découle de la mission.
 
-        Ce champ vient de ``sale_expense``, par une vue sœur de la mienne :
-        un xpath ne peut pas l'atteindre, puisqu'il n'est pas encore posé
-        quand ma vue s'applique — et il ferait échouer la mise à jour sur
-        une base où ``sale_expense`` n'est pas installé. Le retoucher ici,
-        sur l'arbre déjà assemblé, marche dans les deux cas et n'impose
-        aucune dépendance.
+        Ce champ vient de ``sale_expense`` et ne peut être atteint par xpath
+        avant que la vue s'applique. Le modifier ici, sur l'arbre assemblé,
+        fonctionne dans tous les cas et n'ajoute pas de dépendance.
         """
         arch, view = super()._get_view(view_id, view_type, **options)
         if view_type == 'form' and self.env.company.expense_scan_reinvoice:
@@ -260,8 +255,8 @@ class HrExpense(models.Model):
         for expense in self:
             if expense.expense_scan_task_id.sudo().project_id != expense.project_id:
                 expense.expense_scan_task_id = False
-            # « Non » est une décision : choisir la mission ensuite ne la
-            # renverse pas, elle sert alors au seul suivi du budget.
+            # « Non » est conservé quand la mission est choisie ensuite : elle
+            # ne sert alors qu'au suivi du budget.
             reinvoice = expense.reinvoice_mode != 'none'
             values = expense._expense_scan_project_values(expense.project_id, reinvoice=reinvoice)
             values.pop('project_id', None)
@@ -271,11 +266,10 @@ class HrExpense(models.Model):
     def _expense_scan_project_values(self, project, reinvoice=True):
         """Ce qu'implique le rattachement à une mission.
 
-        Deux conséquences, et seulement si les modules correspondants sont
-        là : l'imputation analytique, qui fait remonter le coût dans la
-        rentabilité du projet, et — pour un frais refacturé seulement — la
-        commande à refacturer, qui produira la ligne sur la prochaine
-        facture.
+        Deux conséquences, si les modules correspondants sont installés :
+        l'imputation analytique (le coût remonte dans la rentabilité du
+        projet) et, pour un frais refacturé seulement, la commande à
+        refacturer (la ligne figure sur la prochaine facture).
         """
         self.ensure_one()
         if not project:
@@ -284,16 +278,9 @@ class HrExpense(models.Model):
         values = {'project_id': project.id,
                   'reinvoice_mode': 'project' if reinvoice else 'none'}
 
-        # Lecture en droits élevés, et c'est indispensable : le compte
-        # analytique d'un projet et sa commande à refacturer sont réservés
-        # aux groupes Analytique et Ventes. Un salarié ordinaire qui
-        # photographie son ticket n'en fait partie d'aucun, et l'analyse
-        # échouait pour lui seul — « vous ne disposez pas des droits
-        # suffisants pour accéder au champ reinvoiced_sale_order_id ».
-        #
-        # Rien n'est divulgué au passage : on ne retient que des
-        # identifiants, portés sur la dépense de ce salarié, et déduits de
-        # la mission sur laquelle il se trouvait ce jour-là.
+        # Lecture en droits élevés : le compte analytique et la commande à
+        # refacturer sont réservés aux groupes Analytique et Ventes. Seuls
+        # des identifiants, déduits de la mission, sont retenus.
         project = project.sudo()
         distribution = self._expense_scan_auto_distribution(project)
         if distribution:
@@ -304,14 +291,14 @@ class HrExpense(models.Model):
             # de la précédente ne doit pas lui survivre.
             values['analytic_distribution'] = False
 
-        # La tâche la plus haut placée par l'utilisateur, si celle déjà
-        # choisie n'appartient pas à cette mission.
+        # Première tâche ouverte de la mission (ordre fixé par l'utilisateur),
+        # si la tâche déjà choisie n'appartient pas à cette mission.
         if self.expense_scan_task_id.sudo().project_id != project:
             task = self._expense_scan_open_tasks(project)[:1]
             values['expense_scan_task_id'] = task.id or False
 
-        # La commande à refacturer n'existe qu'avec les Ventes : sans elles,
-        # ni le modèle ni ces champs ne sont là.
+        # La commande à refacturer n'existe qu'avec le module Ventes : sans
+        # lui, ni le modèle ni ces champs ne sont présents.
         if reinvoice and 'sale.order' in self.env:
             order = self.env['sale.order']
             if 'reinvoiced_sale_order_id' in project._fields:
@@ -326,12 +313,9 @@ class HrExpense(models.Model):
         """La mission du salarié en cours à la date du justificatif.
 
         Un module de suivi des missions peut les enregistrer comme des
-        saisies d'absence portant un projet : c'est la seule source capable
-        de dire sur quelle mission un salarié se trouvait un jour donné. On
-        les reconnaît à la présence du projet sur l'absence.
-
-        Une mission ambiguë ne vaut pas mieux qu'aucune : si plusieurs
-        couvrent la date, on laisse le champ vide et on le signale.
+        saisies d'absence portant un projet, reconnaissables à la présence
+        du projet sur l'absence. Si plusieurs missions couvrent la date,
+        le champ reste vide.
         """
         self.ensure_one()
         employee = self.employee_id
@@ -349,8 +333,8 @@ class HrExpense(models.Model):
     def _expense_scan_missions_at(self, employee, scan_date):
         """Projets des saisies de mission couvrant cette date.
 
-        En droits élevés : un chef d'équipe qui scanne pour un salarié ne
-        voit pas forcément ses absences. On n'en retient que les projets.
+        Lecture en droits élevés : seuls les identifiants de projet sont
+        retenus.
         """
         if 'hr.leave' not in self.env:
             return self.env['project.project']
@@ -369,8 +353,8 @@ class HrExpense(models.Model):
     def _expense_scan_only_project_of(self, employee):
         """Repli sans missions datées : le projet du salarié, s'il n'y en a qu'un.
 
-        Le critère retenu : les projets où le salarié a une tâche — mais on
-        ne tranche pas à sa place dès qu'il y en a plusieurs.
+        Critère : les projets où le salarié a une tâche. Vide s'il y en a
+        plusieurs.
         """
         user = employee.user_id
         if not user:

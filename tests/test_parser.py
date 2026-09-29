@@ -3,9 +3,9 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Tests du parseur de tickets.
 
-Le parseur ne touche ni à la base ni à OpenCV : on lui fabrique directement
-des mots situés, ce qui permet de couvrir les cas tordus (sous-total, TVA
-multiple, date de garantie) sans avoir de vraies photos sous la main.
+Le parseur n'utilise ni la base de données ni OpenCV : les tests lui
+fournissent directement des mots situés, ce qui permet de couvrir des cas
+particuliers (sous-total, TVA multiple, date de garantie) sans photo réelle.
 """
 from datetime import date, timedelta
 
@@ -16,12 +16,12 @@ from ..ocr.types import OcrWord
 
 
 def words_from_text(text, score=0.95, line_height=20.0, char_width=9.0):
-    """Fabrique des mots situés à partir d'un ticket écrit en texte.
+    """Construit des mots situés à partir d'un ticket écrit en texte.
 
     Chaque ligne du texte devient une ligne du ticket ; les colonnes sont
-    reproduites à partir de la position des caractères, ce qui suffit à
-    exercer la reconstruction des lignes et la lecture « dernier montant
-    de la ligne ».
+    reproduites d'après la position des caractères, ce qui suffit à tester
+    la reconstruction des lignes et la lecture du « dernier montant de la
+    ligne ».
     """
     words = []
     for row, line in enumerate(text.strip("\n").split("\n")):
@@ -102,7 +102,7 @@ TOTAL 3 X 5,20 15,60
         self.assertEqual(result.value('total'), 15.60)
 
     def test_total_fallback_is_flagged(self):
-        """Sans mot-clé, on propose un montant mais avec une faible confiance."""
+        """Sans mot-clé, un montant est proposé avec une faible confiance."""
         result = self.parse("""
 KIOSQUE
 ARTICLE A 2,00
@@ -154,10 +154,10 @@ ARTICLE B 3,50
         self.assertIn("Date", parser.fields_to_check(result))
 
     def test_old_date_without_year_is_refused(self):
-        """Un billet daté « 23 septembre » n'est pas un achat d'il y a un an.
+        """Une date sans année, trop ancienne, n'est pas inférée.
 
-        Sans millésime, la seule inférence possible renverrait à l'année
-        précédente : mieux vaut ne rien dater et le signaler.
+        Sans année, la seule inférence possible renverrait à l'année
+        précédente : la date reste vide et le champ est signalé.
         """
         far = date.today() - timedelta(days=200)
         result = self.parse("RESERVATION\nDepart le %d/%d\nTOTAL 35,00"
@@ -165,12 +165,12 @@ ARTICLE B 3,50
         self.assertIsNone(result.value('date'))
 
     def test_decimal_amount_is_not_a_date(self):
-        """« 5.67 » ne doit pas devenir le 5 du mois 67."""
+        """« 5.67 » n'est pas une date (jour 5, mois 67)."""
         result = self.parse("GARAGE\nPRIX HT 5.67\nTOTAL 6,80")
         self.assertIsNone(result.value('date'))
 
     def test_future_date_is_rejected(self):
-        """Une date de validité ne doit pas devenir la date de la dépense."""
+        """Une date de validité n'est pas retenue comme date de la dépense."""
         future = date.today() + timedelta(days=400)
         result = self.parse("MAGASIN\nCARTE VALIDE %s\nTOTAL 5,00"
                             % future.strftime("%d/%m/%Y"))
@@ -242,10 +242,10 @@ NET A PAYER 5,50
         self.assertEqual(parser.fields_to_check(result), [])
 
     def test_empty_scan_flags_what_goes_to_accounting(self):
-        """Rien de lu : on signale la date et le total, pas l'enseigne.
+        """Rien de lu : la date et le total sont signalés, pas l'enseigne.
 
-        L'enseigne se lit mal une fois sur deux, et la signaler à chaque
-        ticket usait l'avertissement au point qu'on ne le lisait plus.
+        L'enseigne est souvent mal lue : la signaler à chaque ticket
+        rendrait l'avertissement inutile.
         """
         result = parser.parse([])
         self.assertEqual(
@@ -276,10 +276,10 @@ Paiement....6,80 E ..CB
     # -- Tableau de TVA ---------------------------------------------------
 
     def test_vat_table(self):
-        """Tableau HT / TVA / TTC, format très répandu en caisse.
+        """Tableau HT / TVA / TTC, format courant en caisse.
 
-        Les montants y portent quatre décimales, et la ligne de totaux, qui
-        ne commence pas par un taux, ne doit pas être comptée deux fois.
+        Les montants ont quatre décimales ; la ligne de totaux, qui ne
+        commence pas par un taux, ne doit pas être comptée deux fois.
         """
         result = self.parse("""
 SAS DERSIM GRILL
@@ -333,10 +333,9 @@ TOTAL 33,10 EUR
 
         Une caisse de restauration rapide, sans « % » sur le taux ni le mot
         TVA en en-tête. Sans le mot « Taux » à côté de « HT », le taux ne se
-        rattache à rien, et la dépense retombe sur la taxe par défaut de la
-        catégorie — un taux qui peut ne pas être celui, pourtant juste,
-        imprimé sur le ticket (péché constaté en production : 20 % retenu
-        au lieu des 10 % du ticket).
+        rattache à rien et la dépense retombe sur la taxe par défaut de la
+        catégorie, dont le taux peut différer de celui du ticket (20 %
+        retenu au lieu de 10 %).
         """
         result = self.parse("""
 BURGER ZORGLUB
@@ -353,14 +352,13 @@ A 10,00 18,00 1,80 19,80
         self.assertEqual(result.value('tax_amount'), 1.80)
 
     def test_vat_table_header_merged_with_an_unrelated_total(self):
-        """En-tête de tableau mêlée par l'OCR à un total sans rapport.
+        """En-tête de tableau accolée par l'OCR à un total sans rapport.
 
-        Un ticket d'automate (péché constaté en production) : la ligne
-        d'en-tête, « HT TVA TTC », se retrouve accolée à un total voisin —
-        « TOTAL EN EUROS : 15,80 HT TVA TTC » — et porte donc, comme une
-        ligne de valeurs, un montant qui n'est pas la taxe. Sans précaution,
-        ce montant (15,80, le total) était pris pour la TVA elle-même : dix
-        fois plus que les 1,44 imprimés par la machine.
+        Sur un ticket d'automate, la ligne d'en-tête « HT TVA TTC » se
+        retrouve collée à un total voisin (« TOTAL EN EUROS : 15,80 HT TVA
+        TTC ») et porte alors, comme une ligne de valeurs, un montant qui
+        n'est pas la taxe. Sans traitement, ce montant (15,80, le total)
+        serait pris pour la TVA au lieu des 1,44 imprimés.
         """
         result = self.parse("""
 ZORGLUB AUTOMATE
@@ -395,9 +393,8 @@ TOTAL 71,00 EUR
     def test_vat_rows_without_table_header(self):
         """Mêmes lignes, sans l'en-tête HT/TVA/TTC : le repli doit tenir.
 
-        Le tableau ne se reconnaît alors plus, et c'est la lecture ligne à
-        ligne qui doit choisir la deuxième colonne — la taxe — au lieu du
-        TTC de fin de ligne.
+        Le tableau n'est plus reconnu : la lecture ligne à ligne doit
+        choisir la deuxième colonne (la taxe) et non le TTC de fin de ligne.
         """
         result = self.parse("""
 LES 3 BRASSEURS
@@ -435,11 +432,11 @@ PRIX TTC......6,80 euros
         self.assertEqual(parser.reading_direction(result.lines), 1)
 
     def test_reading_direction_upside_down(self):
-        """Photo à 180° : les mots sont justes, leurs places sont en miroir.
+        """Photo à 180° : les mots sont corrects mais leurs positions inversées.
 
-        Le moteur redresse chaque ligne à la lecture, si bien que le texte
-        paraît correct — mais les montants passent devant leur libellé et
-        les lignes remontent de la dernière à la première.
+        Le moteur redresse chaque ligne à la lecture, donc le texte paraît
+        correct ; en revanche les montants précèdent leur libellé et les
+        lignes sont ordonnées de la dernière à la première.
         """
         result = self.parse("""
 6,80 euros PRIX TTC
