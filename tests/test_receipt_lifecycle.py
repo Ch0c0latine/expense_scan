@@ -184,3 +184,22 @@ class TestReceiptLifecycle(common.TransactionCase):
         self.retouch(expense)
         expense.unlink()
         self.assertFalse(expense.exists())
+
+    def test_a_guessed_category_does_not_outlive_its_reading(self):
+        """Nouvelle lecture sans catégorie reconnue : retour à la catégorie par défaut."""
+        from ..ocr import parser
+        from .test_parser import words_from_text
+        Product = self.env['product.product']
+        default = Product.create({'name': "Catégorie par défaut", 'can_be_expensed': True})
+        guessed = Product.create({'name': "Catégorie devinée", 'can_be_expensed': True})
+        chosen = Product.create({'name': "Catégorie choisie", 'can_be_expensed': True})
+        self.company.expense_scan_product_id = default
+        expense = self.Expense.create({
+            'name': "Ticket", 'employee_id': self.employee.id,
+            'product_id': guessed.id, 'expense_scan_guessed_product_id': guessed.id})
+        unknown = parser.parse(words_from_text("QWZX KLOMP\nTOTAL 5,00"))
+        values = expense._expense_scan_category_values(unknown, self.company)
+        self.assertEqual(values['product_id'], default.id)
+        expense.product_id = chosen
+        values = expense._expense_scan_category_values(unknown, self.company)
+        self.assertNotIn('product_id', values)

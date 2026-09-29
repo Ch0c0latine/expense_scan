@@ -85,7 +85,15 @@ patch(Chatter.prototype, {
             const analyze = this.expenseScanAnalyze;
             await super.onUploaded(data, { thread: target })(...args);
             const record = this.props.record;
-            if (!analyze || record?.resModel !== "hr.expense" || !record.resId) {
+            if (record?.resModel !== "hr.expense" || !record.resId) {
+                return;
+            }
+            if (!analyze) {
+                // Justificatif joint à une dépense enregistrée : la fiche est
+                // rechargée pour afficher son aperçu.
+                if (!this.props.hasParentReloadOnAttachmentsChanged) {
+                    await this.reloadParentView();
+                }
                 return;
             }
             this.expenseScanAnalyze = false;

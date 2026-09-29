@@ -447,7 +447,12 @@ class HrExpense(models.Model):
                     'expense_scan_guessed_product_id': False,
                     'expense_scan_category_reason': False,
                 })
-                if not self.product_id and company.expense_scan_product_id:
+                # Une catégorie proposée par une lecture précédente (d'un
+                # justificatif remplacé depuis, par exemple) ne vaut plus :
+                # retour à la catégorie par défaut.
+                guessed_before = (self.product_id
+                                  and self.product_id == self.expense_scan_guessed_product_id)
+                if (not self.product_id or guessed_before) and company.expense_scan_product_id:
                     values['product_id'] = company.expense_scan_product_id.id
         else:
             # Catégorie choisie manuellement : la raison d'un ancien choix
