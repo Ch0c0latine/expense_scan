@@ -135,6 +135,13 @@ class TestCorpus(common.TransactionCase):
                         expense.scan_todo, expense.scan_message))
                 if snapshot and captured:
                     self._write_snapshot(name, captured, expense)
+                if name.startswith('OP-'):
+                    # Tickets d'Open Prices : des achats sans lien entre eux.
+                    # Gardées, ces dépenses du même salarié, souvent datées du
+                    # jour faute de date lue, feraient recalculer à chaque
+                    # ticket les règles de dépenses de toutes les autres :
+                    # une durée qui croît avec le corpus.
+                    expense.sudo().unlink()
             except Exception as error:  # noqa: BLE001
                 _logger.warning("CORPUS|%s|ERREUR|%s", name, error, exc_info=True)
                 continue
