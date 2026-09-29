@@ -23,6 +23,8 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import format_date
 
+from ..ocr import preprocess
+
 _logger = logging.getLogger(__name__)
 
 #: Valeurs qu'une colonne de ligne peut recevoir.
@@ -611,7 +613,14 @@ class ExpenseScanSheet(models.AbstractModel):
         from reportlab.lib.utils import ImageReader  # noqa: PLC0415
         from reportlab.pdfgen import canvas  # noqa: PLC0415
 
-        image = ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert('RGB')
+        try:
+            image = ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert('RGB')
+        except OSError:
+            # Pillow compilé sans WebP : même repli que l'analyse.
+            decoded = preprocess.decode_with_opencv(raw)
+            if decoded is None:
+                raise
+            image = Image.fromarray(decoded[:, :, ::-1])
         # Une photo de téléphone pèse plusieurs Mo : réduction à une taille
         # lisible à l'impression puis JPEG, pour que le PDF n'embarque pas
         # les pixels bruts.

@@ -1810,11 +1810,29 @@ class HrExpense(models.Model):
                 return _("%(label)s %(rate)s %%", label=label or _("TVA"), rate=rate)
         return False
 
-    def _expense_scan_name_is_automatic(self):
+    def _expense_scan_automatic_labels(self):
+        """Libellés d'une description automatique, en minuscules.
+
+        Noms des catégories et « Ticket », dans chaque langue installée :
+        une analyse lancée sans langue (tâche planifiée) a pu écrire
+        « Meals du 23/09/2026 ». Calculés une fois pour toutes les dépenses
+        examinées : la recherche d'un déplacement en passe des dizaines en
+        revue.
+        """
+        labels = set()
+        Product = self.env['product.product'].sudo().with_context(active_test=False)
+        for code, _name in self.env['res.lang'].get_installed():
+            labels.add(self.with_context(lang=code).env._("Ticket").lower())
+            products = Product.with_context(lang=code).search([('can_be_expensed', '=', True)])
+            labels.update(name.lower() for name in products.mapped('name') if name)
+        return labels
+
+    def _expense_scan_name_is_automatic(self, labels=None):
         """Indique si la description est encore celle posée par Odoo ou l'analyse.
 
         Les salariés y inscrivent la mission (« FAI chez Bidule »), qu'une
-        relance d'analyse ne doit pas écraser.
+        relance d'analyse ne doit pas écraser. ``labels`` : résultat de
+        ``_expense_scan_automatic_labels``, calculé à la demande.
         """
         self.ensure_one()
         name = (self.name or '').strip()
@@ -1832,20 +1850,12 @@ class HrExpense(models.Model):
         match = re.fullmatch(pattern, name)
         if not match:
             return False
-        label = match.group('label').strip()
-        # Nom de catégorie dans n'importe quelle langue installée : une
-        # analyse lancée sans langue (tâche planifiée) a pu l'écrire en
-        # anglais, « Meals du 23/09/2026 ». Non reconnue, cette description
-        # passait pour la raison d'un déplacement et gagnait les dépenses
-        # voisines.
-        Product = self.env['product.product'].sudo().with_context(active_test=False)
-        for code, _name in self.env['res.lang'].get_installed():
-            if label == self.with_context(lang=code).env._("Ticket"):
-                return True
-            if Product.with_context(lang=code).search_count([
-                    ('can_be_expensed', '=', True), ('name', '=ilike', label)], limit=1):
-                return True
-        return False
+        # Nom de catégorie dans n'importe quelle langue installée. Non
+        # reconnue, une description automatique en anglais passait pour la
+        # raison d'un déplacement et gagnait les dépenses voisines.
+        if labels is None:
+            labels = self._expense_scan_automatic_labels()
+        return match.group('label').strip().lower() in labels
 
     def _expense_scan_home_places(self):
         """Lieux sans lien avec un déplacement : la société, le domicile.
@@ -1898,7 +1908,8 @@ class HrExpense(models.Model):
             ('date', '<=', scan_date + timedelta(days=TRIP_DAYS)),
             ('approval_state', '!=', 'refused'),
         ])
-        neighbours = neighbours.filtered(lambda e: not e._expense_scan_name_is_automatic())
+        labels = self._expense_scan_automatic_labels()
+        neighbours = neighbours.filtered(lambda e: not e._expense_scan_name_is_automatic(labels))
         if not neighbours:
             return False
 

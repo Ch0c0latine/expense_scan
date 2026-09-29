@@ -219,6 +219,21 @@ class TestPreprocess(common.TransactionCase):
             with self.assertRaisesRegex(ValueError, "trop grande"):
                 preprocess.load_image(buffer.getvalue())
 
+    def test_an_image_pillow_cannot_open_is_read_by_opencv(self):
+        """Pillow sans WebP : l'image est lue par OpenCV, plafonds compris."""
+        import cv2
+        from unittest.mock import patch
+        ok, encoded = cv2.imencode('.webp', self._receipt_photo())
+        self.assertTrue(ok)
+        with patch.object(preprocess.Image, 'open', side_effect=OSError("cannot identify")):
+            image = preprocess.load_image(encoded.tobytes())
+            self.assertEqual(image.shape[:2], (900, 700))
+            with patch.object(preprocess, 'MAX_PIXELS', 30000):
+                image = preprocess.load_image(encoded.tobytes())
+            self.assertLessEqual(image.shape[0] * image.shape[1], 30000)
+            with self.assertRaises(OSError):
+                preprocess.load_image(b"ni image ni rien")
+
     def test_pdf_resolution_falls_back_without_page_size(self):
         """Un PDF dont la taille est illisible est rendu à la résolution demandée."""
         self.assertEqual(preprocess._pdf_dpi(b"pas un pdf", 200), 200)

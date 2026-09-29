@@ -158,7 +158,17 @@ def load_image(data):
     """
     if Image is None or np is None:
         raise RuntimeError("Pillow et numpy sont requis pour lire l'image")
-    with Image.open(io.BytesIO(data)) as img:
+    try:
+        img = Image.open(io.BytesIO(data))
+    except OSError:
+        # Pillow compilé sans WebP (paquet de certaines distributions) :
+        # OpenCV sait le lire. Les téléphones Android partagent souvent
+        # leurs photos dans ce format.
+        image = decode_with_opencv(data)
+        if image is None:
+            raise
+        return image
+    with img:
         pixels = img.width * img.height
         if pixels > HARD_MAX_PIXELS:
             raise ValueError("Image trop grande : %d mégapixels (plafond %d)." % (
@@ -175,6 +185,29 @@ def load_image(data):
     if cv2 is not None:
         return cv2.cvtColor(array, cv2.COLOR_RGB2BGR)
     return array[:, :, ::-1].copy()
+
+
+def decode_with_opencv(data):
+    """Décode une image que Pillow ne reconnaît pas ; ``None`` si OpenCV échoue aussi.
+
+    OpenCV lit l'image entière avant d'en connaître la taille : les
+    plafonds de pixels s'appliquent après le décodage.
+    """
+    if cv2 is None:
+        return None
+    image = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if image is None:
+        return None
+    height, width = image.shape[:2]
+    pixels = width * height
+    if pixels > HARD_MAX_PIXELS:
+        raise ValueError("Image trop grande : %d mégapixels (plafond %d)." % (
+            pixels // 1_000_000, HARD_MAX_PIXELS // 1_000_000))
+    if pixels > MAX_PIXELS:
+        ratio = math.sqrt(MAX_PIXELS / pixels)
+        image = cv2.resize(image, (int(width * ratio), int(height * ratio)),
+                           interpolation=cv2.INTER_AREA)
+    return image
 
 
 def encode_jpeg(image, quality=88):
