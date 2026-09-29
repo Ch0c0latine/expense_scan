@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Tarif kilométrique propre à chaque salarié.
+"""Mileage rate per employee.
 
-Le barème fiscal dépend de la puissance du véhicule et de la distance
-annuelle : un tarif unique porté par la catégorie « Kilométrage » ne
-convient pas.
+Official mileage scales often depend on the vehicle and the yearly distance:
+a single rate on the "Mileage" category does not fit everyone.
 """
 from odoo import fields, models
 
@@ -13,21 +12,20 @@ from odoo import fields, models
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
 
-    # `groups` est obligatoire : Odoo exige que tout champ absent du profil
-    # public des employés en soit muni. Sans lui, le champ est préchargé pour
-    # tout utilisateur et la lecture d'un employé par un non-RH échoue
-    # (ouvrir une dépense suffit).
+    # `groups` is mandatory: Odoo requires it on every field missing from
+    # the public employee profile. Without it, the field is prefetched for
+    # every user and reading an employee as a non-HR user fails (opening an
+    # expense is enough).
     #
-    # Aucune précision imposée au stockage : « Product Price » vaut deux
-    # décimales sur une base standard et arrondirait 0,636 à 0,64 à
-    # l'enregistrement. `min_display_digits` conserve le nombre entier et en
-    # affiche au moins trois décimales.
+    # No storage precision: "Product Price" has two decimals on a standard
+    # database and would round 0.636 to 0.64 on save. `min_display_digits`
+    # keeps the full number and shows at least three decimals.
     expense_mileage_rate = fields.Float(
-        string="Tarif kilométrique",
+        string="Mileage rate",
         min_display_digits=3,
         groups="hr.group_hr_user",
-        help="Prix au kilomètre appliqué aux frais de distance de ce "
-             "salarié. Laissé vide, c'est le coût de la catégorie qui "
-             "s'applique. Aucune décimale n'est perdue : le barème fiscal "
-             "en compte trois, un tarif maison peut en compter davantage.",
+        help="Price per kilometre applied to this employee's distance "
+             "expenses. When empty, the category cost applies. No decimal is "
+             "lost: official scales often have three, an in-house rate may "
+             "have more.",
     )

@@ -8,15 +8,15 @@ class IrHttp(models.AbstractModel):
     _inherit = 'ir.http'
 
     def session_info(self):
-        """Expose le réglage de vue scindée au client web, sans requête supplémentaire.
+        """Give the split view setting to the web client without an extra request.
 
-        Le correctif JavaScript qui abaisse le seuil d'affichage du
-        justificatif s'exécute à chaque rendu de formulaire.
+        The JavaScript patch that lowers the receipt display threshold runs
+        on every form render.
         """
         result = super().session_info()
         result['expense_scan_wide_split'] = self.env.company.expense_scan_wide_split
-        # La liste des dépenses remplace « Imprimer » par « Fiche de frais » :
-        # le client reconnaît l'action à son identifiant.
+        # The expense list replaces "Print" with "Expense sheet": the client
+        # recognises the action by its id.
         sheet = self.env.ref('expense_scan.expense_scan_sheet_wizard_action',
                              raise_if_not_found=False)
         result['expense_scan_sheet_action_id'] = sheet.id if sheet else False

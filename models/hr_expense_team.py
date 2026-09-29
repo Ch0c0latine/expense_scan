@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Saisir pour un salarié de son équipe, sans se connecter à son compte.
+"""Enter expenses for a team member without logging in as them.
 
-Un chef d'équipe ou un administrateur ouvre la liste d'un salarié ; tout ce
-qu'il y crée (saisie ou scan) l'est au nom du salarié. L'historique de la
-dépense garde l'auteur réel.
+A team leader or an administrator opens an employee's list; everything
+created there (manual entry or scan) is created on the employee's behalf.
+The expense history keeps the actual author.
 
-Se connecter en tant que le salarié donnerait accès à tout ce qu'il voit
-(congés, messages, fiche personnelle) et lui attribuerait chaque action.
+Logging in as the employee would give access to everything they can see
+(time off, messages, personal file) and credit them with every action.
 """
 from odoo import _, api, models
 from odoo.exceptions import AccessError
@@ -19,46 +19,45 @@ class HrExpense(models.Model):
 
     @api.model
     def action_expense_scan_team(self):
-        """Membres de l'équipe, pour choisir celui pour qui la saisie est faite."""
+        """Team members, to pick the one the expenses are entered for."""
         team = self._expense_scan_team_employees()
         view = self.env.ref('expense_scan.hr_employee_public_view_kanban_expense_team')
         return {
             'type': 'ir.actions.act_window',
-            'name': _("Dépenses de mon équipe"),
-            # Chemin de l'action serveur : au rechargement, Odoo relance
-            # l'action au lieu d'échouer.
+            'name': _("My team's expenses"),
+            # Path of the server action: on reload, Odoo runs the action again
+            # instead of failing.
             'path': 'my-team-expenses',
             'res_model': 'hr.employee.public',
             'view_mode': 'kanban',
             'views': [(view.id, 'kanban')],
             'domain': [('id', 'in', team.ids)],
-            # Pas de « create » dans ce contexte : le bouton d'une carte le
-            # transmet à l'action qu'il ouvre, et le bouton « Nouveau »
-            # disparaissait des dépenses du salarié. La vue interdit déjà la
-            # création de salariés par son propre attribut.
+            # No "create" in this context: a card button passes it on to the
+            # action it opens, and the "New" button disappeared from the
+            # employee's expenses. The view already forbids creating
+            # employees through its own attribute.
         }
 
     @api.model
     def _expense_scan_employee_expense_action(self, employee_id, employee_name):
-        """Liste des dépenses d'un salarié, saisie en son nom.
+        """An employee's expense list, entered on their behalf.
 
-        Utilisée par la carte de l'équipe et par les boutons de la fiche
-        (Terminé, Supprimer) pour revenir à la liste du salarié et non à
-        celle du manager.
+        Used by the team card and by the form buttons (Done, Delete) to go
+        back to the employee's list rather than the manager's.
         """
-        # Action enregistrée, avec son chemin : l'adresse de la page garde le
-        # salarié (active_id) et Odoo reconstruit la liste au rechargement ou
-        # depuis le fil d'Ariane.
+        # A saved action, with its path: the page address keeps the employee
+        # (active_id) and Odoo rebuilds the list on reload or from the
+        # breadcrumbs.
         action = self.env['ir.actions.actions']._for_xml_id(
             'expense_scan.action_expense_scan_employee_expenses')
-        title = _("Dépenses de %s", employee_name)
+        title = _("Expenses of %s", employee_name)
         action.update({
-            # Le client web affiche `display_name` quand il est présent.
+            # The web client shows `display_name` when there is one.
             'name': title,
             'display_name': title,
             'domain': [('employee_id', '=', employee_id)],
-            # Le salarié devient l'employé par défaut : la saisie comme le
-            # scan passent par `create`, qui honore ce défaut.
+            # The employee becomes the default one: manual entries and scans
+            # both go through `create`, which honours that default.
             'context': {
                 'active_id': employee_id,
                 'active_model': 'hr.employee.public',
@@ -69,9 +68,9 @@ class HrExpense(models.Model):
         return action
 
     def _expense_scan_expense_list(self):
-        """Revient à la liste du salarié quand la saisie est faite pour lui.
+        """Go back to the employee's list when entering expenses for them.
 
-        Sans cela, « Terminé » ramenait le manager à ses propres dépenses.
+        Otherwise "Done" took the manager back to their own expenses.
         """
         employee = self[:1].employee_id
         if not employee or employee in self.env.user.employee_ids:
@@ -82,13 +81,13 @@ class HrExpense(models.Model):
 
     @api.model
     def _expense_scan_team_employees(self):
-        """Équipe de l'utilisateur, selon les règles d'accès d'Odoo.
+        """The user's team, following Odoo's access rules.
 
-        Mêmes critères que la règle « Team Approver Expense » : salariés dont
-        il dirige le département, salariés placés sous lui dans la
-        hiérarchie, salariés dont il approuve les notes de frais. Un
-        approbateur de toutes les dépenses voit tout le monde. Ainsi, aucun
-        salarié n'est proposé si la saisie serait ensuite refusée.
+        Same criteria as the "Team Approver Expense" rule: employees of the
+        departments the user manages, employees below them in the hierarchy,
+        employees whose expenses they approve. An approver of all expenses
+        sees everyone. No employee is offered whose expenses would then be
+        refused.
         """
         user = self.env.user
         Employee = self.env['hr.employee'].sudo()
@@ -100,27 +99,27 @@ class HrExpense(models.Model):
                        ('department_id.manager_id.user_id', '=', user.id),
                        ('id', 'child_of', user.employee_ids.ids),
                        ('expense_manager_id', '=', user.id)]
-        # Ses propres frais ont déjà leur menu.
+        # The user's own expenses already have their menu.
         return Employee.search(domain) - user.employee_ids
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Consigne sur la dépense qui l'a saisie, et pour qui.
+        """Record on the expense who entered it, and for whom.
 
-        Odoo trace l'auteur de chaque modification, mais la création n'affiche
-        qu'un « Dépense créée » sans distinction. Une note est ajoutée quand
-        l'auteur n'est pas le salarié.
+        Odoo tracks the author of every change, but creation only shows an
+        undistinguished "Expense created". A note is added when the author is
+        not the employee.
         """
         expenses = super().create(vals_list)
         author = self.env.user
-        # Seul un utilisateur rattaché à un employé saisit « pour » quelqu'un ;
-        # la passerelle de messagerie n'en est pas un.
+        # Only a user linked to an employee enters expenses "for" someone;
+        # the mail gateway is not one.
         if author.employee_ids and not self.env.su:
             for expense in expenses:
                 employee = expense.employee_id
                 if employee and employee not in author.employee_ids:
                     expense.message_post(
-                        body=_("Saisie par %(author)s pour %(employee)s.",
+                        body=_("Entered by %(author)s for %(employee)s.",
                                author=author.name, employee=employee.name),
                         subtype_xmlid='mail.mt_note',
                     )
@@ -131,9 +130,9 @@ class HrEmployeePublic(models.Model):
     _inherit = 'hr.employee.public'
 
     def action_expense_scan_open_expenses(self):
-        """Liste des dépenses de ce salarié, saisie en son nom."""
+        """This employee's expense list, entered on their behalf."""
         self.ensure_one()
         Expense = self.env['hr.expense']
         if self.id not in Expense._expense_scan_team_employees().ids:
-            raise AccessError(_("%s ne fait pas partie de votre équipe.", self.name))
+            raise AccessError(_("%s is not in your team.", self.name))
         return Expense._expense_scan_employee_expense_action(self.id, self.name)

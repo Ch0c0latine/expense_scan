@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Fiches de frais : récapitulatif PDF, export Excel sur modèle, justificatifs.
+"""Expense sheets: PDF summary, Excel export on a template, receipts.
 
-Les trois sorties partagent la même numérotation : chronologique, de 1 à n
-pour chaque fiche, et n.1 à n.x quand une dépense porte plusieurs
-justificatifs. Les forfaits (kilométrage, barèmes) figurent dans les
-tableaux mais n'ont pas de justificatif.
+The three outputs share the same numbering: chronological, from 1 to n for
+each sheet, and n.1 to n.x when an expense carries several receipts. Flat
+rates (mileage, scales) appear in the tables but have no receipt.
 
-Une fiche par salarié : plusieurs salariés sélectionnés donnent plusieurs
-fichiers, remis ensemble dans une archive.
+One sheet per employee: several employees selected give several files,
+delivered together in an archive.
 """
 import base64
 import io
@@ -27,99 +26,98 @@ from ..ocr import preprocess
 
 _logger = logging.getLogger(__name__)
 
-#: Valeurs qu'une colonne de ligne peut recevoir.
+#: Values a line column can receive.
 LINE_VALUES = [
-    ('n', "N° de justificatif"),
+    ('n', "Receipt no."),
     ('date', "Date"),
-    ('categorie', "Catégorie"),
+    ('categorie', "Category"),
     ('description', "Description"),
-    ('enseigne', "Enseigne"),
-    ('mission', "Mission"),
-    ('quantite', "Quantité (nuitées, km…)"),
-    ('prix_unitaire_ht', "Montant unitaire HT"),
-    ('total_ht', "Sous-total HT"),
-    ('taux_tva', "Taux de TVA"),
-    ('tva_unitaire', "TVA unitaire"),
-    ('total_tva', "Montant de TVA"),
-    ('ttc_unitaire', "Montant unitaire TTC"),
-    ('total_ttc', "Sous-total TTC"),
-    ('mode_paiement', "Payé par"),
-    ('salarie', "Salarié"),
+    ('enseigne', "Merchant"),
+    ('mission', "Project"),
+    ('quantite', "Quantity (nights, km...)"),
+    ('prix_unitaire_ht', "Unit amount excl. tax"),
+    ('total_ht', "Subtotal excl. tax"),
+    ('taux_tva', "VAT rate"),
+    ('tva_unitaire', "Unit VAT"),
+    ('total_tva', "VAT amount"),
+    ('ttc_unitaire', "Unit amount incl. tax"),
+    ('total_ttc', "Subtotal incl. tax"),
+    ('mode_paiement', "Paid by"),
+    ('salarie', "Employee"),
 ]
-#: Valeurs qu'une cellule d'en-tête peut recevoir.
+#: Values a header cell can receive.
 HEADER_VALUES = [
-    ('salarie', "Salarié"),
-    ('prestation', "Prestation (missions)"),
-    ('mois', "Mois (date du premier jour)"),
-    ('periode', "Période (texte)"),
-    ('date_debut', "Date de début"),
-    ('date_fin', "Date de fin"),
-    ('total_ht', "Total HT"),
-    ('total_tva', "Total TVA"),
-    ('total_ttc', "Total TTC"),
-    ('societe', "Société"),
+    ('salarie', "Employee"),
+    ('prestation', "Service (projects)"),
+    ('mois', "Month (date of the first day)"),
+    ('periode', "Period (text)"),
+    ('date_debut', "Start date"),
+    ('date_fin', "End date"),
+    ('total_ht', "Total excl. tax"),
+    ('total_tva', "Total VAT"),
+    ('total_ttc', "Total incl. tax"),
+    ('societe', "Company"),
 ]
-#: Toutes les valeurs, sans doublon, pour le champ unique des correspondances.
+#: All values, without duplicates, for the single mapping field.
 VALUES = LINE_VALUES + [item for item in HEADER_VALUES
                         if item[0] not in {key for key, _label in LINE_VALUES}]
 CELL_RE = re.compile(r"^([A-Z]{1,3})([0-9]*)$")
-#: Référence (« $L$70 ») ou plage (« L8:L68 ») dans une formule de la même
-#: feuille ; ni un nom de fonction (« LOG10( »), ni une autre feuille (« F2!A1 »).
+#: Reference ("$L$70") or range ("L8:L68") in a formula of the same sheet;
+#: neither a function name ("LOG10(") nor another sheet ("F2!A1").
 CELL_REF_RE = re.compile(
     r"(?<![A-Za-z0-9_!'.$])(\$?[A-Z]{1,3}\$?)(\d+)"
     r"(?::(\$?[A-Z]{1,3}\$?)(\d+))?(?![0-9A-Za-z_(])")
-#: Plus grand côté d'une photo de justificatif dans les PDF, en pixels :
-#: environ 250 dpi sur une page A4, assez pour relire un ticket photographié.
+#: Longest side of a receipt photo in the PDFs, in pixels: about 250 dpi on
+#: an A4 page, enough to read a photographed receipt again.
 IMAGE_MAX_SIDE = 2400
 IMAGE_QUALITY = 88
 
 
 class ExpenseScanExportTemplate(models.Model):
     _name = 'expense.scan.export.template'
-    _description = "Modèle d'export Excel des frais"
+    _description = "Excel expense export template"
     _order = 'sequence, name'
 
-    name = fields.Char(string="Nom", required=True)
+    name = fields.Char(string="Name", required=True)
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', string="Société")
+    company_id = fields.Many2one('res.company', string="Company")
     file = fields.Binary(
-        string="Fichier Excel", attachment=True,
-        help="Le classeur tel qu'il est rempli à la main, données comprises : "
-             "les lignes de dépenses sont vidées avant d'être remplies.")
-    filename = fields.Char(string="Nom du fichier")
+        string="Excel file", attachment=True,
+        help="The workbook as it is filled in by hand, data included: the "
+             "expense lines are emptied before being filled.")
+    filename = fields.Char(string="File name")
     sheet_name = fields.Char(
-        string="Feuille", help="Vide : la première feuille du classeur.")
-    first_row = fields.Integer(string="Première ligne de dépense", default=8, required=True)
+        string="Sheet", help="Empty: the first sheet of the workbook.")
+    first_row = fields.Integer(string="First expense row", default=8, required=True)
     last_row = fields.Integer(
-        string="Dernière ligne de dépense", default=68, required=True,
-        help="Le tableau exporté compte exactement une ligne par dépense : "
-             "les lignes en trop sont supprimées, celles qui manquent "
-             "ajoutées, et les totaux placés dessous suivent.")
+        string="Last expense row", default=68, required=True,
+        help="The exported table has exactly one row per expense: extra rows "
+             "are deleted, missing ones added, and the totals below follow.")
     reinvoice_only = fields.Boolean(
-        string="Frais refacturables uniquement",
-        help="Refuse l'export si l'une des dépenses n'est pas marquée "
-             "« À refacturer : Oui ».")
+        string="Re-invoiced expenses only",
+        help="Refuses the export if any expense is not marked "
+             "\"Re-invoice: Yes\".")
     single_project = fields.Boolean(
-        string="Une seule mission",
-        help="Refuse l'export si les dépenses portent sur plusieurs missions.")
+        string="A single project",
+        help="Refuses the export if the expenses belong to several projects.")
     column_ids = fields.One2many(
-        'expense.scan.export.column', 'template_id', string="Correspondances")
+        'expense.scan.export.column', 'template_id', string="Mappings")
     note = fields.Text(string="Notes")
 
     @api.constrains('first_row', 'last_row')
     def _check_rows(self):
         for template in self:
             if template.first_row < 1 or template.last_row < template.first_row:
-                raise UserError(_("Les lignes de dépense du modèle « %s » sont incohérentes.",
+                raise UserError(_("The expense rows of template \"%s\" are inconsistent.",
                                   template.name))
 
     def action_expense_scan_generate_file(self):
-        """Classeur vierge qui suit les correspondances du modèle.
+        """Blank workbook following the template mappings.
 
-        À télécharger, mettre aux couleurs de l'entreprise puis redéposer.
-        Contient les titres de colonnes, les libellés d'en-tête, les lignes
-        de dépenses encadrées et les totaux.
+        To download, give the company's look, then upload again. It holds
+        the column titles, the header labels, the framed expense rows and
+        the totals.
         """
         for template in self:
             content = template._expense_scan_blank_workbook()
@@ -131,11 +129,11 @@ class ExpenseScanExportTemplate(models.Model):
 
     @api.model
     def _expense_scan_fill_blank_files(self):
-        """Classeur vierge des modèles livrés qui n'en ont pas encore."""
+        """Blank workbook for the bundled templates that have none yet."""
         try:
             import openpyxl  # noqa: F401, PLC0415
         except ImportError:
-            _logger.warning("openpyxl absent : modèles d'export livrés sans classeur")
+            _logger.warning("openpyxl missing: bundled export templates have no workbook")
             return
         templates = self.env.ref('expense_scan.export_template_basic',
                                  raise_if_not_found=False)
@@ -149,18 +147,18 @@ class ExpenseScanExportTemplate(models.Model):
             from openpyxl.styles import Alignment, Border, Font, PatternFill, Side  # noqa: PLC0415
             from openpyxl.utils import column_index_from_string, get_column_letter  # noqa: PLC0415
         except ImportError as error:
-            raise UserError(_("La bibliothèque openpyxl manque sur le serveur.")) from error
+            raise UserError(_("The openpyxl library is missing on the server.")) from error
 
         labels = dict(VALUES)
         book = openpyxl.Workbook()
         sheet = book.active
-        sheet.title = (self.sheet_name or _("Frais"))[:31]
+        sheet.title = (self.sheet_name or _("Expenses"))[:31]
         thin = Side(style='thin', color='808080')
         box = Border(left=thin, right=thin, top=thin, bottom=thin)
         title_fill = PatternFill('solid', start_color='DDE7F0')
         bold = Font(bold=True)
 
-        sheet['A1'] = _("Fiche de frais")
+        sheet['A1'] = _("Expense sheet")
         sheet['A1'].font = Font(bold=True, size=14)
 
         for column in self.column_ids.filtered(lambda c: c.kind == 'header' and c.value):
@@ -213,25 +211,23 @@ class ExpenseScanExportTemplate(models.Model):
 
 class ExpenseScanExportColumn(models.Model):
     _name = 'expense.scan.export.column'
-    _description = "Correspondance d'un modèle d'export"
+    _description = "Export template mapping"
     _order = 'kind desc, id'
 
     template_id = fields.Many2one(
         'expense.scan.export.template', required=True, ondelete='cascade')
     cell = fields.Char(
-        string="Colonne ou cellule", required=True,
-        help="Une lettre de colonne (« B ») : la valeur de chaque dépense, "
-             "ligne par ligne. Une cellule (« K4 ») : une valeur d'en-tête, "
-             "écrite une fois. Pour une cellule fusionnée, sa première "
-             "cellule en haut à gauche.")
+        string="Column or cell", required=True,
+        help="A column letter (\"B\"): each expense's value, row by row. A "
+             "cell (\"K4\"): a header value, written once. For a merged cell, "
+             "its top-left cell.")
     kind = fields.Selection(
-        [('line', "Dépenses"), ('header', "En-tête")],
+        [('line', "Expenses"), ('header', "Header")],
         string="Type", compute='_compute_kind', store=True)
     value = fields.Selection(
-        VALUES, string="Valeur",
-        help="Les totaux valent pour la ligne en colonne, pour toute la fiche "
-             "en en-tête. Prestation, mois, période et société ne vont qu'en "
-             "en-tête.")
+        VALUES, string="Value",
+        help="Totals are per row in a column, for the whole sheet in a "
+             "header. Service, month, period and company only go in a header.")
 
     @api.depends('cell')
     def _compute_kind(self):
@@ -246,36 +242,36 @@ class ExpenseScanExportColumn(models.Model):
         for column in self:
             if not CELL_RE.match((column.cell or '').strip().upper()):
                 raise UserError(_(
-                    "« %(cell)s » : une lettre de colonne (B) ou une cellule (K4).",
+                    "\"%(cell)s\": a column letter (B) or a cell (K4).",
                     cell=column.cell))
             allowed = header_keys if column.kind == 'header' else line_keys
             if not column.value:
-                raise UserError(_("Choisissez la valeur à écrire en %s.", column.cell))
+                raise UserError(_("Choose the value to write in %s.", column.cell))
             if column.value not in allowed:
                 raise UserError(_(
-                    "« %(value)s » ne peut pas aller en %(where)s (%(cell)s).",
+                    "\"%(value)s\" cannot go in %(where)s (%(cell)s).",
                     value=dict(VALUES)[column.value], cell=column.cell,
-                    where=_("en-tête") if column.kind == 'header' else _("colonne de dépenses")))
+                    where=_("a header") if column.kind == 'header' else _("an expense column")))
 
 
 class ExpenseScanSheet(models.AbstractModel):
-    """Calcul des lignes, et fabrication des fichiers."""
+    """Line computation, and file production."""
     _name = 'expense.scan.sheet'
-    _description = "Fabrication des fiches de frais"
+    _description = "Expense sheet production"
 
     # ------------------------------------------------------------------
-    # Lignes
+    # Lines
     # ------------------------------------------------------------------
 
     @api.model
     def _is_flat_rate(self, expense):
-        """Forfait ou kilométrage : pas de justificatif attendu."""
+        """Flat rate or mileage: no receipt expected."""
         product = expense.product_id
         return bool(product.standard_price) or expense._expense_scan_is_distance()
 
     @api.model
     def _receipts(self, expense):
-        """Justificatifs de la dépense, le principal en premier."""
+        """Receipts of the expense, the main one first."""
         if self._is_flat_rate(expense):
             return self.env['ir.attachment']
         attachments = expense.attachment_ids.filtered(
@@ -286,7 +282,7 @@ class ExpenseScanSheet(models.AbstractModel):
 
     @api.model
     def _tax_rate(self, expense):
-        """Taux de TVA en fraction (0,1), texte s'il y en a plusieurs."""
+        """VAT rate as a fraction (0.1), text when there are several."""
         if expense._expense_scan_product_no_vat(expense.product_id) \
                 or not expense.tax_amount:
             return 0.0
@@ -298,7 +294,7 @@ class ExpenseScanSheet(models.AbstractModel):
 
     @api.model
     def _lines(self, expenses):
-        """Lignes numérotées, dans l'ordre chronologique."""
+        """Numbered lines, in chronological order."""
         ordered = expenses.sorted(lambda e: (
             e.date or date.min, e.scan_datetime or fields.Datetime.from_string('1970-01-01'), e.id))
         lines = []
@@ -306,7 +302,7 @@ class ExpenseScanSheet(models.AbstractModel):
             receipts = self._receipts(expense)
             if len(receipts) > 1:
                 labels = ["%s.%s" % (number, index) for index in range(1, len(receipts) + 1)]
-                label = _("%(first)s à %(last)s", first=labels[0], last=labels[-1])
+                label = _("%(first)s to %(last)s", first=labels[0], last=labels[-1])
             else:
                 labels = [str(number)] * len(receipts)
                 label = str(number)
@@ -318,8 +314,8 @@ class ExpenseScanSheet(models.AbstractModel):
                 quantity = 1
             rate = self._tax_rate(expense)
             total_ttc = expense.total_amount
-            # Taux nul : pas de TVA récupérable (forfait, hôtel, transport,
-            # ticket sans TVA lisible).
+            # Zero rate: no recoverable VAT (flat rate, hotel, transport,
+            # receipt without readable VAT).
             total_tva = 0.0 if rate == 0.0 else expense.tax_amount
             total_ht = total_ttc - total_tva
             lines.append({
@@ -353,17 +349,17 @@ class ExpenseScanSheet(models.AbstractModel):
     def _header(self, expenses, lines):
         dates = [line['date'] for line in lines if line['date']]
         start, end = (min(dates), max(dates)) if dates else (False, False)
-        # La mission n'est citée que si un filtre par mission est appliqué :
-        # des frais sélectionnés à la main ne forment pas une prestation.
+        # The project is only named when a project filter is applied:
+        # expenses picked by hand do not make a service.
         projects = self.env['project.project'].browse(
             self.env.context.get('expense_scan_sheet_project_ids') or [])
         return {
             'salarie': ", ".join(expenses.employee_id.mapped('name')),
             'prestation': (", ".join(projects.mapped('name')) if projects
-                           else _("Édition des frais sélectionnés")),
+                           else _("Selected expenses")),
             'vat_rows': self._vat_summary(lines),
             'mois': start.replace(day=1) if start else False,
-            'periode': (_("du %(start)s au %(end)s",
+            'periode': (_("from %(start)s to %(end)s",
                           start=format_date(self.env, start), end=format_date(self.env, end))
                         if start else ''),
             'date_debut': start,
@@ -376,11 +372,11 @@ class ExpenseScanSheet(models.AbstractModel):
 
     @api.model
     def _vat_summary(self, lines):
-        """TVA récupérable par taux, pour la déclaration.
+        """Recoverable VAT per rate, for the tax return.
 
-        Un taux est regroupé quel que soit l'usage (10 % de services et de
-        biens sont additionnés). Un ticket à taux mêlés, dont le détail n'est
-        pas conservé, est compté à 20 %, comme une TVA de taux inconnu.
+        A rate is grouped whatever the use (10% on services and on goods
+        are added up). A receipt with mixed rates, whose detail is not kept,
+        is counted at 20%, like VAT of unknown rate.
         """
         groups = {}
         for line in lines:
@@ -401,13 +397,13 @@ class ExpenseScanSheet(models.AbstractModel):
             if row['rate']:
                 row['label'] = "%g %%" % (row['rate'] * 100)
                 if row['mixed']:
-                    row['label'] += _(" (dont taux mêlés)")
+                    row['label'] += _(" (incl. mixed rates)")
             else:
-                row['label'] = _("Sans TVA récupérable")
+                row['label'] = _("No recoverable VAT")
         return rows
 
     # ------------------------------------------------------------------
-    # Contrôles propres au modèle
+    # Template checks
     # ------------------------------------------------------------------
 
     @api.model
@@ -417,14 +413,14 @@ class ExpenseScanSheet(models.AbstractModel):
             wrong = expenses.filtered(lambda e: e.reinvoice_mode != 'project')
             if wrong:
                 problems.append(_(
-                    "Le modèle « %(template)s » n'accepte que des frais refacturables. "
-                    "Ne le sont pas : %(names)s.", template=template.name,
+                    "Template \"%(template)s\" only accepts re-invoiced expenses. "
+                    "These are not: %(names)s.", template=template.name,
                     names=", ".join("%s (%s)" % (e.name, format_date(self.env, e.date))
                                     for e in wrong)))
         if template.single_project and len(expenses.project_id) > 1:
             problems.append(_(
-                "Le modèle « %(template)s » attend une seule mission ; la sélection "
-                "en compte %(count)s : %(names)s.", template=template.name,
+                "Template \"%(template)s\" expects a single project; the selection "
+                "has %(count)s: %(names)s.", template=template.name,
                 count=len(expenses.project_id),
                 names=", ".join(expenses.project_id.mapped('name'))))
         if problems:
@@ -436,15 +432,15 @@ class ExpenseScanSheet(models.AbstractModel):
 
     @api.model
     def _excel(self, template, expenses):
-        """Le classeur du modèle, rempli avec les dépenses d'un salarié."""
+        """The template workbook, filled with one employee's expenses."""
         try:
             import openpyxl  # noqa: PLC0415
             from openpyxl.utils import column_index_from_string  # noqa: PLC0415
             from openpyxl.formula.translate import Translator  # noqa: PLC0415
         except ImportError as error:
-            raise UserError(_("La bibliothèque openpyxl manque sur le serveur.")) from error
+            raise UserError(_("The openpyxl library is missing on the server.")) from error
         if not template.file:
-            raise UserError(_("Le modèle « %s » n'a pas de fichier Excel.", template.name))
+            raise UserError(_("Template \"%s\" has no Excel file.", template.name))
         self._check_template(template, expenses)
 
         lines = self._lines(expenses)
@@ -453,17 +449,17 @@ class ExpenseScanSheet(models.AbstractModel):
         sheet = book[template.sheet_name] if template.sheet_name else book.worksheets[0]
 
         first, last = template.first_row, template.last_row
-        # Références prises avant tout déplacement : la première ligne donne
-        # la mise en forme du corps du tableau, la dernière celle de son bas
-        # (bordure de fin) et les formules d'une ligne vierge.
+        # References taken before anything moves: the first row gives the
+        # style of the table body, the last one the style of its bottom (end
+        # border) and the formulas of an empty row.
         body = {c.column: copy(c._style) for c in sheet[first] if c.has_style}
         bottom = {c.column: copy(c._style) for c in sheet[last] if c.has_style}
         formulas = {c.column: c.value for c in sheet[last]
                     if isinstance(c.value, str) and c.value.startswith('=')}
         height = sheet.row_dimensions[first].height
 
-        # Exactement une ligne par dépense : les lignes en trop disparaissent,
-        # celles qui manquent sont ajoutées, et les totaux suivent.
+        # Exactly one row per expense: extra rows go, missing ones are added,
+        # and the totals follow.
         self._resize_table(sheet, last, len(lines) - (last - first + 1))
         new_last = first + len(lines) - 1
 
@@ -496,12 +492,12 @@ class ExpenseScanSheet(models.AbstractModel):
 
     @api.model
     def _resize_table(self, sheet, last, delta):
-        """Ajoute (``delta`` > 0) ou retire (< 0) des lignes en fin de tableau.
+        """Add (``delta`` > 0) or remove (< 0) rows at the end of the table.
 
-        openpyxl déplace les cellules mais pas les hauteurs de ligne, l'état
-        masqué, les fusions ni les plages des formules situées plus bas.
-        Ces éléments sont recalés ici pour que la ligne des totaux garde son
-        aspect et somme exactement les lignes du tableau.
+        openpyxl moves the cells but not the row heights, the hidden state,
+        the merges or the ranges of the formulas further down. Those are
+        realigned here so that the totals row keeps its look and sums
+        exactly the rows of the table.
         """
         if not delta:
             return
@@ -523,7 +519,7 @@ class ExpenseScanSheet(models.AbstractModel):
             if merged.min_row > last:
                 merged.shift(0, delta)
             elif merged.max_row > new_last:
-                # Fusion située dans les lignes retirées : supprimée.
+                # Merge inside the removed rows: dropped.
                 sheet.merged_cells.remove(merged)
         def shift(match):
             start = int(match.group(2))
@@ -533,12 +529,12 @@ class ExpenseScanSheet(models.AbstractModel):
                 if end > last:
                     end += delta
                 elif end == last and start <= last:
-                    end = new_last  # plage qui court jusqu'au bas du tableau
+                    end = new_last  # range running to the bottom of the table
                 text += ":%s%s" % (match.group(3), end)
             return text
 
-        # Toute la feuille : un total peut être repris ailleurs, en en-tête
-        # (« =L70 ») ou dans une autre formule du pied de tableau.
+        # The whole sheet: a total may be reused elsewhere, in a header
+        # ("=L70") or in another formula of the table footer.
         for row in sheet.iter_rows():
             for cell in row:
                 if isinstance(cell.value, str) and cell.value.startswith('='):
@@ -565,7 +561,7 @@ class ExpenseScanSheet(models.AbstractModel):
 
     @api.model
     def _receipts_pdf(self, lines):
-        """Les justificatifs, un par page, chacun marqué de son numéro."""
+        """The receipts, one per page, each stamped with its number."""
         from odoo.tools.pdf import PdfFileReader, PdfFileWriter  # noqa: PLC0415
         writer = PdfFileWriter()
         pages = 0
@@ -600,14 +596,14 @@ class ExpenseScanSheet(models.AbstractModel):
                 page.mergePage(stamp.getPage(0))
                 pages.append(page)
             return pages
-        except Exception:  # noqa: BLE001 - justificatif illisible
-            _logger.warning("Justificatif illisible : %s", attachment.name, exc_info=True)
+        except Exception:  # noqa: BLE001 - unreadable receipt
+            _logger.warning("Unreadable receipt: %s", attachment.name, exc_info=True)
             stream = io.BytesIO(self._unreadable_page(attachment.name, label))
             return [PdfFileReader(stream, strict=False).getPage(0)]
 
     @api.model
     def _image_page(self, raw, label):
-        """Une page A4 portant la photo, à la plus grande taille possible."""
+        """An A4 page with the photo, as large as possible."""
         from PIL import Image, ImageOps  # noqa: PLC0415
         from reportlab.lib.pagesizes import A4  # noqa: PLC0415
         from reportlab.lib.utils import ImageReader  # noqa: PLC0415
@@ -616,14 +612,13 @@ class ExpenseScanSheet(models.AbstractModel):
         try:
             image = ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert('RGB')
         except OSError:
-            # Pillow compilé sans WebP : même repli que l'analyse.
+            # Pillow built without WebP: same fallback as the scan.
             decoded = preprocess.decode_with_opencv(raw)
             if decoded is None:
                 raise
             image = Image.fromarray(decoded[:, :, ::-1])
-        # Une photo de téléphone pèse plusieurs Mo : réduction à une taille
-        # lisible à l'impression puis JPEG, pour que le PDF n'embarque pas
-        # les pixels bruts.
+        # A phone photo weighs several MB: reduced to a size readable in print,
+        # then JPEG, so that the PDF does not carry the raw pixels.
         image.thumbnail((IMAGE_MAX_SIDE, IMAGE_MAX_SIDE))
         jpeg = io.BytesIO()
         image.save(jpeg, format='JPEG', quality=IMAGE_QUALITY, optimize=True)
@@ -660,15 +655,15 @@ class ExpenseScanSheet(models.AbstractModel):
         pdf = canvas.Canvas(output, pagesize=A4)
         self._draw_label(pdf, label, *A4)
         pdf.setFont('Helvetica', 12)
-        pdf.drawString(40, A4[1] / 2, _("Justificatif illisible : %s", name or ''))
+        pdf.drawString(40, A4[1] / 2, _("Unreadable receipt: %s", name or ''))
         pdf.showPage()
         pdf.save()
         return output.getvalue()
 
     @api.model
     def _draw_label(self, pdf, label, width, height):
-        """Dessine le numéro du justificatif dans un cartouche."""
-        text = _("N° %s", label)
+        """Draw the receipt number in a box."""
+        text = _("No. %s", label)
         pdf.setFont('Helvetica-Bold', 16)
         text_w = pdf.stringWidth(text, 'Helvetica-Bold', 16)
         pdf.setFillColorRGB(1, 1, 1)
@@ -678,7 +673,7 @@ class ExpenseScanSheet(models.AbstractModel):
         pdf.drawString(width - text_w - 26, height - 30, text)
 
     # ------------------------------------------------------------------
-    # Assemblage
+    # Assembly
     # ------------------------------------------------------------------
 
     @api.model
@@ -692,12 +687,12 @@ class ExpenseScanSheet(models.AbstractModel):
 
     @api.model
     def _build(self, expenses, summary=False, excel_template=False, receipts=False):
-        """``[(nom de fichier, contenu)]`` pour chaque salarié et chaque sortie."""
+        """``[(file name, content)]`` for each employee and each output."""
         files = []
         for employee in expenses.employee_id:
             own = expenses.filtered(lambda e: e.employee_id == employee)
             if summary:
-                files.append(("%s.pdf" % self._file_stem(own, _("Fiche de frais")),
+                files.append(("%s.pdf" % self._file_stem(own, _("Expense sheet")),
                               self._summary_pdf(own)))
             if excel_template:
                 files.append(("%s.xlsx" % self._file_stem(own, excel_template.name),
@@ -705,7 +700,7 @@ class ExpenseScanSheet(models.AbstractModel):
             if receipts:
                 content = self._receipts_pdf(self._lines(own))
                 if content:
-                    files.append(("%s.pdf" % self._file_stem(own, _("Justificatifs")), content))
+                    files.append(("%s.pdf" % self._file_stem(own, _("Receipts")), content))
         return files
 
     @api.model
@@ -726,7 +721,7 @@ class ExpenseScanSheet(models.AbstractModel):
 
 class ExpenseSheetReport(models.AbstractModel):
     _name = 'report.expense_scan.report_expense_sheet'
-    _description = "Fiche de frais (PDF)"
+    _description = "Expense sheet (PDF)"
 
     @api.model
     def _get_report_values(self, docids, data=None):
@@ -751,33 +746,32 @@ class ExpenseSheetReport(models.AbstractModel):
 
 class ExpenseScanSheetWizard(models.TransientModel):
     _name = 'expense.scan.sheet.wizard'
-    _description = "Édition d'une fiche de frais"
+    _description = "Expense sheet printing"
 
-    expense_ids = fields.Many2many('hr.expense', string="Dépenses sélectionnées")
-    # Ouvert depuis le menu « Fiches de frais », l'assistant sélectionne
-    # lui-même les dépenses d'une période, sans passer par la liste et
-    # « Actions ».
+    expense_ids = fields.Many2many('hr.expense', string="Selected expenses")
+    # Opened from the "Expense sheets" menu, the wizard selects the expenses
+    # of a period itself, without going through the list and "Actions".
     period = fields.Selection(
-        [('current', "Mois en cours"), ('previous', "Mois précédent"),
-         ('custom', "Autre période")],
-        string="Période")
-    date_from = fields.Date(string="Du")
-    date_to = fields.Date(string="Au")
+        [('current', "Current month"), ('previous', "Previous month"),
+         ('custom', "Other period")],
+        string="Period")
+    date_from = fields.Date(string="From")
+    date_to = fields.Date(string="To")
     employee_ids = fields.Many2many(
-        'hr.employee', string="Salariés",
-        help="Vide : tous les salariés dont vous voyez les frais.")
+        'hr.employee', string="Employees",
+        help="Empty: every employee whose expenses you can see.")
     scope = fields.Selection(
-        [('all', "Tous les frais"), ('reinvoice', "Frais refacturables seulement")],
-        string="Frais", default='reinvoice', required=True)
+        [('all', "All expenses"), ('reinvoice', "Re-invoiced expenses only")],
+        string="Expenses", default='reinvoice', required=True)
     project_ids = fields.Many2many(
-        'project.project', string="Missions",
-        help="Vide : toutes les missions de la sélection.")
+        'project.project', string="Projects",
+        help="Empty: every project of the selection.")
     available_project_ids = fields.Many2many(
         'project.project', compute='_compute_available_project_ids')
-    summary = fields.Boolean(string="Récapitulatif PDF avec justificatifs", default=True)
-    excel = fields.Boolean(string="Export Excel")
-    template_id = fields.Many2one('expense.scan.export.template', string="Modèle")
-    receipts = fields.Boolean(string="Justificatifs seuls (PDF)")
+    summary = fields.Boolean(string="PDF summary with receipts", default=True)
+    excel = fields.Boolean(string="Excel export")
+    template_id = fields.Many2one('expense.scan.export.template', string="Template")
+    receipts = fields.Boolean(string="Receipts only (PDF)")
     selected_count = fields.Integer(compute='_compute_selected')
     selected_summary = fields.Char(compute='_compute_selected')
     result_file = fields.Binary(readonly=True, attachment=False)
@@ -802,7 +796,7 @@ class ExpenseScanSheetWizard(models.TransientModel):
 
     @api.model
     def _period_dates(self, period, today=None):
-        """Premier et dernier jour du mois en cours ou du précédent."""
+        """First and last day of the current or previous month."""
         today = today or fields.Date.context_today(self)
         first = today.replace(day=1)
         if period == 'previous':
@@ -813,7 +807,7 @@ class ExpenseScanSheetWizard(models.TransientModel):
 
     @api.model
     def _period_expenses(self, date_from, date_to, employee_ids):
-        """Les dépenses de la période que l'utilisateur voit, refusées exceptées."""
+        """The period's expenses the user can see, refused ones excepted."""
         if not (date_from and date_to):
             return self.env['hr.expense']
         domain = [('date', '>=', date_from), ('date', '<=', date_to),
@@ -838,23 +832,22 @@ class ExpenseScanSheetWizard(models.TransientModel):
 
     @api.onchange('excel')
     def _onchange_excel(self):
-        # Propose par défaut le premier modèle de la liste (l'ordre se règle
-        # dans la configuration).
+        # Suggest the first template of the list by default (the order is
+        # set in the configuration).
         if self.excel and not self.template_id:
             self.template_id = self.env['expense.scan.export.template'].search([], limit=1)
 
     @api.onchange('template_id')
     def _onchange_template_id(self):
-        # Un modèle réservé aux frais refacturables impose ce filtre.
+        # A template restricted to re-invoiced expenses imposes that filter.
         if self.template_id.reinvoice_only:
             self.scope = 'reinvoice'
 
     def _selected(self):
         self.ensure_one()
-        # Pendant l'édition du formulaire, les enregistrements liés sont des
-        # copies provisoires. La comparaison porte sur les vrais (_origin) :
-        # sinon une mission choisie ne correspondrait à aucune dépense
-        # (« 0 dépense »).
+        # While the form is being edited, the linked records are temporary
+        # copies. The comparison is made on the real ones (_origin):
+        # otherwise a chosen project would match no expense ("0 expenses").
         expenses = self.expense_ids._origin
         if self.scope == 'reinvoice':
             expenses = expenses.filtered(lambda e: e.reinvoice_mode == 'project')
@@ -869,7 +862,7 @@ class ExpenseScanSheetWizard(models.TransientModel):
             selected = wizard._selected()
             wizard.selected_count = len(selected)
             wizard.selected_summary = _(
-                "%(count)s dépense(s), %(employees)s salarié(s), %(amount).2f TTC",
+                "%(count)s expense(s), %(employees)s employee(s), %(amount).2f incl. tax",
                 count=len(selected), employees=len(selected.employee_id),
                 amount=sum(selected.mapped('total_amount')))
 
@@ -877,11 +870,11 @@ class ExpenseScanSheetWizard(models.TransientModel):
         self.ensure_one()
         expenses = self._selected()
         if not expenses:
-            raise UserError(_("Aucune dépense ne correspond aux filtres."))
+            raise UserError(_("No expense matches the filters."))
         if not (self.summary or self.excel or self.receipts):
-            raise UserError(_("Choisissez au moins une sortie."))
+            raise UserError(_("Choose at least one output."))
         if self.excel and not self.template_id:
-            raise UserError(_("Choisissez le modèle Excel."))
+            raise UserError(_("Choose the Excel template."))
         Sheet = self.env['expense.scan.sheet'].with_context(
             expense_scan_sheet_project_ids=self.project_ids.ids)
         expenses = expenses.with_context(expense_scan_sheet_project_ids=self.project_ids.ids)
@@ -890,15 +883,15 @@ class ExpenseScanSheetWizard(models.TransientModel):
             excel_template=self.excel and self.template_id,
             receipts=self.receipts)
         if not files:
-            raise UserError(_("Rien à produire : aucune de ces dépenses n'a de justificatif."))
+            raise UserError(_("Nothing to produce: none of these expenses has a receipt."))
         if len(files) == 1:
             name, content = files[0]
         else:
-            name = "%s.zip" % self.env['expense.scan.sheet']._file_stem(expenses, _("Fiches de frais"))
+            name = "%s.zip" % self.env['expense.scan.sheet']._file_stem(expenses, _("Expense sheets"))
             content = self.env['expense.scan.sheet']._zip(files)
         self.write({'result_file': base64.b64encode(content), 'result_name': name})
-        # Le client télécharge le fichier puis ferme la fenêtre. Un simple
-        # lien la laisserait ouverte, et un nouvel onglet serait bloqué.
+        # The client downloads the file, then closes the dialog. A plain link
+        # would leave it open, and a new tab would be blocked.
         return {
             'type': 'ir.actions.client',
             'tag': 'expense_scan_download',

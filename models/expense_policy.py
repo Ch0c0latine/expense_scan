@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Règles de dépenses : bonne conduite de l'entreprise, exigences des clients.
+"""Expense rules: company good practice and customer requirements.
 
-Un ensemble de règles vaut pour toutes les dépenses (plafonds de repas et
-d'hôtel, dépenses personnelles à écarter) ou pour les missions de certains
-clients, qui imposent souvent les leurs : classe de transport, catégorie de
-véhicule de location, plafonds propres.
+A rule set applies to every expense (meal and hotel limits, personal
+expenses to exclude) or to the projects of some customers, who often impose
+their own: travel class, rental car category, their own limits.
 
-Le contrôle alerte sans bloquer : un dépassement peut être justifié et la
-lecture d'un ticket peut être erronée. Deux niveaux : la transgression
-(« dépasse ») et le soupçon (« à vérifier »), affichés en tête de la dépense
-et filtrables dans la liste.
+The check warns without blocking: going over may be justified and the
+reading of a receipt may be wrong. Two levels, the breach ("over") and the
+doubt ("to check"), shown at the top of the expense and filterable in the
+list.
 """
 import re
 
@@ -20,54 +19,54 @@ from odoo import _, api, fields, models
 from ..ocr import lexicon
 
 FAMILIES = [
-    ('lodging', "Hébergement"),
-    ('meal', "Repas"),
-    ('train_air', "Train / avion"),
-    ('car_rental', "Location de véhicule"),
-    ('taxi', "Taxi / transports urbains"),
-    ('fuel', "Carburant"),
-    ('toll_parking', "Péages et parkings"),
+    ('lodging', "Lodging"),
+    ('meal', "Meals"),
+    ('train_air', "Train / plane"),
+    ('car_rental', "Car rental"),
+    ('taxi', "Taxi / urban transport"),
+    ('fuel', "Fuel"),
+    ('toll_parking', "Tolls and parking"),
     ('telecom', "Communication"),
 ]
 MEAL_PERIODS = [
-    ('breakfast', "Petit-déjeuner"),
-    ('lunch', "Déjeuner"),
-    ('dinner', "Dîner"),
-    ('lunch_dinner', "Déjeuner et dîner du même jour"),
-    ('day', "Tous les repas du même jour"),
+    ('breakfast', "Breakfast"),
+    ('lunch', "Lunch"),
+    ('dinner', "Dinner"),
+    ('lunch_dinner', "Lunch and dinner of the same day"),
+    ('day', "All meals of the same day"),
 ]
-#: Code ACRISS d'un véhicule de location : sa première lettre indique la
-#: catégorie (M, N, E, H : mini et économique ; les autres sont plus chères).
+#: ACRISS code of a rental car: its first letter gives the category (M, N, E,
+#: H: mini and economy; the others cost more).
 ACRISS_RE = re.compile(r"\b([MNEHCDIJSRFGPULWOX])[BCDWVLSTFJXPQZEMRHYNGK][MNCABD][RNDQHIECLSABMFVZUX]\b")
 ECONOMY_ACRISS = set("MNEH")
-#: Mots qui, sur un contrat de location, indiquent une catégorie supérieure.
+#: Words that, on a rental contract, point to a higher category.
 RENTAL_UPGRADE_WORDS = ("premium", "prestige", "luxe", "luxury", "suv", "full size", "fullsize")
 
 
 class ExpenseScanPolicy(models.Model):
     _name = 'expense.scan.policy'
-    _description = "Règles de dépenses"
+    _description = "Expense rules"
     _order = 'name'
 
-    name = fields.Char(string="Nom", required=True)
+    name = fields.Char(string="Name", required=True)
     active = fields.Boolean(default=True)
     apply_to_all = fields.Boolean(
-        string="Toutes les dépenses",
-        help="Contrôle chaque dépense, avec ou sans mission : les règles de "
-             "bonne conduite de l'entreprise. Sinon, seules les missions des "
-             "clients ou les missions désignées ci-dessous sont concernées.")
+        string="All expenses",
+        help="Checks every expense, with or without a project: the company's "
+             "good practice rules. Otherwise, only the projects of the "
+             "customers or the projects listed below are concerned.")
     company_id = fields.Many2one(
-        'res.company', string="Société",
-        help="Vide : les règles valent pour toutes les sociétés.")
+        'res.company', string="Company",
+        help="Empty: the rules apply to every company.")
     partner_ids = fields.Many2many(
-        'res.partner', string="Clients",
-        help="Les règles s'appliquent aux missions de ces clients, et de "
-             "leurs établissements.")
+        'res.partner', string="Customers",
+        help="The rules apply to the projects of these customers and of "
+             "their branches.")
     project_ids = fields.Many2many(
-        'project.project', string="Missions",
-        help="Missions soumises à ces règles quand leur client, dans Odoo, "
-             "n'est pas le client final.")
-    rule_ids = fields.One2many('expense.scan.policy.rule', 'policy_id', string="Règles")
+        'project.project', string="Projects",
+        help="Projects subject to these rules when their customer, in Odoo, "
+             "is not the end customer.")
+    rule_ids = fields.One2many('expense.scan.policy.rule', 'policy_id', string="Rules")
     note = fields.Text(string="Notes")
 
     @api.model_create_multi
@@ -82,10 +81,10 @@ class ExpenseScanPolicy(models.Model):
         return result
 
     def _expense_scan_recheck(self):
-        """Recalcule les alertes des dépenses encore en cours.
+        """Recompute the warnings of the expenses still in progress.
 
-        Le chargement des exemples à l'installation le déclenche une seule
-        fois, à la fin, au lieu d'une fois par règle créée.
+        Loading the examples at install time triggers it once, at the end,
+        instead of once per rule created.
         """
         if self.env.context.get('expense_scan_no_recheck'):
             return
@@ -101,40 +100,40 @@ class ExpenseScanPolicy(models.Model):
 
 class ExpenseScanPolicyRule(models.Model):
     _name = 'expense.scan.policy.rule'
-    _description = "Règle de frais"
+    _description = "Expense rule"
     _order = 'sequence, id'
 
     policy_id = fields.Many2one('expense.scan.policy', required=True, ondelete='cascade')
     sequence = fields.Integer(default=10)
     name = fields.Char(
-        string="Règle", required=True,
-        help="Le texte rappelé au salarié en cas de dépassement.")
+        string="Rule", required=True,
+        help="The text shown to the employee when the rule is broken.")
     family = fields.Selection(
-        FAMILIES, string="Famille de frais",
-        help="Les catégories de dépenses de cette famille, telles que le "
-             "module les reconnaît. Ignorée si des catégories sont choisies.")
+        FAMILIES, string="Expense family",
+        help="The expense categories of this family, as the module "
+             "recognises them. Ignored when categories are chosen.")
     product_ids = fields.Many2many(
-        'product.product', string="Catégories",
+        'product.product', string="Categories",
         domain=[('can_be_expensed', '=', True)])
     rule_type = fields.Selection([
-        ('max_amount', "Montant maximal par dépense"),
-        ('daily_max', "Montant maximal par jour"),
-        ('forbidden_words', "Mots interdits sur le justificatif"),
-        ('rental_class', "Location : catégorie économique"),
-    ], string="Contrôle", required=True, default='max_amount')
-    meal_period = fields.Selection(MEAL_PERIODS, string="Repas")
-    amount = fields.Float(string="Plafond TTC", digits='Account')
+        ('max_amount', "Maximum amount per expense"),
+        ('daily_max', "Maximum amount per day"),
+        ('forbidden_words', "Forbidden words on the receipt"),
+        ('rental_class', "Rental: economy category"),
+    ], string="Check", required=True, default='max_amount')
+    meal_period = fields.Selection(MEAL_PERIODS, string="Meal")
+    amount = fields.Float(string="Limit (tax incl.)", digits='Account')
     per_night = fields.Boolean(
-        string="Par nuitée", help="Le plafond vaut pour une nuit : le montant "
-                                  "est divisé par le nombre de nuitées.")
-    extra_amount = fields.Float(string="Supplément", digits='Account')
+        string="Per night", help="The limit is for one night: the amount is "
+                                 "divided by the number of nights.")
+    extra_amount = fields.Float(string="Extra", digits='Account')
     extra_cities = fields.Char(
-        string="Villes du supplément",
-        help="Le supplément s'ajoute au plafond quand le justificatif cite "
-             "l'une de ces villes.")
+        string="Cities with extra",
+        help="The extra is added to the limit when the receipt mentions one "
+             "of these cities.")
     words = fields.Text(
-        string="Mots", help="Un par ligne. Leur présence sur le justificatif "
-                            "ou dans la description déclenche l'alerte.")
+        string="Words", help="One per line. Their presence on the receipt or "
+                             "in the description triggers the warning.")
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -152,13 +151,13 @@ class HrExpense(models.Model):
     _inherit = 'hr.expense'
 
     expense_scan_policy_alert = fields.Text(
-        string="Règles de dépenses", compute='_compute_expense_scan_policy',
+        string="Expense rules", compute='_compute_expense_scan_policy',
         store=True, readonly=True)
     expense_scan_policy_breach = fields.Boolean(
-        string="Hors règles", compute='_compute_expense_scan_policy',
+        string="Outside the rules", compute='_compute_expense_scan_policy',
         store=True, readonly=True)
 
-    #: Champs dont dépend le contrôle d'une dépense.
+    #: Fields the check of an expense depends on.
     POLICY_FIELDS = ('product_id', 'total_amount', 'total_amount_currency', 'date',
                      'scan_time', 'name', 'expense_scan_nights', 'scan_raw_text',
                      'project_id', 'employee_id', 'expense_scan_merchant')
@@ -186,8 +185,9 @@ class HrExpense(models.Model):
 
     def write(self, vals):
         checked = any(name in vals for name in self.POLICY_FIELDS)
-        # Le plafond journalier dépend des autres repas du jour : ceux du
-        # jour quitté, si la date ou le salarié change, comme ceux du nouveau.
+        # The daily limit depends on the other meals of the day: those of the
+        # day left, when the date or the employee changes, and those of the
+        # new one.
         before = self._expense_scan_policy_siblings() if checked else self.browse()
         result = super().write(vals)
         if checked:
@@ -195,7 +195,7 @@ class HrExpense(models.Model):
         return result
 
     def _expense_scan_policy_siblings(self):
-        """Autres dépenses du même salarié, les mêmes jours."""
+        """Other expenses of the same employee, on the same days."""
         expenses = self.filtered(lambda e: e.employee_id and e.date)
         if not expenses:
             return self.browse()
@@ -206,7 +206,7 @@ class HrExpense(models.Model):
         return self.sudo().search(domain) - expenses
 
     # ------------------------------------------------------------------
-    # Contrôle
+    # Check
     # ------------------------------------------------------------------
 
     def _expense_scan_policies(self):
@@ -228,7 +228,7 @@ class HrExpense(models.Model):
         return families.get(template)
 
     def _expense_scan_meal_period(self):
-        """Petit-déjeuner, déjeuner ou dîner, d'après la description puis l'heure."""
+        """Breakfast, lunch or dinner, from the description, then the time."""
         self.ensure_one()
         text = lexicon.fold(self.name)
         if re.search(r"\bpetit\s*dej|\bbreakfast\b|\bcolazione\b|\bfruhstuck", text):
@@ -251,11 +251,11 @@ class HrExpense(models.Model):
     def _expense_scan_rule_applies(self, rule, family):
         if rule.product_ids:
             return self.product_id in rule.product_ids
-        # Ni famille ni catégorie : la règle vaut pour toutes les dépenses.
+        # Neither family nor category: the rule applies to every expense.
         return not rule.family or rule.family == family
 
     def _expense_scan_policy_findings(self):
-        """``[(transgression, message)]`` des règles qui visent cette dépense."""
+        """``[(breach, message)]`` of the rules that concern this expense."""
         self.ensure_one()
         if not self.product_id:
             return []
@@ -274,8 +274,8 @@ class HrExpense(models.Model):
         def money(value):
             return "%s %s" % (("%.2f" % value).replace('.', ','), currency.symbol or '€')
 
-        # Un plafond journalier respecté couvre les repas pris ce jour-là :
-        # un dîner coûteux avec un déjeuner léger peut rester en dessous.
+        # A daily limit that is respected covers the meals of that day: an
+        # expensive dinner with a light lunch may stay below it.
         applicable = policies.rule_ids.filtered(
             lambda rule: self._expense_scan_rule_applies(rule, family))
         daily_rules = applicable.filtered(lambda rule: rule.rule_type == 'daily_max')
@@ -304,21 +304,21 @@ class HrExpense(models.Model):
                     limit += rule.extra_amount
                 if currency.compare_amounts(value, limit) > 0:
                     findings.append((True, _(
-                        "%(rule)s — %(value)s%(unit)s pour %(limit)s autorisés.",
+                        "%(rule)s - %(value)s%(unit)s for %(limit)s allowed.",
                         rule=rule.name, value=money(value),
-                        unit=_(" par nuit") if rule.per_night else "", limit=money(limit))))
+                        unit=_(" per night") if rule.per_night else "", limit=money(limit))))
             elif rule.rule_type == 'daily_max':
                 total = self._expense_scan_daily_total(rule, family)
                 if total is not None and currency.compare_amounts(total, rule.amount) > 0:
                     findings.append((True, _(
-                        "%(rule)s — %(value)s ce jour-là pour %(limit)s autorisés.",
+                        "%(rule)s - %(value)s on that day for %(limit)s allowed.",
                         rule=rule.name, value=money(total), limit=money(rule.amount))))
             elif rule.rule_type == 'forbidden_words':
                 hits = [word for word in lexicon.split_keywords(rule.words)
                         if re.search(r"\b%s\b" % re.escape(word), text)]
                 if hits:
                     findings.append((False, _(
-                        "%(rule)s — le justificatif mentionne « %(words)s ».",
+                        "%(rule)s - the receipt mentions \"%(words)s\".",
                         rule=rule.name, words=", ".join(hits))))
             elif rule.rule_type == 'rental_class':
                 codes = [m.group(0) for m in ACRISS_RE.finditer((self.scan_raw_text or '').upper())
@@ -327,7 +327,7 @@ class HrExpense(models.Model):
                          if re.search(r"\b%s\b" % re.escape(word), text)]
                 if codes or words:
                     findings.append((False, _(
-                        "%(rule)s — catégorie à vérifier (%(hints)s).",
+                        "%(rule)s - category to check (%(hints)s).",
                         rule=rule.name, hints=", ".join(codes + words))))
 
         if undecided_limits and period is None:
@@ -335,24 +335,24 @@ class HrExpense(models.Model):
             high = max(undecided_limits)
             if currency.compare_amounts(amount, high[0]) > 0:
                 findings.append((True, _(
-                    "Repas de %(value)s : au-delà de tous les plafonds (%(limit)s au plus).",
+                    "Meal of %(value)s: above every limit (%(limit)s at most).",
                     value=money(amount), limit=money(high[0]))))
             elif currency.compare_amounts(amount, low[0]) > 0:
                 findings.append((False, _(
-                    "Repas de %(value)s sans heure lisible : au-delà de « %(rule)s » "
-                    "s'il s'agit de ce repas. Précisez-le dans la description.",
+                    "Meal of %(value)s without a readable time: above \"%(rule)s\" "
+                    "if it is that meal. Say which meal in the description.",
                     value=money(amount), rule=low[1])))
         return findings
 
     def _expense_scan_daily_total(self, rule, family):
-        """Total des repas du jour visés par la règle, ou ``None``."""
+        """Total of the day's meals covered by the rule, or ``None``."""
         periods = ('lunch', 'dinner') if rule.meal_period == 'lunch_dinner' else None
         if periods and self._expense_scan_meal_period() not in periods:
             return None
         same_day = self.sudo().search([
             ('employee_id', '=', self.employee_id.id),
             ('date', '=', self.date),
-            ('id', '!=', self._origin.id or 0),  # 0 : dépense pas encore créée
+            ('id', '!=', self._origin.id or 0),  # 0: expense not created yet
             ('state', '!=', 'refused'),
         ])
         total = self.total_amount

@@ -18,16 +18,16 @@ import { standardWidgetProps } from "@web/views/widgets/standard_widget_props";
 
 /** Étapes affichées, et les étapes du serveur qui les terminent. */
 const STEPS = [
-    { key: "prepare", label: _t("Préparation de l'image"), ends: ["préparation"] },
-    { key: "read", label: _t("Lecture du texte"), ends: ["lecture"] },
+    { key: "prepare", label: _t("Préparation de l'image"), ends: ["prepare"] },
+    { key: "read", label: _t("Lecture du texte"), ends: ["read"] },
     {
         key: "straighten",
         label: _t("Redressement et recadrage"),
-        ends: ["relecture", "redressement", "recadrage"],
+        ends: ["reread", "straighten", "crop"],
     },
-    { key: "values", label: _t("Date, montant et TVA"), ends: ["analyse", "valeurs"] },
-    { key: "category", label: _t("Catégorie et mission"), ends: ["catégorie"] },
-    { key: "save", label: _t("Enregistrement"), ends: ["écriture"] },
+    { key: "values", label: _t("Date, montant et TVA"), ends: ["parse", "values"] },
+    { key: "category", label: _t("Catégorie et mission"), ends: ["category"] },
+    { key: "save", label: _t("Enregistrement"), ends: ["write"] },
 ];
 
 export class ScanProgress extends Component {

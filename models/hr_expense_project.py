@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Rattachement d'un frais à une mission, et refacturation.
+"""Linking an expense to a project, and re-invoicing it.
 
-Séparé de ``hr_expense.py`` : la lecture du ticket et la refacturation sont
-deux sujets distincts, et le second est facultatif : il ne s'active que si
-la société le demande.
+Kept apart from ``hr_expense.py``: reading the receipt and re-invoicing are
+two separate subjects, and the second is optional: it only runs when the
+company asks for it.
 """
 import logging
 
@@ -19,45 +19,43 @@ class HrExpense(models.Model):
 
     reinvoice_mode = fields.Selection(
         selection=[
-            # « Oui » d'abord : réponse la plus fréquente sur un frais de mission.
-            ('project', "Oui"),
-            ('none', "Non"),
-            ('todo', "À déterminer"),
+            # "Yes" first: the most common answer for a project expense.
+            ('project', "Yes"),
+            ('none', "No"),
+            ('todo', "To decide"),
         ],
-        string="À refacturer",
+        string="Re-invoice",
         default='todo',
         required=True,
-        help="« À déterminer » signale un frais dont le sort n'est pas "
-             "tranché, et le bandeau de relecture le rappelle. « Non » est "
-             "une décision, pas un oubli : le frais reste à la charge de la "
-             "société.",
+        help="\"To decide\" flags an expense whose fate is still open, and the "
+             "review banner reminds it. \"No\" is a decision, not an omission: "
+             "the company bears the expense.",
     )
     project_id = fields.Many2one(
         comodel_name='project.project',
-        string="Mission",
+        string="Project",
         ondelete='restrict',
-        help="Mission à laquelle rattacher ce frais. Le renseigner impute la "
-             "dépense sur l'analytique de la mission et la porte sur la "
-             "commande à refacturer, pour qu'elle ressorte sur la prochaine "
-             "facture du projet.",
+        help="Project this expense belongs to. Setting it books the expense "
+             "on the project's analytic account and adds it to the sales order "
+             "to re-invoice, so that it appears on the next project invoice.",
     )
     expense_scan_task_id = fields.Many2one(
         comodel_name='project.task',
-        string="Tâche",
+        string="Task",
         domain="[('project_id', '=', project_id)]",
         ondelete='set null',
-        help="Tâche de la mission concernée, pour le suivi. Le coût remonte "
-             "dans le budget de la mission, que le frais soit refacturé ou non.",
+        help="Task of the project, for follow-up. The cost goes into the "
+             "project budget whether the expense is re-invoiced or not.",
     )
     expense_scan_reinvoice = fields.Boolean(
         related='company_id.expense_scan_reinvoice',
-        string="Rattachement aux missions actif",
+        string="Project link enabled",
     )
 
     expense_scan_has_tasks = fields.Boolean(
-        string="Mission avec tâches",
+        string="Project with tasks",
         compute='_compute_expense_scan_has_tasks',
-        help="Le champ « Tâche » n'apparaît que s'il y a un choix à faire.",
+        help="The \"Task\" field only shows when there is a choice to make.",
     )
 
     @api.depends('project_id')
@@ -68,7 +66,7 @@ class HrExpense(models.Model):
 
     @api.model
     def _expense_scan_open_tasks(self, project):
-        """Tâches ouvertes d'une mission, dans l'ordre fixé par l'utilisateur."""
+        """Open tasks of a project, in the order set by the user."""
         return self.env['project.task'].sudo().search([
             ('project_id', '=', project._origin.id or project.id),
             ('state', 'not in', ('1_done', '1_canceled')),
@@ -82,8 +80,8 @@ class HrExpense(models.Model):
 
     def write(self, vals):
         syncing = 'project_id' in vals and not self.env.context.get('expense_scan_syncing')
-        # Imputation automatique de l'ancienne mission, relevée avant le
-        # changement : seule celle-ci est remplacée.
+        # Automatic distribution of the previous project, noted before the
+        # change: only that one is replaced.
         previous = {expense.id: self._expense_scan_auto_distribution(expense.project_id)
                     for expense in self.sudo()} if syncing else {}
         result = super().write(vals)
@@ -93,22 +91,21 @@ class HrExpense(models.Model):
 
     @api.model
     def _expense_scan_auto_distribution(self, project):
-        """La répartition qu'implique une mission : tout sur son compte."""
+        """The distribution a project implies: everything on its account."""
         project = project.sudo()
         if not project or 'account_id' not in project._fields or not project.account_id:
             return {}
         return {str(project.account_id.id): 100.0}
 
     def _expense_scan_sync_analytic(self, previous=None):
-        """Impute sur la mission les dépenses qui y sont rattachées.
+        """Book the expenses linked to a project on that project.
 
-        Le coût d'une mission remonte dans son tableau de bord via son compte
-        analytique. Une mission sans compte en reçoit un, comme Odoo le fait
-        pour les feuilles de temps.
+        A project's cost reaches its dashboard through its analytic account.
+        A project without an account gets one, as Odoo does for timesheets.
 
-        ``previous`` donne, par dépense, l'imputation automatique de la
-        mission quittée. Elle suit le changement de mission (ou disparaît
-        avec elle) ; une répartition saisie à la main n'est pas modifiée.
+        ``previous`` gives, per expense, the automatic distribution of the
+        project it left. That distribution follows the project change (or
+        goes away with it); a distribution entered by hand is left alone.
         """
         previous = previous or {}
         for expense in self.sudo():
@@ -122,8 +119,8 @@ class HrExpense(models.Model):
                 try:
                     with self.env.cr.savepoint():
                         project._create_analytic_account()
-                except Exception:  # noqa: BLE001 - plan analytique absent
-                    _logger.warning("Compte analytique impossible pour la mission %s",
+                except Exception:  # noqa: BLE001 - no analytic plan
+                    _logger.warning("Could not create an analytic account for project %s",
                                     project.display_name, exc_info=True)
             wanted = self._expense_scan_auto_distribution(project)
             if not self._same_distribution(current, wanted):
@@ -133,36 +130,34 @@ class HrExpense(models.Model):
 
     @staticmethod
     def _same_distribution(left, right):
-        """Deux répartitions identiques, aux écarts d'écriture près."""
+        """Two identical distributions, give or take rounding."""
         left, right = left or {}, right or {}
         return set(left) == set(right) and all(
             abs(float(left[key]) - float(right[key])) < 0.01 for key in left)
 
     expense_scan_project_domain = fields.Char(
-        string="Missions proposées",
+        string="Suggested projects",
         compute='_compute_expense_scan_project_domain',
-        help="Domaine appliqué au champ « Mission ». Il restreint le choix "
-             "d'un salarié à ses propres missions ; un chef de projet ou un "
-             "administrateur garde la liste entière.",
+        help="Domain of the \"Project\" field. It limits an employee to their "
+             "own projects; a project manager or an administrator keeps the "
+             "whole list.",
     )
 
     @api.depends_context('uid')
     @api.depends('employee_id')
     def _compute_expense_scan_project_domain(self):
-        """Restreint le choix de mission à celles du salarié de la dépense.
+        """Limit the project choice to those of the expense's employee.
 
-        Sans cette restriction, un frais pourrait être rattaché à n'importe
-        quel projet, y compris ceux auxquels le salarié n'a pas participé,
-        et l'imputation remonte dans la rentabilité du projet et sur la
-        facture du client. Un chef de projet ou un administrateur voit toute
-        la liste.
+        Without it, an expense could be linked to any project, including
+        ones the employee never worked on, and the cost would go into that
+        project's profitability and onto the customer invoice. A project
+        manager or an administrator sees the whole list.
 
-        Ce sont les missions du **salarié** qui comptent, pas celles de
-        l'utilisateur connecté : un chef d'équipe qui saisit pour Léon voit
-        les missions de Léon.
+        The **employee's** projects count, not those of the logged-in user:
+        a team leader entering expenses for Leo sees Leo's projects.
 
-        Le domaine borne ce qui est **proposé** : il filtre l'interface, pas
-        les écritures, et ne constitue pas une barrière de sécurité.
+        The domain limits what is **suggested**: it filters the interface,
+        not the records, and is not a security barrier.
         """
         viewer = self.env.user
         if viewer.has_group('project.group_project_manager') \
@@ -174,8 +169,8 @@ class HrExpense(models.Model):
         for expense in self:
             employee = expense.employee_id or viewer.employee_id
             user = employee.user_id
-            # Le second terme couvre les projets dont le salarié est
-            # responsable : il peut n'y avoir aucune tâche ni mission dessus.
+            # The second term covers the projects the employee manages: they
+            # may have no task or assignment on them.
             expense.expense_scan_project_domain = str([
                 '|', ('id', 'in', self._expense_scan_employee_project_ids(employee)),
                 ('user_id', '=', user.id or False),
@@ -183,15 +178,14 @@ class HrExpense(models.Model):
 
     @api.model
     def _expense_scan_employee_project_ids(self, employee):
-        """Missions d'un salarié, au sens large.
+        """An employee's projects, in the broad sense.
 
-        Réunit trois sources : les projets dont il est responsable, ceux
-        où une tâche lui est assignée, et ceux de ses missions passées ou à
-        venir.
+        Three sources: the projects they manage, those where a task is
+        assigned to them, and those of their past or future assignments.
 
-        Recherche en droits élevés : un chef d'équipe n'a pas forcément
-        accès aux tâches ni aux absences du salarié pour qui il saisit. Seuls
-        des identifiants de projet sont retenus.
+        Searched with elevated rights: a team leader does not necessarily
+        have access to the tasks or time off of the employee they enter
+        expenses for. Only project ids are kept.
         """
         if not employee:
             return []
@@ -203,8 +197,8 @@ class HrExpense(models.Model):
             tasks = sudo.env['project.task'].search([('user_ids', 'in', user.id)])
             projects |= tasks.project_id
 
-        # Les missions sont des absences portant un projet : nécessite Congés
-        # (hr_holidays) et un champ « project_id » sur les absences.
+        # Assignments are time off entries carrying a project: this needs
+        # Time Off (hr_holidays) and a "project_id" field on time off.
         if 'hr.leave' in sudo.env:
             Leave = sudo.env['hr.leave']
             if 'project_id' in Leave._fields:
@@ -217,11 +211,11 @@ class HrExpense(models.Model):
 
     @api.model
     def _get_view(self, view_id=None, view_type='form', **options):
-        """Masque « Client à refacturer » : il découle de la mission.
+        """Hide "Customer to Reinvoice": it follows from the project.
 
-        Ce champ vient de ``sale_expense`` et ne peut être atteint par xpath
-        avant que la vue s'applique. Le modifier ici, sur l'arbre assemblé,
-        fonctionne dans tous les cas et n'ajoute pas de dépendance.
+        That field comes from ``sale_expense`` and cannot be reached by xpath
+        before the view applies. Changing it here, on the assembled tree,
+        works in every case and adds no dependency.
         """
         arch, view = super()._get_view(view_id, view_type, **options)
         if view_type == 'form' and self.env.company.expense_scan_reinvoice:
@@ -231,11 +225,11 @@ class HrExpense(models.Model):
 
     @api.onchange('reinvoice_mode')
     def _onchange_expense_scan_reinvoice_mode(self):
-        """« À déterminer » libère la mission ; « Non » la garde, sans commande.
+        """"To decide" frees the project; "No" keeps it, without a sales order.
 
-        Un frais non refacturé peut rester rattaché à sa mission : son coût
-        remonte alors dans le budget de la mission, sans aller sur la
-        facture du client.
+        An expense that is not re-invoiced can stay linked to its project:
+        its cost then goes into the project budget without reaching the
+        customer invoice.
         """
         for expense in self:
             if expense.reinvoice_mode == 'todo':
@@ -251,12 +245,12 @@ class HrExpense(models.Model):
 
     @api.onchange('project_id')
     def _onchange_expense_scan_project(self):
-        """Une mission choisie à la main entraîne les mêmes conséquences."""
+        """A project chosen by hand has the same consequences."""
         for expense in self:
             if expense.expense_scan_task_id.sudo().project_id != expense.project_id:
                 expense.expense_scan_task_id = False
-            # « Non » est conservé quand la mission est choisie ensuite : elle
-            # ne sert alors qu'au suivi du budget.
+            # "No" is kept when the project is chosen afterwards: it then only
+            # serves budget follow-up.
             reinvoice = expense.reinvoice_mode != 'none'
             values = expense._expense_scan_project_values(expense.project_id, reinvoice=reinvoice)
             values.pop('project_id', None)
@@ -264,12 +258,12 @@ class HrExpense(models.Model):
                 expense[name] = value
 
     def _expense_scan_project_values(self, project, reinvoice=True):
-        """Ce qu'implique le rattachement à une mission.
+        """What linking to a project implies.
 
-        Deux conséquences, si les modules correspondants sont installés :
-        l'imputation analytique (le coût remonte dans la rentabilité du
-        projet) et, pour un frais refacturé seulement, la commande à
-        refacturer (la ligne figure sur la prochaine facture).
+        Two consequences, when the matching modules are installed: the
+        analytic distribution (the cost goes into the project's
+        profitability) and, for a re-invoiced expense only, the sales order
+        to re-invoice (the line appears on the next invoice).
         """
         self.ensure_one()
         if not project:
@@ -278,27 +272,27 @@ class HrExpense(models.Model):
         values = {'project_id': project.id,
                   'reinvoice_mode': 'project' if reinvoice else 'none'}
 
-        # Lecture en droits élevés : le compte analytique et la commande à
-        # refacturer sont réservés aux groupes Analytique et Ventes. Seuls
-        # des identifiants, déduits de la mission, sont retenus.
+        # Read with elevated rights: the analytic account and the sales
+        # order are restricted to the Analytic and Sales groups. Only ids,
+        # derived from the project, are kept.
         project = project.sudo()
         distribution = self._expense_scan_auto_distribution(project)
         if distribution:
             values['analytic_distribution'] = distribution
         elif self._same_distribution(self.analytic_distribution,
                                      self._expense_scan_auto_distribution(self._origin.project_id)):
-            # Mission sans compte (il sera créé à l'enregistrement) : l'imputation
-            # de la précédente ne doit pas lui survivre.
+            # Project without an account (created on save): the previous
+            # project's distribution must not outlive it.
             values['analytic_distribution'] = False
 
-        # Première tâche ouverte de la mission (ordre fixé par l'utilisateur),
-        # si la tâche déjà choisie n'appartient pas à cette mission.
+        # First open task of the project (order set by the user), if the task
+        # already chosen does not belong to this project.
         if self.expense_scan_task_id.sudo().project_id != project:
             task = self._expense_scan_open_tasks(project)[:1]
             values['expense_scan_task_id'] = task.id or False
 
-        # La commande à refacturer n'existe qu'avec le module Ventes : sans
-        # lui, ni le modèle ni ces champs ne sont présents.
+        # The sales order to re-invoice only exists with Sales: without it,
+        # neither the model nor these fields are present.
         if reinvoice and 'sale.order' in self.env:
             order = self.env['sale.order']
             if 'reinvoiced_sale_order_id' in project._fields:
@@ -310,12 +304,11 @@ class HrExpense(models.Model):
         return values
 
     def _expense_scan_find_project(self, scan_date):
-        """La mission du salarié en cours à la date du justificatif.
+        """The employee's project running on the receipt date.
 
-        Un module de suivi des missions peut les enregistrer comme des
-        saisies d'absence portant un projet, reconnaissables à la présence
-        du projet sur l'absence. Si plusieurs missions couvrent la date,
-        le champ reste vide.
+        An assignment module may record assignments as time off entries
+        carrying a project, recognisable by the project on the time off. If
+        several assignments cover the date, the field stays empty.
         """
         self.ensure_one()
         employee = self.employee_id
@@ -331,16 +324,15 @@ class HrExpense(models.Model):
         return self._expense_scan_only_project_of(employee)
 
     def _expense_scan_missions_at(self, employee, scan_date):
-        """Projets des saisies de mission couvrant cette date.
+        """Projects of the assignments covering this date.
 
-        Lecture en droits élevés : seuls les identifiants de projet sont
-        retenus.
+        Read with elevated rights: only project ids are kept.
         """
         if 'hr.leave' not in self.env:
             return self.env['project.project']
         Leave = self.env['hr.leave'].sudo()
         if 'project_id' not in Leave._fields:
-            return self.env['project.project']  # aucun module de missions
+            return self.env['project.project']  # no assignment module
         missions = Leave.search([
             ('employee_id', '=', employee.id),
             ('project_id', '!=', False),
@@ -351,10 +343,10 @@ class HrExpense(models.Model):
         return missions.project_id.with_env(self.env)
 
     def _expense_scan_only_project_of(self, employee):
-        """Repli sans missions datées : le projet du salarié, s'il n'y en a qu'un.
+        """Fallback without dated assignments: the employee's only project.
 
-        Critère : les projets où le salarié a une tâche. Vide s'il y en a
-        plusieurs.
+        Criterion: the projects where the employee has a task. Empty when
+        there are several.
         """
         user = employee.user_id
         if not user:

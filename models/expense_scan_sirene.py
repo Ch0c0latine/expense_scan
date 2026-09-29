@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Activité des établissements français, d'après la base Sirene de l'INSEE.
+"""Activity of French establishments, from the INSEE Sirene database.
 
-Beaucoup de tickets impriment le SIRET du commerçant, rarement son code APE
-(NAF). La base Sirene associe à chaque établissement son activité
-principale. Seule une partie est conservée : les établissements actifs dont
-l'activité correspond à une famille de frais (hôtels, restaurants,
-stations-service, parkings, etc.), soit quelques centaines de milliers de
-lignes au lieu de plusieurs dizaines de millions.
+Many French receipts print the merchant's SIRET number, rarely its activity
+code (APE/NAF). The Sirene database gives the main activity of every
+establishment. Only part of it is kept: active establishments whose activity
+matches an expense family (hotels, restaurants, fuel stations, car parks,
+etc.), a few hundred thousand rows instead of tens of millions.
 
-La base est publiée chaque mois sur data.gouv.fr, sous licence ouverte.
-L'import se lance à la main ou par une tâche planifiée du système, hors
-d'Odoo : il dure plusieurs minutes, plus qu'un processus Odoo n'en tolère.
-Le scan ne fait qu'une recherche en base, sans réseau.
+The database is published monthly on data.gouv.fr under an open licence.
+The import is run by hand or by a system scheduled task, outside Odoo: it
+takes several minutes, more than an Odoo worker allows. A scan only looks
+the number up in the table, without network access.
 """
 import csv
 import io
@@ -28,25 +27,25 @@ from ..ocr import lexicon
 
 _logger = logging.getLogger(__name__)
 
-#: Fichier « StockEtablissement » (CSV compressé, environ 1,2 Go).
+#: "StockEtablissement" file (zipped CSV, about 1.2 GB).
 SIRENE_URL = ('https://www.data.gouv.fr/api/1/datasets/r/'
               '88fbb6b4-0320-443e-b739-b4376a012c32')
-#: Nombre de lignes envoyées à PostgreSQL d'un coup.
+#: Number of rows sent to PostgreSQL at once.
 COPY_BATCH = 100000
 
 
 class ExpenseScanSirene(models.Model):
     _name = 'expense.scan.sirene'
-    _description = "Activité d'un établissement (base Sirene)"
+    _description = "Establishment activity (Sirene database)"
     _log_access = False
     _rec_name = 'siret'
 
     siret = fields.Char(string="SIRET", size=14, required=True, index=True)
-    naf = fields.Char(string="Activité (NAF)", size=5, required=True)
+    naf = fields.Char(string="Activity (NAF)", size=5, required=True)
 
     @api.model
     def _expense_scan_activity(self, number):
-        """Code NAF d'un SIRET, ou de l'établissement le plus courant d'un SIREN."""
+        """NAF code of a SIRET, or of the most common establishment of a SIREN."""
         if not number or not number.isdigit():
             return False
         records = self.sudo()
@@ -57,8 +56,8 @@ class ExpenseScanSirene(models.Model):
         siren = number[:9]
         if len(siren) != 9:
             return False
-        # Les SIRET d'une même entreprise partagent ses neuf premiers
-        # chiffres : une plage suffit, et l'index la parcourt directement.
+        # The SIRET numbers of a company share its first nine digits: a range
+        # is enough, and the index walks it directly.
         groups = records._read_group(
             [('siret', '>=', siren + '00000'), ('siret', '<=', siren + '99999')],
             groupby=['naf'], aggregates=['__count'])
@@ -74,11 +73,11 @@ class ExpenseScanSirene(models.Model):
 
     @api.model
     def _expense_scan_import(self, path=None):
-        """Remplace la table par le contenu du fichier Sirene téléchargé.
+        """Replace the table with the content of the downloaded Sirene file.
 
-        Lecture en flux : l'archive n'est pas décompressée sur le disque. La
-        table n'est vidée qu'une fois le fichier entièrement lu : un fichier
-        tronqué laisse l'ancienne table en place.
+        The archive is streamed, never unzipped on disk. The table is only
+        emptied once the whole file has been read: a truncated file leaves
+        the previous table in place.
         """
         path = path or self._expense_scan_default_path()
         cr = self.env.cr
@@ -105,9 +104,8 @@ class ExpenseScanSirene(models.Model):
                 state_at = column['etatAdministratifEtablissement']
                 code_at = column['activitePrincipaleEtablissement']
                 kind_at = column.get('nomenclatureActivitePrincipaleEtablissement')
-                # La NAF 2025 remplace peu à peu la rév. 2 : sa colonne est lue
-                # quand elle existe, si la classe figure dans la table des
-                # familles.
+                # NAF 2025 is gradually replacing rev. 2: its column is read
+                # when present, if the class is in the family table.
                 naf25_at = column.get('activitePrincipaleNAF25Etablissement')
                 for row in reader:
                     read += 1
@@ -132,10 +130,10 @@ class ExpenseScanSirene(models.Model):
             INSERT INTO expense_scan_sirene (siret, naf)
             SELECT siret, naf FROM expense_scan_sirene_load
         """)
-        # La table a été modifiée hors ORM : le cache est invalidé.
+        # The table was changed outside the ORM: the cache is invalidated.
         self.env.invalidate_all()
         parameters = self.env['ir.config_parameter'].sudo()
         parameters.set_param('expense_scan.sirene_rows', str(kept))
         parameters.set_param('expense_scan.sirene_imported', fields.Datetime.to_string(fields.Datetime.now()))
-        _logger.info("Base Sirene : %s établissements gardés sur %s lus", kept, read)
+        _logger.info("Sirene database: %s establishments kept out of %s read", kept, read)
         return kept
