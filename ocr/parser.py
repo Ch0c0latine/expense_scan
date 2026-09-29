@@ -322,8 +322,9 @@ DATE_PATTERNS = [
     (re.compile(r"\b(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})(?:\b|(?=\d{1,2}:\d{2}))"), "dmy", 0.90),
     # 2026-09-04
     (re.compile(r"\b(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})\b"), "ymd", 0.90),
-    # 04/09/26
-    (re.compile(r"\b(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2})\b"), "dmy2", 0.75),
+    # 04/09/26, ou collé à l'heure : « 24.02.2518:18 ». Le même séparateur
+    # des deux côtés : « 08.30-21.00 » est un horaire d'ouverture.
+    (re.compile(r"\b(\d{1,2})([/.\-])(\d{1,2})\2(\d{2})(?:\b|(?=\d{1,2}:\d{2}))"), "dmy2", 0.75),
     # 4 SEPT 2026, 23 SEPTEMBRE 2026, ainsi que « 14/May/2025 » (mois en
     # lettres entre deux barres).
     (re.compile(r"\b(\d{1,2})(?:\s+|\s*[/.\-]\s*)([A-Z]{3,10})\.?(?:\s+|\s*[/.\-]\s*)(\d{4})\b"),
@@ -387,8 +388,8 @@ def _build_date(kind, groups, today, order="dmy"):
         elif kind == "ymd":
             year, month, day = int(groups[0]), int(groups[1]), int(groups[2])
         elif kind == "dmy2":
-            day, month = _day_month(int(groups[0]), int(groups[1]), order)
-            year = 2000 + int(groups[2])
+            day, month = _day_month(int(groups[0]), int(groups[2]), order)
+            year = 2000 + int(groups[3])
         elif kind == "dmonthy":
             day = int(groups[0])
             month = _month_number(groups[1])
@@ -803,12 +804,26 @@ CURRENCIES = [
     # ``_krone``.
     (re.compile(r"\bKR\b|\bKRONER\b|\bKRONOR\b"), "KR"),
 ]
-#: Couronnes : le mot de la taxe (MVA en Norvège, moms ailleurs) et ceux du
-#: total distinguent les trois pays.
+#: Couronnes : le mot de la taxe (MVA en Norvège, moms ailleurs), ceux du
+#: total et la forme du numéro d'entreprise distinguent les trois pays.
 KRONE_HINTS = [
-    (re.compile(r"\bMVA\b|\bA\s*BETALE\b|\bVARER\b"), "NOK"),
-    (re.compile(r"\bATT\s*BETALA\b|\bSUMMA\b|\bKVITTO\b|\bVAXEL\b"), "SEK"),
-    (re.compile(r"\bI\s*ALT\b|\bBELOB\b|\bKVITTERING\b"), "DKK"),
+    (re.compile(r"\bMVA\b|\bA\s*BETALE\b|\bVARER\b|\bORG\.?\s*NR\.?\s*:?\s*\d{3}\s?\d{3}\s?\d{3}\b"),
+     "NOK"),
+    (re.compile(r"\bATT\s*BETALA\b|\bSUMMA\b|\bKVITTO\b|\bVAXEL\b|\b\d{6}-\d{4}\b"), "SEK"),
+    (re.compile(r"\bI\s*ALT\b|\bBELOB\b|\bKVITTERING\b|\bCVR\b"), "DKK"),
+]
+#: Codes des États américains, qui précèdent le code postal d'une adresse.
+US_STATES = ("AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT "
+             "NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC")
+#: Ticket sans devise imprimée : le pays se reconnaît à ses mentions légales
+#: (numéro d'entreprise, nom de la taxe, adresse). Sans aucun de ces indices,
+#: la devise de la société s'applique.
+COUNTRY_CURRENCY_HINTS = [
+    (re.compile(r"\bNIP\b|\bPTU\b"), "PLN"),
+    # Pas de numéro de TVA britannique : les plateformes de réservation
+    # (location de voiture, hôtels) l'impriment sur des factures en euros.
+    (re.compile(r"\bCHE[-\s]?\d{3}\.\d{3}\.\d{3}\b"), "CHF"),
+    (re.compile(r"\b(?:%s)\s+\d{5}(?:-\d{4})?\b" % "|".join(US_STATES.split())), "USD"),
 ]
 
 
@@ -1257,7 +1272,21 @@ def extract_currency(lines, default="EUR"):
         best = None
     if best:
         return ExtractedField(value=best[1], confidence=0.85)
+    code = _country_currency(joined)
+    if code:
+        return ExtractedField(value=code, confidence=0.6)
     return ExtractedField(value=default, confidence=0.3)
+
+
+def _country_currency(text):
+    """Devise d'un ticket sans devise imprimée, d'après ses mentions légales."""
+    krone = _krone(text, None)
+    if krone:
+        return krone
+    for pattern, code in COUNTRY_CURRENCY_HINTS:
+        if pattern.search(text):
+            return code
+    return None
 
 
 def _krone(text, default):

@@ -133,7 +133,10 @@ def judge_open_prices(name, got, truth):
     # Sans aucune date sur la photo, la date saisie par le contributeur ne
     # peut pas être lue : le ticket n'est pas compté.
     if got.get("date_visible", True):
-        verdict["date"] = got["date"] == row["date"]
+        # La date d'Open Prices est saisie par le contributeur, souvent le
+        # jour de l'envoi : deux jours d'écart sont admis.
+        verdict["date"] = bool(got["date"]) and abs(
+            (date.fromisoformat(got["date"]) - date.fromisoformat(row["date"])).days) <= 2
     if row.get("total"):
         verdict["total"] = abs((got["total"] or 0) - row["total"]) < 0.015
     return verdict

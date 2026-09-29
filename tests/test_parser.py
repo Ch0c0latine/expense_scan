@@ -506,3 +506,30 @@ ASF Lieu-dit Les Pins BP 10017
     def test_croatian_item_column_is_not_the_total(self):
         result = self.parse("PEKARA\nUkupno 1 kom 2,50 2,50\nUkupno: 13,95 EUR")
         self.assertEqual(result.value('total'), 13.95)
+
+    def test_a_date_glued_to_the_time(self):
+        result = self.parse("MERCADONA\n0178 230186/05 24.02.2618:18\nTOTAL 12,40",
+                            today=date(2026, 3, 1))
+        self.assertEqual(result.value('date'), date(2026, 2, 24))
+
+    def test_opening_hours_are_not_a_date(self):
+        """« Lu-Je : 08.30-20.00 » n'est pas le 30 août 2020."""
+        result = self.parse("CARREFOUR\nLu-Je : 08.30-20.00\nTOTAL 12,40",
+                            today=date(2026, 3, 1), max_age_days=3650)
+        self.assertIsNone(result.value('date'))
+
+    def test_currency_from_legal_mentions(self):
+        """Sans devise imprimée, les mentions légales désignent le pays."""
+        cases = [
+            ("KIWI\nOrg.nr 979 443 137 MVA\nTotalt 38,00", 'NOK'),
+            ("ICA\nOrg nr 556677-8899\nMoms 12%\nKvitto\nTotalt 38,00", 'SEK'),
+            ("HOTEL KRAKOW\nNIP 7010906616\nSUMA 158,00", 'PLN'),
+            ("CORNER DELI\n12 MAIN ST, BROOKLYN NY 11201\nTOTAL 28.12", 'USD'),
+            ("MIGROS\nCHE-105.829.940 MWST\nTOTAL 12.40", 'CHF'),
+        ]
+        for text, currency in cases:
+            self.assertEqual(self.parse(text, default_currency='EUR').value('currency'),
+                             currency, text)
+        # Une plateforme de réservation britannique facture en euros.
+        result = self.parse("BOOKING.COM\nVAT ID: GB855349007\nTOTAL 123,86", default_currency='EUR')
+        self.assertEqual(result.value('currency'), 'EUR')
