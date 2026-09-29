@@ -500,7 +500,7 @@ msgstr "Kolumn eller cell"
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_policy_rule__family__telecom
 msgid "Communication"
-msgstr ""
+msgstr "Kommunikation"
 
 #. module: expense_scan
 #: model:ir.model,name:expense_scan.model_res_company
@@ -586,7 +586,7 @@ msgstr "Klipp ut och räta upp kvittot innan det läses"
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__date
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Date"
-msgstr ""
+msgstr "Datum"
 
 #. module: expense_scan
 #. odoo-python
@@ -620,7 +620,7 @@ msgstr "Datum, belopp och skatt"
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
 msgid "Dates"
-msgstr ""
+msgstr "Datum"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_product_id
@@ -652,7 +652,7 @@ msgstr "Medföljande exempel: en Excel-mall att anpassa, regler för god praxis 
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__description
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Description"
-msgstr ""
+msgstr "Beskrivning"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_policy_rule__meal_period__dinner
@@ -1453,7 +1453,7 @@ msgstr "Inte skannad"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__note
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__note
 msgid "Notes"
-msgstr ""
+msgstr "Anteckningar"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_export_template_view_form
@@ -2123,7 +2123,7 @@ msgstr "Stöd denna modul"
 #. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "TOTAL"
-msgstr ""
+msgstr "TOTALT"
 
 #. module: expense_scan
 #. odoo-python
@@ -2510,7 +2510,7 @@ msgstr "Vägtullar och parkering"
 #: code:addons/expense_scan/models/hr_expense.py:0
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Total"
-msgstr ""
+msgstr "Totalt"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_column__value
@@ -2547,7 +2547,7 @@ msgstr "Sant när utlägget tillhör användaren som tittar på det. Formuläret
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__kind
 msgid "Type"
-msgstr ""
+msgstr "Typ"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__tva_unitaire

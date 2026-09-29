@@ -500,7 +500,7 @@ msgstr "Colonna o cella"
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_policy_rule__family__telecom
 msgid "Communication"
-msgstr ""
+msgstr "Comunicazioni"
 
 #. module: expense_scan
 #: model:ir.model,name:expense_scan.model_res_company
@@ -586,7 +586,7 @@ msgstr "Ritagliare e raddrizzare la ricevuta prima di leggerla"
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__date
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Date"
-msgstr ""
+msgstr "Data"
 
 #. module: expense_scan
 #. odoo-python
@@ -620,7 +620,7 @@ msgstr "Data, importo e imposta"
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
 msgid "Dates"
-msgstr ""
+msgstr "Date"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_product_id
@@ -652,7 +652,7 @@ msgstr "Esempi forniti: un modello Excel da adattare, regole di buona pratica da
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__description
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Description"
-msgstr ""
+msgstr "Descrizione"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_policy_rule__meal_period__dinner
@@ -1453,7 +1453,7 @@ msgstr "Non scansionata"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__note
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__note
 msgid "Notes"
-msgstr ""
+msgstr "Note"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_export_template_view_form
@@ -2123,7 +2123,7 @@ msgstr "Sostenere questo modulo"
 #. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "TOTAL"
-msgstr ""
+msgstr "TOTALE"
 
 #. module: expense_scan
 #. odoo-python
@@ -2510,7 +2510,7 @@ msgstr "Pedaggi e parcheggio"
 #: code:addons/expense_scan/models/hr_expense.py:0
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Total"
-msgstr ""
+msgstr "Totale"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_column__value
@@ -2547,7 +2547,7 @@ msgstr "Vero quando la spesa appartiene all'utente che la consulta. Il modulo lo
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__kind
 msgid "Type"
-msgstr ""
+msgstr "Tipo"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__tva_unitaire
