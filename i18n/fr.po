@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 19.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-29 18:49+0000\n"
-"PO-Revision-Date: 2026-09-29 18:49+0000\n"
+"POT-Creation-Date: 2026-09-29 19:26+0000\n"
+"PO-Revision-Date: 2026-09-29 19:26+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: fr\n"
@@ -584,6 +584,8 @@ msgid "Cut out and straighten the receipt before reading it"
 msgstr "Détourer et redresser le ticket avant lecture"
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__date
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Date"
@@ -804,8 +806,8 @@ msgstr "Dépense"
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
-msgid "Expense \"%(nom)s\" carries a receipt tax of %(montant).2f, but no tax with a usable rate. Select the matching tax on the expense (or on its category, for the next ones), or empty the \"Receipt tax\" field."
-msgstr "La dépense « %(nom)s » porte une TVA de ticket de %(montant).2f, mais aucune taxe à un taux exploitable. Sélectionnez la taxe correspondante sur la dépense — ou sur sa catégorie, pour les suivantes — ou videz le champ « TVA du ticket »."
+msgid "Expense \"%(name)s\" carries a receipt tax of %(amount).2f, but no tax with a usable rate. Select the matching tax on the expense (or on its category, for the next ones), or empty the \"Receipt tax\" field."
+msgstr "La dépense « %(name)s » porte une TVA de ticket de %(amount).2f, mais aucune taxe à un taux exploitable. Sélectionnez la taxe correspondante sur la dépense — ou sur sa catégorie, pour les suivantes — ou videz le champ « TVA du ticket »."
 
 #. module: expense_scan
 #: model:ir.actions.act_window,name:expense_scan.expense_scan_policy_action
@@ -1156,13 +1158,19 @@ msgstr ""
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/res_config_settings.py:0
+msgid "Image processing: %s"
+msgstr "Traitement d'image : %s"
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid ""
-"Impossible receipt tax: %(saisi).2f is above the maximum of %(plafond).2f, which is the rate of %(taux).2f %% applied to the whole %(total).2f of the receipt.\n"
+"Impossible receipt tax: %(entered).2f is above the maximum of %(ceiling).2f, which is the rate of %(rate).2f %% applied to the whole %(total).2f of the receipt.\n"
 "\n"
 "Choose an expense category whose rate covers this tax, or empty the \"Receipt tax\" field if this expense gives no right to deduction."
 msgstr ""
-"TVA du ticket impossible : %(saisi).2f dépasse le maximum de %(plafond).2f, qui correspond au taux de %(taux).2f %% appliqué à la totalité des %(total).2f du ticket.\n"
+"TVA du ticket impossible : %(entered).2f dépasse le maximum de %(ceiling).2f, qui correspond au taux de %(rate).2f %% appliqué à la totalité des %(total).2f du ticket.\n"
 "\n"
 "Choisissez une catégorie de dépense dont le taux couvre cette TVA, ou videz le champ « TVA du ticket » si cette dépense n'ouvre pas droit à déduction."
 
@@ -1407,6 +1415,12 @@ msgstr "Aucune dépense ne correspond aux filtres."
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "No project found for this date: say whether this expense is re-invoiced."
 msgstr "Aucune mission trouvée pour cette date : indiquez si ce frais est à refacturer."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_multi.py:0
+msgid "No readable receipt."
+msgstr "Aucun justificatif lisible."
 
 #. module: expense_scan
 #. odoo-python
@@ -2114,8 +2128,8 @@ msgstr "Missions proposées"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "Support Expense Scan"
-msgstr "Soutenir Expense Scan"
+msgid "Support this module"
+msgstr "Soutenir ce module"
 
 #. module: expense_scan
 #. odoo-python
@@ -2238,6 +2252,12 @@ msgstr ""
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_tesseract_lang
 msgid "Tesseract language"
 msgstr "Langue Tesseract"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_tesseract_lang
+#: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_tesseract_lang
+msgid "Tesseract language codes, joined with \"+\" (\"eng+fra\"). Each language needs its tesseract-ocr package on the server."
+msgstr "Codes de langue Tesseract, joints par « + » (« eng+fra »). Chaque langue demande son paquet tesseract-ocr sur le serveur."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -2378,8 +2398,8 @@ msgstr "L'analyse du ticket a échoué : relancez-la depuis la fiche."
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
-msgid "The receipt tax (%(montant).2f) cannot yet be carried on an expense paid by the company. Set the expense back to \"Employee (to reimburse)\", or empty the \"Receipt tax\" field to let Odoo compute it from the rate."
-msgstr "La TVA du ticket (%(montant).2f) ne peut pas encore être reportée sur une dépense payée par la société. Repassez la dépense en « Employé (à rembourser) », ou videz le champ « TVA du ticket » pour laisser Odoo la calculer depuis le taux."
+msgid "The receipt tax (%(amount).2f) cannot yet be carried on an expense paid by the company. Set the expense back to \"Employee (to reimburse)\", or empty the \"Receipt tax\" field to let Odoo compute it from the rate."
+msgstr "La TVA du ticket (%(amount).2f) ne peut pas encore être reportée sur une dépense payée par la société. Repassez la dépense en « Employé (à rembourser) », ou videz le champ « TVA du ticket » pour laisser Odoo la calculer depuis le taux."
 
 #. module: expense_scan
 #. odoo-python
@@ -2502,6 +2522,8 @@ msgid "Tolls and parking"
 msgstr "Péages et parkings"
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Total"
 msgstr ""
@@ -2675,6 +2697,12 @@ msgstr "colonne de dépenses"
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/res_config_settings.py:0
+msgid "available (%s)"
+msgstr "disponible (%s)"
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "confidence %d %%"
 msgstr "confiance %d %%"
@@ -2784,7 +2812,104 @@ msgid "total"
 msgstr ""
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/res_config_settings.py:0
+msgid "unavailable - %s"
+msgstr "indisponible — %s"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "· Period"
 msgstr "· Période"
+
+#. module: expense_scan
+#: model:expense.scan.policy,name:expense_scan.policy_good_practice
+msgid "Good practice"
+msgstr "Bonnes pratiques"
+
+#. module: expense_scan
+#: model:expense.scan.policy,note:expense_scan.policy_good_practice
+msgid ""
+"Examples to adjust: add your own ceilings per meal, per day or per night, following the rules of your country and of your company.\n"
+"\n"
+"Beyond a ceiling, an actual expense can usually be reimbursed if it is justified. Fines and personal expenses are neither business expenses nor deductible."
+msgstr ""
+"Exemples à ajuster : ajoutez vos propres plafonds par repas, par jour ou par nuitée, selon les règles de votre pays et de votre entreprise.\n"
+"\n"
+"Au-delà d'un plafond, un frais réel reste en général remboursable s'il est justifié. Les amendes et les dépenses personnelles ne sont ni des frais professionnels ni déductibles."
+
+#. module: expense_scan
+#: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_personal
+msgid "Fines and personal expenses: neither business expenses nor deductible"
+msgstr "Amendes et dépenses personnelles : ni frais professionnels, ni déductibles"
+
+#. module: expense_scan
+#: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_hotel_extras
+msgid "Personal hotel extras (minibar, films, laundry): paid by the employee"
+msgstr "Extras d'hôtel personnels (minibar, films, pressing) : à la charge du salarié"
+
+#. module: expense_scan
+#: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_alcohol
+msgid "Alcohol on a meal bill: moderate consumption, to be justified"
+msgstr "Alcool sur une note de repas : consommation modérée, à justifier"
+
+#. module: expense_scan
+#: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_travel_class
+msgid "Train in 2nd class, plane in economy class, unless agreed beforehand"
+msgstr "Train en 2de classe, avion en classe économique, sauf accord préalable"
+
+#. module: expense_scan
+#: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_rental
+msgid "Car rental: economy category"
+msgstr "Location de véhicule : catégorie économique"
+
+#. module: expense_scan
+#: model:expense.scan.export.template,name:expense_scan.export_template_basic
+msgid "Expense sheet (basic template)"
+msgstr "Fiche de frais (modèle de base)"
+
+#. module: expense_scan
+#: model:expense.scan.export.template,note:expense_scan.export_template_basic
+msgid "Workbook delivered with the module: download it from the \"Excel file\" field, adapt it (logo, colours, columns), then upload it again. Keep a row of titles above the expenses and the totals just below: the export adds or removes rows and the totals follow. The \"Blank workbook\" button builds a new one from the mappings below."
+msgstr "Classeur livré avec le module : téléchargez-le depuis le champ « Fichier Excel », adaptez-le (logo, couleurs, colonnes), puis redéposez-le. Gardez une ligne de titres au-dessus des dépenses et les totaux juste en dessous : l'export ajoute ou retire des lignes et les totaux suivent. Le bouton « Classeur vierge » en refabrique un d'après les correspondances ci-dessous."
+
+#. module: expense_scan
+#: model:expense.scan.policy,name:expense_scan.demo_policy
+msgid "Example: a customer's requirements"
+msgstr "Exemple : exigences d'un client"
+
+#. module: expense_scan
+#: model:expense.scan.policy,note:expense_scan.demo_policy
+msgid "Made-up rules, set by contract with the customer: they apply to the projects of its sites, on top of the company's good practice."
+msgstr "Règles fictives, fixées par contrat avec le client : elles s'appliquent aux missions de ses sites, en plus des bonnes pratiques de l'entreprise."
+
+#. module: expense_scan
+#: model:expense.scan.policy.rule,name:expense_scan.demo_policy_travel_class
+msgid "Train in 2nd class, plane in economy class, no exception"
+msgstr "Train en 2de classe, avion en classe économique, sans exception"
+
+#. module: expense_scan
+#: model:expense.scan.policy.rule,name:expense_scan.demo_policy_breakfast
+msgid "Breakfast: 15 at most"
+msgstr "Petit-déjeuner : 15 au plus"
+
+#. module: expense_scan
+#: model:expense.scan.policy.rule,name:expense_scan.demo_policy_lunch
+msgid "Lunch: 25 at most"
+msgstr "Déjeuner : 25 au plus"
+
+#. module: expense_scan
+#: model:expense.scan.policy.rule,name:expense_scan.demo_policy_dinner
+msgid "Dinner: 35 at most"
+msgstr "Dîner : 35 au plus"
+
+#. module: expense_scan
+#: model:expense.scan.policy.rule,name:expense_scan.demo_policy_daily_meals
+msgid "Meals of the day: 55 in total (a more expensive meal is accepted within this limit)"
+msgstr "Repas du jour : 55 au total (un repas plus cher reste admis dans cette limite)"
+
+#. module: expense_scan
+#: model:expense.scan.policy.rule,name:expense_scan.demo_policy_hotel
+msgid "Hotel: 110 a night, 140 in large cities"
+msgstr "Hôtel : 110 la nuit, 140 dans les grandes villes"
 
