@@ -16,7 +16,6 @@ import { Chatter } from "@mail/chatter/web_portal/chatter";
 import "@mail/chatter/web/chatter_patch";
 import { Thread } from "@mail/core/common/thread_model";
 import { patch } from "@web/core/utils/patch";
-import { useService } from "@web/core/utils/hooks";
 
 patch(Thread.prototype, {
     // Les droits d'une fiche pas encore enregistrée ne sont pas connus :
@@ -33,7 +32,10 @@ patch(Thread.prototype, {
 patch(Chatter.prototype, {
     setup() {
         super.setup(...arguments);
-        this.expenseScanOrm = useService("orm");
+        // Service pris hors du composant : l'enregistrement de la fiche
+        // recrée le volet, et un appel passé par useService ne se termine
+        // jamais une fois le composant détruit.
+        this.expenseScanOrm = this.env.services.orm;
         this.expenseScanAnalyze = false;
     },
 
