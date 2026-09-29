@@ -264,6 +264,11 @@ export class RetouchDialog extends Component {
         this.resetCrop();
     }
 
+    resetFine() {
+        this.state.fine = 0;
+        this.resetCrop();
+    }
+
     // ------------------------------------------------------------------
     // Recadrage (événements pointeur : souris et tactile)
     // ------------------------------------------------------------------

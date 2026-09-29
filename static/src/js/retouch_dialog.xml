@@ -40,7 +40,11 @@
                         </button>
                     </div>
                     <div class="d-flex align-items-center gap-2 px-2">
-                        <i class="fa fa-repeat text-muted" role="img" aria-hidden="true"/>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                title="Remettre la rotation fine à 0°" t-on-click="() => this.resetFine()"
+                                t-att-disabled="!state.fine">
+                            <i class="fa fa-undo" role="img" aria-label="Remettre la rotation fine à 0°"/>
+                        </button>
                         <input type="range" class="form-range flex-grow-1"
                                t-att-min="-fineRange" t-att-max="fineRange" step="0.5"
                                t-att-value="state.fine" t-on-input="onFineInput"
