@@ -4,14 +4,14 @@
 <templates xml:space="preserve">
 
     <!--
-        Sur petit écran, Odoo n'affiche qu'un bouton et place les autres dans
-        un menu « … ». Ce gabarit en affiche `expenseScanMaxSlots` : trois sur
-        une dépense, un partout ailleurs (comportement d'origine hors de ce
-        module).
+        On a small screen, Odoo shows only one button and puts the others in
+        a "..." menu. This template shows `expenseScanMaxSlots` of them: four
+        on an expense, one everywhere else (the original behaviour outside
+        this module).
 
-        La branche est réécrite entièrement : le gabarit d'Odoo utilise un
-        seul nom de slot, alors qu'il faut ici une liste. Le menu qui
-        regroupe les boutons suivants reprend le balisage d'Odoo.
+        The branch is rewritten entirely: Odoo's template uses a single slot
+        name, while a list is needed here. The menu that groups the next
+        buttons uses Odoo's markup.
     -->
     <t t-name="expense_scan.StatusBarButtonsWide"
        t-inherit="web.StatusBarButtons" t-inherit-mode="extension">

@@ -1,18 +1,18 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Retouche du justificatif : rotation et recadrage.
+ * Receipt retouch: rotation and crop.
  *
- * La retouche part toujours de l'image téléversée (photo d'origine, ou
- * première page d'un PDF rendue par le serveur), sur laquelle l'éditeur
- * réapplique les réglages de la retouche précédente. L'image est
- * transformée dans le navigateur, sur un canevas ; le serveur reçoit le
- * résultat en JPEG (action_expense_scan_retouch), qui remplace l'image
- * affichée sans relancer l'analyse.
+ * The retouch always starts from the uploaded image (original photo, or the
+ * first page of a PDF rendered by the server), on which the editor applies
+ * the settings of the previous retouch again. The image is transformed in
+ * the browser, on a canvas; the server receives the result as JPEG
+ * (action_expense_scan_retouch), which replaces the displayed image without
+ * scanning again.
  *
- * La rotation s'applique à l'image entière, sans la rogner. Le cadre de
- * recadrage est défini sur l'image pivotée : changer la rotation le
- * remet sur toute l'image.
+ * The rotation applies to the whole image, without cutting it. The crop
+ * frame is set on the rotated image: changing the rotation resets it to the
+ * whole image.
  */
 import { _t } from "@web/core/l10n/translation";
 import { Component, onWillUnmount, onMounted, useRef, useState } from "@odoo/owl";
@@ -21,46 +21,46 @@ import { browser } from "@web/core/browser/browser";
 import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 
-//: Distance, en pixels du canevas, en deçà de laquelle un appui saisit une
-//: poignée ; au-delà, un appui dans le cadre le déplace.
+//: Distance, in canvas pixels, below which a press grabs a handle; beyond
+//: it, a press inside the frame moves it.
 const HANDLE_HIT_RADIUS = 22;
-//: Longueur de chaque branche des poignées en équerre.
+//: Length of each arm of the corner handles.
 const HANDLE_LENGTH = 18;
-//: Taille minimale du cadre, en pixels du canevas.
+//: Minimum frame size, in canvas pixels.
 const MIN_CROP_SIZE = 24;
-//: Rotation fine, en degrés de part et d'autre du quart de tour choisi.
+//: Fine rotation, in degrees on either side of the chosen quarter turn.
 const FINE_RANGE = 45;
-//: Taille maximale de l'image produite, en pixels. Reste sous la limite de
-//: canevas de Safari iOS (16,7 Mpx) ; le moteur OCR lit à 1 800 px de côté.
+//: Maximum size of the image produced, in pixels. Stays under the canvas
+//: limit of Safari on iOS (16.7 Mpx); the OCR engine reads at 1,800 px.
 const MAX_OUTPUT_PIXELS = 12000000;
 
 function normalizeQuarter(quarter) {
     return ((quarter % 4) + 4) % 4;
 }
 
-/** Vrai si la dépense a un justificatif (image ou PDF) à retoucher. */
+/** True if the expense has a receipt (image or PDF) to retouch. */
 export function hasReceipt(record) {
     return Boolean(record.resId && record.data.message_main_attachment_id);
 }
 
 /**
- * Ouvre la retouche ; à la validation, remplace l'image affichée.
+ * Open the retouch; once applied, replace the displayed image.
  *
- * Les services sont pris dans ``env.services`` et non par ``useService`` :
- * l'enregistrement qui précède la retouche peut recréer le composant qui a
- * ouvert la fenêtre (volet d'aperçu d'un PDF), et un appel passé par un
- * composant détruit échoue (« Component is destroyed »).
+ * The services are taken from ``env.services`` and not through
+ * ``useService``: the save that precedes the retouch may recreate the
+ * component that opened the dialog (preview panel of a PDF), and a call made
+ * through a destroyed component fails ("Component is destroyed").
  *
- * @param {Object} env environnement du composant qui ouvre la retouche
- * @param {Object} record enregistrement de la dépense dans le formulaire
+ * @param {Object} env environment of the component opening the retouch
+ * @param {Object} record record of the expense in the form
  */
 export function openRetouchDialog(env, record) {
     const { dialog, orm } = env.services;
     dialog.add(RetouchDialog, {
         resId: record.resId,
         apply: async (base64, params) => {
-            // Enregistre d'abord les saisies en cours, que le rechargement
-            // effacerait. En cas d'échec, le formulaire affiche l'erreur.
+            // Save the pending input first, which the reload would wipe. On
+            // failure, the form shows the error.
             if (!(await record.save())) {
                 return false;
             }
@@ -97,7 +97,7 @@ export class RetouchDialog extends Component {
         this.orm = useService("orm");
         this.image = null;
         this.scale = 1;
-        this.drag = null; // { handle } ou { move, startX, startY, crop0 }
+        this.drag = null; // { handle } or { move, startX, startY, crop0 }
 
         this.onResize = useDebounced(() => this.layout(this.currentParams()), 200);
 
@@ -112,7 +112,7 @@ export class RetouchDialog extends Component {
                 this.layout(params);
             };
             image.onerror = () => {
-                this.state.error = _t("Cette pièce ne peut pas être ouverte comme une image.");
+                this.state.error = _t("This attachment cannot be opened as an image.");
             };
             image.src = url;
         });
@@ -120,19 +120,19 @@ export class RetouchDialog extends Component {
     }
 
     get title() {
-        return _t("Retouche");
+        return _t("Retouch");
     }
 
     get fineRange() {
         return FINE_RANGE;
     }
 
-    /** Rotation totale, en degrés. */
+    /** Total rotation, in degrees. */
     get angleDegrees() {
         return this.state.quarter * 90 + this.state.fine;
     }
 
-    /** Rectangle englobant une image ``width`` × ``height`` après rotation. */
+    /** Bounding rectangle of a ``width`` × ``height`` image after rotation. */
     rotatedBounds(width, height) {
         const angle = (this.angleDegrees * Math.PI) / 180;
         const cos = Math.abs(Math.cos(angle));
@@ -141,17 +141,17 @@ export class RetouchDialog extends Component {
     }
 
     // ------------------------------------------------------------------
-    // Aperçu
+    // Preview
     // ------------------------------------------------------------------
 
-    /** Calcule l'échelle de l'aperçu d'après la place disponible, puis applique ``params``. */
+    /** Compute the preview scale from the space available, then apply ``params``. */
     layout(params) {
         if (!this.image) {
             return;
         }
         const container = this.containerRef.el;
         const maxWidth = container ? container.clientWidth : 480;
-        // Marge pour le rectangle englobant, plus grand que l'image pivotée.
+        // Margin for the bounding rectangle, larger than the rotated image.
         const width = Math.max(240, maxWidth) * 0.86;
         const height = Math.min(browser.innerHeight * 0.6, 560);
         this.scale = Math.min(
@@ -160,8 +160,8 @@ export class RetouchDialog extends Component {
     }
 
     /**
-     * Applique des réglages : ``{quarter, fine, crop}``, le cadre en fractions
-     * de l'image pivotée. Sans réglages : l'image téléversée, sans retouche.
+     * Apply settings: ``{quarter, fine, crop}``, the frame as fractions of
+     * the rotated image. Without settings: the uploaded image, untouched.
      */
     setParams(params) {
         this.state.quarter = normalizeQuarter(params?.quarter || 0);
@@ -179,7 +179,7 @@ export class RetouchDialog extends Component {
         this.draw();
     }
 
-    /** Réglages courants, au format de ``setParams``. */
+    /** Current settings, in the ``setParams`` format. */
     currentParams() {
         const canvas = this.canvasRef.el;
         const crop = this.state.crop;
@@ -194,12 +194,12 @@ export class RetouchDialog extends Component {
         };
     }
 
-    /** Revient à l'image téléversée, sans rotation ni recadrage. */
+    /** Go back to the uploaded image, without rotation or crop. */
     reset() {
         this.setParams(null);
     }
 
-    /** Propose la rotation et le cadre de la retouche automatique, sans appliquer. */
+    /** Suggest the rotation and frame of the automatic retouch, without applying. */
     async autoRetouch() {
         this.state.auto = true;
         this.state.error = null;
@@ -207,14 +207,14 @@ export class RetouchDialog extends Component {
             this.setParams(await this.orm.call(
                 "hr.expense", "expense_scan_auto_retouch_params", [[this.props.resId]]));
         } catch (error) {
-            this.state.error = _t("La retouche automatique a échoué.");
+            this.state.error = _t("The automatic retouch failed.");
             throw error;
         } finally {
             this.state.auto = false;
         }
     }
 
-    /** Remet le cadre sur toute l'image. */
+    /** Reset the frame to the whole image. */
     resetCrop() {
         const canvas = this.canvasRef.el;
         if (!canvas || !this.image) {
@@ -233,7 +233,7 @@ export class RetouchDialog extends Component {
         canvas.height = Math.round(bounds.height);
     }
 
-    /** Dessine l'image pivotée et le cadre. */
+    /** Draw the rotated image and the frame. */
     draw() {
         const canvas = this.canvasRef.el;
         if (!canvas || !this.image) {
@@ -258,7 +258,7 @@ export class RetouchDialog extends Component {
             return;
         }
         ctx.save();
-        // Assombrit la zone hors du cadre.
+        // Darken the area outside the frame.
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
         ctx.fillRect(0, 0, width, crop.y0);
         ctx.fillRect(0, crop.y1, width, height - crop.y1);
@@ -267,8 +267,8 @@ export class RetouchDialog extends Component {
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 2;
         ctx.strokeRect(crop.x0, crop.y0, crop.x1 - crop.x0, crop.y1 - crop.y0);
-        // Poignées en équerre tracées vers l'intérieur du cadre, pour rester
-        // visibles au bord du canevas ; contour sombre sous un trait blanc.
+        // Corner handles drawn towards the inside of the frame, so that they
+        // stay visible at the canvas edge; dark outline under a white line.
         const directions = [[1, 1], [-1, 1], [1, -1], [-1, -1]];
         ctx.lineCap = "square";
         for (const [color, width] of [["rgba(0, 0, 0, 0.6)", 7], ["#ffffff", 4]]) {
@@ -313,10 +313,10 @@ export class RetouchDialog extends Component {
     }
 
     // ------------------------------------------------------------------
-    // Recadrage (événements pointeur : souris et tactile)
+    // Cropping (pointer events: mouse and touch)
     // ------------------------------------------------------------------
 
-    /** Position du pointeur en pixels du canevas. */
+    /** Pointer position in canvas pixels. */
     canvasPoint(event) {
         const canvas = this.canvasRef.el;
         const rect = canvas.getBoundingClientRect();
@@ -372,7 +372,7 @@ export class RetouchDialog extends Component {
             const x = clamp(point.x, canvas.width);
             const y = clamp(point.y, canvas.height);
             const next = { ...crop };
-            // Le coin déplace ses deux bords, sans dépasser les bords opposés.
+            // The corner moves its two edges, without crossing the opposite ones.
             if (this.drag.handle.startsWith("x0")) {
                 next.x0 = Math.min(x, crop.x1 - MIN_CROP_SIZE);
             } else {
@@ -405,7 +405,7 @@ export class RetouchDialog extends Component {
     }
 
     // ------------------------------------------------------------------
-    // Validation
+    // Applying
     // ------------------------------------------------------------------
 
     async onApply() {
@@ -417,28 +417,28 @@ export class RetouchDialog extends Component {
                 return;
             }
             this.state.error = _t(
-                "La fiche ne peut pas être enregistrée en l'état : corrigez-la, puis réessayez.");
+                "The form cannot be saved as it is: correct it, then try again.");
             this.state.busy = false;
         } catch (error) {
-            this.state.error = _t("La retouche n'a pas pu être enregistrée. Réessayez.");
+            this.state.error = _t("The retouch could not be saved. Try again.");
             this.state.busy = false;
             throw error;
         }
     }
 
     /**
-     * Image finale en JPEG, encodée en base64 sans l'en-tête.
+     * Final image as JPEG, base64 encoded without the header.
      *
-     * Dessinée directement dans un canevas à la taille du cadre, sans
-     * canevas intermédiaire pour l'image pivotée entière : pour une grande
-     * photo, celui-ci dépasserait la limite des navigateurs mobiles.
-     * Taille plafonnée à MAX_OUTPUT_PIXELS.
+     * Drawn directly into a canvas the size of the frame, without an
+     * intermediate canvas for the whole rotated image: for a large photo,
+     * that one would exceed the limit of mobile browsers. Size capped at
+     * MAX_OUTPUT_PIXELS.
      */
     compose() {
         const iw = this.image.naturalWidth;
         const ih = this.image.naturalHeight;
         const bounds = this.rotatedBounds(iw, ih);
-        // Passage des coordonnées de l'aperçu à la pleine résolution.
+        // From preview coordinates to full resolution.
         const ratio = bounds.width / this.canvasRef.el.width;
         const crop = this.state.crop;
         const cropX = crop.x0 * ratio;
@@ -451,8 +451,8 @@ export class RetouchDialog extends Component {
         output.width = Math.max(1, Math.round(cropWidth * shrink));
         output.height = Math.max(1, Math.round(cropHeight * shrink));
         const ctx = output.getContext("2d");
-        // Fond blanc pour les coins découverts par la rotation : un fond
-        // noir serait lu comme du texte.
+        // White background for the corners uncovered by the rotation: a
+        // black one would be read as text.
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, output.width, output.height);
         ctx.scale(shrink, shrink);

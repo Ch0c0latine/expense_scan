@@ -2,11 +2,11 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Télécharge la fiche de frais produite, puis ferme la fenêtre d'export.
+ * Download the expense sheet produced, then close the export dialog.
  *
- * Un lien ordinaire laissait la fenêtre ouverte ; un nouvel onglet serait
- * bloqué par les bloqueurs de fenêtres, l'ouverture n'étant plus liée au
- * clic une fois le fichier produit.
+ * A plain link left the dialog open; a new tab would be stopped by popup
+ * blockers, since the opening is no longer tied to the click once the file
+ * is produced.
  */
 import { download } from "@web/core/network/download";
 import { registry } from "@web/core/registry";

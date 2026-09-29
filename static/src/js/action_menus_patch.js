@@ -2,16 +2,16 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Sur la liste des dépenses, le bouton « Fiche de frais » remplace le menu
- * « Imprimer » (rapport d'Odoo, une page par dépense). L'action est retirée
- * du menu « Actions » pour ne pas y figurer deux fois.
+ * On the expense list, the "Expense Sheet" button replaces the "Print" menu
+ * (Odoo's report, one page per expense). The action is removed from the
+ * "Actions" menu so that it does not appear twice.
  */
 import { ActionMenus } from "@web/search/action_menus/action_menus";
 import { patch } from "@web/core/utils/patch";
 import { session } from "@web/session";
 
 patch(ActionMenus.prototype, {
-    /** Action « Fiche de frais », si elle figure dans cette barre. */
+    /** "Expense Sheet" action, if it is in this bar. */
     get expenseSheetAction() {
         const actionId = session.expense_scan_sheet_action_id;
         if (this.props.resModel !== "hr.expense" || !actionId) {

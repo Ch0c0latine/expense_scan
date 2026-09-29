@@ -1,25 +1,23 @@
 /* Copyright 2026 Yves Vallée
    License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). */
 // ---------------------------------------------------------------------------
-// Vue scindée sur écran moyen
+// Split view on medium screens
 //
-// mail/core/common/attachment_view.scss ne met en forme le volet
-// `.o_attachment_preview` qu'à partir du point de rupture XXL (1400 px).
-// Le correctif JavaScript affiche ce volet dès MD ; seule la mise en forme
-// manque sur cette plage. Elle est réécrite ici sans réutiliser le mixin
-// d'Odoo, pour ne pas faire dépendre la compilation du paquet d'assets de ce
-// mixin.
+// mail/core/common/attachment_view.scss only styles the
+// `.o_attachment_preview` panel from the XXL breakpoint (1400 px). The
+// JavaScript patch shows this panel from MD; only the styling is missing in
+// that range. It is written again here without reusing Odoo's mixin, so that
+// compiling the asset bundle does not depend on that mixin.
 // ---------------------------------------------------------------------------
 @media (min-width: 768px) and (max-width: 1399.98px) {
-    // Odoo ne passe le conteneur en disposition en ligne (`flex-nowrap h-100`
-    // au lieu de `flex-column`) qu'à partir de 1400 px. Sans cette règle, le
-    // volet est rendu sous le formulaire, sur une trentaine de pixels de
-    // haut. La règle applique la disposition XXL.
+    // Odoo only switches the container to a row layout (`flex-nowrap h-100`
+    // instead of `flex-column`) from 1400 px. Without this rule, the panel is
+    // rendered under the form, about thirty pixels high. The rule applies the
+    // XXL layout.
     //
-    // Les classes d'Odoo sont des utilitaires Bootstrap en `!important` :
-    // les règles ci-dessous le sont aussi. `:has()` limite l'effet aux
-    // formulaires qui rendent ce volet sur cette plage, soit les dépenses
-    // (correctif JavaScript).
+    // Odoo's classes are Bootstrap utilities with `!important`: the rules
+    // below are too. `:has()` limits the effect to the forms that render
+    // this panel in that range, that is expenses (JavaScript patch).
     .o_form_view .o_form_renderer:has(> .o_attachment_preview) {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
@@ -65,30 +63,29 @@
         }
     }
 
-    // Le bouton de détachement du justificatif dans une fenêtre séparée n'est
-    // mis en forme que dans le bloc XXL d'Odoo : il est masqué ici.
+    // The button that detaches the receipt into a separate window is only
+    // styled in Odoo's XXL block: it is hidden here.
     .o_attachment_control {
         display: none;
     }
 }
 
 // ---------------------------------------------------------------------------
-// Montant et devise
+// Amount and currency
 //
-// Dans leur ligne `o_row`, les deux champs grandissent à parts égales. Le
-// menu déroulant de la devise réclame toute la place disponible : sur
-// téléphone, le montant est réduit à zéro pixel et son contenu déborde sous
-// la devise.
+// In their `o_row` line, both fields grow equally. The currency dropdown
+// claims all the space available: on a phone, the amount shrinks to zero
+// pixels and its content overflows under the currency.
 //
-// Une base fixe pour chaque champ règle le problème à toutes les largeurs.
-// La largeur du montant ne peut pas se déduire de son contenu, dimensionné
-// en pourcentage de son parent.
+// A fixed basis for each field solves this at every width. The width of the
+// amount cannot follow its content, which is sized as a percentage of its
+// parent.
 //
-// Spécificité : en édition, Odoo impose `flex: 1 1 auto` par
-// `.o_form_view .o_form_editable .o_row > .o_field_widget` (quatre classes).
-// Une règle à trois classes perd quel que soit son rang dans la feuille ;
-// il en faut cinq. La variante sans `.o_form_editable` couvre la lecture
-// seule, où la règle d'Odoo ne s'applique pas.
+// Specificity: in edit mode, Odoo sets `flex: 1 1 auto` through
+// `.o_form_view .o_form_editable .o_row > .o_field_widget` (four classes).
+// A three-class rule loses whatever its position in the sheet; five are
+// needed. The variant without `.o_form_editable` covers read-only mode,
+// where Odoo's rule does not apply.
 // ---------------------------------------------------------------------------
 .o_form_view .o_row,
 .o_form_view .o_form_editable .o_row {
@@ -102,7 +99,7 @@
 }
 
 // ---------------------------------------------------------------------------
-// Bandeau d'aperçu sur téléphone
+// Preview strip on a phone
 // ---------------------------------------------------------------------------
 .o_expense_scan_preview {
     position: sticky;
@@ -141,7 +138,7 @@
 }
 
 // ---------------------------------------------------------------------------
-// Détail de l'analyse
+// Scan details
 // ---------------------------------------------------------------------------
 .o_expense_scan_raw_text textarea,
 .o_expense_scan_raw_text {
@@ -153,22 +150,22 @@
 }
 
 // ---------------------------------------------------------------------------
-// Historique du fil de discussion sur une note de frais
+// Chatter history on an expense
 //
-// Les trois boutons sont retirés par héritage de gabarit (voir
-// static/src/xml/chatter_patch.xml). L'historique est rendu par un composant
-// placé en `t-else`, sur lequel aucune condition ne peut être ajoutée : son
-// conteneur reçoit une classe, posée par le même héritage.
+// The three buttons are removed by template inheritance (see
+// static/src/xml/chatter_patch.xml). The history is rendered by a component
+// placed in a `t-else`, on which no condition can be added: its container
+// gets a class, set by the same inheritance.
 //
-// `!important` est nécessaire : le fil porte l'utilitaire Bootstrap `d-flex`,
-// en `!important`, qu'une règle ordinaire ne peut pas surcharger.
+// `!important` is needed: the thread carries the Bootstrap utility `d-flex`,
+// with `!important`, which an ordinary rule cannot override.
 // ---------------------------------------------------------------------------
 .o_expense_scan_slim .o-mail-Thread {
     display: none !important;
 }
 
 // ---------------------------------------------------------------------------
-// Aperçu du justificatif sur les tuiles kanban
+// Receipt thumbnail on the kanban cards
 // ---------------------------------------------------------------------------
 .o_expense_scan_card_thumb {
     display: block;
@@ -184,10 +181,10 @@
 
 
 // ---------------------------------------------------------------------------
-// Indication sous un champ à vérifier
+// Hint under a field to check
 // ---------------------------------------------------------------------------
-// Ligne en couleur d'alerte, sans pictogramme, qui disparaît quand le champ
-// est corrigé.
+// A line in the warning colour, without an icon, that goes away when the
+// field is corrected.
 .o_expense_scan_hint {
     margin-top: -0.35rem;
     margin-bottom: 0.35rem;
@@ -196,8 +193,8 @@
     color: color-mix(in srgb, #{$warning} 75%, black);
 }
 
-// Canevas de retouche : `touch-action: none` désactive le défilement de la
-// page pendant le glissement d'une poignée sur téléphone.
+// Retouch canvas: `touch-action: none` stops the page from scrolling while a
+// handle is dragged on a phone.
 .o_expense_scan_retouch_canvas {
     max-width: 100%;
     touch-action: none;
@@ -208,10 +205,10 @@
     }
 }
 
-// Bouton « Retouche » en bas du volet d'aperçu. Odoo place le conteneur de
-// l'image en absolu, à 100 % de hauteur sous le titre ; avec le bouton, le
-// volet passe en colonne et le conteneur occupe la place entre le titre et
-// le bouton.
+// "Retouch" button at the bottom of the preview panel. Odoo positions the
+// image container absolutely, at 100% height under the title; with the
+// button, the panel becomes a column and the container fills the space
+// between the title and the button.
 .o_attachment_preview > .o-mail-Attachment:has(> .o_expense_scan_retouch_control) {
     display: flex;
     flex-direction: column;

@@ -1,16 +1,17 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Aperçu du ticket sur écran étroit.
+ * Receipt preview on a narrow screen.
  *
- * Sur petit écran, Odoo n'affiche pas le volet du justificatif. Ce widget
- * l'affiche en bandeau fixé en haut de la fiche, visible pendant le
- * défilement des champs ; un appui l'ouvre en plein écran.
+ * On a small screen, Odoo does not show the receipt panel. This widget shows
+ * it as a strip pinned at the top of the form, visible while the fields
+ * scroll; a tap opens it full screen.
  *
- * Un navigateur de téléphone n'affiche pas un PDF dans une page : le
- * bandeau montre sa première page, rendue par le serveur.
+ * A phone browser does not display a PDF inside a page: the strip shows its
+ * first page, rendered by the server.
  */
 import { Component, onWillDestroy, useEffect, useState } from "@odoo/owl";
+import { _t } from "@web/core/l10n/translation";
 
 import { browser } from "@web/core/browser/browser";
 import { FileModel } from "@web/core/file_viewer/file_model";
@@ -51,7 +52,7 @@ export class ExpenseScanReceipt extends Component {
         );
     }
 
-    /** Rendu de la première page du PDF ; une réponse périmée est ignorée. */
+    /** Rendering of the first PDF page; a stale answer is ignored. */
     async loadPdfPreview() {
         const key = `${this.attachment.id}-${this.checksum}`;
         this.pdfKey = key;
@@ -63,19 +64,19 @@ export class ExpenseScanReceipt extends Component {
     }
 
     /**
-     * Largeur à partir de laquelle le volet latéral est affiché : 768 px si
-     * le réglage de la société est actif, sinon 1400 px (seuil d'Odoo).
+     * Width from which the side panel is shown: 768 px if the company
+     * setting is on, otherwise 1400 px (Odoo's threshold).
      */
     get splitThreshold() {
         return session.expense_scan_wide_split ? SIZES.MD : SIZES.XXL;
     }
 
-    /** Affiché seulement quand le volet d'Odoo ne l'est pas. */
+    /** Shown only when Odoo's panel is not. */
     get visible() {
         return Boolean(this.attachment) && this.state.size < this.splitThreshold;
     }
 
-    /** Pièce jointe principale (tuple ou objet selon le modèle relationnel). */
+    /** Main attachment (tuple or object depending on the relational model). */
     get attachment() {
         const value = this.props.record.data.message_main_attachment_id;
         if (!value) {
@@ -84,7 +85,7 @@ export class ExpenseScanReceipt extends Component {
         if (Array.isArray(value)) {
             return { id: value[0], name: value[1] };
         }
-        return { id: value.id, name: value.display_name || value.name || "Ticket" };
+        return { id: value.id, name: value.display_name || value.name || "Receipt" };
     }
 
     get mimetype() {
@@ -95,7 +96,7 @@ export class ExpenseScanReceipt extends Component {
         return this.mimetype.startsWith("application/pdf");
     }
 
-    /** Empreinte du fichier : l'adresse change quand l'image est retouchée. */
+    /** File checksum: the address changes when the image is retouched. */
     get checksum() {
         return this.props.record.data.expense_scan_main_checksum || "";
     }
@@ -108,14 +109,14 @@ export class ExpenseScanReceipt extends Component {
     }
 
     get toggleLabel() {
-        return this.state.expanded ? "Réduire l'aperçu" : "Agrandir l'aperçu";
+        return this.state.expanded ? _t("Collapse the preview") : _t("Expand the preview");
     }
 
     onToggle() {
         this.state.expanded = !this.state.expanded;
     }
 
-    /** Bouton « Retouche » : sur une dépense modifiable, avec un justificatif. */
+    /** "Retouch" button: on an editable expense with a receipt. */
     get canRetouch() {
         return Boolean(this.props.record.data.is_editable)
             && hasReceipt(this.props.record);
@@ -125,7 +126,7 @@ export class ExpenseScanReceipt extends Component {
         openRetouchDialog(this.env, this.props.record);
     }
 
-    /** Ouvre la visionneuse d'Odoo (zoom, rotation, plein écran). */
+    /** Open Odoo's viewer (zoom, rotation, full screen). */
     onOpenViewer() {
         const file = new FileModel();
         Object.assign(file, {

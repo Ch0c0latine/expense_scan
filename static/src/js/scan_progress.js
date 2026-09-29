@@ -1,13 +1,13 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Progression de l'analyse, affichée sur la fiche ouverte après l'envoi.
+ * Scan progress, shown on the form opened after the upload.
  *
- * La fiche s'ouvre avant toute lecture. Le widget lance l'analyse
- * (action_expense_scan_start), suit les étapes annoncées par le serveur et
- * remplit les champs au fur et à mesure : date, montant et enseigne dès
- * qu'ils sont lus, le reste à la fin. Les champs modifiés par l'utilisateur
- * pendant l'analyse ne sont pas remplacés, ni à l'écran ni en base.
+ * The form opens before anything is read. The widget starts the scan
+ * (action_expense_scan_start), follows the steps announced by the server and
+ * fills the fields as it goes: date, amount and merchant as soon as they are
+ * read, the rest at the end. Fields changed by the user during the scan are
+ * not replaced, neither on screen nor in the database.
  */
 import { _t } from "@web/core/l10n/translation";
 import { Component, onMounted, onWillUnmount, useState } from "@odoo/owl";
@@ -16,18 +16,18 @@ import { useService } from "@web/core/utils/hooks";
 import { getFieldsSpec } from "@web/model/relational_model/utils";
 import { standardWidgetProps } from "@web/views/widgets/standard_widget_props";
 
-/** Étapes affichées, et les étapes du serveur qui les terminent. */
+/** Steps shown, and the server steps that end them. */
 const STEPS = [
-    { key: "prepare", label: _t("Préparation de l'image"), ends: ["prepare"] },
-    { key: "read", label: _t("Lecture du texte"), ends: ["read"] },
+    { key: "prepare", label: _t("Preparing the image"), ends: ["prepare"] },
+    { key: "read", label: _t("Reading the text"), ends: ["read"] },
     {
         key: "straighten",
-        label: _t("Redressement et recadrage"),
+        label: _t("Straightening and cropping"),
         ends: ["reread", "straighten", "crop"],
     },
-    { key: "values", label: _t("Date, montant et TVA"), ends: ["parse", "values"] },
-    { key: "category", label: _t("Catégorie et mission"), ends: ["category"] },
-    { key: "save", label: _t("Enregistrement"), ends: ["write"] },
+    { key: "values", label: _t("Date, amount and tax"), ends: ["parse", "values"] },
+    { key: "category", label: _t("Category and project"), ends: ["category"] },
+    { key: "save", label: _t("Saving"), ends: ["write"] },
 ];
 
 export class ScanProgress extends Component {
@@ -67,21 +67,21 @@ export class ScanProgress extends Component {
             const result = await this.orm.call(
                 "hr.expense", "action_expense_scan_start", [[record.resId]], { specification });
             if (result.busy) {
-                // Analyse déjà lancée ailleurs (autre onglet) : rechargement
-                // différé pour récupérer les résultats.
+                // Scan already started elsewhere (another tab): delayed
+                // reload to get the results.
                 setTimeout(() => record.model.load(), 3000);
                 return;
             }
             if (await record.isDirty()) {
-                // Saisies en cours : seuls les champs non modifiés sont mis à jour.
+                // Unsaved input: only the untouched fields are updated.
                 this.apply(result.values);
             } else {
-                // Aucune saisie : rechargement complet, qui met aussi à jour
-                // le titre et le justificatif recadré dans le volet.
+                // No input: full reload, which also updates the title and the
+                // cropped receipt in the panel.
                 await record.model.load();
             }
         } catch (error) {
-            this.notification.add(_t("L'analyse du ticket a échoué : relancez-la depuis la fiche."), {
+            this.notification.add(_t("The receipt scan failed: start it again from the form."), {
                 type: "danger",
             });
             throw error;
@@ -105,9 +105,8 @@ export class ScanProgress extends Component {
     }
 
     /**
-     * Applique les valeurs du serveur comme un rechargement : Odoo les place
-     * sous les modifications en cours de l'utilisateur, qui restent affichées
-     * et sont seules enregistrées.
+     * Apply the server values like a reload: Odoo puts them under the user's
+     * pending changes, which stay displayed and are the only ones saved.
      */
     apply(values) {
         const record = this.props.record;

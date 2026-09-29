@@ -19,12 +19,12 @@
                        role="img" t-att-aria-label="toggleLabel"/>
                 </button>
                 <button t-if="canRetouch" type="button" class="btn btn-sm btn-light"
-                        t-on-click="onRetouch" title="Retouche">
-                    <i class="fa fa-crop" role="img" aria-label="Retouche"/>
+                        t-on-click="onRetouch" title="Retouch">
+                    <i class="fa fa-crop" role="img" aria-label="Retouch"/>
                 </button>
                 <button type="button" class="btn btn-sm btn-light"
-                        t-on-click="onOpenViewer" title="Ouvrir en plein écran">
-                    <i class="fa fa-search-plus" role="img" aria-label="Ouvrir en plein écran"/>
+                        t-on-click="onOpenViewer" title="Open full screen">
+                    <i class="fa fa-search-plus" role="img" aria-label="Open full screen"/>
                 </button>
             </div>
         </div>

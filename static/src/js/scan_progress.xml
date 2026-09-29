@@ -8,7 +8,7 @@
              role="status" aria-live="polite">
             <div class="fw-bold mb-1">
                 <i class="fa fa-circle-o-notch fa-spin me-2" role="img" aria-hidden="true"/>
-                Analyse du ticket — vous pouvez déjà saisir la description.
+                Scanning the receipt — you can already type the description.
             </div>
             <ul class="list-unstyled mb-0 small">
                 <li t-foreach="steps" t-as="step" t-key="step.key"

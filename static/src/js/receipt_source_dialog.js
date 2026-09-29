@@ -1,30 +1,30 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Choix de la source du justificatif : appareil photo, galerie ou fichiers.
+ * Choice of the receipt source: camera, gallery or files.
  *
- * Sur téléphone, un champ fichier unique ne propose pas ces trois choix
- * partout : l'application Odoo ouvre la galerie sans l'appareil photo, et
- * le filtre « image » masque les PDF. Le champ est réglé selon la source
- * choisie, puis ouvert dans le même geste : le navigateur refuse d'ouvrir
- * un sélecteur hors d'une action de l'utilisateur.
+ * On a phone, a single file input does not offer these three choices
+ * everywhere: the Odoo app opens the gallery without the camera, and the
+ * "image" filter hides PDFs. The input is set up for the chosen source, then
+ * opened in the same gesture: the browser refuses to open a picker outside a
+ * user action.
  */
 import { _t } from "@web/core/l10n/translation";
 import { Component } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 
-/** Réglage du champ fichier pour chaque source. */
+/** File input settings for each source. */
 export const RECEIPT_SOURCES = {
-    // `capture` ouvre directement l'appareil photo arrière.
+    // `capture` opens the rear camera directly.
     camera: { accept: "image/*", capture: "environment" },
     gallery: { accept: "image/*" },
-    // Avec un type non-image, Android ouvre son sélecteur de fichiers, qui
-    // donne accès aux PDF téléchargés.
+    // With a non-image type, Android opens its file picker, which gives
+    // access to downloaded PDFs.
     files: { accept: "image/*,application/pdf" },
 };
 
 /**
- * Règle le champ fichier pour la source choisie.
+ * Set up the file input for the chosen source.
  *
  * @param {HTMLInputElement} input
  * @param {keyof RECEIPT_SOURCES} source
@@ -48,10 +48,10 @@ export class ReceiptSourceDialog extends Component {
     };
 
     get title() {
-        return _t("Ajouter un justificatif");
+        return _t("Add a receipt");
     }
 
-    /** Ouvre le sélecteur avant de fermer la boîte, pendant l'action de l'utilisateur. */
+    /** Open the picker before closing the dialog, during the user action. */
     pick(source) {
         this.props.choose(source);
         this.props.close();

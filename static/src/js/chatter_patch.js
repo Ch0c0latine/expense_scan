@@ -1,36 +1,34 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Justificatif joint à une dépense neuve, avant son premier enregistrement.
+ * Receipt attached to a new expense, before it is first saved.
  *
- * Le volet de discussion enregistre la fiche avant d'envoyer un fichier.
- * Une dépense neuve ne s'enregistre pas sans description ni catégorie : le
- * fichier partait alors sans identifiant de dépense et le serveur échouait.
- * Pour une dépense, les champs obligatoires encore vides reçoivent une
- * description provisoire et la catégorie par défaut ; une fois envoyé, le
- * justificatif est analysé comme un ticket scanné. Les champs déjà saisis
- * sur la fiche sont transmis au serveur : l'analyse ne les remplit pas.
+ * The chatter saves the form before uploading a file. A new expense cannot
+ * be saved without a description and a category: the file then went without
+ * an expense id and the server failed. For an expense, the required fields
+ * still empty get a provisional description and the default category; once
+ * uploaded, the receipt is scanned like any other. The fields already
+ * entered on the form are passed to the server: the scan does not fill them.
  */
 import { Chatter } from "@mail/chatter/web_portal/chatter";
-// Chargé avant ce correctif : il redéfinit onClickAttachFile et onUploaded
-// sans appeler la version précédente.
+// Loaded before this patch: it redefines onClickAttachFile and onUploaded
+// without calling the previous version.
 import "@mail/chatter/web/chatter_patch";
 import { Thread } from "@mail/core/common/thread_model";
 import { patch } from "@web/core/utils/patch";
 
 /**
- * Justificatif en attente d'analyse : ``{record, changed}``.
+ * Receipt waiting to be scanned: ``{record, changed}``.
  *
- * Tenu hors du composant : sur téléphone, le volet de discussion qui reçoit
- * le clic n'est pas toujours celui qui termine l'envoi, une fois la fiche
- * enregistrée.
+ * Kept outside the component: on a phone, the chatter that receives the
+ * click is not always the one that finishes the upload, once the form is
+ * saved.
  */
 let pendingReceipt = null;
 
 patch(Thread.prototype, {
-    // Les droits d'une fiche pas encore enregistrée ne sont pas connus :
-    // Odoo grise « Joindre des fichiers ». Qui crée la dépense peut y joindre
-    // son justificatif.
+    // The rights on a record not yet saved are unknown: Odoo greys out
+    // "Attach files". Whoever creates the expense may attach its receipt.
     get canPostMessage() {
         if (this.model === "hr.expense" && !this.id) {
             return true;
@@ -42,17 +40,17 @@ patch(Thread.prototype, {
 patch(Chatter.prototype, {
     setup() {
         super.setup(...arguments);
-        // Service pris hors du composant : l'enregistrement de la fiche
-        // recrée le volet, et un appel passé par useService ne se termine
-        // jamais une fois le composant détruit.
+        // Service taken outside the component: saving the form recreates
+        // the chatter, and a call made through useService never completes
+        // once the component is destroyed.
         this.expenseScanOrm = this.env.services.orm;
     },
 
     async onClickAttachFile(ev) {
         const record = this.props.record;
         if (!this.state.thread.id && record?.resModel === "hr.expense") {
-            // Champs modifiés par l'utilisateur depuis l'ouverture de la
-            // fiche, relevés avant la pose des valeurs provisoires.
+            // Fields changed by the user since the form opened, noted
+            // before the provisional values are set.
             const changed = Object.keys(record._changes || {});
             const defaults = await this.expenseScanOrm.call(
                 "hr.expense", "expense_scan_receipt_defaults", []);
@@ -71,9 +69,9 @@ patch(Chatter.prototype, {
         return super.onClickAttachFile(...arguments);
     },
 
-    // Supprimer le justificatif affiché supprime aussi sa photo d'origine
-    // (voir models/ir_attachment.py) : la fiche est rechargée pour ne plus
-    // afficher de lien vers une pièce disparue.
+    // Deleting the displayed receipt also deletes its original photo (see
+    // models/ir_attachment.py): the form is reloaded so that it no longer
+    // links to a missing attachment.
     async unlinkAttachment(attachment) {
         await super.unlinkAttachment(...arguments);
         if (this.props.record?.resModel === "hr.expense"
@@ -84,9 +82,9 @@ patch(Chatter.prototype, {
 
     onUploaded(data, { thread } = {}) {
         return async (...args) => {
-            // Le bouton d'envoi est rendu avec le fil de la fiche neuve, sans
-            // identifiant ; la fiche vient d'être enregistrée, le fichier va
-            // au fil de la dépense créée.
+            // The upload button is rendered with the thread of the new form,
+            // without an id; the form has just been saved, the file goes to
+            // the thread of the created expense.
             const current = this.state.thread;
             const target = !thread?.id && current?.id ? current : thread;
             await super.onUploaded(data, { thread: target })(...args);
@@ -96,8 +94,8 @@ patch(Chatter.prototype, {
             }
             const pending = pendingReceipt?.record.resId === record.resId ? pendingReceipt : null;
             if (!pending) {
-                // Justificatif joint à une dépense enregistrée : la fiche est
-                // rechargée pour afficher son aperçu.
+                // Receipt attached to a saved expense: the form is reloaded
+                // to show its preview.
                 if (!this.props.hasParentReloadOnAttachmentsChanged) {
                     await this.reloadParentView();
                 }

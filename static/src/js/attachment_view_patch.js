@@ -1,14 +1,12 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Volet d'aperçu d'une dépense : barre d'outils PDF réduite et bouton
- * « Retouche ».
+ * Preview panel of an expense: reduced PDF toolbar and "Retouch" button.
  *
- * De la barre de PDF.js, seuls restent le zoom, la page et la rotation :
- * impression, téléchargement, mode présentation, navigation, modes de
- * défilement et vignettes sont masqués. Odoo ne masque que le
- * téléchargement sur mobile (`hidePDFJSButtons`). Les autres modèles
- * gardent la barre complète.
+ * Of the PDF.js toolbar, only zoom, page and rotation remain: printing,
+ * download, presentation mode, navigation, scroll modes and thumbnails are
+ * hidden. Odoo only hides the download on mobile (`hidePDFJSButtons`). Other
+ * models keep the full toolbar.
  */
 import { AttachmentView } from "@mail/core/common/attachment_view";
 import { patch } from "@web/core/utils/patch";
@@ -16,18 +14,18 @@ import { useEffect } from "@odoo/owl";
 
 import { hasReceipt, openRetouchDialog } from "@expense_scan/js/retouch_dialog";
 
-//: Boutons masqués. La rotation (`pageRotateCw/Ccw`) reste affichée.
+//: Hidden buttons. Rotation (`pageRotateCw/Ccw`) stays visible.
 const HIDDEN_PDF_TOOLS = [
     "button#printButton", "button#secondaryPrint",
     "button#downloadButton", "button#secondaryDownload",
     "button#presentationMode",
     "#firstPage", "#secondaryFirstPage", "#lastPage", "#secondaryLastPage",
     "#cursorHandTool", "#cursorSelectTool",
-    // Identifiants de la version de PDF.js livrée avec Odoo 19.
+    // Ids of the PDF.js version shipped with Odoo 19.
     "#scrollPage", "#scrollVertical", "#scrollHorizontal", "#scrollWrapped",
     "#spreadNone", "#spreadOdd", "#spreadEven",
     "#secondaryToolbar .horizontalToolbarSeparator",
-    // Barre principale : bouton du volet de vignettes.
+    // Main toolbar: thumbnail panel button.
     "#sidebarToggleButton", "#sidebarToggle",
 ];
 
@@ -48,9 +46,9 @@ function hideExpenseScanPdfTools(rootElement) {
     });
 }
 
-// PopoutAttachmentView (fenêtre détachée) reste sur les outils d'Odoo :
-// AbstractAttachmentView, dont les deux héritent, n'est pas exportée par
-// le cœur, et la fenêtre détachée est un usage marginal pour une dépense.
+// PopoutAttachmentView (detached window) keeps Odoo's tools:
+// AbstractAttachmentView, which both inherit from, is not exported by the
+// core, and the detached window is a marginal use for an expense.
 patch(AttachmentView.prototype, {
     setup() {
         super.setup();
@@ -64,8 +62,8 @@ patch(AttachmentView.prototype, {
     },
 
     /**
-     * Enregistrement du formulaire qui affiche ce volet, s'il s'agit de la
-     * même dépense. Nécessaire pour recharger la fiche après la retouche.
+     * Record of the form showing this panel, if it is the same expense.
+     * Needed to reload the form after the retouch.
      */
     get expenseScanRecord() {
         const root = this.env.model?.root;
@@ -75,7 +73,7 @@ patch(AttachmentView.prototype, {
         return root;
     },
 
-    /** Bouton « Retouche » : sur une dépense modifiable, avec un justificatif. */
+    /** "Retouch" button: on an editable expense with a receipt. */
     get expenseScanCanRetouch() {
         const record = this.expenseScanRecord;
         return Boolean(record?.data.is_editable && hasReceipt(record));

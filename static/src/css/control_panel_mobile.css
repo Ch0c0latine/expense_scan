@@ -1,25 +1,25 @@
 /* Copyright 2026 Yves Vallée
    License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). */
 /*
- * « Nouveau » dans la barre des listes de dépenses, sur téléphone.
+ * "New" in the bar of the expense lists, on a phone.
  *
- * Sous 768 px, web/static/src/search/control_panel/control_panel_mobile.css
- * ne garde visible que le premier bouton de la barre et place les suivants
- * dans le menu « ⋮ », en !important, même s'il reste de la place. Sur les
- * dépenses, le premier est « Scanner » et « Nouveau » est masqué, alors que
- * les deux tiennent sur une ligne jusqu'à 320 px de large.
+ * Below 768 px, web/static/src/search/control_panel/control_panel_mobile.css
+ * only keeps the first button of the bar visible and puts the next ones in
+ * the "⋮" menu, with !important, even when there is room left. On expenses,
+ * the first one is "Scan" and "New" is hidden, although both fit on one line
+ * down to 320 px wide.
  *
- * Le menu ne contient alors plus que ces deux boutons, déjà visibles :
- * « ⋮ » est aussi masqué, mais seulement quand la barre ne contient rien
- * d'autre (un module qui y ajoute un bouton conserve son menu).
+ * The menu then only holds these two buttons, already visible: "⋮" is hidden
+ * too, but only when the bar holds nothing else (a module that adds a button
+ * there keeps its menu).
  *
- * Fichier CSS et non SCSS, comme celui d'Odoo : le compilateur SCSS d'Odoo
- * gère mal les sélecteurs de niveau 4 imbriqués, et une compilation en échec
- * laisse toute l'interface blanche.
+ * A CSS file and not SCSS, like Odoo's: Odoo's SCSS compiler handles nested
+ * level 4 selectors badly, and a failed compilation leaves the whole
+ * interface blank.
  *
- * Spécificité : la règle d'Odoo compte trois classes en !important ; ces
- * sélecteurs en comptent quatre, plus un élément, pour l'emporter quel que
- * soit l'ordre des feuilles.
+ * Specificity: Odoo's rule counts three classes with !important; these
+ * selectors count four, plus an element, to win whatever the order of the
+ * stylesheets.
  */
 @media (max-width: 767.98px) {
     body .o_hr_expense_dashboard_kanban_view .o_control_panel .o_control_panel_main_buttons > .o-kanban-button-new,

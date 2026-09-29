@@ -1,16 +1,15 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Odoo n'affiche le justificatif à côté du formulaire qu'à partir de la
- * taille XXL (1400 px), donc pas sur un écran de portable en 1366 px.
+ * Odoo only shows the receipt next to the form from the XXL size (1400 px),
+ * so not on a 1366 px laptop screen.
  *
- * Pour les dépenses seulement, et si le réglage de la société est actif, le
- * seuil passe à MD (768 px). Seule la largeur compte, pas le rapport
- * largeur/hauteur : une fenêtre en demi-écran ou une tablette verticale
- * affiche aussi les deux colonnes.
+ * For expenses only, and if the company setting is on, the threshold goes
+ * down to MD (768 px). Only the width counts, not the aspect ratio: a
+ * half-screen window or a portrait tablet also shows both columns.
  *
- * Sous 768 px, le widget `expense_scan_receipt` affiche l'aperçu en bandeau
- * au-dessus des champs.
+ * Below 768 px, the `expense_scan_receipt` widget shows the preview as a
+ * strip above the fields.
  */
 import { patch } from "@web/core/utils/patch";
 import { session } from "@web/session";
@@ -30,7 +29,7 @@ patch(FormRenderer.prototype, {
             this.uiService.size < SIZES.XXL &&
             this.hasFile()
         ) {
-            // Discussion en bas, justificatif sur le côté.
+            // Chatter at the bottom, receipt on the side.
             return "COMBO";
         }
         return super.mailLayout(...arguments);

@@ -3,22 +3,22 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <templates xml:space="preserve">
 
-    <!-- Appareil photo en premier et en bouton principal : source la plus
-         courante (ticket reçu à l'instant). -->
+    <!-- Camera first and as the main button: the most common source (a
+         receipt just received). -->
     <t t-name="expense_scan.ReceiptSourceDialog">
         <Dialog title="title" size="'sm'" footer="false">
             <div class="d-grid gap-2 o_expense_scan_sources">
                 <button type="button" class="btn btn-primary btn-lg text-start"
                         t-on-click="() => this.pick('camera')">
-                    <i class="fa fa-camera fa-fw me-2" role="img" aria-hidden="true"/>Appareil photo
+                    <i class="fa fa-camera fa-fw me-2" role="img" aria-hidden="true"/>Camera
                 </button>
                 <button type="button" class="btn btn-secondary btn-lg text-start"
                         t-on-click="() => this.pick('gallery')">
-                    <i class="fa fa-picture-o fa-fw me-2" role="img" aria-hidden="true"/>Galerie
+                    <i class="fa fa-picture-o fa-fw me-2" role="img" aria-hidden="true"/>Gallery
                 </button>
                 <button type="button" class="btn btn-secondary btn-lg text-start"
                         t-on-click="() => this.pick('files')">
-                    <i class="fa fa-folder-open-o fa-fw me-2" role="img" aria-hidden="true"/>Fichiers (PDF compris)
+                    <i class="fa fa-folder-open-o fa-fw me-2" role="img" aria-hidden="true"/>Files (PDF included)
                 </button>
             </div>
         </Dialog>

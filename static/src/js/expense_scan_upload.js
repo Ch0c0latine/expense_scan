@@ -1,13 +1,13 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Après le dépôt d'un ticket, Odoo ouvre la liste « Generate Expenses ».
- * Pour un seul ticket (cas courant depuis un téléphone), ce correctif ouvre
- * directement la fiche, qui sert d'écran de vérification : ticket d'un côté,
- * champs pré-remplis de l'autre.
+ * After a receipt is uploaded, Odoo opens the "Generate Expenses" list. For a
+ * single receipt (the usual case from a phone), this patch opens the form
+ * directly, which serves as the review screen: receipt on one side, fields
+ * filled in on the other.
  *
- * Une notification signale l'attente : la lecture du ticket prend une à deux
- * secondes côté serveur, sans autre indication dans l'interface.
+ * A notification shows the wait: reading the receipt takes one or two
+ * seconds on the server, with no other sign in the interface.
  */
 import { _t } from "@web/core/l10n/translation";
 import { Domain } from "@web/core/domain";
@@ -20,27 +20,28 @@ import { ExpenseListController } from "@hr_expense/views/list";
 import { ExpenseKanbanController } from "@hr_expense/views/kanban";
 
 /**
- * Fabrique un nouveau correctif à chaque appel (pas d'objet partagé).
+ * Build a new patch on each call (no shared object).
  *
- * `patch` redéfinit le prototype de l'objet passé pour que `super` y
- * résolve la méthode d'origine. Le même objet appliqué à deux contrôleurs
- * ferait pointer le `super` du premier vers la chaîne du second.
+ * `patch` redefines the prototype of the object passed so that `super`
+ * resolves the original method there. The same object applied to two
+ * controllers would make the first one's `super` point to the second one's
+ * chain.
  */
 const expenseScanUpload = () => ({
     setup() {
         super.setup();
         this.expenseScanDialog = useService("dialog");
-        // Envois réellement en cours. Le compteur d'Odoo, `uploadsProcessing`,
-        // s'incrémente à chaque ouverture du sélecteur et ne redescend pas si
-        // le sélecteur est fermé sans choix : après une annulation, l'envoi
-        // suivant serait compté comme simultané à un autre et resterait sur
-        // la liste. Ce compteur n'est donc pas utilisé ici.
+        // Uploads actually in progress. Odoo's counter, `uploadsProcessing`,
+        // goes up each time the picker opens and does not go down if the
+        // picker is closed without a choice: after a cancel, the next upload
+        // would count as running alongside another and would stay on the
+        // list. That counter is therefore not used here.
         this.expenseScanInFlight = 0;
     },
 
     /**
-     * Sur téléphone, demande la source (appareil photo, galerie ou fichiers) avant
-     * d'ouvrir le sélecteur ; sur ordinateur, ouvre directement le sélecteur.
+     * On a phone, ask for the source (camera, gallery or files) before
+     * opening the picker; on a computer, open the picker directly.
      *
      * @override
      */
@@ -51,18 +52,18 @@ const expenseScanUpload = () => ({
         this.expenseScanDialog.add(ReceiptSourceDialog, {
             choose: (source) => {
                 configureReceiptInput(this.fileInput.el, source);
-                // Doit s'exécuter dans le geste de l'utilisateur, sinon le
-                // navigateur refuse d'ouvrir le sélecteur.
+                // Must run within the user's gesture, otherwise the browser
+                // refuses to open the picker.
                 this.fileInput.el.click();
             },
         });
     },
 
     /**
-     * Un seul ticket : la dépense est créée sans attendre l'analyse, que la
-     * fiche lance en affichant sa progression (widget expense_scan_progress).
-     * Plusieurs tickets : analyse à la création, comportement d'origine ;
-     * la liste ne permet pas de suivre la progression de chacun.
+     * A single receipt: the expense is created without waiting for the scan,
+     * which the form starts while showing its progress (expense_scan_progress
+     * widget). Several receipts: scanned at creation, the original behaviour;
+     * the list cannot show the progress of each one.
      *
      * @override
      */
@@ -80,39 +81,39 @@ const expenseScanUpload = () => ({
     },
 
     /**
-     * Reprend la logique du mixin d'Odoo (hr_expense/mixins/document_upload),
-     * avec une autre destination finale. `super` n'est pas appelé : il
-     * déclenche la navigation, et la corriger ensuite afficherait deux écrans
-     * successifs.
+     * Same logic as Odoo's mixin (hr_expense/mixins/document_upload), with
+     * another final destination. `super` is not called: it triggers the
+     * navigation, and correcting it afterwards would show two screens in a
+     * row.
      *
      * @override
      */
     async onChangeFileInput() {
-        // Un seul ticket est analysé dans sa fiche, qui affiche les étapes :
-        // la notification ne mentionne que l'envoi.
+        // A single receipt is scanned in its form, which shows the steps: the
+        // notification only mentions the upload.
         const closeNotification = this.notification.add(
             this.fileInput.el.files.length === 1
-                ? _t("Envoi du justificatif…")
-                : _t("Lecture des tickets en cours…"),
+                ? _t("Uploading the receipt...")
+                : _t("Reading the receipts..."),
             { type: "info", sticky: true }
         );
-        // `createdExpenseIds` s'accumule pendant toute la vie du contrôleur :
-        // seuls les ids créés par cet envoi sont retenus.
+        // `createdExpenseIds` grows over the whole life of the controller:
+        // only the ids created by this upload are kept.
         const alreadyCreated = this.createdExpenseIds.length;
         this.expenseScanInFlight++;
         try {
             await this._onChangeFileInput([...this.fileInput.el.files]);
             const created = this.createdExpenseIds.slice(alreadyCreated);
-            // Seul envoi en cours et un seul ticket : ouvre sa fiche.
+            // Only upload in progress and a single receipt: open its form.
             const alone = this.expenseScanInFlight === 1;
             if (alone && created.length === 1) {
-                // La fiche affiche son propre bandeau : succès et points à
-                // vérifier n'ont pas besoin de notification. Une erreur reste
-                // notifiée, car la fiche s'ouvre quand même, vide.
+                // The form shows its own banner: success and points to check
+                // need no notification. An error is still notified, since the
+                // form opens anyway, empty.
                 await this._expenseScanReport(created, { onlyErrors: true });
                 await this.actionService.doAction({
                     type: "ir.actions.act_window",
-                    name: _t("Vérification du ticket"),
+                    name: _t("Receipt review"),
                     res_model: "hr.expense",
                     res_id: created[0],
                     views: [[false, "form"]],
@@ -128,17 +129,17 @@ const expenseScanUpload = () => ({
         } finally {
             closeNotification();
             this.expenseScanInFlight--;
-            // Maintenu pour le reste d'Odoo, sans passer sous zéro.
+            // Kept up to date for the rest of Odoo, without going below zero.
             this.uploadsProcessing = Math.max(0, this.uploadsProcessing - 1);
         }
     },
 
     /**
-     * Notifie le résultat de l'analyse, y compris un échec.
+     * Notify the result of the scan, including a failure.
      *
-     * Sans cette notification, un ticket illisible donne une fiche vide :
-     * l'erreur n'apparaît que dans le bandeau du formulaire, invisible si
-     * l'utilisateur reste sur la liste.
+     * Without this notification, an unreadable receipt gives an empty form:
+     * the error only shows in the form's banner, invisible if the user stays
+     * on the list.
      */
     async _expenseScanReport(expenseIds, { onlyErrors = false } = {}) {
         if (!expenseIds.length) {
@@ -152,13 +153,13 @@ const expenseScanUpload = () => ({
                 "scan_todo",
             ]);
         } catch {
-            return; // le compte rendu ne doit pas faire échouer l'envoi
+            return; // the report must not make the upload fail
         }
 
         const failed = records.filter((record) => record.scan_state === "error");
         if (failed.length) {
             this.notification.add(
-                _t("Le ticket n'a pas pu être analysé : %s", failed[0].scan_message || ""),
+                _t("The receipt could not be scanned: %s", failed[0].scan_message || ""),
                 { type: "danger", sticky: true }
             );
             return;
@@ -168,15 +169,15 @@ const expenseScanUpload = () => ({
         }
         const toCheck = records.map((record) => record.scan_todo).filter(Boolean);
         if (toCheck.length) {
-            this.notification.add(_t("Ticket analysé. À vérifier : %s", toCheck.join(" · ")), {
+            this.notification.add(_t("Receipt scanned. To check: %s", toCheck.join(" · ")), {
                 type: "warning",
             });
         } else {
-            this.notification.add(_t("Ticket analysé."), { type: "success" });
+            this.notification.add(_t("Receipt scanned."), { type: "success" });
         }
     },
 
-    /** Plusieurs tickets à la fois : garde la liste, comme Odoo. */
+    /** Several receipts at once: stay on the list, as Odoo does. */
     async _expenseScanOpenList() {
         const actionName = _t("Generate Expenses");
         const currentAction = this.actionService.currentController.action;

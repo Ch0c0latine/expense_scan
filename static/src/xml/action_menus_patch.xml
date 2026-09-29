@@ -3,7 +3,7 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <templates xml:space="preserve">
 
-    <!-- Bouton « Fiche de frais » au lieu de « Imprimer » sur dépenses. -->
+    <!-- "Expense Sheet" button instead of "Print" on expenses. -->
     <t t-name="expense_scan.ActionMenus" t-inherit="web.ActionMenus" t-inherit-mode="extension">
         <xpath expr="//div[hasclass('o_cp_action_menus')]/div[1]" position="attributes">
             <attribute name="t-if">props.items.print?.length and !expenseSheetAction</attribute>
@@ -12,9 +12,9 @@
             <div t-if="expenseSheetAction" class="d-inline-block">
                 <button class="btn btn-secondary o_expense_scan_sheet_button"
                         data-hotkey="shift+u" t-on-click="onExpenseSheet"
-                        title="Fiche de frais : récapitulatif, export Excel, justificatifs">
+                        title="Expense sheet: summary, Excel export, receipts">
                     <i class="fa fa-file-text-o me-1"/>
-                    <span class="o_dropdown_title">Fiche de frais</span>
+                    <span class="o_dropdown_title">Expense Sheet</span>
                 </button>
             </div>
         </xpath>
