@@ -12,6 +12,7 @@ from datetime import date
 from odoo.tests import common, tagged
 
 from ..ocr.types import ExtractedField, ScanResult
+from .test_sheet import png
 
 
 def reading(**values):
@@ -99,6 +100,28 @@ class TestExpenseScanPieces(common.TransactionCase):
         alone = reading(total=6.80)
         self.assertEqual(
             self.Expense._expense_scan_merge_pieces([alone]).value('total'), 6.80)
+
+    def test_merge_can_keep_the_main_reading(self):
+        """Dépense déjà analysée : son justificatif reste la base."""
+        main = reading(total=33.15, time="20:42")
+        added = reading(total=33.10, date=date(2026, 9, 7), merchant="Les 3 Brasseurs")
+        merged = self.Expense._expense_scan_merge_pieces([main, added], main_first=True)
+        self.assertEqual(merged.value('total'), 33.15)
+        self.assertEqual(merged.value('merchant'), "Les 3 Brasseurs")
+
+    def test_the_main_receipt_is_read_first(self):
+        """Un justificatif joint après coup ne prend pas la place du principal."""
+        expense = self.Expense.create({
+            'name': "Deux justificatifs",
+            'employee_id': self.env['hr.employee'].create({'name': "Nina"}).id})
+        Attachment = self.env['ir.attachment']
+        first, added = [Attachment.create({
+            'name': name, 'raw': png(), 'mimetype': 'image/png',
+            'res_model': 'hr.expense', 'res_id': expense.id,
+        }) for name in ("premier.png", "second.png")]
+        expense._message_set_main_attachment_id(first, force=True)
+        self.assertEqual(expense._expense_scan_image_attachments(), first | added)
+        self.assertEqual(expense._expense_scan_image_attachments()[0], first)
 
     # -- Regroupement -----------------------------------------------------
 

@@ -130,10 +130,19 @@ class HrExpense(models.Model):
     # ------------------------------------------------------------------
 
     def _expense_scan_image_attachments(self):
-        """Les pièces jointes lisibles, dans l'ordre où elles sont arrivées."""
+        """Les pièces jointes lisibles : le justificatif principal, puis les
+        autres dans l'ordre où elles sont arrivées.
+
+        Le premier groupe de morceaux reste sur la dépense : il doit
+        contenir le justificatif principal. ``attachment_ids`` range les
+        pièces de la plus récente à la plus ancienne ; un second
+        justificatif joint après coup prenait sa place.
+        """
         self.ensure_one()
-        return self.attachment_ids.filtered(
+        main = self.message_main_attachment_id
+        attachments = self.attachment_ids.filtered(
             lambda attachment: self._expense_scan_readable(attachment))
+        return attachments.sorted(lambda attachment: (attachment != main, attachment.id))
 
     def _expense_scan_run_pieces(self, force=False, from_original=True):
         """Lit chaque justificatif, puis regroupe ceux qui n'en font qu'un.
@@ -171,7 +180,11 @@ class HrExpense(models.Model):
 
         groups = self._expense_scan_group_pieces(pieces)
         first, others = groups[0], groups[1:]
-        self._expense_scan_apply_group(first)
+        # Dépense déjà analysée : la lecture de son justificatif principal
+        # a été relue par le salarié. Un justificatif ajouté ensuite la
+        # complète sans la contredire.
+        self._expense_scan_apply_group(
+            first, main_first=self.scan_state in ('done', 'partial'))
         for group in others:
             self._expense_scan_split_off(group)
         return None
@@ -211,15 +224,15 @@ class HrExpense(models.Model):
             return False
         return True
 
-    def _expense_scan_merge_pieces(self, results):
+    def _expense_scan_merge_pieces(self, results, main_first=False):
         """Retient la lecture la plus complète, complétée par les autres.
 
         Les morceaux d'un même reçu se complètent : la bande de carte donne
         l'heure et le moyen de paiement, le ticket de caisse l'enseigne et
-        la TVA. La plus riche est retenue ; les autres ne comblent que ses
-        champs vides, sans la contredire.
+        la TVA. La plus riche est retenue, ou la première si ``main_first`` ;
+        les autres ne comblent que ses champs vides, sans la contredire.
         """
-        best = max(results, key=self._expense_scan_completeness)
+        best = results[0] if main_first else max(results, key=self._expense_scan_completeness)
         for other in results:
             if other is best:
                 continue
@@ -239,11 +252,12 @@ class HrExpense(models.Model):
         return sum(field.confidence for field in result.fields.values()
                    if field.value is not None)
 
-    def _expense_scan_apply_group(self, group):
+    def _expense_scan_apply_group(self, group, main_first=False):
         """Reporte un groupe de morceaux sur cette dépense."""
         self.ensure_one()
         attachment, _first = group[0]
-        merged = self._expense_scan_merge_pieces([result for _piece, result in group])
+        merged = self._expense_scan_merge_pieces(
+            [result for _piece, result in group], main_first=main_first)
         try:
             with self.env.cr.savepoint():
                 self._expense_scan_apply(merged, attachment)
