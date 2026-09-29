@@ -5,6 +5,13 @@
 - **TVA non lue sur les tickets « TVA % Taxe HTVA TVAC »** (colonnes hors
   TVA et TVA comprise, libellés belges repris par certains logiciels de
   caisse) : l'en-tête du tableau de TVA n'était pas reconnu. Corrigé.
+- **Description « Meals du 23/09/2026 » recopiée d'une dépense à l'autre** :
+  une analyse lancée sans langue (tâche planifiée) écrivait la description
+  automatique en anglais ; non reconnue comme automatique, elle passait
+  pour la raison d'un déplacement et gagnait les dépenses du même jour
+  (jusqu'à un hôtel). La description est désormais écrite dans la langue
+  du salarié et reconnue dans toutes les langues installées ; une nouvelle
+  analyse remplace celles déjà recopiées.
 
 ## 19.0.2.7.0 — Retouche du justificatif
 
