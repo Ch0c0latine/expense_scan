@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Constitue un corpus de tickets par pays depuis Open Prices (Open Food Facts).
+"""Build a corpus of receipts per country from Open Prices (Open Food Facts).
 
-Les photos de tickets d'Open Prices sont publiées sous licence CC-BY-SA 4.0,
-les données sous ODbL. Chaque ticket porte le pays du magasin, la date
-d'achat et parfois le total saisi par le contributeur : ils servent de
-réponse attendue pour mesurer la lecture, pays par pays.
+The receipt photos of Open Prices are published under the CC-BY-SA 4.0
+licence, the data under ODbL. Each receipt carries the shop's country, the
+purchase date and sometimes the total entered by the contributor: they serve
+as the expected answer to measure the reading, country by country.
 
-Les photos restent en local : elles peuvent montrer des noms ou des
-numéros de carte. Ne jamais les verser dans le dépôt.
+The photos stay local: they may show names or card numbers. Never add them to
+the repository.
 
-Usage :
+Usage:
 
-    python3 tools/fetch_openprices.py DOSSIER --per-country 80 --countries FR DE BE
+    python3 tools/fetch_openprices.py FOLDER --per-country 80 --countries FR DE BE
 
-Produit ``DOSSIER/<pays>/<id>.<ext>`` et ``DOSSIER/truth.jsonl`` (une ligne
-par ticket : identifiant, pays, date, total, devise, image, contributeur).
-Un fichier déjà présent n'est pas retéléchargé.
+Produces ``FOLDER/<country>/<id>.<ext>`` and ``FOLDER/truth.jsonl`` (one line
+per receipt: id, country, date, total, currency, image, contributor). A file
+already there is not downloaded again.
 """
 import argparse
 import collections
@@ -38,7 +38,7 @@ def get(url, method="GET"):
 
 
 def proofs():
-    """Tous les tickets d'Open Prices, page par page."""
+    """All the receipts of Open Prices, page by page."""
     page = 1
     while True:
         with get(API % page) as response:
@@ -76,8 +76,8 @@ def main():
     size = 0
     with open(truth_path, "a", encoding="utf-8") as truth:
         for country in sorted(wanted):
-            # Les tickets dont le total est connu d'abord : ils mesurent
-            # aussi la lecture du montant.
+            # Receipts with a known total first: they also measure the
+            # reading of the amount.
             ranked = sorted(candidates[country],
                             key=lambda p: (p.get("receipt_price_total") is None, -p["id"]))
             folder = os.path.join(args.folder, country)
@@ -99,7 +99,7 @@ def main():
                     with get(url) as response, open(target, "wb") as output:
                         output.write(response.read())
                 except OSError as error:
-                    print("%s %s : %s" % (country, proof["id"], error), file=sys.stderr)
+                    print("%s %s: %s" % (country, proof["id"], error), file=sys.stderr)
                     continue
                 size += length
                 kept[country] += 1
@@ -116,8 +116,8 @@ def main():
                 }, ensure_ascii=False) + "\n")
                 truth.flush()
                 time.sleep(0.1)
-            print("%s : %d tickets" % (country, kept[country]), flush=True)
-    print("téléchargé : %.0f Mo" % (size / 1024 / 1024))
+            print("%s: %d receipts" % (country, kept[country]), flush=True)
+    print("downloaded: %.0f MB" % (size / 1024 / 1024))
 
 
 if __name__ == "__main__":

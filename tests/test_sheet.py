@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Fiches de frais : numérotation, contrôles, Excel et justificatifs."""
+"""Expense sheets: numbering, checks, Excel and receipts."""
 import base64
 import io
 from datetime import date
@@ -34,6 +34,9 @@ class TestExpenseSheet(common.TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # The sheet texts are checked in English, whatever the database language.
+        cls.env['res.lang']._activate_lang('en_US')
+        cls.env = cls.env(context=dict(cls.env.context, lang='en_US'))
         cls.Sheet = cls.env['expense.scan.sheet']
         cls.employee = cls.env['hr.employee'].create({'name': "Léon Fiche"})
         Product = cls.env['product.product']
@@ -64,7 +67,7 @@ class TestExpenseSheet(common.TransactionCase):
         flat = self.expense("Forfait", 10, product=self.flat, quantity=2)
         lines = self.Sheet._lines(late | early | flat)
         self.assertEqual([line['description'] for line in lines], ["Tôt", "Forfait", "Tard"])
-        self.assertEqual(lines[0]['n'], "1.1 à 1.2")
+        self.assertEqual(lines[0]['n'], "1.1 to 1.2")
         self.assertEqual([label for label, _a in lines[0]['receipts']], ["1.1", "1.2"])
         self.assertTrue(lines[1]['flat_rate'])
         self.assertFalse(lines[1]['receipts'])
@@ -88,14 +91,14 @@ class TestExpenseSheet(common.TransactionCase):
         b.scan_tax_amount = 2.0
         c = self.expense("Mêlés", 3, total=12.0, tax_ids=[(6, 0, tax_20.ids)])
         c.write({'scan_tax_amount': 1.4,
-                 'scan_detected_tax': "plusieurs taux, jusqu'à 20.0 % — 1.40"})
+                 'scan_detected_tax': "several rates, up to 20.0 % — 1.40"})
         d = self.expense("Sans", 4, total=5.0, tax_ids=[(5, 0, 0)])
         rows = {row['rate']: row for row in self.Sheet._vat_summary(
             self.Sheet._lines(a | b | c | d))}
         self.assertEqual(rows[0.1]['total_tva'], 3.0)
         self.assertEqual(rows[0.1]['count'], 2)
         self.assertAlmostEqual(rows[0.2]['total_tva'], 1.4)
-        self.assertIn("mêlés", rows[0.2]['label'])
+        self.assertIn("mixed", rows[0.2]['label'])
         self.assertEqual(rows[0.0]['total_ttc'], 5.0)
 
     def test_reinvoice_only_template_refuses_other_expenses(self):
@@ -111,21 +114,21 @@ class TestExpenseSheet(common.TransactionCase):
         try:
             import openpyxl
         except ImportError:
-            self.skipTest("openpyxl absent")
+            self.skipTest("openpyxl missing")
         book = openpyxl.Workbook()
         sheet = book.active
         sheet['A1'] = "SUIVI"
-        sheet['C4'] = "ancienne prestation"
+        sheet['C4'] = "previous service"
         for row in range(8, 11):
             sheet['A%s' % row] = row - 7
             sheet['E%s' % row] = None
             sheet['L%s' % row] = "=IF(OR($E%s=\"\",$E%s=0),0,$E%s*K%s)" % (row, row, row, row)
-        sheet['L8'] = 99  # une ancienne donnée saisie à la main
-        sheet.row_dimensions[10].hidden = True  # comme dans le modèle réel
+        sheet['L8'] = 99  # old data entered by hand
+        sheet.row_dimensions[10].hidden = True  # as in the real template
         sheet.row_dimensions[11].height = 24.75
         sheet['A11'] = "TOTAL"
         sheet['L11'] = "=SUM(L8:L10)"
-        sheet['K2'] = "=L11*2"  # un total repris ailleurs dans la feuille
+        sheet['K2'] = "=L11*2"  # a total used elsewhere in the sheet
         output = io.BytesIO()
         book.save(output)
         template = self.env['expense.scan.export.template'].create({
@@ -144,7 +147,7 @@ class TestExpenseSheet(common.TransactionCase):
         openpyxl, template = self.workbook()
         expense = self.expense("Seul", 5, total=12.5, reinvoice_mode='project',
                                project_id=self.project.id)
-        # La mission n'est citée que si un filtre par mission est appliqué.
+        # The project is only cited if a project filter is applied.
         content = self.Sheet.with_context(
             expense_scan_sheet_project_ids=self.project.ids)._excel(template, expense)
         sheet = openpyxl.load_workbook(io.BytesIO(content)).active
@@ -154,8 +157,8 @@ class TestExpenseSheet(common.TransactionCase):
         self.assertEqual(sheet['C4'].value, "Mission fiche")
         unfiltered = openpyxl.load_workbook(io.BytesIO(
             self.Sheet._excel(template, expense))).active
-        self.assertEqual(unfiltered['C4'].value, "Édition des frais sélectionnés")
-        # Les lignes vides ont disparu : le total suit immédiatement.
+        self.assertEqual(unfiltered['C4'].value, "Selected expenses")
+        # The empty rows are gone: the total follows at once.
         self.assertEqual(sheet['A9'].value, "TOTAL")
         self.assertEqual(sheet['L9'].value, "=SUM(L8:L8)")
         self.assertEqual(sheet['K2'].value, "=L9*2")
@@ -165,14 +168,14 @@ class TestExpenseSheet(common.TransactionCase):
         try:
             import openpyxl
         except ImportError:
-            self.skipTest("openpyxl absent")
+            self.skipTest("openpyxl missing")
         template = self.env.ref('expense_scan.export_template_basic')
         template.action_expense_scan_generate_file()
         self.assertTrue(template.filename.endswith(".xlsx"))
         blank = openpyxl.load_workbook(io.BytesIO(base64.b64decode(template.file))).active
-        self.assertEqual(blank['K7'].value, "Sous-total TTC")
+        self.assertEqual(blank['K7'].value, "Subtotal incl. tax")
         self.assertEqual(blank['K10'].value, "=SUM(K8:K9)")
-        self.assertEqual(blank['A3'].value, "Salarié")
+        self.assertEqual(blank['A3'].value, "Employee")
 
         expenses = self.expense("Un", 1, total=10.0) | self.expense("Deux", 2, total=5.0) \
             | self.expense("Trois", 3, total=2.5)
@@ -192,7 +195,7 @@ class TestExpenseSheet(common.TransactionCase):
         self.assertEqual(sheet['A13'].value, "TOTAL")
         self.assertEqual(sheet['L13'].value, "=SUM(L8:L12)")
         self.assertEqual(sheet['K2'].value, "=L13*2")
-        # Lignes ajoutées visibles, hauteur du total conservée.
+        # Added rows visible, height of the total row kept.
         self.assertFalse(any(sheet.row_dimensions[row].hidden for row in range(8, 13)))
         self.assertEqual(sheet.row_dimensions[13].height, 24.75)
 
@@ -231,7 +234,7 @@ class TestExpenseSheet(common.TransactionCase):
         self.assertTrue(wizard.result_name.endswith(".zip"))
 
     def test_wizard_counts_while_editing(self):
-        """Choisir une mission dans la fenêtre compte ses dépenses tout de suite."""
+        """Choosing a project in the dialog counts its expenses at once."""
         from odoo.tests import Form
         on_mission = self.expense("Mission", 1, reinvoice_mode="project",
                                   project_id=self.project.id)
@@ -255,7 +258,7 @@ class TestExpenseSheet(common.TransactionCase):
                          (date(2025, 12, 1), date(2025, 12, 31)))
 
     def test_wizard_opened_from_the_menu_picks_the_period(self):
-        """« Fiches de frais > Autre période » : les dépenses des dates choisies."""
+        """'Expense sheets > Other period': the expenses of the chosen dates."""
         other = self.env['hr.employee'].create({'name': "Jules Période"})
         inside = self.expense("Dedans", 10)
         self.expense("Dehors", 25)
@@ -271,11 +274,11 @@ class TestExpenseSheet(common.TransactionCase):
         self.assertEqual(wizard.selected_count, 1)
 
     def test_reset_buttons_are_renamed(self):
-        """Les deux boutons « Réinitialiser » d'Odoo (comptable ou non) sont renommés."""
+        """Both "Reset" buttons of Odoo (accountant or not) are renamed."""
         arch = self.env.ref('hr_expense.hr_expense_view_form').sudo()._get_combined_arch()
         buttons = arch.xpath("//header/button[@name='action_reset']")
         self.assertEqual(len(buttons), 2)
-        self.assertEqual({button.get('string') for button in buttons}, {"Retour brouillon"})
+        self.assertEqual({button.get('string') for button in buttons}, {"Back to draft"})
 
     def test_same_day_expenses_follow_the_ticket_time(self):
         from datetime import datetime
@@ -295,12 +298,12 @@ class TestExpenseSheet(common.TransactionCase):
         self.assertNotIn("sale_order_id", values)
 
     def test_mission_change_moves_the_automatic_analytic(self):
-        """L'imputation automatique suit la mission ; une répartition manuelle est conservée."""
+        """The automatic analytic follows the project; a manual distribution is kept."""
         first = self.env["project.project"].create({"name": "Mission A analytique"})
         second = self.env["project.project"].create({"name": "Mission B analytique"})
         expense = self.expense("Imputée", 3, reinvoice_mode="none", project_id=first.id)
         if "account_id" not in first._fields or not first.account_id:
-            self.skipTest("pas de plan analytique pour les missions")
+            self.skipTest("no analytic plan for projects")
         self.assertEqual(expense.analytic_distribution, {str(first.account_id.id): 100.0})
 
         expense.project_id = second

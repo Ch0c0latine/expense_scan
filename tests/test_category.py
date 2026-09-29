@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Catégorie reconnue, enseignes apprises, tickets venus d'ailleurs.
+"""Recognised category, learned merchants, receipts from abroad.
 
-Les tests s'exécutent sur une base qui contient déjà des catégories et un
-historique : les mots et les enseignes utilisés ici sont inventés, pour
-éviter toute collision avec des données réelles.
+The tests run on a database that already holds categories and a history:
+the words and merchants used here are made up, to avoid any clash with real
+data.
 """
 from odoo.tests import common, tagged
 
@@ -47,7 +47,7 @@ class TestLexicon(common.TransactionCase):
         self.assertEqual(lexicon.pick_category(lexicon.score_categories(lines, categories)), 'fuel')
 
     def test_one_body_word_is_not_enough(self):
-        """Un seul mot (« dessert ») en bas de ticket ne désigne pas un restaurant."""
+        """A single word ("dessert") at the bottom of a receipt does not make a restaurant."""
         categories = {'meal': ["dessert"], 'fuel': ["gazole"]}
         lines = ["SUPERMARCHE"] + ["ARTICLE"] * 10 + ["DESSERT 2,00"]
         self.assertIsNone(lexicon.pick_category(lexicon.score_categories(lines, categories)))
@@ -176,7 +176,7 @@ class TestCategoryRecognition(common.TransactionCase):
         }, **values))
 
     def fresh(self):
-        """Une dépense tout juste déposée : Odoo lui donne un nom provisoire."""
+        """An expense just uploaded: Odoo gives it a provisional name."""
         expense = self.expense()
         expense.name = expense._get_untitled_expense_name("10/09/2026")
         return expense
@@ -189,14 +189,14 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertEqual(values['expense_scan_guessed_product_id'], self.lodging.id)
 
     def test_flat_rate_categories_are_never_guessed(self):
-        """Le forfait déclare les mêmes mots, mais un ticket n'y mène pas."""
+        """The flat rate declares the same words, but a receipt does not lead to it."""
         expense = self.expense()
         values = expense._expense_scan_category_values(
             reading("ZORBLAX INN\nQUIMBO 2\nTOTAL 90,00"), self.company)
         self.assertNotEqual(values.get('product_id'), self.flat.id)
 
     def test_category_without_vat_is_guessed_and_its_vat_dropped(self):
-        """Le train n'a pas de TVA récupérable mais a un ticket."""
+        """The train has no recoverable VAT but has a receipt."""
         expense = self.expense()
         receipt = reading("GLUMPTRAIN\nTVA 10 % 2,00\nTOTAL 22,00 EUR")
         values = expense._expense_scan_field_values(receipt, self.company)
@@ -204,16 +204,15 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertEqual(values['scan_tax_amount'], 0.0)
 
     def test_several_rates_apply_the_highest(self):
-        """Deux taux sur le même ticket : le plus élevé est posé sur la dépense.
+        """Two rates on the same receipt: the highest is set on the expense.
 
-        Aucun des deux taux ne vaut pour toute la dépense, mais une taxe est
-        nécessaire : le plus élevé est retenu plutôt que la taxe de la
-        catégorie (ici 5,5 %, qui laisserait passer trop peu de TVA).
+        Neither rate holds for the whole expense, but a tax is needed: the
+        highest is kept rather than the category's tax (5.5% here, which
+        would let too little VAT through).
 
-        Le module s'abstient s'il existe plusieurs taxes pour un même taux
-        (une correspondance ambiguë passerait inaperçue à la relecture) :
-        toute autre taxe d'achat à ces deux taux, pour cette société, est
-        désactivée le temps du test.
+        The module holds back if several taxes exist for the same rate (an
+        ambiguous match would go unnoticed at review): any other purchase tax
+        at these two rates, for this company, is archived for the test.
         """
         Tax = self.env['account.tax']
         Tax.search([
@@ -251,7 +250,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertNotIn('product_id', values)
 
     def test_history_recognises_a_misread_logo(self):
-        """Un « Rchan » corrigé une fois en « Auchan » est ensuite reconnu."""
+        """A "Rchan" corrected once into "Auchan" is recognised afterwards."""
         past = self.expense(product_id=self.food.id, total_amount_currency=14.0)
         past.write({
             'expense_scan_merchant': "Auchanzz",
@@ -281,7 +280,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertTrue(expense._expense_scan_name_is_automatic())
 
     def test_description_names_the_recognised_category(self):
-        """« Péage du … » tant que personne n'a écrit de description."""
+        """A "Toll on ..." name as long as nobody wrote a description."""
         from datetime import date
         expense = self.expense()
         name = expense._expense_scan_auto_name(self.food, date(2026, 9, 12))
@@ -292,7 +291,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertTrue(expense._expense_scan_name_is_automatic())
         expense.name = "%s chez Bidule" % self.food.name
         self.assertFalse(expense._expense_scan_name_is_automatic())
-        expense.name = "Zorglub du 12/09/2026"
+        expense.name = expense._expense_scan_date_name("Zorglub", "12/09/2026")
         self.assertFalse(expense._expense_scan_name_is_automatic())
 
     def test_foreign_tax_is_not_deducted(self):
@@ -320,7 +319,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertEqual(values['name'], "Déplacement commercial Exemple")
 
     def test_return_toll_keeps_the_trip_reason(self):
-        """Aller le 8, retour le 10 : les mêmes gares, dans l'autre sens."""
+        """Outward on the 8th, return on the 10th: the same stations, the other way."""
         from datetime import date
         self.expense(name="Mission Exemple", date=date(2026, 9, 8),
                      scan_raw_text="ASF\nSortie ..Villeun\nEntree.. Villedeux\nPRIX TTC 6,80")
@@ -338,7 +337,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertNotEqual(values['name'], "Autre mission")
 
     def test_a_city_cited_elsewhere_links_the_trip(self):
-        """Le billet « Villeun à Villedeux », puis l'hôtel de Villedeux."""
+        """The ticket "Villeun à Villedeux", then the hotel in Villedeux."""
         from datetime import date
         self.expense(name="Audit Exemple", date=date(2026, 9, 8),
                      scan_raw_text="Villeun à Villedeux\nDépart 08:10\nTOTAL 35,00")
@@ -356,7 +355,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertEqual(values['name'], "Chantier Exemple")
 
     def test_company_address_links_nothing(self):
-        """Le pied de facture (« … 99999 Exempleville ») est l'adresse de la société acheteuse."""
+        """The invoice footer ("... 99999 Exempleville") is the address of the buying company."""
         from datetime import date
         self.company.write({'zip': "99999", 'city': "Exempleville"})
         self.expense(name="Formation Exemple", date=date(2026, 9, 9),
@@ -402,7 +401,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertEqual(train.expense_scan_keywords, "Gare\nbillet\nmon mot")
 
     def test_a_brand_outweighs_a_stray_word(self):
-        """Marque (KFC) en tête et mot d'hôtel isolé plus bas : la catégorie est un repas."""
+        """Brand (KFC) at the top and a stray hotel word lower down: the category is a meal."""
         meal = self.env['product.product'].create({
             'name': "Restaurant test marque", 'can_be_expensed': True, 'sequence': -999,
             'expense_scan_keywords': "zzrepas"})
@@ -420,7 +419,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertEqual(values.get('product_id'), meal.id)
 
     def test_history_is_kept_per_company(self):
-        """L'historique d'une société n'influence pas le classement d'une autre."""
+        """The history of one company does not affect the classification of another."""
         past = self.expense(product_id=self.food.id, total_amount_currency=14.0)
         past.write({
             'expense_scan_merchant': "Autresocietezz",
@@ -438,7 +437,7 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertNotIn('product_id', values)
 
     def test_the_pure_scoring_matches_the_model(self):
-        """Le banc et le module partagent le même calcul de catégorie."""
+        """The benchmark and the module share the same category computation."""
         from ..ocr import categorize
         scores, reasons, brand = categorize.score(
             ["ZORBLAX INN", "QUIMBO 2"], {'A': ["zorblax", "quimbo"]}, {}, activity=None)
@@ -474,8 +473,8 @@ Montant 350,28 €
 
     def test_toll_receipt_without_the_word_toll(self):
         keywords = lexicon.split_keywords("\n".join(lexicon.DEFAULT_KEYWORDS['toll_parking']))
-        # Texte lu sur un reçu réel : « Classe-tarif » en neuvième ligne,
-        # hors de l'en-tête.
+        # Text read on a real receipt: "Classe-tarif" on the ninth line,
+        # outside the header.
         lines = ["ASFLieu-dit Les Pins BP 10017", "99901 VILLEBOURG Cedex 9", "Te1:3605",
                  "RECU", "N°R1700000000000000000", "Date.. .20/06/26",
                  "Sortie...VILLEBOURG SUD ES", "Entree... .BOURGNEUF",
@@ -508,7 +507,7 @@ class TestCategoryIcons(common.TransactionCase):
 
 
 def bare_png():
-    """PNG minimal (1 px) servant d'image déjà présente."""
+    """Minimal PNG (1 px) used as an image already in place."""
     import base64
     return base64.b64encode(
         b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89'

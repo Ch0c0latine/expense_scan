@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Codes d'activité, SIRET, base Sirene et marques connues.
+"""Activity codes, SIRET, Sirene database and known brands.
 
-SIRET d'essai : 123 456 782 00010, dont la clé de Luhn est juste.
+Test SIRET: 123 456 782 00010, whose Luhn check digit is right.
 """
 import csv
 import io

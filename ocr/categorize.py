@@ -1,48 +1,48 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Indices de catégorie fournis par un ticket, sans dépendance à Odoo.
+"""Category clues given by a receipt, without depending on Odoo.
 
-Le modèle ajoute à ces indices l'historique des enseignes, qui vit en base.
-Tout le reste (mots du ticket, code d'activité, prix à l'unité, marque) est
-calculé ici, pour que le banc d'évaluation (``tools/bench.py``) rejoue
-exactement le comportement du module.
+The model adds the merchant history, which lives in the database, to these
+clues. Everything else (receipt words, activity code, unit price, brand) is
+computed here, so that the benchmark (``tools/bench.py``) replays exactly
+the module's behaviour.
 
-Les catégories sont désignées par une clé quelconque : l'identifiant du
-produit dans Odoo, son code dans le banc.
+Categories are designated by any key: the product id in Odoo, its code in
+the benchmark.
 """
 from . import lexicon
 
-#: Poids d'un code d'activité (APE, MCC, ou SIRET retrouvé dans Sirene) : 4.
-#: C'est assez pour l'emporter d'au moins 1,5 sur un mot isolé du ticket (deux
-#: points) : le code est décisif à lui seul, sauf si les mots du ticket
-#: indiquent nettement autre chose (le restaurant d'un hôtel reste un repas).
+#: Weight of an activity code (APE, MCC, or SIRET found in Sirene): 4.
+#: Enough to beat a single receipt word (two points) by at least 1.5: the
+#: code decides on its own, unless the receipt words clearly say something
+#: else (a hotel restaurant is still a meal).
 CODE_WEIGHT = 4.0
-#: Poids d'une marque connue en tête du ticket : 3, soit plus qu'un mot
-#: d'en-tête. À 2, un mot égaré (« route », « aéroport ») suffisait à laisser
-#: sans catégorie un KFC ou un Starbucks d'aérogare.
+#: Weight of a known brand at the top of the receipt: 3, more than a header
+#: word. At 2, a stray word ("route", "airport") was enough to leave a KFC or
+#: an airport Starbucks without a category.
 BRAND_WEIGHT = 3.0
-#: Poids d'un prix au litre ou au kWh : celui d'une marque. Une recharge
-#: payée à la borne d'un supermarché (« ALDI ») reste une recharge.
+#: Weight of a price per litre or per kWh: that of a brand. A charge paid at
+#: a supermarket charger ("ALDI") is still a charge.
 UNIT_WEIGHT = 3.0
 
-#: Natures d'indice, telles que les rend :func:`score`.
+#: Kinds of clue, as returned by :func:`score`.
 WORDS, ACTIVITY, SIRET, UNIT, BRAND = 'words', 'activity', 'siret', 'unit', 'brand'
 
 
 def score(lines, keyword_categories, family_keys, activity=None, naf_of=None):
-    """Score de chaque catégorie, et la raison de ce score.
+    """Score of each category, and the reason for that score.
 
-    ``lines`` : le texte du ticket, ligne à ligne. ``keyword_categories`` :
-    ``{clé: mots}`` des catégories que des mots désignent. ``family_keys`` :
-    ``{famille: clé}``, la catégorie de chaque famille de frais (hôtel,
-    repas, carburant…). ``activity`` : le code d'activité imprimé,
-    ``"APE:5610A"``. ``naf_of`` : appelée, s'il n'y a pas de code imprimé,
-    pour retrouver le code d'après le SIRET (une requête, donc paresseuse).
+    ``lines``: the receipt text, line by line. ``keyword_categories``:
+    ``{key: words}`` of the categories that words designate. ``family_keys``:
+    ``{family: key}``, the category of each expense family (hotel, meal,
+    fuel...). ``activity``: the printed activity code, ``"APE:5610A"``.
+    ``naf_of``: called, when no code is printed, to find the code from the
+    SIRET (a query, hence lazy).
 
-    Renvoie ``(scores, raisons, marque)`` : ``raisons`` associe à chaque
-    clé ses ``(poids, (nature, détail))``, et ``marque`` est la marque
-    reconnue en tête du ticket, ou ``None``.
+    Returns ``(scores, reasons, brand)``: ``reasons`` maps each key to its
+    ``(weight, (kind, detail))``, and ``brand`` is the brand recognised at the
+    top of the receipt, or ``None``.
     """
     scores = lexicon.score_categories(lines, keyword_categories)
     reasons = {key: [(value, (WORDS, None))] for key, value in scores.items()}

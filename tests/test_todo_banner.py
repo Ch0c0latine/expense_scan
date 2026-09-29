@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Le bandeau de relecture disparaît au fur et à mesure des corrections, sans nouveau scan."""
+"""The review banner goes away as the corrections are made, without a new scan."""
 from odoo.tests import common, tagged
 
 
@@ -22,9 +22,9 @@ class TestTodoBanner(common.TransactionCase):
         }, **values))
 
     def test_reinvoice_flag_clears_once_decided(self):
-        """« À refacturer » signalé au scan : disparaît une fois la décision prise."""
+        """'Re-invoice' flagged by the scan: goes away once the decision is made."""
         expense = self.expense(
-            scan_state='partial', scan_todo="À refacturer",
+            scan_state='partial', scan_todo="Re-invoice",
             expense_scan_todo_codes='reinvoice', reinvoice_mode='todo')
         self.assertTrue(expense.expense_scan_todo_pending)
         expense.reinvoice_mode = 'none'
@@ -32,7 +32,7 @@ class TestTodoBanner(common.TransactionCase):
 
     def test_tax_flag_clears_once_amount_entered(self):
         expense = self.expense(
-            scan_state='partial', scan_todo="TVA (aucune sur le justificatif)",
+            scan_state='partial', scan_todo="Tax (none on the receipt)",
             expense_scan_todo_codes='tax_amount')
         self.assertTrue(expense.expense_scan_todo_pending)
         expense.scan_tax_amount = 1.5
@@ -44,23 +44,23 @@ class TestTodoBanner(common.TransactionCase):
             ('amount_type', '=', 'percent')], limit=1) or self.env['account.tax'].create({
                 'name': "Achat bandeau", 'amount': 20.0,
                 'amount_type': 'percent', 'type_tax_use': 'purchase'})
-        # Catégorie sans taxe par défaut : cas signalé par le code
-        # « tax_category ».
+        # Category without a default tax: the case flagged by the code
+        # "tax_category".
         bare = self.env['product.product'].create({
             'name': "Sans taxe bandeau", 'can_be_expensed': True,
             'supplier_taxes_id': [(5, 0, 0)]})
         expense = self.expense(
             product_id=bare.id, tax_ids=[(5, 0, 0)],
-            scan_state='partial', scan_todo="Taxe (aucune sur la catégorie)",
+            scan_state='partial', scan_todo="Tax (none on the category)",
             expense_scan_todo_codes='tax_category')
         self.assertTrue(expense.expense_scan_todo_pending)
         expense.tax_ids = [(6, 0, tax.ids)]
         self.assertFalse(expense.expense_scan_todo_pending)
 
     def test_static_points_never_clear_on_their_own(self):
-        """Date, catégorie, devise : le signalement ne disparaît pas de lui-même."""
+        """Date, category, currency: the flag does not go away on its own."""
         expense = self.expense(
-            scan_state='partial', scan_todo="Catégorie",
+            scan_state='partial', scan_todo="Category",
             expense_scan_todo_codes='static')
         self.assertTrue(expense.expense_scan_todo_pending)
         expense.product_id = self.env['product.product'].create(
@@ -68,12 +68,12 @@ class TestTodoBanner(common.TransactionCase):
         self.assertTrue(expense.expense_scan_todo_pending)
 
     def test_several_points_all_need_resolving(self):
-        """Le bandeau reste affiché tant qu'un point reste ouvert."""
+        """The banner stays as long as one point is still open."""
         expense = self.expense(
-            scan_state='partial', scan_todo="À refacturer, Catégorie",
+            scan_state='partial', scan_todo="Re-invoice, Category",
             expense_scan_todo_codes='reinvoice,static', reinvoice_mode='todo')
         expense.reinvoice_mode = 'none'
-        self.assertTrue(expense.expense_scan_todo_pending)  # « static » reste
+        self.assertTrue(expense.expense_scan_todo_pending)  # "static" remains
 
     def test_no_codes_means_nothing_pending(self):
         expense = self.expense(scan_state='done')
@@ -82,7 +82,7 @@ class TestTodoBanner(common.TransactionCase):
 
 @tagged('post_install', '-at_install')
 class TestFieldHints(common.TransactionCase):
-    """Chaque point à vérifier s'affiche sous son champ et s'efface à la correction."""
+    """Each point to check shows under its field and goes away once corrected."""
 
     @classmethod
     def setUpClass(cls):
@@ -107,22 +107,22 @@ class TestFieldHints(common.TransactionCase):
 
     def test_date_hint_clears_once_the_date_is_corrected(self):
         from datetime import date
-        expense = self.scanned('date', {'date': "Date peu lisible"})
-        self.assertEqual(expense.expense_scan_hint_date, "Date peu lisible")
+        expense = self.scanned('date', {'date': "Date hard to read"})
+        self.assertEqual(expense.expense_scan_hint_date, "Date hard to read")
         self.assertFalse(expense.expense_scan_hint_total)
         expense.date = date(2026, 9, 11)
         self.assertFalse(expense.expense_scan_hint_date)
         self.assertFalse(expense.expense_scan_todo_pending)
 
     def test_total_and_currency_share_the_amount_line(self):
-        expense = self.scanned('total,currency', {'total': "Montant ?", 'currency': "Devise ?"})
-        self.assertEqual(expense.expense_scan_hint_total, "Montant ? Devise ?")
+        expense = self.scanned('total,currency', {'total': "Amount?", 'currency': "Currency?"})
+        self.assertEqual(expense.expense_scan_hint_total, "Amount? Currency?")
         expense.total_amount_currency = 12.5
-        self.assertEqual(expense.expense_scan_hint_total, "Devise ?")
+        self.assertEqual(expense.expense_scan_hint_total, "Currency?")
 
     def test_category_hint_clears_once_another_is_chosen(self):
-        expense = self.scanned('category', {'category': "Catégorie ?"})
-        self.assertEqual(expense.expense_scan_hint_category, "Catégorie ?")
+        expense = self.scanned('category', {'category': "Category?"})
+        self.assertEqual(expense.expense_scan_hint_category, "Category?")
         expense.product_id = self.env['product.product'].create(
             {'name': "Autre indication", 'can_be_expensed': True})
         self.assertFalse(expense.expense_scan_hint_category)
@@ -135,7 +135,7 @@ class TestFieldHints(common.TransactionCase):
         self.assertFalse(expense.expense_scan_todo_pending)
 
     def test_old_analyses_keep_their_banner(self):
-        """Code « static » : point antérieur aux indications par champ, sans emplacement attitré."""
+        """Code "static": a point older than the per-field hints, with no field of its own."""
         expense = self.scanned('static', {})
         self.assertTrue(expense.expense_scan_todo_unplaced)
         placed = self.scanned('date', {'date': "D"})

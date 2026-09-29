@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Extraction des champs d'un ticket de caisse européen.
+"""Extraction of the fields of a European till receipt.
 
-Langues reconnues : français, anglais, allemand, italien, espagnol,
-polonais, néerlandais et portugais. Les libellés du total, de la TVA et des
-mois de chaque langue sont reconnus, ainsi que les taux de TVA de l'Union
-européenne et les principales devises européennes.
+Languages recognised: French, English, German, Italian, Spanish, Polish,
+Dutch and Portuguese. The labels of the total, of the VAT and the months of
+each language are recognised, as well as the VAT rates of the European Union
+and the main European currencies.
 
-Le parseur travaille sur des mots situés (avec leur position), ce qui permet
-de reconstruire les lignes puis de raisonner ligne par ligne : le montant
-utile est le plus souvent imprimé à droite d'un libellé.
+The parser works on positioned words, which lets it rebuild the lines and
+then reason line by line: the useful amount is most often printed to the
+right of a label.
 
-Aucune dépendance à Odoo : le fichier se teste avec un interpréteur Python
-seul.
+No dependency on Odoo: the file can be tested with a Python interpreter
+alone.
 """
 import re
 import unicodedata
@@ -23,38 +23,37 @@ from . import lexicon
 from .types import ExtractedField, OcrLine, ScanResult
 
 # ---------------------------------------------------------------------------
-# Montants
+# Amounts
 # ---------------------------------------------------------------------------
 
-# Un montant comporte toujours deux décimales sur un ticket. Le point et la
-# virgule sont acceptés, ainsi que les séparateurs de milliers usuels
-# (espace, espace insécable, point). Le lookahead final écarte « 20,00 % »,
-# qui est un taux.
-# Le lookbehind ne rejette qu'un chiffre ou une virgule, pas un point : de
-# nombreux tickets alignent leurs colonnes avec des points de conduite
-# (« PRIX TTC......6,80 »), et interdire le point précédent empêcherait de
-# reconnaître ces montants. Le cas « 1.234,56 » reste couvert : l'alternative
-# des milliers est tentée en premier et consomme le nombre entier.
-# Un montant n'est ni suivi ni précédé d'un autre séparateur accolé à un
-# chiffre : sans cette règle, « 20.08.2026 » et « 27.05.25 » donnaient les
-# montants 20,08, 27,05 ou 5,25 (dates pointées des tickets allemands,
-# croates, italiens, britanniques).
+# An amount always has two decimals on a receipt. The dot and the comma are
+# accepted, as well as the usual thousands separators (space, no-break space,
+# dot). The final lookahead rules out "20,00 %", which is a rate.
+# The lookbehind only rejects a digit or a comma, not a dot: many receipts
+# align their columns with leader dots ("PRIX TTC......6,80"), and forbidding
+# a preceding dot would miss these amounts. The "1.234,56" case is still
+# covered: the thousands alternative is tried first and takes the whole
+# number.
+# An amount is neither followed nor preceded by another separator next to a
+# digit: without this rule, "20.08.2026" and "27.05.25" gave the amounts
+# 20.08, 27.05 or 5.25 (dotted dates of German, Croatian, Italian and British
+# receipts).
 AMOUNT_RE = re.compile(
     r"(?<![\d,])(?<!\d[.,])(\d{1,3}(?:[  .]\d{3})+|\d+)[.,](\d{2})(?![\d])(?![.,]\d)(?!\s*%)"
 )
-# Un taux de TVA : « 20 % », « 5,50% », « TVA 10.0 »
+# A VAT rate: "20 %", "5,50%", "TVA 10.0"
 RATE_RE = re.compile(r"(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
-# L'heure peut suivre l'année sans espace : « 13/06/202616:30:16 ».
+# The time may follow the year without a space: "13/06/202616:30:16".
 TIME_RE = re.compile(r"(?:\b|(?<=[12]\d{3}))([01]?\d|2[0-3])\s*[:hH]\s*([0-5]\d)\b")
 VAT_NUMBER_RE = re.compile(r"\bFR\s?([0-9A-Z]{2})\s?(\d{3})\s?(\d{3})\s?(\d{3})\b")
 
-# Plafond de vraisemblance : au-delà, c'est un numéro (SIRET, carte, code)
-# lu comme un montant, pas le total d'un ticket de caisse.
+# Plausibility ceiling: beyond it, it is a number (SIRET, card, code) read as
+# an amount, not the total of a till receipt.
 MAX_PLAUSIBLE_AMOUNT = 100000.0
 
 
-#: Lettres qu'aucune décomposition Unicode ne ramène à l'alphabet latin :
-#: sans elles, « ZAPŁATY » deviendrait « ZAP ATY ».
+#: Letters that no Unicode decomposition brings back to the Latin alphabet:
+#: without them, "ZAPŁATY" would become "ZAP ATY".
 EXTRA_LETTERS = str.maketrans({
     "ł": "l", "Ł": "L", "ø": "o", "Ø": "O", "đ": "d", "Đ": "D",
     "ß": "ss", "æ": "ae", "Æ": "AE", "œ": "oe", "Œ": "OE",
@@ -62,28 +61,27 @@ EXTRA_LETTERS = str.maketrans({
 
 
 def strip_accents(text):
-    """Supprime les accents, que l'OCR reconnaît de façon peu fiable."""
+    """Remove the accents, which the OCR reads unreliably."""
     normalized = unicodedata.normalize("NFD", text.translate(EXTRA_LETTERS))
     return "".join(char for char in normalized if unicodedata.category(char) != "Mn")
 
 
 def normalize(text):
-    """Forme normalisée d'une ligne pour la recherche de mots-clés."""
+    """Normalised form of a line, for keyword searches."""
     text = strip_accents(text or "").upper()
-    # L'OCR confond O et 0 dans les libellés : seuls les séparateurs sont
-    # modifiés, afin de ne pas altérer les montants.
+    # The OCR mixes up O and 0 in labels: only the separators are changed, so
+    # as not to alter the amounts.
     text = re.sub(r"[^A-Z0-9%.,:/\- ]+", " ", text)
-    # « HT TUA TTC », « TUA à 5.50% » : l'OCR confond V et U sur les petites
-    # polices de caisse. « TUA » n'est pas un mot de ticket : il est corrigé
-    # en « TVA ».
+    # "HT TUA TTC", "TUA à 5.50%": the OCR mixes up V and U in small till
+    # fonts. "TUA" is not a receipt word: it is corrected to "TVA".
     text = re.sub(r"\bT\.?\s?U\.?\s?A\b", "TVA", text)
-    # « 10% Taxe 1,81 » : la taxe qui suit un taux est la TVA, à la différence
-    # de la taxe de séjour, qui n'en suit aucun.
+    # "10% Taxe 1,81": the tax that follows a rate is the VAT, unlike the
+    # tourist tax, which follows none.
     return re.sub(r"(%\s*)TAXE\b", r"\1TVA", text)
 
 
 def parse_amount(integer_part, decimal_part):
-    """Convertit les deux groupes d'un montant capturé en flottant."""
+    """Convert the two groups of a captured amount to a float."""
     cleaned = re.sub(r"[  .]", "", integer_part)
     try:
         return float("%s.%s" % (cleaned, decimal_part))
@@ -92,7 +90,7 @@ def parse_amount(integer_part, decimal_part):
 
 
 def find_amounts(text):
-    """Tous les montants d'une ligne, dans l'ordre d'apparition."""
+    """All the amounts of a line, in order of appearance."""
     amounts = []
     for match in AMOUNT_RE.finditer(text):
         value = parse_amount(match.group(1), match.group(2))
@@ -102,16 +100,16 @@ def find_amounts(text):
 
 
 # ---------------------------------------------------------------------------
-# Reconstruction des lignes
+# Rebuilding the lines
 # ---------------------------------------------------------------------------
 
 def build_lines(words, tolerance_ratio=0.6):
-    """Regroupe les mots en lignes par recouvrement vertical.
+    """Group the words into lines by vertical overlap.
 
-    Deux mots appartiennent à la même ligne si leurs centres verticaux sont
-    distants de moins de ``tolerance_ratio`` fois la hauteur du mot. Ce critère
-    relatif tolère les changements de taille de police, par exemple un nom de
-    magasin imprimé deux fois plus grand que le corps du texte.
+    Two words belong to the same line if their vertical centres are less than
+    ``tolerance_ratio`` times the word height apart. This relative criterion
+    tolerates font size changes, for instance a shop name printed twice as
+    large as the body text.
     """
     remaining = sorted((w for w in words if w.text.strip()), key=lambda w: (w.top, w.left))
     lines = []
@@ -136,25 +134,26 @@ def build_lines(words, tolerance_ratio=0.6):
 # Total
 # ---------------------------------------------------------------------------
 
-# Mots-clés du total, du plus au moins spécifique. La priorité départage les
-# tickets qui impriment plusieurs « totaux » (sous-total, total HT, total).
+# Keywords of the total, from the most to the least specific. The priority
+# decides between receipts that print several "totals" (subtotal, total
+# without tax, total).
 TOTAL_KEYWORDS = [
     (re.compile(r"\bNET\s*A\s*PAYER\b"), 0.95),
     (re.compile(r"\bDO\s*ZAPLATY\b"), 0.95),                        # pl
     (re.compile(r"\bTOT(?:AL)?\.?\s*T\.?\s*T\.?\s*C\b"), 0.93),
-    # « Montant final (TVA incluse) EUR 15,38 » : facture d'une borne de
-    # recharge, où le total suit des lignes d'énergie en kWh.
+    # "Montant final (TVA incluse) EUR 15,38": invoice of a charger, where the
+    # total follows lines of energy in kWh.
     (re.compile(r"\bMONTANT\s*FINAL\b|\bTVA\s*INCLUSE\b"), 0.91),
     (re.compile(r"\bTOTALE\s*(?:COMPLESSIVO|DOCUMENTO)\b"), 0.93),  # it
     (re.compile(r"\bZU\s*ZAHLEN\b"), 0.93),                         # de
     (re.compile(r"\bTOTAL\s*A\s*PAGAR\b"), 0.93),                   # es, pt
-    # « PRIX TTC » est le libellé des tickets de péage, de carburant et de
-    # nombreux automates. Il équivaut à un « TOTAL TTC ».
+    # "PRIX TTC" is the label of toll, fuel and many vending machine
+    # receipts. It amounts to a "TOTAL TTC".
     (re.compile(r"\bPRIX\s*T\.?\s*T\.?\s*C\b"), 0.92),
     (re.compile(r"\bMONTANT\s*(?:DU|A\s*PAYER)\b"), 0.90),
     (re.compile(r"\b(?:AMOUNT|BALANCE)\s*DUE\b|\bGRAND\s*TOTAL\b|\bBALANCE\s*TO\s*PAY\b"), 0.90),  # en
-    # « Sum 3 varer 22,00 » : le montant payé, arrondi ; « Sum » seul finit
-    # aussi le tableau de la TVA.
+    # "Sum 3 varer 22,00": the amount paid, rounded; "Sum" alone also ends the
+    # VAT table.
     (re.compile(r"\bSUM\s*\d+\s*VARER\b"), 0.88),                    # no
     (re.compile(r"\bTE\s*BETALEN\b"), 0.90),                        # nl
     (re.compile(r"\bA\s*BETALE\b|\bATT\s*BETALA\b"), 0.90),          # no, sv
@@ -162,20 +161,20 @@ TOTAL_KEYWORDS = [
     (re.compile(r"\bRESTE\s*A\s*PAYER\b"), 0.88),
     (re.compile(r"\bIMPORTO\s*PAGATO\b"), 0.88),                    # it
     (re.compile(r"\bA\s*PAYER\b"), 0.86),
-    # Tickets qui affichent le montant versé : « Sie haben 18.00 CHF bezahlt »,
-    # « Amount paid ».
+    # Receipts that show the amount paid: "Sie haben 18.00 CHF bezahlt",
+    # "Amount paid".
     (re.compile(r"\bBEZAHLT\b|\bAMOUNT\s*PAID\b|\bBETALT\b|\bBETALAT\b"), 0.86),
     (re.compile(r"\bSUMA\b|\bSUMME\b|\bSOMME\b"), 0.85),             # pl, de, fr (ch)
     (re.compile(r"\bTOTALT\b|\bSUMMA\b|\bI\s*ALT\b"), 0.85),          # no, sv, da
-    # « Ukupno: 27,70 EUR » ; pas la colonne d'un article, « Ukupno 1 kom ».
+    # "Ukupno: 27,70 EUR"; not the column of an item, "Ukupno 1 kom".
     (re.compile(r"\bUKUPNO\b(?!\s*\d+\s*KOM\b)"), 0.85),              # hr
-    # « Sum 3 varer 47,00 » ; pas « šum.voće », abréviation d'un article.
+    # "Sum 3 varer 47,00"; not "šum.voće", an item abbreviation.
     (re.compile(r"\bSUM\b(?!\.)"), 0.82),                           # no, da
     (re.compile(r"\bGESAMT(?:BETRAG)?\b"), 0.82),                   # de
     (re.compile(r"\bTOTAL\b|\bTOTALE\b|\bTOTAAL\b"), 0.80),
     (re.compile(r"\bRAZEM\b"), 0.75),                               # pl
     (re.compile(r"\bMONTANT\b|\bIMPORTO\b|\bIMPORTE\b|\bBETRAG\b|\bBEDRAG\b"), 0.70),
-    # Ticket de péage sans « total » : le prix du passage est le montant.
+    # Toll receipt without a "total": the price of the passage is the amount.
     (re.compile(r"\bPEDAGGIO\b|\bPEAGE\b|\bPEAJE\b|\bMAUT\b"), 0.80),
     (re.compile(r"\bPAIEMENT\b|\bREGLEMENT\b|\bPAGAMENTO\b|\bPLATNOSC\b"
                 r"|\bKARTENZAHLUNG\b|\bPAYMENT\b|\bKORT\b"), 0.65),
@@ -183,48 +182,47 @@ TOTAL_KEYWORDS = [
     (re.compile(r"\bESPECES\b|\bCHEQUE\b|\bCONTANT[EI]\b|\bEFECTIVO\b|\bGOTOWKA\b"
                 r"|\bCASH\b|\bKONTANT\b"), 0.55),
 ]
-# Une ligne contenant l'un de ces termes n'est pas retenue comme total.
-# Les mentions de TVA étrangères sont écartées comme « TVA », sauf si le
-# total les indique incluses : « TOTALE IVA INCLUSA », « SUMME INKL. MWST ».
+# A line containing one of these terms is not kept as the total. Foreign VAT
+# mentions are ruled out like "TVA", unless the total says they are included:
+# "TOTALE IVA INCLUSA", "SUMME INKL. MWST".
 TOTAL_EXCLUDE_RE = re.compile(
     r"\bSOUS\s*[- ]?\s*TOTAL\b|\bSUB\s*[- ]?\s*TOTAL\b|\bSUBTOTALE?\b|\bSUBTOTAAL\b|"
     r"\bZWISCHENSUMME\b|\bTOTAL\s*H\.?\s*T\b|\bPRIX\s*H\.?\s*T\b|"
     r"\bMONTANT\s*H\.?\s*T\b|\bTVA\b(?!\s*(?:INCLUSE|INCLUS|COMPRISE|INCL))|\bT\.V\.A\b|"
     r"\bIVA\b(?!\s*INCL)|(?<!INKL\s)(?<!INKL\.\s)\b(?:MWST|UST)\b|"
     r"\bVAT\b(?!\s*INCL)|\bBTW\b(?!\s*INCL)|\bPTU\b|\bOPOD|\bNETTO\b|"
-    # MVA (no), moms (sv, da) : la taxe, sauf « inkl. moms ».
+    # MVA (no), moms (sv, da): the tax, except "inkl. moms".
     r"(?<!INKL\s)(?<!INKL\.\s)\b(?:MVA|MOMS)\b|"
     r"\bIMPONIBILE\b|\bBASE\s*IMPONIBLE\b|\bDI\s*CUI\b|"
     r"\bRENDU\b|\bMONNAIE\b|\bRECU\b|\bREMISE\b|\bECONOMIE\b|\bAVANTAGE\b|"
-    # « Points de retrait » (Colissimo) n'est pas une cagnotte de points.
+    # "Points de retrait" (Colissimo) is not a loyalty points balance.
     r"\bCAGNOTTE\b|\bFIDELITE\b|\bPOINTS?\b(?!\s+(?:DE\s+)?RETRAIT)|\bSOLDE\b|\bDONT\b|"
     r"\bACOMPTE\b|"
     r"\bRESTO\b|\bRESZTA\b|\bRUCKGELD\b|\bWECHSELGELD\b|\bGEGEBEN\b|"
     r"\bCAMBIO\b|\bWISSELGELD\b|\bCHANGE\b|\bSCONTO\b|\bRABATT?\b|\bDESCUENTO\b|"
     r"\bVEKSEL\b|\bVAXEL\b|\bTILBAKE\b|"
-    # En-tête du tableau des articles : « Qté Désignation PU TotalT »,
-    # « Pris Mängd Summa(SEK) », « Description Quantity Price Total ».
+    # Header of the item table: "Qté Désignation PU TotalT",
+    # "Pris Mängd Summa(SEK)", "Description Quantity Price Total".
     r"\bMANGD\b|\bANTAL\b|\bARTIKELNUMMER\b|\bDESIGNATION\b|\bQTY\b|"
     r"\bDESCRIPTION\b|\bQUANT\b|\bMENGE\b|\bARTIKELBEZEICHNUNG\b|"
-    # « Total Bottle Deposit $0.20 », « Total Savings » : consigne et remise.
+    # "Total Bottle Deposit $0.20", "Total Savings": deposit and discount.
     r"\bDEPOSIT\b|\bSAVINGS?\b|"
-    # « Net Total: €7,73 » : en anglais, ce libellé désigne le hors-taxe d'un
-    # taux, à la différence du « TOTAL NET » français, souvent le montant à
-    # payer.
-    # « Summe Nettoumsatz », « Steuersumme » : le net et la taxe en allemand.
-    # Le pourboire (« Summe Trinkgeld 9,20 0,46 ») n'est pas non plus le total.
+    # "Net Total: €7,73": in English, this label is the amount without tax of
+    # a rate, unlike the French "TOTAL NET", often the amount to pay.
+    # "Summe Nettoumsatz", "Steuersumme": the net and the tax in German.
+    # The tip ("Summe Trinkgeld 9,20 0,46") is not the total either.
     r"\bNET\s*TOTAL\b|\bNETTOUMSATZ\b|\bSTEUERSUMME\b|\bTRINKGELD\b|\bPOURBOIRE\b|"
-    # « Total produits 8,25 » : les articles hors livraison, donc un sous-total.
+    # "Total produits 8,25": the items without delivery, hence a subtotal.
     r"\bTOTAL\s*(?:DES\s*)?(?:PRODUITS?|ARTICLES?|MARCHANDISES?)\b"
 )
 
 
 def _triplet_gross(values):
-    """Renvoie le TTC d'un triplet HT + TVA = TTC valide, ou ``None``.
+    """Return the gross amount of a valid net + VAT = gross triplet, or ``None``.
 
-    Trois montants exactement : au-delà, la ligne mêle d'autres colonnes (par
-    exemple deux devises sur une facture tchèque) et une somme fortuite peut
-    s'y trouver.
+    Exactly three amounts: beyond that, the line mixes other columns (two
+    currencies on a Czech invoice, for instance) and a chance sum may be
+    found in it.
     """
     if len(values) != 3:
         return None
@@ -238,13 +236,13 @@ def _triplet_gross(values):
 
 
 def _is_rate_line(line):
-    """Indique si la ligne est une ligne de TVA avec taux (« 2.27 T.V.A. 10% AE 25.00 »)."""
+    """Tell whether the line is a VAT line with a rate ("2.27 T.V.A. 10% AE 25.00")."""
     text = normalize(line.text)
     return bool(TVA_LINE_RE.search(text) and RATE_RE.search(text))
 
 
 def _other_currency(text, currency):
-    """Vrai si la ligne cite une devise, et aucune n'est celle du ticket."""
+    """True if the line cites a currency, and none is the receipt's."""
     if not currency:
         return False
     cited = {code for pattern, code in CURRENCIES if pattern.search(text)}
@@ -252,10 +250,10 @@ def _other_currency(text, currency):
 
 
 def extract_total(lines, currency=None):
-    """Renvoie le montant total payé et son indice de confiance.
+    """Return the total amount paid and its confidence.
 
-    ``currency`` : devise du ticket. Une ligne de total dans une autre devise
-    (« Total en EUR 22.50 » sur un ticket suisse) passe après les autres.
+    ``currency``: currency of the receipt. A total line in another currency
+    ("Total en EUR 22.50" on a Swiss receipt) comes after the others.
     """
     best = None
     for index, line in enumerate(lines):
@@ -270,28 +268,28 @@ def extract_total(lines, currency=None):
             amounts = find_amounts(line.text)
             confidence_penalty = 1.0
             if not amounts and index + 1 < len(lines):
-                # Le libellé et le montant sont souvent sur deux lignes quand
-                # la colonne est étroite.
+                # The label and the amount are often on two lines when the
+                # column is narrow.
                 amounts = find_amounts(lines[index + 1].text)
                 confidence_penalty = 0.85
             if not amounts:
                 continue
             if re.search(r"\bTOTAL\s*NET\b", text) and index and _is_rate_line(lines[index - 1]):
-                # « 2.27 T.V.A. 10% 25.00 / Total net : 22.73 » : le hors-taxe
-                # du taux précédent, répété sous chaque taux.
+                # "2.27 T.V.A. 10% 25.00 / Total net : 22.73": the amount
+                # without tax of the previous rate, repeated under each rate.
                 break
-            # Le montant utile est le dernier de la ligne : à gauche figurent
-            # souvent une quantité ou un prix unitaire.
+            # The useful amount is the last of the line: a quantity or a unit
+            # price is often printed to its left.
             value = amounts[-1][0]
-            # « 68,60 € 11,43 € 57,17 € Total » : colonnes TTC, TVA, HT lues
-            # dans le désordre. Un triplet valide désigne son TTC.
+            # "68,60 € 11,43 € 57,17 € Total": gross, VAT and net columns read
+            # out of order. A valid triplet points to its gross amount.
             gross = _triplet_gross([amount for amount, _position in amounts])
             if gross is not None:
                 value = gross
             confidence = weight * confidence_penalty * max(line.score, 0.4)
             candidate = (weight, value, confidence, line.text)
-            # À poids égal, le plus gros montant l'emporte ; à montant égal, la
-            # confiance la plus haute (le montant suit le libellé sur sa ligne).
+            # On equal weight, the largest amount wins; on equal amount, the
+            # highest confidence (the amount follows the label on its line).
             if best is None or candidate[0] > best[0] or (
                 candidate[0] == best[0] and (value, candidate[2]) > (best[1], best[2])
             ):
@@ -301,9 +299,9 @@ def extract_total(lines, currency=None):
     if best is not None:
         return ExtractedField(value=best[1], confidence=min(best[2], 0.99), source=best[3])
 
-    # Dernier recours : le plus gros montant du bas du ticket. Cette lecture
-    # est peu fiable, mais préférable à un champ vide que l'utilisateur devra
-    # saisir.
+    # Last resort: the largest amount at the bottom of the receipt. This
+    # reading is unreliable, but better than an empty field the user has to
+    # fill in.
     tail = lines[int(len(lines) * 0.55):] if lines else []
     fallback = [(value, line) for line in tail for value, _ in find_amounts(line.text)
                 if not TOTAL_EXCLUDE_RE.search(normalize(line.text))]
@@ -323,9 +321,9 @@ MONTHS_FR = {
     "AOUT": 8, "AOU": 8, "SEPT": 9, "SEP": 9, "OCT": 10, "OCTO": 10,
     "NOV": 11, "NOVE": 11, "DEC": 12, "DECE": 12,
 }
-#: Mois des autres langues (trois premières lettres, sans accent) : anglais,
-#: allemand, italien, espagnol, polonais, néerlandais, portugais. Aucun ne
-#: contredit un mois français.
+#: Months of the other languages (first three letters, without accents):
+#: English, German, Italian, Spanish, Polish, Dutch, Portuguese. None
+#: contradicts a French month.
 MONTHS_OTHER = {
     "FEB": 2, "APR": 4, "MAY": 5, "JUN": 6, "JUL": 7, "AUG": 8,   # en, de
     "OKT": 10, "DEZ": 12, "MRT": 3, "MEI": 5,                      # de, nl
@@ -336,46 +334,46 @@ MONTHS_OTHER = {
 }
 
 DATE_PATTERNS = [
-    # 04/09/2026, 04-09-2026, 04.09.2026. Certains terminaux collent l'heure à
-    # l'année : « 13/06/202616:30:16 ».
+    # 04/09/2026, 04-09-2026, 04.09.2026. Some terminals glue the time to the
+    # year: "13/06/202616:30:16".
     (re.compile(r"\b(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})(?:\b|(?=\d{1,2}:\d{2}))"), "dmy", 0.90),
-    # 2026-09-04, ou collé à l'heure : « 2026-05-1413:32 » (tickets suédois).
+    # 2026-09-04, or glued to the time: "2026-05-1413:32" (Swedish receipts).
     (re.compile(r"\b(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})(?:\b|(?=\d{1,2}:\d{2}))"), "ymd", 0.90),
-    # 04/09/26, ou collé à l'heure : « 24.02.2518:18 ». Le même séparateur
-    # des deux côtés : « 08.30-21.00 » est un horaire d'ouverture.
+    # 04/09/26, or glued to the time: "24.02.2518:18". The same separator on
+    # both sides: "08.30-21.00" is an opening time.
     (re.compile(r"\b(\d{1,2})([/.\-])(\d{1,2})\2(\d{2})(?:\b|(?=\d{1,2}:\d{2}))"), "dmy2", 0.75),
-    # 4 SEPT 2026, 23 SEPTEMBRE 2026, ainsi que « 14/May/2025 » (mois en
-    # lettres entre deux barres).
+    # 4 SEPT 2026, 23 SEPTEMBRE 2026, as well as "14/May/2025" (month in
+    # letters between two slashes).
     (re.compile(r"\b(\d{1,2})(?:\s+|\s*[/.\-]\s*)([A-Z]{3,10})\.?(?:\s+|\s*[/.\-]\s*)(\d{4})\b"),
      "dmonthy", 0.85),
-    # « Mai12'25 10:35AM » : mois collé au jour (terminaux de restauration).
+    # "Mai12'25 10:35AM": month glued to the day (restaurant terminals).
     (re.compile(r"\b([A-Z]{3,5})(\d{1,2})\s+(\d{2})\b(?![:\d])"), "mdy2", 0.80),
-    # « 28 Jul'26 15:41 » : année sur deux chiffres après une apostrophe, que la
-    # normalisation change en espace. Ce n'est pas une heure (« 26:… »).
+    # "28 Jul'26 15:41": two-digit year after an apostrophe, which the
+    # normalisation turns into a space. It is not a time ("26:...").
     (re.compile(r"\b(\d{1,2})\s*([A-Z]{3,10})\s+(\d{2})\b(?![:\d])"), "dmonthy2", 0.80),
-    # Sans millésime : « 04/09 », « 23 SEPTEMBRE ». Les lookaheads écartent les
-    # dates complètes, déjà captées par les motifs précédents.
+    # Without a year: "04/09", "23 SEPTEMBRE". The lookaheads rule out full
+    # dates, already caught by the previous patterns.
     (re.compile(r"\b(\d{1,2})[/.\-](\d{1,2})(?![/.\-]?\d)"), "dm", 0.50),
     (re.compile(r"\b(\d{1,2})\s+([A-Z]{3,10})\b(?!\.?\s+\d{4})"), "dmonth", 0.50),
 ]
-#: Motifs dont l'année est inférée et non lue.
+#: Patterns whose year is inferred, not read.
 INFERRED_YEAR_KINDS = frozenset({"dm", "dmonth"})
-#: Un ticket sans millésime est presque toujours récent. Au-delà de ce seuil,
-#: l'inférence est refusée, pour ne pas dater la dépense d'un an en arrière.
+#: A receipt without a year is almost always recent. Beyond this threshold,
+#: the inference is refused, so as not to date the expense a year back.
 NO_YEAR_MAX_AGE_DAYS = 120
 DATE_KEYWORD_RE = re.compile(
     r"\bDATE\b|\bLE\b\s|\bCAISSE\b|\bTICKET\b|\bDATA\b|\bDATUM\b|\bFECHA\b")
 
 
 def _month_number(name):
-    """Numéro du mois à partir de son nom, abrégé ou non."""
+    """Month number from its name, abbreviated or not."""
     cleaned = strip_accents(name).upper()
     return (MONTHS_FR.get(cleaned[:4]) or MONTHS_FR.get(cleaned[:3])
             or MONTHS_OTHER.get(cleaned[:3]))
 
 
 def _infer_year(day, month, today):
-    """Renvoie l'occurrence la plus récente du jour et du mois, jusqu'à « today »."""
+    """Return the latest occurrence of the day and month, up to "today"."""
     for year in (today.year, today.year - 1):
         try:
             candidate = date(year, month, day)
@@ -387,11 +385,11 @@ def _infer_year(day, month, today):
 
 
 def _day_month(first, second, order):
-    """Jour et mois d'une date numérique, selon l'ordre du pays.
+    """Day and month of a numeric date, in the country's order.
 
-    ``order`` vaut ``"dmy"`` (Europe) ou ``"mdy"`` (États-Unis). Une date
-    qui n'est valable que dans l'autre ordre (« 06/26/2026 », « 26/06/2026 »)
-    y est lue quel que soit le pays.
+    ``order`` is ``"dmy"`` (Europe) or ``"mdy"`` (United States). A date that
+    is only valid in the other order ("06/26/2026", "26/06/2026") is read that
+    way whatever the country.
     """
     day, month = (second, first) if order == "mdy" else (first, second)
     if month > 12 >= day:
@@ -428,9 +426,9 @@ def _build_date(kind, groups, today, order="dmy"):
             if not month:
                 return None
         elif kind == "dm":
-            # Sans année, « 08/25 » peut être une date d'expiration de carte
-            # (mois/année) : l'ordre n'est inversé que dans un pays qui écrit
-            # le mois en premier.
+            # Without a year, "08/25" may be a card expiry date (month/year):
+            # the order is only swapped in a country that writes the month
+            # first.
             first, second = int(groups[0]), int(groups[1])
             day, month = (second, first) if order == "mdy" else (first, second)
             return _infer_year(day, month, today)
@@ -445,14 +443,14 @@ def _build_date(kind, groups, today, order="dmy"):
 
 
 def extract_date(lines, today=None, max_age_days=730, order="dmy"):
-    """Renvoie la date d'achat, choisie parmi les dates plausibles du ticket.
+    """Return the purchase date, chosen among the plausible dates of the receipt.
 
-    ``order`` : ordre du jour et du mois des dates numériques, ``"dmy"`` ou
-    ``"mdy"`` (voir ``_day_month``).
+    ``order``: order of day and month in numeric dates, ``"dmy"`` or
+    ``"mdy"`` (see ``_day_month``).
     """
     today = today or date.today()
     oldest = today - timedelta(days=max_age_days)
-    newest = today + timedelta(days=1)  # tolérance fuseau horaire
+    newest = today + timedelta(days=1)  # time zone tolerance
 
     candidates = []
     for position, line in enumerate(lines):
@@ -463,16 +461,16 @@ def extract_date(lines, today=None, max_age_days=730, order="dmy"):
                 if not found or not (oldest <= found <= newest):
                     continue
                 if kind in INFERRED_YEAR_KINDS and (today - found).days > NO_YEAR_MAX_AGE_DAYS:
-                    # Année inférée trop ancienne : probablement une date de
-                    # voyage ou d'échéance, non la date d'achat.
+                    # Inferred year too old: probably a travel or due date,
+                    # not the purchase date.
                     continue
                 confidence = weight * max(line.score, 0.4)
-                # Une date accompagnée d'une heure ou du mot « date » est
-                # presque toujours celle de l'achat, non une date de validité
-                # de carte de fidélité ou une échéance de garantie.
+                # A date next to a time or to the word "date" is almost
+                # always the purchase date, not the validity date of a
+                # loyalty card or the end of a warranty.
                 if TIME_RE.search(text) or DATE_KEYWORD_RE.search(text):
                     confidence = min(confidence * 1.15, 0.99)
-                # Le haut du ticket contient plus souvent l'en-tête daté.
+                # The top of the receipt more often holds the dated header.
                 if position < max(len(lines) * 0.35, 6):
                     confidence = min(confidence * 1.05, 0.99)
                 candidates.append((confidence, found, line.text))
@@ -484,7 +482,7 @@ def extract_date(lines, today=None, max_age_days=730, order="dmy"):
 
 
 # ---------------------------------------------------------------------------
-# Enseigne
+# Merchant
 # ---------------------------------------------------------------------------
 
 MERCHANT_STOP_RE = re.compile(
@@ -492,46 +490,45 @@ MERCHANT_STOP_RE = re.compile(
     r"\bMERCI\b|\bBIENVENUE\b|\bBONJOUR\b|\bTEL\b|\bTELEPHONE\b|\bSIRET\b|"
     r"\bSIREN\b|\bTVA\b|\bRCS\b|\bAPE\b|\bNAF\b|\bMAGASIN\b|\bADRESSE\b|"
     r"\bWWW\b|\bHTTP\b|\bEMAIL\b|\bMAIL\b|\bHORAIRES?\b|\bCLIENT\b|\bPRENOM\b|"
-    # Champs d'un ticket de transport ou de péage : ils occupent le haut du
-    # ticket et peuvent être pris pour une enseigne.
+    # Fields of a transport or toll receipt: they fill the top of the receipt
+    # and could be taken for a merchant.
     r"\bSORTIE\b|\bENTREE\b|\bDEPART\b|\bARRIVEE\b|\bCLASSE\b|\bTARIF\b|"
     r"\bPAIEMENT\b|\bREGLEMENT\b|\bCARTE\b|\bMONTANT\b|\bTOTAL\b|"
-    # En-tête d'un ticket de carte bancaire : l'enseigne figure plus bas,
-    # après le bloc de la banque et du terminal.
+    # Header of a card slip: the merchant comes further down, after the
+    # block of the bank and the terminal.
     r"\bCONTACT\b|\bBANQUE\b|\bBANCAIRE\b|\bMASTERCARD\b|\bVISA\b|"
     r"\bDEBIT\b|\bCREDIT\b|\bAUTO\b|\bCONSERVER\b|\bTERMINAL\b|"
-    # Mentions d'en-tête étrangères : ticket fiscal, identifiant fiscal,
-    # formules d'accueil.
+    # Foreign header mentions: fiscal receipt, tax identifier, greetings.
     r"\bPARAGON\b|\bFISKALNY\b|\bNIP\b|\bREGON\b|\bSCONTRINO\b|\bFISCALE\b|"
     r"\bDOCUMENTO\b|\bCOMMERCIALE\b|\bPARTITA\b|\bP\.?\s*IVA\b|\bRECHNUNG\b|"
     r"\bKASSENBON\b|\bBELEG\b|\bQUITTUNG\b|\bSTEUER|\bFACTURA\b|\bRECIBO\b|"
     r"\bCIF\b|\bNIF\b|\bRECEIPT\b|\bINVOICE\b|\bTHANK\b|\bWELCOME\b|"
     r"\bGRAZIE\b|\bDANKE\b|\bDZIEKUJEMY\b|\bGRACIAS\b|\bKASA\b|\bKASSE\b|"
     r"\bCASSA\b|\bCAJA\b|\bVAT\b|\bIVA\b|\bMWST\b|\bUST\b|"
-    # En-têtes de colonnes et pieds de liste, qui ne sont pas une enseigne.
+    # Column headers and list footers, which are not a merchant.
     r"\bARTICLES?\b|\bQTE\b|\bQUANTITE\b|\bDESIGNATION\b|\bPRODUITS?\b|"
     r"\bLIBELLE\b|\bNOMBRE\b|\bLIGNES?\b|\bVENTES?\b|"
-    # Intitulés d'un reçu en ligne, avant le nom de l'établissement.
+    # Headings of an online receipt, before the name of the establishment.
     r"\bCOORDONNEES\b|\bVOICI\b|\bPAIEMENTS\b|"
-    # « Servi par : Cassandra » : prénom du serveur, non enseigne.
+    # "Servi par : Cassandra": first name of the waiter, not the merchant.
     r"\bSERVI\b|\bSERVEUR\b|\bSERVEUSE\b|\bCAISSIER\b|\bCAISSIERE\b|"
-    # Mode de service imprimé en gros en tête des tickets de restauration.
+    # Service mode printed large at the top of restaurant receipts.
     r"\bEMPORTER\b|\bSUR\s*PLACE\b|\bTAKE\s*(?:OUT|AWAY)\b|"
-    # Capture d'une page web : bouton de fermeture, trajet en titre.
+    # Screenshot of a web page: close button, journey as a title.
     r"\bFERMER\b|\bCLOSE\b|^\s*DE\s+\S+.*\sA\s+\S+"
 )
 ADDRESS_RE = re.compile(
     r"\b(RUE|AVENUE|AV|BOULEVARD|BD|PLACE|PL|CHEMIN|ROUTE|RTE|IMPASSE|ALLEE|"
     r"QUAI|ZAC|ZI|CEDEX|BP|"
-    # Voies étrangères : ul. (pl), via, viale, piazza, corso (it), Straße, Platz (de),
-    # calle, plaza (es), rua (pt), street, road (en).
+    # Foreign street types: ul. (pl), via, viale, piazza, corso (it), Straße,
+    # Platz (de), calle, plaza (es), rua (pt), street, road (en).
     r"UL|ULICA|ALEJA|VIA|VIALE|PIAZZA|CORSO|STRASSE|STR|PLATZ|WEG|"
     r"CALLE|AVENIDA|PLAZA|RUA|STREET|ROAD|STRAAT)\b"
 )
 
 
 def _has_date(text, today=None):
-    """Indique si la ligne normalisée contient une date plausible."""
+    """Tell whether the normalised line holds a plausible date."""
     today = today or date.today()
     for pattern, kind, _weight in DATE_PATTERNS:
         for match in pattern.finditer(text):
@@ -547,42 +544,41 @@ MERCHANT_PREFIX_RE = re.compile(
     re.IGNORECASE)
 
 
-#: « Commerçant : SNCF CONNECT, 93212 La Plaine… » : libellé qui désigne
-#: l'enseigne sans ambiguïté, quel que soit son emplacement. Un justificatif
-#: de paiement le porte dans son détail, sous un titre et un logo.
+#: "Commerçant : SNCF CONNECT, 93212 La Plaine...": a label that names the
+#: merchant without ambiguity, wherever it is. A payment receipt carries it in
+#: its details, under a title and a logo.
 LABELED_MERCHANT_RE = re.compile(
     r"^\s*(?:COMMER[CÇ]ANT|MARCHAND|MERCHANT|H[ÄA]NDLER)\s*:\s*([^,;|]{3,60})",
     re.IGNORECASE)
 
 
-#: « Nom de l'établissement Hôtel Exemple 3 étoiles » : reçu de réservation,
-#: sans deux-points. Le classement de l'hôtel ne fait pas partie du nom.
+#: "Nom de l'établissement Hôtel Exemple 3 étoiles": booking receipt, without
+#: a colon. The hotel's star rating is not part of the name.
 ESTABLISHMENT_RE = re.compile(
     r"^\s*Nom\s+de\s+l['’]\s?[ée]tablissement\s*:?\s*(.{3,60}?)"
     r"(?:\s+\d\s*[ée]toiles?)?\s*$", re.IGNORECASE)
-#: Raison sociale : un nom suivi d'une forme juridique est l'enseigne, même
-#: si l'adresse imprimée dessous est plus longue.
+#: Company name: a name followed by a legal form is the merchant, even if the
+#: address printed below is longer.
 LEGAL_FORM_RE = re.compile(
     r"\bS\.?\s?P\.?\s?A\b|\bS\.?\s?R\.?\s?L\b|\bGMBH\b|\bLTD\b|\bLLC\b"
     r"|\bSARL\b|\bSASU?\b|\bEURL\b|\bSNC\b|\bB\.?V\b", re.IGNORECASE)
 LEGAL_FORM_BONUS = 1.15
-#: Nom suivi, sur la même ligne, d'un numéro et d'un type de voie.
+#: Name followed, on the same line, by a number and a street type.
 NAME_BEFORE_STREET_RE = re.compile(
     r"^(.+?)\s+\d{1,5}\s*,?\s*(?:BIS|TER)?\s*,?\s*"
     r"(?:RUE|AVENUE|AV|BD|BOULEVARD|PLACE|PL|CHEMIN|ROUTE|RTE|ALL[EÉ]E|QUAI|IMPASSE|COURS)\b",
     re.IGNORECASE)
-#: Type de document en tête ou en fin de ligne, à côté du nom de l'enseigne.
+#: Document type at the start or end of the line, next to the merchant name.
 DOCUMENT_KIND_RE = re.compile(
     r"^\s*(?:FACTURE|TICKET|RE[CÇ]U|INVOICE|RECEIPT)\s+"
     r"|\s+(?:FACTURE|TICKET|RE[CÇ]U|INVOICE|RECEIPT)\s*$", re.IGNORECASE)
-#: « Voltix Innovations B.V. – Voorbeeldstraat 1 » : mention légale en pied
-#: de facture, qui nomme le vendeur quand l'en-tête ne porte qu'un logo.
+#: "Voltix Innovations B.V. – Voorbeeldstraat 1": legal notice at the foot of
+#: an invoice, which names the seller when the header only has a logo.
 LEGAL_ENTITY_RE = re.compile(
     r"^\W*([^\W\d_][\w&'’\-]*(?:\s+[^\W\d_][\w&'’\-]*){0,3})\s+"
     r"(S\.?\s?P\.?\s?A\.?|S\.?\s?R\.?\s?L\.?|GMBH|LTD\.?|LLC|SARL|SASU?|EURL|SNC"
     r"|B\.\s?V\.?|BV)(?!\w)", re.IGNORECASE)
-#: Mots de catégorie : « Vols », « Repas » indiquent ce qui est acheté, non le
-#: vendeur.
+#: Category words: "Vols", "Repas" say what is bought, not who sells it.
 CATEGORY_WORDS = {
     lexicon.fold(word) for words in lexicon.DEFAULT_KEYWORDS.values() for word in words}
 
@@ -592,10 +588,10 @@ def _words_of(text):
 
 
 def _is_buyer(text, buyers):
-    """Indique si la ligne nomme l'acheteur (le salarié, sa société).
+    """Tell whether the line names the buyer (the employee, their company).
 
-    Une facture imprime le nom du client en tête, là où un ticket porte
-    l'enseigne : « CAMILLE EXEMPLE » sur une facture de recharge.
+    An invoice prints the customer's name at the top, where a till receipt
+    carries the merchant: "CAMILLE EXEMPLE" on a charging invoice.
     """
     words = set(_words_of(text))
     for buyer in buyers:
@@ -605,17 +601,16 @@ def _is_buyer(text, buyers):
             return True
     tokens = text.split()
     span = _buyer_span(tokens, buyers)
-    # Au-delà d'un mot de plus, la ligne est une enseigne à laquelle le nom de
-    # l'acheteur est accolé : elle est conservée, ``_without_buyer`` retire le
-    # nom.
+    # Beyond one extra word, the line is a merchant with the buyer's name
+    # attached: it is kept, and ``_without_buyer`` removes the name.
     return bool(span) and len(tokens) - (span[1] - span[0]) <= 1
 
 
 def _buyer_span(tokens, buyers):
-    """Renvoie la position ``(début, fin)`` des mots qui écrivent un acheteur.
+    """Return the position ``(start, end)`` of the words that spell a buyer.
 
-    Les espaces sont ignorés : la société « GreenExemple » est imprimée
-    « GREEN EXEMPLE » sur la facture d'un fournisseur.
+    Spaces are ignored: the company "GreenExemple" is printed "GREEN EXEMPLE"
+    on a supplier's invoice.
     """
     keys = ["".join(_words_of(token)) for token in tokens]
     for buyer in buyers:
@@ -634,10 +629,10 @@ def _buyer_span(tokens, buyers):
 
 
 def _without_buyer(name, buyers):
-    """Retire l'acheteur d'une ligne qui mêle vendeur et client.
+    """Remove the buyer from a line that mixes seller and customer.
 
-    « INSTITUT EXEMPLE GREEN EXEMPLE » réunit deux colonnes d'en-tête (le
-    vendeur et le client) lues d'un seul tenant : le client est retiré.
+    "INSTITUT EXEMPLE GREEN EXEMPLE" joins two header columns (the seller and
+    the customer) read in one piece: the customer is removed.
     """
     tokens = name.split()
     span = _buyer_span(tokens, buyers)
@@ -649,7 +644,7 @@ def _without_buyer(name, buyers):
 
 
 def _legal_entity(lines, header, buyers):
-    """Renvoie la raison sociale d'une mention légale, si l'en-tête la cite."""
+    """Return the company name of a legal notice, if the header cites it."""
     for index, line in enumerate(lines):
         match = LEGAL_ENTITY_RE.match(line.text)
         if not match or _is_buyer(line.text, buyers):
@@ -666,10 +661,10 @@ def _legal_entity(lines, header, buyers):
 
 
 def extract_merchant(lines, max_lines=10, buyers=()):
-    """Renvoie le nom de l'enseigne, cherché dans l'en-tête du ticket.
+    """Return the merchant name, looked for in the receipt header.
 
-    ``buyers`` : noms de l'acheteur (salarié, société), à ne pas retenir comme
-    enseigne.
+    ``buyers``: names of the buyer (employee, company), not to be taken as
+    the merchant.
     """
     for line in lines:
         match = LABELED_MERCHANT_RE.match(line.text)
@@ -685,18 +680,18 @@ def extract_merchant(lines, max_lines=10, buyers=()):
     best = None
     for position, line in enumerate(lines[:max_lines]):
         raw = line.text.strip()
-        # « ASFLieu-dit 47901 AGEN Cedex » : nom collé au lieu-dit, suivi de
-        # l'adresse. Seul ce qui précède le lieu-dit est candidat.
+        # "ASFLieu-dit 47901 AGEN Cedex": name glued to the locality, followed
+        # by the address. Only what precedes the locality is a candidate.
         before_place = re.split(r"(?i)\s*lieu[- ]?dit", raw)[0].strip()
         if before_place != raw and sum(char.isalpha() for char in before_place) >= 3:
             raw = before_place
-        # « ANTIMOUSTIC FACTURE » : le nom et le type de document sont sur la
-        # même ligne. Sans le mot « facture », le nom reste candidat.
+        # "ANTIMOUSTIC FACTURE": the name and the document type are on the
+        # same line. Without the word "facture", the name stays a candidate.
         without_kind = DOCUMENT_KIND_RE.sub("", raw).strip()
         if without_kind != raw and sum(char.isalpha() for char in without_kind) >= 3:
             raw = without_kind
-        # « Les 3 Brasseurs 9003, rue Chanzy » : l'OCR a fondu le nom et
-        # l'adresse en une ligne. Ce qui précède le numéro de rue reste le nom.
+        # "Les 3 Brasseurs 9003, rue Chanzy": the OCR merged the name and the
+        # address into one line. What precedes the street number is the name.
         street = NAME_BEFORE_STREET_RE.match(raw)
         if street and sum(char.isalpha() for char in street.group(1)) >= 3:
             raw = street.group(1).strip(" ,-")
@@ -708,25 +703,24 @@ def extract_merchant(lines, max_lines=10, buyers=()):
         if MERCHANT_STOP_RE.search(text) or ADDRESS_RE.search(text):
             continue
         if _has_date(text):
-            continue  # « ← 18 novembre » : une date, non une enseigne
-        # Mot de catégorie : jugé sur la ligne entière. « ASF » détaché de son
-        # lieu-dit reste l'enseigne, même si c'est aussi un mot du péage.
+            continue  # "← 18 novembre": a date, not a merchant
+        # Category word: judged on the whole line. "ASF" detached from its
+        # locality is still the merchant, even though it is also a toll word.
         if _is_buyer(raw, buyers) or lexicon.fold(line.text) in CATEGORY_WORDS:
             continue
         if find_amounts(raw):
-            continue  # « Vol aller x 1 passager 34,05 € » : ligne d'achat
+            continue  # "Vol aller x 1 passager 34,05 €": a purchase line
         if "@" in raw:
-            continue  # Adresse e-mail, le plus souvent celle du client
+            continue  # e-mail address, most often the customer's
         if digits > 2 or digits > letters / 2:
-            # Code postal, téléphone, numéro de caisse. Exception : une
-            # enseigne qui porte un chiffre (« Distribo Tower 3 CS00000 »),
-            # quand le nom ouvre la ligne et que les lettres restent largement
-            # majoritaires.
+            # Postal code, phone, till number. Exception: a merchant whose
+            # name holds a digit ("Distribo Tower 3 CS00000"), when the name
+            # opens the line and letters remain a clear majority.
             starts_with_name = text[:1].isalpha() and text.split()[0].isalpha()
             if not (starts_with_name and letters >= 10 and digits <= 6 and digits <= letters / 2):
                 continue
-        # Le score augmente avec la hauteur de la ligne dans le ticket et sa
-        # richesse en lettres.
+        # The score rises with how high the line is on the receipt and with
+        # how many letters it holds.
         weight = (0.85 - 0.08 * position) * min(1.0, 0.4 + letters / 18.0)
         if LEGAL_FORM_RE.search(raw):
             weight *= LEGAL_FORM_BONUS
@@ -737,8 +731,8 @@ def extract_merchant(lines, max_lines=10, buyers=()):
     entity = _legal_entity(lines, lines[:max_lines], buyers)
     if entity and (best is None or not re.search(
             r"\b%s\b" % re.escape(_words_of(entity[0])[0]), normalize(best[1]))):
-        # L'en-tête n'offre qu'un intitulé (« Sessions de chargement ») : le
-        # vendeur est celui de la mention légale, que l'en-tête cite.
+        # The header only offers a heading ("Sessions de chargement"): the
+        # seller is the one of the legal notice, which the header cites.
         name, source = entity
         if name.isupper():
             name = name.title()
@@ -747,66 +741,65 @@ def extract_merchant(lines, max_lines=10, buyers=()):
         return ExtractedField(value=None, confidence=0.0)
     confidence, raw = best
     name = re.sub(r"\s{2,}", " ", raw).strip(" -*:.")
-    # « ASFLieu-ditExemple 12 » : retire le lieu-dit collé au nom.
+    # "ASFLieu-ditExemple 12": remove the locality glued to the name.
     name = re.sub(r"(?i)\s*lieu[- ]?dit.*$", "", name) or name
-    # « Établissement DORMIZZ », « Société : POPEYES » : le libellé qui
-    # précède l'enseigne sur un reçu de carte n'en fait pas partie.
+    # "Établissement DORMIZZ", "Société : POPEYES": the label before the
+    # merchant on a card slip is not part of it.
     name = MERCHANT_PREFIX_RE.sub("", name).strip(" -*:.") or name
-    name = re.sub(r"^[^\w]+", "", name) or name  # « ← », « * » d'un logo
+    name = re.sub(r"^[^\w]+", "", name) or name  # "←", "*" of a logo
     name = _without_buyer(name, buyers)
     if raw.endswith(".") and LEGAL_FORM_RE.search(name):
-        name += "."  # « S.p.A. » : le dernier point fait partie de la forme
+        name += "."  # "S.p.A.": the last dot is part of the legal form
     if name.isupper() and len(name) > 3:
         name = name.title()
     return ExtractedField(value=name, confidence=min(confidence, 0.95), source=raw)
 
 
 # ---------------------------------------------------------------------------
-# TVA, devise, divers
+# VAT, currency, miscellaneous
 # ---------------------------------------------------------------------------
 
-#: Libellés d'une ligne de TVA dans les langues du continent : TVA, VAT,
-#: IVA (it, es, pt), MwSt et USt (de), PTU (pl), BTW (nl), DPH (cs), MOMS.
+#: Labels of a VAT line in the languages of the continent: TVA, VAT, IVA (it,
+#: es, pt), MwSt and USt (de), PTU (pl), BTW (nl), DPH (cs), MOMS.
 TVA_LINE_RE = re.compile(
     r"\bT\.?\s*V\.?\s*A\b|\bV\.?A\.?T\b|\bI\.?V\.?A\b|\bMWST\b|\bUST\b|\bPTU\b"
     r"|\bB\.?T\.?W\b|\bDPH\b|\bMOMS\b|\bPODATEK\b|\bSTEUERSUMME\b|\bTAXES?\s*TOTALES?\b")
-#: « TVA:D », « (c° tva: 2) » : code de taux renvoyant au tableau, sans montant
-#: de taxe. Un chiffre seul ne compte que s'il n'ouvre pas un montant
-#: (« TVA: 5,50 »).
+#: "TVA:D", "(c° tva: 2)": rate code referring to the table, without a tax
+#: amount. A single digit only counts if it does not start an amount
+#: ("TVA: 5,50").
 TAX_CODE_RE = re.compile(r"\bT\.?\s*V\.?\s*A\s*:\s*[A-Z0-9]\b(?![,.]\d)")
-#: Montant nul, que la recherche des montants ignore.
+#: Zero amount, which the amount search ignores.
 ZERO_AMOUNT_RE = re.compile(r"(?<![\d,.])0[.,]00(?!\d)")
-#: Ligne qui donne la base taxable (HT) et non la taxe, malgré son libellé.
+#: Line that gives the taxable base (net) and not the tax, despite its label.
 TAX_BASE_RE = re.compile(
     r"\bOPOD|\bNETTO\b|\bIMPONIBILE\b|\bBASE\s*IMPONIBLE\b|\bSPRZED|"
     r"\b(?:TOTAL|BASE|MONTANT)\s*H\.?\s*T\b")
-#: Ligne qui nomme la TVA pour indiquer qu'un montant l'inclut ou l'exclut :
-#: « Montant final (hors TVA) », « (TVA incluse) », « excl. VAT ».
+#: Line that names the VAT to say an amount includes or excludes it:
+#: "Montant final (hors TVA)", "(TVA incluse)", "excl. VAT".
 TAX_NOT_A_TAX_RE = re.compile(
     r"\bHORS\s*(?:T\.?\s*V\.?\s*A|TAXES?)\b"
     r"|\bT\.?\s*V\.?\s*A\s*(?:INCLUSE|INCLUS|COMPRISE|INCL)\b"
     r"|\b(?:EXCL|EXCLUDING|EXCLUSIVE|INCL|INCLUDING|INCLUSIVE)\.?\s*(?:OF\s*)?(?:VAT|TAX)\b")
-#: Ligne qui totalise la TVA, sans donner de taux.
+#: Line that sums the VAT, without giving a rate.
 TAX_SUM_RE = re.compile(
     r"\b(?:SUMA|TOTAL|TOTALE|SUMME|TOTAAL|RAZEM|GESAMT)\s*(?:DE\s*LA\s*|DI\s*)?"
     r"(?:T\.?\s*V\.?\s*A|PTU|IVA|VAT|MWST|UST|BTW|PODATEK)\b"
     r"|\bTOTAL\s*TAX(?:ES)?\b|\bPODATEK\s*PTU\b|\bSTEUERSUMME\b"
-    # « Taxe totale 2,57 € » : la somme d'une facture de boutique en ligne.
+    # "Taxe totale 2,57 €": the sum of an online shop invoice.
     r"|\bTAXES?\s*TOTALES?\b"
-    # « Montant TVA 10,00 € » : le total d'un tableau mis en colonnes.
+    # "Montant TVA 10,00 €": the total of a table laid out in columns.
     r"|\bMONTANT\s*(?:DE\s*LA\s*|DE\s*)?T\.?\s*V\.?\s*A\b")
-# Taux de TVA en vigueur dans l'Union européenne, en Suisse et au
-# Royaume-Uni. Un taux lu hors de cette liste est presque toujours une erreur
-# de lecture.
+# VAT rates in force in the European Union, Switzerland and the United
+# Kingdom. A rate read outside this list is almost always a reading error.
 KNOWN_RATES = (
     20.0, 10.0, 5.5, 2.1, 8.5, 0.0,                   # fr
-    27.0, 25.5, 25.0, 24.0, 23.0, 22.0, 21.0, 19.0,   # ue, taux normaux
+    27.0, 25.5, 25.0, 24.0, 23.0, 22.0, 21.0, 19.0,   # eu, standard rates
     18.0, 17.0, 16.0, 15.0, 14.0, 13.5, 13.0, 12.0,
-    9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0,                # ue, taux réduits
+    9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0,                # eu, reduced rates
     8.1, 3.8, 2.6,                                    # ch
 )
-#: Devises reconnues à leur code ou à leur symbole. L'ordre sert uniquement à
-#: départager deux devises citées autant de fois l'une que l'autre.
+#: Currencies recognised by their code or symbol. The order only decides
+#: between two currencies cited as many times each.
 CURRENCIES = [
     (re.compile(r"€|\bEUR\b|\bEUROS?\b"), "EUR"),
     (re.compile(r"\bPLN\b|\bZL\b"), "PLN"),
@@ -819,28 +812,27 @@ CURRENCIES = [
     (re.compile(r"\bDKK\b"), "DKK"),
     (re.compile(r"\bNOK\b"), "NOK"),
     (re.compile(r"\bUSD\b|\$"), "USD"),
-    # « kr » : couronne norvégienne, suédoise ou danoise, départagées par
-    # ``_krone``.
+    # "kr": Norwegian, Swedish or Danish krone, told apart by ``_krone``.
     (re.compile(r"\bKR\b|\bKRONER\b|\bKRONOR\b"), "KR"),
 ]
-#: Couronnes : le mot de la taxe (MVA en Norvège, moms ailleurs), ceux du
-#: total et la forme du numéro d'entreprise distinguent les trois pays.
+#: Kroner: the tax word (MVA in Norway, moms elsewhere), the total words and
+#: the shape of the company number tell the three countries apart.
 KRONE_HINTS = [
     (re.compile(r"\bMVA\b|\bA\s*BETALE\b|\bVARER\b|\bORG\.?\s*NR\.?\s*:?\s*\d{3}\s?\d{3}\s?\d{3}\b"),
      "NOK"),
     (re.compile(r"\bATT\s*BETALA\b|\bSUMMA\b|\bKVITTO\b|\bVAXEL\b|\b\d{6}-\d{4}\b"), "SEK"),
     (re.compile(r"\bI\s*ALT\b|\bBELOB\b|\bKVITTERING\b|\bCVR\b"), "DKK"),
 ]
-#: Codes des États américains, qui précèdent le code postal d'une adresse.
+#: Codes of the US states, which precede the ZIP code of an address.
 US_STATES = ("AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT "
              "NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC")
-#: Ticket sans devise imprimée : le pays se reconnaît à ses mentions légales
-#: (numéro d'entreprise, nom de la taxe, adresse). Sans aucun de ces indices,
-#: la devise de la société s'applique.
+#: Receipt without a printed currency: the country shows in its legal
+#: mentions (company number, tax name, address). Without any of these clues,
+#: the company currency applies.
 COUNTRY_CURRENCY_HINTS = [
     (re.compile(r"\bNIP\b|\bPTU\b"), "PLN"),
-    # Pas de numéro de TVA britannique : les plateformes de réservation
-    # (location de voiture, hôtels) l'impriment sur des factures en euros.
+    # No British VAT number: booking platforms (car rental, hotels) print it
+    # on invoices in euros.
     (re.compile(r"\bCHE[-\s]?\d{3}\.\d{3}\.\d{3}\b"), "CHF"),
     (re.compile(r"\b(?:%s)\s+\d{5}(?:-\d{4})?\b" % "|".join(US_STATES.split())), "USD"),
 ]
@@ -851,55 +843,53 @@ def _closest_known_rate(value):
     return closest if abs(closest - value) <= 0.35 else None
 
 
-# Un tableau de TVA se reconnaît à son en-tête, puis à des lignes qui
-# commencent par un taux. Ses montants portent souvent quatre décimales
-# (« 56,8182 »), ce que l'expression des montants courants refuse : elle en
-# exige exactement deux pour ne pas confondre un prix avec un numéro. Une
-# autre expression, cantonnée au tableau, est donc utilisée.
+# A VAT table shows by its header, then by lines that start with a rate. Its
+# amounts often have four decimals ("56,8182"), which the expression for
+# ordinary amounts refuses: it requires exactly two, so as not to take a
+# number for a price. Another expression, limited to the table, is therefore
+# used.
 TAX_TABLE_HEADER_RE = re.compile(
     r"\bH\.?\s*T\b.{0,24}\bT\.?\s*V\.?\s*A\b"
     r"|\b(?:NETTO|NET|IMPONIBILE|BASE)\b.{0,24}\b(?:MWST|UST|VAT|IVA|BTW)\b"
-    # « Code Taux HT Montant TTC » : certaines caisses de restauration
-    # rapide nomment la colonne de taxe « Montant » et n'écrivent jamais
-    # « TVA ». Le mot « Taux » à côté de « HT » suffit à désigner le
-    # tableau. Sans lui, la ligne « A 10,00 18,00 1,80 19,80 » est lue, mais
-    # aucun taux ne s'y rattache et la dépense retombe sur la taxe par défaut
-    # de la catégorie, éventuellement différente du taux imprimé sur le
-    # ticket.
+    # "Code Taux HT Montant TTC": some fast food tills call the tax column
+    # "Montant" and never write "TVA". The word "Taux" next to "HT" is enough
+    # to point to the table. Without it, the line "A 10,00 18,00 1,80 19,80"
+    # is read, but no rate is attached to it and the expense falls back on
+    # the category's default tax, which may differ from the rate printed on
+    # the receipt.
     r"|\bTAUX\b.{0,24}\bH\.?\s*T\b|\bH\.?\s*T\b.{0,24}\bTAUX\b")
-#: Les trois libellés de colonnes HT, TVA et TTC, l'un après l'autre sans
-#: montant entre eux. Ce signal est plus strict que ``TAX_TABLE_HEADER_RE``,
-#: qui ne cite que deux libellés. Il ne correspond pas à un ticket de péage
-#: qui écrit sa TVA sur une seule ligne (« PRIX HT....5,67 TVA 20,00%
-#: ....1,13 »), ni à une ligne à deux taux qui, mal disposée par l'OCR, mêle
-#: les trois mots aux montants (« 53,64 HT 5,36 TVA 59,00 TTC ») sans être un
-#: en-tête.
+#: The three column labels net, VAT and gross, one after the other with no
+#: amount between them. This signal is stricter than ``TAX_TABLE_HEADER_RE``,
+#: which only cites two labels. It does not match a toll receipt that writes
+#: its VAT on a single line ("PRIX HT....5,67 TVA 20,00% ....1,13"), nor a
+#: two-rate line that, badly laid out by the OCR, mixes the three words with
+#: the amounts ("53,64 HT 5,36 TVA 59,00 TTC") without being a header.
 TAX_TABLE_ALL_LABELS_RE = re.compile(
     r"\bH\.?\s*T\b[^\d]{0,20}\bT\.?\s*V\.?\s*A\b[^\d]{0,20}\bT\.?\s*T\.?\s*C\b")
-# Une ligne de tableau commence par son taux, que certains tickets font
-# précéder du mot TVA : « 10%(C) ... » comme « TVA 10 % ... ».
+# A table line starts with its rate, which some receipts precede with the
+# word TVA: "10%(C) ..." as well as "TVA 10 % ...".
 TAX_TABLE_ROW_RE = re.compile(
     r"^\s*(?:[A-D]\s+|\d{1,2}\s+)?"
     r"(?:(?:T\.?\s*V\.?\s*A|MWST|UST|VAT|IVA|BTW)\.?\s*)?"
     r"(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
-#: Ligne de tableau dont le taux n'a pas de « % » : « 10,00 14,36 1,44 15,80 »,
-#: ou, quand une colonne « Code » la précède, « 2 10,00 4 36,18 3,62 39,80 ».
+#: Table line whose rate has no "%": "10,00 14,36 1,44 15,80", or, when a
+#: "Code" column precedes it, "2 10,00 4 36,18 3,62 39,80".
 TAX_TABLE_BARE_ROW_RE = re.compile(r"^\s*(?:(?:[A-D]|\d)\s+)?(\d{1,2}[.,]\d{1,2})\s+\d")
-#: Colonnes d'un tableau de TVA, dans un ordre quelconque :
-#: « TVA Taux MONT.TTC MONT.TVA TOTAL HT », « TVA% TVA Net Brut » (taux, taxe,
-#: net, brut), « TVA % Taxe HTVA TVAC » (hors TVA, TVA comprise : libellés
-#: belges, repris par certains logiciels de caisse français).
+#: Columns of a VAT table, in any order: "TVA Taux MONT.TTC MONT.TVA TOTAL
+#: HT", "TVA% TVA Net Brut" (rate, tax, net, gross), "TVA % Taxe HTVA TVAC"
+#: (without VAT, VAT included: Belgian labels, used by some French till
+#: software).
 TAX_COLUMNS_RE = re.compile(
     r"\bHT\b|\bTTC\b|\bTAUX\b|\bNETTO\b|\bBRUTTO\b|\bIMPONIBILE\b|\bNET\b|\bBRUT\b"
     r"|\bHTVA\b|\bTVAC\b")
-# Un nombre suivi de « % » est un taux (« 10.00% »), non un montant.
+# A number followed by "%" is a rate ("10.00%"), not an amount.
 TAX_TABLE_AMOUNT_RE = re.compile(r"(?<![\d,])(?<!\d[.,])(\d+)[.,](\d{2,4})(?![\d])(?![.,]\d)(?!\s*%)")
-#: Nombre de lignes examinées après l'en-tête du tableau, avant d'abandonner.
+#: Number of lines examined after the table header, before giving up.
 TAX_TABLE_DEPTH = 8
 
 
 def _table_amounts(text):
-    """Renvoie les montants d'une ligne de tableau (quatre décimales acceptées)."""
+    """Return the amounts of a table line (four decimals accepted)."""
     values = []
     for match in TAX_TABLE_AMOUNT_RE.finditer(text):
         try:
@@ -910,11 +900,11 @@ def _table_amounts(text):
 
 
 def _consistent_tax(amounts, rate):
-    """Renvoie la TVA d'un triplet (HT, TVA, TTC) cohérent avec ce taux, ou ``None``.
+    """Return the VAT of a (net, VAT, gross) triplet consistent with this rate, or ``None``.
 
-    ``HT + TVA = TTC``, et ``TVA`` vaut ``HT`` fois le taux à 0,03 près. Ces
-    contrôles permettent de retrouver la bonne colonne dans une ligne où
-    l'OCR en a mêlé d'autres.
+    ``net + VAT = gross``, and ``VAT`` is ``net`` times the rate within 0.03.
+    These checks find the right column in a line where the OCR mixed in other
+    ones.
     """
     for i, base in enumerate(amounts):
         for j, tax in enumerate(amounts):
@@ -927,9 +917,9 @@ def _consistent_tax(amounts, rate):
 
 
 def extract_tax_table(lines):
-    """Lit le tableau de TVA du ticket, s'il en porte un.
+    """Read the VAT table of the receipt, if it has one.
 
-    Format très répandu sur les tickets de caisse :
+    Very common format on till receipts:
 
     ::
 
@@ -938,30 +928,30 @@ def extract_tax_table(lines):
         20%(B)   0,0000    0,0000     0,00
         10%(C)  56,8182    5,6818    62,50
 
-    Renvoie les triplets (taux, montant, ligne) dont la TVA est non nulle.
-    La ligne de totaux, qui ne commence pas par un taux, est ignorée, sans
-    quoi la TVA serait comptée deux fois.
+    Returns the (rate, amount, line) triplets whose VAT is not zero. The line
+    of totals, which does not start with a rate, is ignored, otherwise the
+    VAT would be counted twice.
     """
     for index, line in enumerate(lines):
         header = normalize(line.text)
-        # Les trois libellés HT, TVA et TTC réunis, sans montant entre eux,
-        # forment un signal assez fort pour reconnaître l'en-tête même si la
-        # ligne porte aussi un montant ailleurs. Sur un ticket d'automate,
-        # l'OCR mêle parfois à l'en-tête un total voisin (« TOTAL EN EUROS :
-        # 15,80 HT TVA TTC ») qui n'est pas la taxe ; la ligne suivante reste
-        # la vraie ligne de valeurs. Une ligne à deux taux mal disposée par
-        # l'OCR peut aussi contenir les trois mots (« 53,64 HT 5,36 TVA 59,00
-        # TTC »), mais avec des montants entre eux : ce n'est pas un en-tête.
-        # Tout autre signal, plus faible, exige une ligne sans montant, pour ne
-        # pas confondre une ligne de totaux avec l'en-tête qui la précède.
+        # The three labels HT, TVA and TTC together, with no amount between
+        # them, are a strong enough signal to recognise the header even if
+        # the line also carries an amount elsewhere. On a vending machine
+        # receipt, the OCR sometimes mixes a nearby total into the header
+        # ("TOTAL EN EUROS : 15,80 HT TVA TTC") that is not the tax; the next
+        # line is still the real line of values. A two-rate line badly laid
+        # out by the OCR can also hold the three words ("53,64 HT 5,36 TVA
+        # 59,00 TTC"), but with amounts between them: it is not a header.
+        # Any other, weaker signal requires a line without an amount, so as
+        # not to take a line of totals for the header before it.
         explicit = bool(TAX_TABLE_ALL_LABELS_RE.search(header))
         if not explicit:
             if find_amounts(line.text):
-                continue  # une ligne d'en-tête ne porte pas de montant
+                continue  # a header line carries no amount
             if not (TAX_TABLE_HEADER_RE.search(header)
                     or (TVA_LINE_RE.search(header) and TAX_COLUMNS_RE.search(header))):
                 continue
-        # « Taux HT TVA TTC » : le taux ouvre la ligne, parfois sans « % ».
+        # "Taux HT TVA TTC": the rate opens the line, sometimes without "%".
         has_rate_column = bool(re.search(
             r"\bTAUX\b|\bRATE\b|\bALIQUOTA\b|\bT\.?\s*V\.?\s*A\s*%", header))
         entries = []
@@ -976,13 +966,13 @@ def extract_tax_table(lines):
             rate = _closest_known_rate(float((match or bare).group(1).replace(",", ".")))
             amounts = _table_amounts(row.text)
             if bare:
-                amounts = amounts[1:]  # le taux lui-même, lu comme un montant
+                amounts = amounts[1:]  # the rate itself, read as an amount
             if rate is None or len(amounts) < 2:
                 continue
-            # Colonnes HT, TVA, TTC : la taxe est la deuxième. Mais l'ordre
-            # varie (« TVA Net Brut ») et, sur une photo de biais, les
-            # colonnes de deux lignes se mêlent : le triplet qui se tient,
-            # HT + TVA = TTC au taux du rang, l'emporte sur la position.
+            # Net, VAT, gross columns: the tax is the second. But the order
+            # varies ("TVA Net Brut") and, on a slanted photo, the columns of
+            # two lines mix: the triplet that holds, net + VAT = gross at the
+            # row's rate, wins over the position.
             amount = round(amounts[1], 2)
             if len(amounts) >= 3:
                 amount = _consistent_tax(amounts, rate) or amount
@@ -994,13 +984,13 @@ def extract_tax_table(lines):
 
 
 def extract_taxes(lines):
-    """Renvoie le taux, le montant de TVA et le taux le plus élevé lus sur le ticket.
+    """Return the rate, the VAT amount and the highest rate read on the receipt.
 
-    Le troisième champ sert d'abord à borner la vérification : sur un
-    ticket à plusieurs taux, aucun ne vaut pour la dépense entière, mais le
-    plus élevé donne le plafond au-delà duquel la TVA lue serait fausse.
-    Faute de mieux, c'est aussi ce taux que le modèle applique à la dépense
-    dans ce cas (voir ``_expense_scan_field_values``).
+    The third field first bounds the check: on a receipt with several rates,
+    none holds for the whole expense, but the highest gives the ceiling
+    beyond which the VAT read would be wrong. For want of anything better,
+    the model also applies that rate to the expense in this case (see
+    ``_expense_scan_field_values``).
     """
     table = extract_tax_table(lines)
     if table:
@@ -1017,9 +1007,9 @@ def extract_taxes(lines):
         )
     rate_field, amount_field, max_field = _extract_taxes_by_line(lines)
     if rate_field.value is None and max_field.value is None:
-        # Aucun taux sur une ligne étiquetée TVA : il est cherché là où il se
-        # vérifie, sur une ligne « base, taux, montant » cohérente
-        # (« Normale 50,00 € 20,00% 10,00 € »).
+        # No rate on a line labelled VAT: it is looked for where it can be
+        # checked, on a consistent "base, rate, amount" line
+        # ("Normale 50,00 € 20,00% 10,00 €").
         rates = _consistent_rates(lines)
         if len(rates) == 1:
             rate, source = rates.popitem()
@@ -1029,7 +1019,7 @@ def extract_taxes(lines):
 
 
 def _consistent_rates(lines):
-    """``{taux: ligne}`` des lignes où une base fois le taux donne un montant."""
+    """``{rate: line}`` of the lines where a base times the rate gives an amount."""
     found = {}
     for line in lines:
         text = normalize(line.text)
@@ -1046,17 +1036,16 @@ def _consistent_rates(lines):
     return found
 
 
-#: Ligne de total TTC : ce n'est pas une ligne de taxe, même si « TVA » y
-#: figure.
+#: Line of the total with tax: it is not a tax line, even if "TVA" is in it.
 TOTAL_TTC_RE = re.compile(r"\bTOT(?:AL)?\.?\s*T\.?\s*T\.?\s*C\b")
 
 
 def _tax_of_pair(amounts, rate):
-    """Renvoie la taxe d'une ligne à deux montants : celui que l'autre explique.
+    """Return the tax of a line with two amounts: the one the other explains.
 
-    « TVA 10 % 4,55 0,45 » (base, taxe) comme « 0,77 VAT 10% 8,50 » (taxe,
-    TTC) : la taxe vaut la base fois le taux, ou le TTC fois taux / (100 +
-    taux). En l'absence de concordance, le dernier montant est retenu.
+    "TVA 10 % 4,55 0,45" (base, tax) as well as "0,77 VAT 10% 8,50" (tax,
+    gross): the tax is the base times the rate, or the gross times rate /
+    (100 + rate). Without a match, the last amount is kept.
     """
     first, second = amounts
     for tax, other in ((second, first), (first, second)):
@@ -1067,7 +1056,7 @@ def _tax_of_pair(amounts, rate):
 
 
 def _extract_taxes_by_line(lines):
-    """Repli : tickets qui impriment leur TVA sur une ligne étiquetée."""
+    """Fallback: receipts that print their VAT on a labelled line."""
     entries = []
     stated_total = None
     for line in lines:
@@ -1075,57 +1064,56 @@ def _extract_taxes_by_line(lines):
         if not TVA_LINE_RE.search(text):
             continue
         if TAX_TABLE_ALL_LABELS_RE.search(text):
-            # « ... TOTAL EN EUROS : 15,80 HT TVA TTC ... » : les trois
-            # libellés de colonnes HT, TVA et TTC réunis signent un en-tête
-            # de tableau que l'OCR a mêlé à un total voisin. Le montant de
-            # cette ligne n'est pas une taxe ; s'il y en a une, elle figure
-            # sur une autre ligne. Mieux vaut ne rien lire que lire le
-            # total. Un ticket de péage qui imprime tout sur une ligne
-            # (« PRIX HT....5,67 TVA 20,00%....1,13 ») ne cite que HT et TVA,
-            # sans TTC au même endroit : il reste lu normalement.
+            # "... TOTAL EN EUROS : 15,80 HT TVA TTC ...": the three column
+            # labels HT, TVA and TTC together mark a table header that the
+            # OCR mixed with a nearby total. The amount of this line is not
+            # a tax; if there is one, it is on another line. Better to read
+            # nothing than to read the total. A toll receipt that prints
+            # everything on one line ("PRIX HT....5,67 TVA 20,00%....1,13")
+            # only cites HT and TVA, without TTC in the same place: it is
+            # still read normally.
             continue
         if TAX_NOT_A_TAX_RE.search(text):
-            continue  # « Montant final (TVA incluse) 15,38 » : un total, non la taxe
+            continue  # "Montant final (TVA incluse) 15,38": a total, not the tax
         if TOTAL_TTC_RE.search(text) and not TAX_SUM_RE.search(text):
-            continue  # « TOTAL TTC: TVA 25,50 EUR TTC » : colonnes mêlées au total
+            continue  # "TOTAL TTC: TVA 25,50 EUR TTC": columns mixed with the total
         if TAX_SUM_RE.search(text):
-            # « SUMA PTU 18,70 », « TOTAL TVA 6,87 » : somme des lignes de
-            # taux, déjà imprimée. L'additionner aux lignes qu'elle résume
-            # compterait la TVA deux fois ; elle fait foi à leur place.
+            # "SUMA PTU 18,70", "TOTAL TVA 6,87": sum of the rate lines,
+            # already printed. Adding it to the lines it sums up would count
+            # the VAT twice; it prevails in their place.
             amounts = [value for value, _position in find_amounts(line.text)]
             if amounts:
                 stated_total = (amounts[-1], line.text, line.score)
             continue
         if TAX_BASE_RE.search(text) and not RATE_RE.search(text):
-            # « SPRZED. OPOD. PTU A 260,00 », « Détail de la TVA Total HT
-            # 50,00 » : base taxable, non taxe.
+            # "SPRZED. OPOD. PTU A 260,00", "Détail de la TVA Total HT
+            # 50,00": taxable base, not tax.
             continue
         rate_match = RATE_RE.search(text)
         if not rate_match and TAX_CODE_RE.search(text):
-            # « Prix:12.49 TVA:D » : la lettre renvoie au tableau des taux, et
-            # le montant de la ligne est un prix, non une taxe.
+            # "Prix:12.49 TVA:D": the letter refers to the rate table, and the
+            # amount of the line is a price, not a tax.
             continue
         rate = None
         if rate_match:
             rate = _closest_known_rate(float(rate_match.group(1).replace(",", ".")))
         amounts = [value for value, _position in find_amounts(line.text)]
         if not amounts and ZERO_AMOUNT_RE.search(line.text):
-            # « TVA 5.50%: 0.00 0.00 0.00 » : un taux prévu mais inutilisé ne
-            # fait pas de ce ticket un ticket à plusieurs taux.
+            # "TVA 5.50%: 0.00 0.00 0.00": a rate provided for but unused
+            # does not make this a receipt with several rates.
             continue
-        # Le rang du montant de taxe dépend du nombre de colonnes :
+        # The position of the tax amount depends on the number of columns:
         #
-        #   « TVA 20,00%....1,13 »              -> le seul montant
-        #   « TVA 10,00 % 4,55 0,45 »           -> base puis taxe
-        #   « TVA 10 % 26,39 2,64 29,03 »       -> HT, taxe, TTC
+        #   "TVA 20,00%....1,13"              -> the only amount
+        #   "TVA 10,00 % 4,55 0,45"           -> base then tax
+        #   "TVA 10 % 26,39 2,64 29,03"       -> net, tax, gross
         #
-        # Prendre systématiquement le dernier montant retiendrait le TTC sur
-        # trois colonnes, et additionnerait les totaux du ticket au lieu de
-        # ses taxes.
+        # Always taking the last amount would keep the gross on three
+        # columns, and add up the receipt's totals instead of its taxes.
         if rate is None and len(amounts) >= 4:
-            # « E TVA 10.00 13.59 1.36 14.95 » : le taux, sans « % », est lu
-            # comme un montant. Il est retenu s'il est un taux connu et que le
-            # reste forme un triplet HT + TVA = TTC à ce taux.
+            # "E TVA 10.00 13.59 1.36 14.95": the rate, without "%", is read
+            # as an amount. It is kept if it is a known rate and the rest
+            # forms a net + VAT = gross triplet at that rate.
             for position, value in enumerate(amounts):
                 if _closest_known_rate(value) == value and value > 0:
                     rest = amounts[:position] + amounts[position + 1:]
@@ -1146,7 +1134,7 @@ def _extract_taxes_by_line(lines):
         entries.append((rate, amount, line.text, line.score))
 
     if not entries and stated_total:
-        # Somme de TVA imprimée, utilisée à défaut de lignes de taux.
+        # Printed VAT sum, used when there are no rate lines.
         entries.append((None, stated_total[0], stated_total[1], stated_total[2]))
         stated_total = None
     if not entries:
@@ -1163,8 +1151,8 @@ def _extract_taxes_by_line(lines):
         rate_field = ExtractedField(value=rates[0], confidence=min(0.9 * max(score, 0.4), 0.95),
                                     source=source)
     elif rates:
-        # Plusieurs taux sur le même ticket : un seul ne peut pas être choisi
-        # pour la dépense. L'information est remontée sans être appliquée.
+        # Several rates on the same receipt: a single one cannot be chosen for
+        # the expense. The information is passed on without being applied.
         rate_field = ExtractedField(value=None, confidence=0.0, source=source)
 
     amount_field = ExtractedField(value=None, confidence=0.0)
@@ -1177,7 +1165,7 @@ def _extract_taxes_by_line(lines):
                                       confidence=min(0.8 * max(score, 0.4), 0.9),
                                       source=source)
 
-    # Plafond de contrôle : le taux le plus élevé effectivement lu.
+    # Control ceiling: the highest rate actually read.
     max_field = ExtractedField(value=None, confidence=0.0)
     if rates:
         max_field = ExtractedField(value=max(rates), confidence=0.9, source=source)
@@ -1185,32 +1173,32 @@ def _extract_taxes_by_line(lines):
 
 
 # ---------------------------------------------------------------------------
-# Sens de lecture
+# Reading direction
 # ---------------------------------------------------------------------------
 
-#: Libellés qui précèdent toujours leur montant sur un ticket.
+#: Labels that always precede their amount on a receipt.
 READING_LABEL_RE = re.compile(
     r"\b(TOTAL|PRIX|MONTANT|TVA|PAIEMENT|REGLEMENT|NET A PAYER|ESPECES|RENDU"
     r"|SOUS-TOTAL|A PAYER|DONT TVA)\b")
-#: Mentions qui closent un ticket : elles se trouvent en bas.
+#: Mentions that close a receipt: they are at the bottom.
 READING_FOOTER_RE = re.compile(
     r"\b(TOTAL|NET A PAYER|A PAYER|PAIEMENT|REGLEMENT|CARTE BANCAIRE|MERCI"
     r"|AU REVOIR|RENDU|ESPECES)\b")
-#: Mentions qui ouvrent un ticket : elles se trouvent en haut.
+#: Mentions that open a receipt: they are at the top.
 READING_HEADER_RE = re.compile(
     r"\b(SARL|SAS|SASU|EURL|SA|SIRET|SIREN|RCS|TEL|TELEPHONE|RUE|AVENUE"
     r"|BOULEVARD|ROUTE|PLACE|CEDEX|BP)\b")
-#: Nombre de lignes concordantes exigé avant de conclure.
+#: Number of agreeing lines required before concluding.
 READING_MIN_VOTES = 2
 
 
 def _block_votes(lines, pattern, expected_bottom):
-    """Vote de position : indique si les mentions tombent du bon côté (haut ou bas).
+    """Position vote: tell whether the mentions fall on the right side (top or bottom).
 
-    Un ticket a une géométrie stable : coordonnées de l'enseigne en haut,
-    règlement en bas. Retourné, tout se retrouve du mauvais côté. Le vote ne
-    compte que les lignes nettement écartées du milieu : celles qui
-    l'entourent ne prouvent rien.
+    A receipt has a stable geometry: merchant details at the top, payment at
+    the bottom. Upside down, everything ends up on the wrong side. The vote
+    only counts the lines clearly away from the middle: those around it prove
+    nothing.
     """
     positions = [line.center_y for line in lines]
     if len(positions) < 4:
@@ -1232,18 +1220,17 @@ def _block_votes(lines, pattern, expected_bottom):
 
 
 def reading_direction(lines):
-    """Indique si le ticket se lit à l'endroit (+1), à l'envers (-1) ou sans avis (0).
+    """Tell whether the receipt reads right side up (+1), upside down (-1) or no opinion (0).
 
-    Une photo à 180° se lit correctement mot à mot (le classifieur d'angle
-    du moteur redresse chaque ligne), mais les emplacements restent inversés :
-    les montants passent devant leur libellé et les lignes se suivent de la
-    dernière à la première. Cette inversion est mesurée sur le texte seul,
-    sans relire l'image.
+    A photo at 180° reads correctly word by word (the engine's angle
+    classifier straightens each line), but the positions stay reversed: the
+    amounts come before their label and the lines follow each other from the
+    last to the first. This reversal is measured on the text alone, without
+    reading the image again.
 
-    Comparer les orientations en relisant l'image ne fonctionne pas : selon
-    la version du moteur, désactiver le classifieur reste sans effet, les deux
-    sens obtiennent alors le même score et l'égalité ne permet pas de
-    trancher.
+    Comparing orientations by reading the image again does not work: with
+    some engine versions, turning the classifier off has no effect, both
+    directions then get the same score and the tie decides nothing.
     """
     votes = 0
     for line in lines:
@@ -1251,8 +1238,8 @@ def reading_direction(lines):
         label = READING_LABEL_RE.search(text)
         if not label:
             continue
-        # Positions relevées sur la même chaîne que le libellé : `normalize`
-        # compacte les séparateurs et décalerait les indices.
+        # Positions taken on the same string as the label: `normalize`
+        # compacts the separators and would shift the indexes.
         positions = [position for _value, position in find_amounts(text)]
         if not positions:
             continue
@@ -1261,8 +1248,8 @@ def reading_direction(lines):
         elif min(positions) < label.start():
             votes -= 1
 
-    # Second indice, sur la géométrie du ticket plutôt que sur ses lignes :
-    # l'enseigne et son adresse en haut, le règlement en bas.
+    # Second clue, on the geometry of the receipt rather than on its lines:
+    # the merchant and its address at the top, the payment at the bottom.
     votes += _block_votes(lines, READING_FOOTER_RE, expected_bottom=True)
     votes += _block_votes(lines, READING_HEADER_RE, expected_bottom=False)
 
@@ -1274,11 +1261,11 @@ def reading_direction(lines):
 
 
 def extract_currency(lines, default="EUR"):
-    """Renvoie la devise du ticket, déduite du symbole ou du code imprimé."""
+    """Return the currency of the receipt, deduced from the printed symbol or code."""
     joined = normalize(" ".join(line.text for line in lines))
     raw = " ".join(line.text for line in lines)
-    # La devise la plus citée l'emporte : un ticket polonais qui convertit son
-    # total en euros cite le zloty à chaque ligne et l'euro une seule fois.
+    # The most cited currency wins: a Polish receipt that converts its total
+    # into euros cites the zloty on every line and the euro only once.
     best = None
     for pattern, code in CURRENCIES:
         count = max(len(pattern.findall(joined)), len(pattern.findall(raw)))
@@ -1298,7 +1285,7 @@ def extract_currency(lines, default="EUR"):
 
 
 def _country_currency(text):
-    """Devise d'un ticket sans devise imprimée, d'après ses mentions légales."""
+    """Currency of a receipt without a printed currency, from its legal mentions."""
     krone = _krone(text, None)
     if krone:
         return krone
@@ -1309,7 +1296,7 @@ def _country_currency(text):
 
 
 def _krone(text, default):
-    """Couronne du ticket d'après ses mots ; la devise par défaut si elle en est une."""
+    """Krone of the receipt from its words; the default currency if it is one."""
     votes = {code: len(pattern.findall(text)) for pattern, code in KRONE_HINTS}
     code, count = max(votes.items(), key=lambda item: item[1])
     if count:
@@ -1318,12 +1305,12 @@ def _krone(text, default):
 
 
 def extract_time(lines, date_source=""):
-    """Renvoie l'heure d'achat imprimée sur le ticket.
+    """Return the purchase time printed on the receipt.
 
-    Elle sert à ordonner plusieurs justificatifs d'une même journée, ce que
-    la date seule ne permet pas. L'heure imprimée sur la ligne qui porte déjà
-    la date est privilégiée : c'est presque toujours l'horodatage de la
-    caisse, et non une heure de vol ou d'ouverture du magasin.
+    It orders several receipts of the same day, which the date alone cannot
+    do. The time printed on the line that already carries the date is
+    preferred: it is almost always the till's time stamp, not a flight time
+    or the shop's opening hours.
     """
     best = None
     for line in lines:
@@ -1342,24 +1329,23 @@ def extract_time(lines, date_source=""):
     return ExtractedField(value=best[1], confidence=min(best[0], 0.95), source=best[2])
 
 
-#: « APE 5610A », « Code NAF : 55.10Z », « ATECO 56.10.11 ». L'OCR lit
-#: souvent le Z final comme un 2.
+#: "APE 5610A", "Code NAF : 55.10Z", "ATECO 56.10.11". The OCR often reads the
+#: final Z as a 2.
 ACTIVITY_RE = re.compile(
     r"\b(?:CODE\s*)?(?:APE|NAF|ATECO|NACE)\s*[:.\-]?\s*(\d{2})\s*[.,]?\s*(\d{2})\s*([A-Z2])?\b")
-#: « MCC 5812 », « MCC : 7011 » sur les reçus de carte.
+#: "MCC 5812", "MCC : 7011" on card slips.
 MCC_RE = re.compile(r"\bMCC\s*[:.\-]?\s*(\d{4})\b")
-#: « SIRET : 123 456 789 00012 », « N° SIRET 12345678900012 ».
+#: "SIRET : 123 456 789 00012", "N° SIRET 12345678900012".
 SIRET_RE = re.compile(r"\bSIRE[TN]\b\D{0,12}((?:\d[\s.]?){8}\d(?:[\s.]?\d){0,5})")
-#: « RCS PARIS B 123 456 789 » : le SIREN suit la ville du greffe.
+#: "RCS PARIS B 123 456 789": the SIREN follows the city of the registry.
 RCS_RE = re.compile(r"\bRCS\b[^0-9]{0,30}((?:\d[\s.]?){8}\d)\b")
 
 
 def extract_activity(lines):
-    """Renvoie le code d'activité imprimé : ``"NAF:5610A"`` ou ``"MCC:5812"``.
+    """Return the printed activity code: ``"NAF:5610A"`` or ``"MCC:5812"``.
 
-    C'est l'indice le plus fiable de la nature d'un commerce, quand il
-    figure : beaucoup de tickets français impriment le code APE à côté du
-    SIRET.
+    It is the most reliable clue to the nature of a business, when present:
+    many French receipts print the APE code next to the SIRET.
     """
     for line in lines:
         text = normalize(line.text)
@@ -1385,10 +1371,10 @@ def _luhn(digits):
 
 
 def extract_company_number(lines):
-    """Renvoie le SIRET (14 chiffres) ou, à défaut, le SIREN (9 chiffres) du commerçant.
+    """Return the merchant's SIRET (14 digits) or, failing that, its SIREN (9 digits).
 
-    La clé de Luhn écarte les numéros mal lus : un chiffre erroné ne doit pas
-    désigner un autre établissement.
+    The Luhn check rules out misread numbers: a wrong digit must not point to
+    another establishment.
     """
     siren = None
     for line in lines:
@@ -1409,12 +1395,12 @@ FRENCH_TVA_RE = re.compile(r"\bT\.?\s*V\.?\s*A\b")
 
 
 def extract_tax_label(lines):
-    """Renvoie le libellé sous lequel le ticket imprime sa taxe (« TVA », « IVA », « PTU »…).
+    """Return the label under which the receipt prints its tax ("TVA", "IVA", "PTU"...).
 
-    Une taxe étrangère ne se déduit pas comme la TVA française : le module
-    s'en sert pour ne pas la reporter en TVA déductible. Seules les lignes
-    qui portent un taux ou un montant sont examinées, ce qui ignore un numéro
-    de TVA intracommunautaire imprimé en en-tête.
+    A foreign tax is not deducted like domestic VAT: the module uses this so
+    as not to carry it as deductible VAT. Only the lines carrying a rate or
+    an amount are examined, which ignores an intra-community VAT number
+    printed in the header.
     """
     for line in lines:
         text = normalize(line.text)
@@ -1425,13 +1411,13 @@ def extract_tax_label(lines):
             return ExtractedField(value="TVA", confidence=0.9, source=line.text)
         label = re.sub(r"[^A-Z]", "", match.group(0))
         if label.startswith("TAXE"):
-            label = "TVA"  # « Taxe totale » : la TVA d'une facture française
+            label = "TVA"  # "Taxe totale": the VAT of a French invoice
         return ExtractedField(value=label, confidence=0.9, source=line.text)
     return ExtractedField(value=None, confidence=0.0)
 
 
 def extract_vat_number(lines):
-    """Renvoie le numéro de TVA intracommunautaire, utile pour retrouver le fournisseur."""
+    """Return the intra-community VAT number, useful to find the supplier."""
     for line in lines:
         text = normalize(line.text)
         match = VAT_NUMBER_RE.search(text)
@@ -1442,25 +1428,25 @@ def extract_vat_number(lines):
 
 
 # ---------------------------------------------------------------------------
-# Lieux
+# Places
 # ---------------------------------------------------------------------------
 
-#: Code postal suivi d'une ville : « 31150 Fenouillet », « 10144 Torino ».
+#: Postal code followed by a city: "31150 Fenouillet", "10144 Torino".
 POSTAL_CITY_RE = re.compile(r"(?<![\d.,])(\d{5})\s+([A-Z][A-Z\-]{2,})")
-#: Gare de péage : « Sortie ..Muret », « Entree.. Toulouse-S-E »,
-#: « USCITA: MARCALLO MESERO ».
+#: Toll station: "Sortie ..Muret", "Entree.. Toulouse-S-E",
+#: "USCITA: MARCALLO MESERO".
 TOLL_STATION_RE = re.compile(
     r"\b(?:SORTIE|ENTREE|USCITA|ENTRATA|AUSFAHRT|EINFAHRT|SALIDA|ENTRADA)\b[\s.:]*"
     r"([A-Z][A-Z\- ]{2,40})")
-#: Trajet imprimé : « De Toulouse à Lille », « Lille à Bordeaux (Billi) ».
+#: Printed journey: "De Toulouse à Lille", "Lille à Bordeaux (Billi)".
 ROUTE_RE = re.compile(r"^\s*(?:DE\s+)?([A-Z][A-Z\-]{3,})\s+A\s+([A-Z][A-Z\-]{3,})\b")
-#: Mots qu'un trajet ou une adresse fait passer pour une ville.
+#: Words that a journey or an address passes off as a city.
 NOT_A_CITY = {
     "EMPORTER", "CONSOMMER", "PLACE", "PARTIR", "BIENTOT", "VOUS", "PAYER",
     "CEDEX", "FRANCE", "SAINT", "SAINTE", "ROUTE", "AVENUE",
 }
-#: L'adresse du magasin est en tête ; celle du siège, en pied de page,
-#: n'indique pas le lieu de l'achat.
+#: The shop's address is at the top; the head office's, at the foot of the
+#: page, does not say where the purchase was made.
 PLACE_HEADER_LINES = 10
 
 
@@ -1470,13 +1456,12 @@ def _city(word):
 
 
 def trip_places(lines):
-    """Renvoie les lieux d'un justificatif : ``(clés, villes)``.
+    """Return the places of a receipt: ``(keys, cities)``.
 
-    Les clés (code postal, gare de péage) se comparent telles quelles ; les
-    villes se cherchent aussi dans le texte entier de l'autre justificatif :
-    le billet « Lille à Bordeaux » rejoint l'hôtel « 33000 BORDEAUX ». Le
-    paramètre est une liste de lignes de texte, pour servir aussi au texte
-    reconnu enregistré.
+    The keys (postal code, toll station) are compared as they are; the
+    cities are also looked for in the whole text of the other receipt: the
+    ticket "Lille à Bordeaux" joins the hotel "33000 BORDEAUX". The argument
+    is a list of text lines, so that it also works on the stored text read.
     """
     places, cities = set(), set()
     for index, raw in enumerate(lines):
@@ -1488,8 +1473,8 @@ def trip_places(lines):
                 if city:
                     cities.add(city)
         for match in TOLL_STATION_RE.finditer(text):
-            # Les deux premiers mots suffisent : l'OCR tronque souvent la
-            # suite (« TARBES/EST », « Toulouse-S-E »).
+            # The first two words are enough: the OCR often truncates the
+            # rest ("TARBES/EST", "Toulouse-S-E").
             words = re.findall(r"[A-Z]{3,}", match.group(1))[:2]
             if words:
                 places.add("gare:" + " ".join(words))
@@ -1501,41 +1486,41 @@ def trip_places(lines):
 
 
 def cites_city(city, lines):
-    """Indique si la ville est citée, en mot entier, dans ces lignes."""
+    """Tell whether the city is cited, as a whole word, in these lines."""
     pattern = re.compile(r"(?<![A-Z])%s(?![A-Z])" % re.escape(city))
     return any(pattern.search(normalize(line)) for line in lines)
 
 
 # ---------------------------------------------------------------------------
-# Point d'entrée
+# Entry point
 # ---------------------------------------------------------------------------
 
-#: Libellés affichés à l'utilisateur pour les champs à revérifier.
+#: Labels shown to the user for the fields to check again.
 FIELD_LABELS = {
-    "merchant": "Enseigne",
+    "merchant": "Merchant",
     "date": "Date",
-    "time": "Heure",
+    "time": "Time",
     "total": "Total",
-    "currency": "Devise",
-    "tax_rate": "Taux de TVA",
-    "tax_amount": "Montant de TVA",
-    "vat_number": "N° de TVA",
+    "currency": "Currency",
+    "tax_rate": "Tax rate",
+    "tax_amount": "Tax amount",
+    "vat_number": "VAT number",
 }
-#: En dessous de ce seuil, le champ est signalé comme « à vérifier ».
+#: Below this threshold, the field is flagged "to check".
 LOW_CONFIDENCE = 0.65
 
 
-#: Pays qui écrivent le mois avant le jour.
+#: Countries that write the month before the day.
 MONTH_FIRST_COUNTRIES = frozenset({"US"})
 
 
 def parse(words, today=None, max_age_days=730, default_currency="EUR", buyers=(),
           country=None):
-    """Analyse une liste de mots situés et renvoie un :class:`ScanResult`.
+    """Parse a list of positioned words and return a :class:`ScanResult`.
 
-    ``country`` : code du pays de la société. Avec la devise lue, il décide de
-    l'ordre du jour et du mois (un ticket en dollars américains s'écrit
-    « 06/26/2026 »).
+    ``country``: code of the company's country. With the currency read, it
+    decides the order of day and month (a receipt in US dollars writes
+    "06/26/2026").
     """
     lines = build_lines(words)
     tax_rate, tax_amount, tax_rate_max = extract_taxes(lines)
@@ -1562,12 +1547,12 @@ def parse(words, today=None, max_age_days=730, default_currency="EUR", buyers=()
 
 
 def fields_to_check(result, names=("date", "total")):
-    """Renvoie les libellés des champs absents ou peu fiables, à faire relire.
+    """Return the labels of the missing or unreliable fields, to be checked.
 
-    L'enseigne n'y figure pas : elle est mal lue une fois sur deux (logo
-    stylisé, en-tête tronqué), et la signaler sur chaque ticket réduirait
-    l'utilité de l'avertissement. Ce qui doit être juste est ce qui part en
-    comptabilité : la date et le montant.
+    The merchant is not included: it is misread one time in two (stylised
+    logo, truncated header), and flagging it on every receipt would make the
+    warning less useful. What must be right is what goes to the accounts:
+    the date and the amount.
     """
     todo = []
     for name in names:

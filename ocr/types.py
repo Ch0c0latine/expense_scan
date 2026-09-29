@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Structures de données partagées par la chaîne de scan.
+"""Data structures shared by the scan chain.
 
-Volontairement indépendantes d'Odoo : ce paquet peut être testé et mis au
-point avec un simple interpréteur Python, sans base de données.
+Deliberately independent of Odoo: this package can be tested and tuned with
+a plain Python interpreter, without a database.
 """
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 @dataclass
 class OcrWord:
-    """Un groupe de caractères reconnu, avec sa position dans l'image."""
+    """A group of characters read, with its position in the image."""
 
     text: str
     score: float
@@ -20,9 +20,9 @@ class OcrWord:
     top: float
     right: float
     bottom: float
-    #: Inclinaison de la ligne en degrés, quand le moteur la fournit. PP-OCR
-    #: détecte des quadrilatères orientés ; Tesseract ne rend que des
-    #: rectangles droits et laisse donc cette valeur à zéro.
+    #: Line tilt in degrees, when the engine gives it. PP-OCR detects
+    #: oriented quadrilaterals; Tesseract only returns upright rectangles
+    #: and leaves this value at zero.
     angle: float = 0.0
 
     @property
@@ -40,7 +40,7 @@ class OcrWord:
 
 @dataclass
 class OcrLine:
-    """Une ligne du ticket, reconstruite en regroupant les mots par hauteur."""
+    """A line of the receipt, rebuilt by grouping the words by height."""
 
     words: List[OcrWord] = field(default_factory=list)
 
@@ -52,8 +52,8 @@ class OcrLine:
     def score(self) -> float:
         if not self.words:
             return 0.0
-        # Pondérée par la longueur : un mot d'un caractère mal lu ne doit pas
-        # peser autant qu'un libellé complet.
+        # Weighted by length: a misread one-character word must not weigh as
+        # much as a whole label.
         total = sum(len(w.text) for w in self.words) or 1
         return sum(w.score * len(w.text) for w in self.words) / total
 
@@ -72,7 +72,7 @@ class OcrLine:
 
 @dataclass
 class ExtractedField:
-    """Une valeur extraite, sa fiabilité et le texte qui l'a produite."""
+    """A value extracted, its reliability and the text it came from."""
 
     value: Any
     confidence: float  # 0.0 -> 1.0
@@ -84,7 +84,7 @@ class ExtractedField:
 
 @dataclass
 class PreprocessInfo:
-    """Ce que le pré-traitement a effectivement fait à l'image."""
+    """What the preprocessing actually did to the image."""
 
     cropped: bool = False
     deskew_angle: float = 0.0
@@ -92,20 +92,20 @@ class PreprocessInfo:
     original_size: Tuple[int, int] = (0, 0)
     final_size: Tuple[int, int] = (0, 0)
     changed: bool = False
-    reread: bool = False  # une seconde lecture, sur l'image redressée ou recadrée
+    reread: bool = False  # a second reading, on the straightened or cropped image
 
 
 @dataclass
 class ScanResult:
-    """Résultat complet d'un scan, prêt à être reporté sur une dépense."""
+    """Full result of a scan, ready to be written on an expense."""
 
     engine: str = ""
     duration: float = 0.0
     lines: List[OcrLine] = field(default_factory=list)
     fields: Dict[str, ExtractedField] = field(default_factory=dict)
     preprocess: Optional[PreprocessInfo] = None
-    image_bytes: Optional[bytes] = None  # image recadrée/redressée, en JPEG
-    timer: Any = None  # durée de chaque étape, pour le journal
+    image_bytes: Optional[bytes] = None  # cropped/straightened image, as JPEG
+    timer: Any = None  # duration of each step, for the log
 
     @property
     def raw_text(self) -> str:

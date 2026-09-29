@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Remise en brouillon de plusieurs dépenses à la fois."""
+"""Setting several expenses back to draft at once."""
 from odoo.tests import common, tagged
 
 

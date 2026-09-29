@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Tickets typiques, tels que les lit l'OCR (enseignes réelles, coordonnées fictives).
+"""Typical receipts, as the OCR reads them (real brands, made-up details).
 
-Chaque ticket correspond à un défaut corrigé ; les tests évitent sa
-réapparition.
+Each receipt matches a fixed defect; the tests keep it from coming back.
 """
 from unittest.mock import patch
 
@@ -84,7 +83,7 @@ def reading(text):
 class TestRealReceipts(common.TransactionCase):
 
     def test_town_alone_does_not_make_the_same_merchant(self):
-        """« Nord Villefranche d'Orbec » n'est pas « Dormizz Villefranche d'Orbec »."""
+        """'Nord Villefranche d'Orbec' is not 'Dormizz Villefranche d'Orbec'."""
         lines = MCDONALDS.split("\n")
         self.assertIsNone(lexicon.match_merchant(lines, ["dormizz villefranche d orbec"]))
         self.assertEqual(lexicon.match_merchant(["DORMIZZ VILEFRANCHE D'ORBEC"],
@@ -139,8 +138,8 @@ class TestHistoryIsNotAVeto(common.TransactionCase):
             {'name': "Divers historique", 'can_be_expensed': True})
         self.env.company.expense_scan_product_id = default
         Expense = self.env['hr.expense']
-        # Une enseigne lue à l'identique, classée à tort en hébergement ;
-        # préfixée pour ne croiser aucun ticket réel de la base.
+        # A merchant read identically, wrongly classified as lodging;
+        # prefixed so as not to meet any real receipt of the database.
         receipt = MCDONALDS.replace("NORD VILLEFRANCHE", "ZZNORD VILLEFRANCHE")
         past = Expense.create({
             'name': "Passé", 'employee_id': employee.id,
@@ -204,15 +203,15 @@ class TestRescanAfterApproval(common.TransactionCase):
 
 @tagged('post_install', '-at_install')
 class TestOrientationFallback(common.TransactionCase):
-    """Choix du quart de tour sans opinion lisible.
+    """Choosing the quarter turn without a readable opinion.
 
-    Exemple : justificatif de train en PDF (SNCF Connect), mis en page comme
-    une facture : enseigne en logo (pas en texte) et pied de page légal
-    (SIRET, adresse) en bas de page plutôt qu'en en-tête. Le solde de vote
-    est nettement négatif à l'endroit (le pied de page est pris pour un
-    en-tête) et jamais nettement positif à l'envers. L'ancien repli, qui
-    retenait le premier quart mettant le texte à l'horizontale sans tenir
-    compte de son propre avis, retournait le document.
+    Example: a train receipt as PDF (SNCF Connect), laid out like an invoice:
+    merchant as a logo (not as text) and legal footer (SIRET, address) at
+    the bottom of the page rather than in the header. The vote balance is
+    clearly negative right side up (the footer is taken for a header) and
+    never clearly positive upside down. The former fallback, which kept the
+    first quarter that made the text horizontal without looking at its own
+    opinion, flipped the document.
     """
 
     def test_a_slightly_negative_original_orientation_is_kept(self):
@@ -222,8 +221,8 @@ class TestOrientationFallback(common.TransactionCase):
     def test_a_clean_positive_verdict_wins_immediately(self):
         Expense = self.env['hr.expense']
         self.assertEqual(Expense._expense_scan_pick_quarter([(0, 1), (2, -1)]), 0)
-        # L'ordre des candidats est sans effet : un avis positif net
-        # l'emporte, même testé en dernier.
+        # The order of the candidates has no effect: a clear positive
+        # opinion wins, even when tried last.
         self.assertEqual(Expense._expense_scan_pick_quarter([(0, -1), (2, 1)]), 2)
 
     def test_no_opinion_anywhere_keeps_the_first_candidate(self):
@@ -231,22 +230,22 @@ class TestOrientationFallback(common.TransactionCase):
         self.assertEqual(Expense._expense_scan_pick_quarter([(0, 0), (2, 0)]), 0)
 
     def test_every_candidate_negative_keeps_the_first_by_default(self):
-        """Cas dégénéré : aucune orientation n'est crédible, la première est conservée."""
+        """Degenerate case: no orientation is credible, the first one is kept."""
         Expense = self.env['hr.expense']
         self.assertEqual(Expense._expense_scan_pick_quarter([(0, -1), (2, -1)]), 0)
 
     class _FakeImage:
-        """Fournit `image.shape[:2]` sans dépendre d'OpenCV."""
+        """Provide `image.shape[:2]` without depending on OpenCV."""
         def __init__(self, width, height):
             self.shape = (height, width, 3)
 
     def test_decide_180_false_never_flips_upside_down_or_not(self):
-        """L'essai basse résolution ne corrige que debout/couché.
+        """The low resolution attempt only corrects standing/lying.
 
-        Sur le même texte qui donne `reading_direction` = -1 à l'endroit
-        (voir test_reading_direction_upside_down dans test_parser.py),
-        l'appel avec ``decide_180=False`` ne change pas le quart. C'est le
-        rôle du repli introduit pour les PDF.
+        On the same text that gives `reading_direction` = -1 right side up
+        (see test_reading_direction_upside_down in test_parser.py), the call
+        with ``decide_180=False`` does not change the quarter. That is the
+        role of the fallback introduced for PDFs.
         """
         upside_down_text = words_from_text("""
 6,80 euros PRIX TTC
@@ -258,9 +257,9 @@ ASF Lieu-dit Les Pins BP 10017
         Expense = self.env['hr.expense']
         self.assertEqual(
             Expense._expense_scan_quarters(upside_down_text, image, decide_180=False), 0)
-        # Avec la décision à 180° activée (comportement d'une photo), le même
-        # texte donne bien le quart 2 : le repli ne désactive cette décision
-        # qu'à ce stade.
+        # With the 180° decision turned on (behaviour for a photo), the same
+        # text does give quarter 2: the fallback only turns that decision off
+        # at this stage.
         self.assertEqual(
             Expense._expense_scan_quarters(upside_down_text, image, decide_180=True), 2)
 
@@ -275,16 +274,16 @@ ASF Lieu-dit Les Pins BP 10017
 
 
 class TestPdfExtraPages(common.TransactionCase):
-    """Pages suivantes d'un PDF lues quand la première ne donne pas de total.
+    """Following pages of a PDF read when the first gives no total.
 
-    Une facture de plusieurs pages porte parfois son total en pied de la
-    dernière. Les moteurs (conversion PDF, OCR) sont remplacés par des faux :
-    les tests portent sur le raccordement (décalage des boîtes, plafond de
-    pages, page illisible sans effet sur les autres), pas sur la lecture.
+    A multi-page invoice sometimes carries its total at the foot of the last
+    one. The engines (PDF conversion, OCR) are replaced by fakes: the tests
+    cover the joining (box offset, page limit, unreadable page without effect
+    on the others), not the reading.
     """
 
     class _FakeEngine:
-        """Rend un mot par page appelée, à une position fixe (0, 0)."""
+        """Return one word per page called, at a fixed position (0, 0)."""
 
         def __init__(self):
             self.calls = []
@@ -323,9 +322,9 @@ class TestPdfExtraPages(common.TransactionCase):
         self.assertEqual(len(words), 2)
         self.assertEqual(words[0], self.page1_words[0])
         added = words[1]
-        # Le mot de la page 2 garde sa position horizontale mais se place
-        # nettement sous le dernier mot de la page 1, pour que `build_lines`
-        # ne le mêle pas à une ligne de la page 1.
+        # The word of page 2 keeps its horizontal position but sits well
+        # below the last word of page 1, so that `build_lines` does not mix
+        # it into a line of page 1.
         self.assertEqual(added.left, 0.0)
         self.assertGreater(added.top, self.page1_words[0].bottom + 500)
         self.assertEqual(engine.calls, ["page-2-image"])
@@ -337,8 +336,8 @@ class TestPdfExtraPages(common.TransactionCase):
              patch.object(preprocess, 'load_image', return_value="image"):
             self.expense._expense_scan_extra_pdf_pages(
                 self.attachment, engine, self.page1_words, Stopwatch())
-        # Une de moins que le plafond : la première page est déjà lue,
-        # avant l'appel à cette méthode.
+        # One less than the limit: the first page is already read, before
+        # this method is called.
         self.assertEqual(len(engine.calls), PDF_MAX_PAGES_READ - 1)
 
     def test_an_unreadable_page_does_not_stop_the_others(self):
@@ -352,14 +351,14 @@ class TestPdfExtraPages(common.TransactionCase):
              patch.object(preprocess, 'load_image', return_value="image"):
             words = self.expense._expense_scan_extra_pdf_pages(
                 self.attachment, engine, self.page1_words, Stopwatch())
-        # Page 1 (déjà présente) et page 3 (lue) ; la page 2, illisible,
-        # manque sans faire échouer les autres.
+        # Page 1 (already there) and page 3 (read); page 2, unreadable, is
+        # missing without making the others fail.
         self.assertEqual(len(words), 2)
         self.assertEqual(len(engine.calls), 1)
 
 
-# Devis PDF mis en colonnes : le total HT et la TVA partagent des lignes,
-# et le taux n'est écrit que dans le détail, sans le mot « TVA ».
+# PDF quote laid out in columns: the net total and the VAT share lines, and
+# the rate is only written in the details, without the word "TVA".
 DEVIS = """DOMICILIATION EXEMPLE
 Siège social et Gestion du courrier DEVIS
 Date d'émission : 08/09/2026
@@ -385,9 +384,9 @@ class TestColumnInvoice(common.TransactionCase):
         self.assertEqual(result.value('tax_rate_max'), 20.0)
 
 
-# Restaurant à caisse enregistreuse : chaque article porte « (c° tva: 2) »,
-# renvoi au tableau des taux, suivi de son prix, que le parseur prenait pour
-# de la TVA.
+# Restaurant with a cash register: each item carries "(c° tva: 2)", a
+# reference to the rate table, followed by its price, which the parser took
+# for VAT.
 RESTAURANT_CODES = """LE DRAGON GOURMAND
 12 RUE DE L'EXEMPLE
 VILLEFRANCHE D'ORBEC 99650 France
@@ -444,13 +443,13 @@ class TestRestaurantCodes(common.TransactionCase):
         families = self.env['product.template']._expense_scan_family_templates()
         meal = [t.product_variant_id for t, family in families.items() if family == 'meal']
         if not meal:
-            self.skipTest("aucune catégorie de repas dans cette base")
+            self.skipTest("no meal category in this database")
         self.assertEqual(product, meal[0])
 
 
 @tagged('post_install', '-at_install')
 class TestCorpusFindings(common.TransactionCase):
-    """Défauts trouvés en passant des justificatifs réels dans la chaîne."""
+    """Defects found by running real receipts through the chain."""
 
     def test_tax_row_led_by_a_code_in_brackets(self):
         result = reading("""
@@ -464,7 +463,7 @@ TOTAUX 6,55 0,65 7,20
         self.assertEqual(result.value('tax_rate'), 10.0)
 
     def test_two_rates_with_mixed_columns_keep_the_consistent_triple(self):
-        """Photo de biais : la ligne du second taux traîne les colonnes du total."""
+        """Slanted photo: the line of the second rate drags the total columns along."""
         result = reading("""
 MAISON EXEMPLE
 HT TVA TTC
@@ -520,14 +519,14 @@ Total TTC 2,70 €""")
         self.assertTrue((result.value('merchant') or "").startswith("Distribo"))
 
     def test_a_short_word_does_not_change_its_first_letter(self):
-        """« Selecta » n'est pas « electra » : un distributeur n'est pas une borne."""
+        """'Selecta' is not 'electra': a vending machine is not a charger."""
         scores = lexicon.score_categories(["SELECTA PLEYAD 3"], {1: ["electra"]})
         self.assertEqual(scores, {})
         misread = lexicon.score_categories(["ELECTRA PLEYAD"], {1: ["electra"]})
         self.assertTrue(misread)
 
     def test_default_category_is_not_history(self):
-        """Une dépense non classée ne devient pas le classement d'une enseigne."""
+        """An unclassified expense does not become the classification of a merchant."""
         Expense = self.env['hr.expense']
         default = self.env.company.expense_scan_product_id or self.env['product.product'].create(
             {'name': "Divers historique zz", 'can_be_expensed': True})
@@ -546,7 +545,7 @@ Total TTC 2,70 €""")
         self.assertNotEqual(product, default)
 
     def test_toll_ticket_without_a_total_word(self):
-        """Ticket de péage italien : le prix du passage est le seul montant."""
+        """Italian toll receipt: the price of the passage is the only amount."""
         result = reading("""
 Autostrade Exemplo S.p.A.
 Tronco X1 Nord-Sud
@@ -583,12 +582,12 @@ RECU
 Date 02/09/26
 PRIX TTC 4,20 euros""")
         self.assertEqual(result.value('merchant'), "ASF")
-        # L'adresse sur la même ligne (« Cedex ») n'écarte pas le nom.
+        # The address on the same line ("Cedex") does not rule out the name.
         glued = reading("ASFLieu-dit 00000 EXEMPLE Cedex 6\nRECU\nPRIX TTC 4,20 euros")
         self.assertEqual(glued.value('merchant'), "ASF")
 
     def test_the_buyer_printed_on_an_invoice_is_not_the_merchant(self):
-        """Facture de recharge : le client en tête, le vendeur en pied de page."""
+        """Charging invoice: the customer at the top, the seller in the footer."""
         result = parser.parse(words_from_text("""
 Facture
 Spécification N° de facture: FRXX000001 Voltix>
@@ -617,7 +616,7 @@ TOTAL 42,00€""")
         self.assertEqual(result.value('total'), 42.0)
 
     def test_tax_table_with_rate_tax_net_gross_columns(self):
-        """« TVA% TVA Net Brut » : la taxe en première colonne."""
+        """'TVA% TVA Net Brut': the tax in the first column."""
         result = reading("""
 SUPERMARCHE EXEMPLE
 *CAFE MOULU 5,05
@@ -640,7 +639,7 @@ INSTITUT EXEMPLE GREEN EXEMPLE
         self.assertEqual(result.value('merchant'), "Institut Exemple")
 
     def test_english_net_total_is_before_tax(self):
-        """« Net Total » est le hors-taxe d'un taux ; le montant payé suit."""
+        """'Net Total' is the amount without tax of a rate; the amount paid follows."""
         result = reading("""
 Exemple Food & Beverage
 CHK 5785
@@ -718,7 +717,7 @@ Paiement €13,30""")
         self.assertAlmostEqual(result.value('tax_amount'), 1.02, places=2)
 
     def test_total_line_with_columns_in_reverse(self):
-        """Facture de parking : « TTC TVA HT Total », dans cet ordre."""
+        """Parking invoice: 'TTC TVA HT Total', in this order."""
         result = reading("""
 PARKING AEROPORT EXEMPLE
 PROXIPARC P1
@@ -753,10 +752,10 @@ Sie haben 17,10 EUR bezahlt""")
         slashed = reading("HOTEL EXEMPLE\nDate: 14/May/2025\nTotal 6.37")
         self.assertEqual(str(slashed.value('date')), "2025-05-14")
         ambiguous = reading("CAFE EXEMPLE\nJui08'25 08:55AM\nTOTAL 9,00")
-        self.assertIsNone(ambiguous.value('date'))  # juin ou juillet ?
+        self.assertIsNone(ambiguous.value('date'))  # June or July?
 
     def test_online_shop_invoice_with_delivery(self):
-        """Facture de boutique en ligne : produits, livraison, point de retrait."""
+        """Online shop invoice: products, delivery, pick-up point."""
         result = parser.parse(words_from_text("""
 BOUTIQUEXEMPLE FACTURE
 .com 02/09/2026
@@ -783,7 +782,7 @@ Boutiquexemple.com - 1 rue Exemple - 00000 Exempleville"""),
         self.assertEqual(result.value('total'), 6.40)
 
     def test_name_and_street_merged_on_one_line(self):
-        """« Brasserie X 12, rue Y » : l'OCR a fusionné le nom et l'adresse."""
+        """'Brasserie X 12, rue Y': the OCR merged the name and the address."""
         result = reading("""
 Les 3 Exemples 9003, rue Exemple
 00000 Exempleville

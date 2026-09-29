@@ -2,38 +2,38 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Banc d'évaluation : rejoue l'analyse sur des textes déjà lus, sans Odoo.
+"""Benchmark: replays the parsing on text already read, without Odoo.
 
-Un passage complet par Odoo prend de 35 à 60 minutes pour 700 justificatifs,
-presque tout en OCR. La plupart des changements portent sur l'analyse (dates,
-totaux, TVA, enseigne, catégorie) et non sur la lecture. Le banc rejoue
-uniquement l'analyse, sur un instantané des mots lus : quelques secondes,
-avec un compte rendu fichier par fichier de ce qui a changé.
+A full run through Odoo takes 35 to 60 minutes for 700 receipts, almost all
+of it OCR. Most changes are about the parsing (dates, totals, VAT, merchant,
+category), not the reading. The benchmark only replays the parsing, on a
+snapshot of the words read: a few seconds, with a file by file report of
+what changed.
 
-Ni les justificatifs, ni l'instantané, ni les tableaux de vérité ne sont
-versionnés (données personnelles). Le dépôt ne contient que l'outil.
+Neither the receipts, nor the snapshot, nor the truth tables are versioned
+(personal data). The repository only holds the tool.
 
-    # 1. produire l'instantané (à refaire quand la lecture OCR change) :
-    #    déposer les justificatifs dans /tmp/expense_scan_corpus, créer
-    #    /tmp/expense_scan_snapshot, lancer les tests du module ;
-    # 2. mesurer, et garder la mesure comme référence :
-    python3 tools/bench.py SNAPSHOT --truth VERITE --save avant.json
-    # 3. après un changement, comparer :
-    python3 tools/bench.py SNAPSHOT --truth VERITE --baseline avant.json
-    # tickets d'Open Prices (tools/fetch_openprices.py), nommés
-    # « OP-<pays>_<id>.<ext> » dans le corpus : résultats par pays
+    # 1. produce the snapshot (to redo when the OCR reading changes):
+    #    put the receipts in /tmp/expense_scan_corpus, create
+    #    /tmp/expense_scan_snapshot, run the module's tests;
+    # 2. measure, and keep the measure as the reference:
+    python3 tools/bench.py SNAPSHOT --truth TRUTH --save before.json
+    # 3. after a change, compare:
+    python3 tools/bench.py SNAPSHOT --truth TRUTH --baseline before.json
+    # Open Prices receipts (tools/fetch_openprices.py), named
+    # "OP-<country>_<id>.<ext>" in the corpus: results per country
     python3 tools/bench.py SNAPSHOT --open-prices truth.jsonl
 
-Le banc juge ce que lit l'analyseur (``tax`` : la TVA lue, avant les règles
-de l'application comme catégorie sans TVA ou devise étrangère, donc plus
-sévère que ce qu'Odoo écrit) ; ses mesures se comparent entre elles, pas au
-journal.
+The benchmark judges what the parser reads (``tax``: the VAT read, before the
+application's rules such as a category without VAT or a foreign currency, so
+stricter than what Odoo writes); its measures compare with each other, not
+with the log.
 
-La vérité est le tableau d'une note de frais, une ligne par dépense
-(``vsa01.txt`` pour les justificatifs ``vsa01_p003.jpg``). Sans elle, le
-banc indique seulement si un résultat a changé, pas s'il est juste.
+The truth is the table of an expense report, one line per expense
+(``report01.txt`` for the receipts ``report01_p003.jpg``). Without it, the
+benchmark only says whether a result changed, not whether it is right.
 
-Code de sortie : 1 si un résultat juste est devenu faux, 0 sinon.
+Exit code: 1 if a right result became wrong, 0 otherwise.
 """
 import argparse
 import collections
@@ -51,7 +51,7 @@ from ocr import categorize, lexicon, parser  # noqa: E402
 from ocr.types import OcrWord  # noqa: E402
 
 # ---------------------------------------------------------------------------
-# Vérité
+# Truth
 # ---------------------------------------------------------------------------
 
 NUM = r"-?\d{1,3}(?:[  ]\d{3})*,\d\d"
@@ -59,7 +59,7 @@ ROW = re.compile(r"^\s*(\d\d/\d\d/\d{4})\s+(%s)\s+((?:%s\s+)*)(\S.*?)\s+(%s) ([A
                  % (NUM, NUM, NUM))
 LOOSE_TOTAL = re.compile(r"(%s) ([A-Z]{3})\b" % NUM)
 
-#: Type de frais du tableau -> code(s) de la catégorie correspondante.
+#: Expense type of the table -> code(s) of the matching category.
 TYPE_MAP = {
     "HOTEL": ("HEBERGEMENT",), "RESTAURANT": ("REPAS",), "PARKING": ("PARK",),
     "PEAGE": ("PARK",), "TAXI_TRANSPORT": ("MOB_URB", "TRANSPORT"), "TRAIN": ("TRANSPORT",),
@@ -81,7 +81,7 @@ def expected_codes(kind):
 
 
 def load_truth(directory):
-    """``{note: (lignes, montants isolés)}`` d'après les tableaux de la note."""
+    """``{report: (rows, loose amounts)}`` from the tables of the report."""
     truth = {}
     for path in glob.glob(os.path.join(directory, "*.txt")):
         rows, loose = [], []
@@ -101,27 +101,27 @@ def load_truth(directory):
     return truth
 
 
-#: Une date, sous l'une des formes des tickets : « 20.08.2026 », « 06/26/26 »,
-#: « 2026-08-20 », « 29 januari 2026 ». Sert à reconnaître un ticket dont la
-#: photo ne montre aucune date (souvent coupée par le contributeur).
+#: A date, in one of the receipt forms: "20.08.2026", "06/26/26",
+#: "2026-08-20", "29 januari 2026". Used to recognise a receipt whose photo
+#: shows no date (often cut off by the contributor).
 DATE_NUMERIC = re.compile(r"\b\d{1,4}\s?[./-]\s?\d{1,2}\s?[./-]\s?\d{2,4}")
 DATE_WORDS = re.compile(r"\b\d{1,2}\.?\s+([A-Za-zÀ-ÿ]{3,10})\.?\s+\d{2,4}\b")
 
 
 def has_date(text):
-    """Vrai si le texte porte une date ; « 1,00 Kom 39 » n'en est pas une."""
+    """True if the text holds a date; "1,00 Kom 39" is not one."""
     if DATE_NUMERIC.search(text):
         return True
     return any(parser._month_number(match.group(1))
                for match in DATE_WORDS.finditer(text))
 
-#: Préfixe des justificatifs tirés d'Open Prices dans l'instantané :
-#: « OP-DE_12345.webp » (pays, identifiant du ticket).
+#: Prefix of the receipts taken from Open Prices in the snapshot:
+#: "OP-DE_12345.webp" (country, receipt id).
 OPEN_PRICES_PREFIX = "OP-"
 
 
 def load_open_prices(path):
-    """``{"OP-<pays>_<id>": ligne}`` d'après ``truth.jsonl`` (tools/fetch_openprices.py)."""
+    """``{"OP-<country>_<id>": row}`` from ``truth.jsonl`` (tools/fetch_openprices.py)."""
     truth = {}
     with open(path, encoding="utf-8") as handle:
         for line in handle:
@@ -132,16 +132,16 @@ def load_open_prices(path):
 
 
 def judge_open_prices(name, got, truth):
-    """Date, devise et, s'il est connu, total d'un ticket d'Open Prices."""
+    """Date, currency and, when known, total of an Open Prices receipt."""
     row = truth.get(os.path.splitext(name)[0])
     if row is None:
         return {}
     verdict = {"currency": (got["currency"] or "EUR") == (row["currency"] or "EUR")}
-    # Sans aucune date sur la photo, la date saisie par le contributeur ne
-    # peut pas être lue : le ticket n'est pas compté.
+    # Without any date on the photo, the date entered by the contributor
+    # cannot be read: the receipt is not counted.
     if got.get("date_visible", True):
-        # La date d'Open Prices est saisie par le contributeur, souvent le
-        # jour de l'envoi : deux jours d'écart sont admis.
+        # The Open Prices date is entered by the contributor, often on the
+        # day of the upload: two days apart are accepted.
         verdict["date"] = bool(got["date"]) and abs(
             (date.fromisoformat(got["date"]) - date.fromisoformat(row["date"])).days) <= 2
     if row.get("total"):
@@ -150,37 +150,37 @@ def judge_open_prices(name, got, truth):
 
 
 def print_by_country(verdicts):
-    """Taux de réussite par pays, pour les tickets d'Open Prices."""
+    """Success rate per country, for the Open Prices receipts."""
     by_country = collections.defaultdict(collections.Counter)
     for name, verdict in verdicts.items():
         if not name.startswith(OPEN_PRICES_PREFIX):
             continue
         country = name[len(OPEN_PRICES_PREFIX):].split("_")[0]
-        by_country[country]["tickets"] += 1
-        by_country[country]["sans date"] += "date" not in verdict
+        by_country[country]["receipts"] += 1
+        by_country[country]["no date"] += "date" not in verdict
         for field, ok in verdict.items():
             by_country[country][field, "n"] += 1
             by_country[country][field, "ok"] += ok
     if not by_country:
         return
-    print("\nOpen Prices, par pays :")
-    print("  pays tickets      date          total         devise    sans date visible")
-    for country in sorted(by_country, key=lambda c: -by_country[c]["tickets"]):
+    print("\nOpen Prices, per country:")
+    print("  ctry receipts     date          total         currency  no visible date")
+    for country in sorted(by_country, key=lambda c: -by_country[c]["receipts"]):
         counts = by_country[country]
         cells = []
         for field in ("date", "total", "currency"):
             n, ok = counts[field, "n"], counts[field, "ok"]
             cells.append("%3d/%-3d %3.0f %%" % (ok, n, 100.0 * ok / n) if n else "      -     ")
-        print("  %-4s %7d   %s   %5d" % (country, counts["tickets"], "   ".join(cells),
-                                         counts["sans date"]))
+        print("  %-4s %8d  %s   %5d" % (country, counts["receipts"], "   ".join(cells),
+                                        counts["no date"]))
 
 
 # ---------------------------------------------------------------------------
-# Rejeu
+# Replay
 # ---------------------------------------------------------------------------
 
 def load_snapshot(directory):
-    """``(méta, {nom: instantané})``."""
+    """``(meta, {name: snapshot})``."""
     with open(os.path.join(directory, "_meta.json"), encoding="utf-8") as handle:
         meta = json.load(handle)
     items = {}
@@ -194,7 +194,7 @@ def load_snapshot(directory):
 
 
 def replay(item, meta):
-    """Ce que l'analyse tire d'un justificatif : champs lus et catégorie."""
+    """What the parsing gets from a receipt: fields read and category."""
     words = [OcrWord(text=w[0], score=w[1], left=w[2], top=w[3], right=w[4], bottom=w[5],
                      angle=w[6]) for w in item["words"]]
     result = parser.parse(
@@ -219,11 +219,11 @@ def replay(item, meta):
 
 
 # ---------------------------------------------------------------------------
-# Jugement
+# Judging
 # ---------------------------------------------------------------------------
 
 def judge(name, got, truth):
-    """Ce qui est juste dans ``got``, d'après la vérité ; ``{}`` sans vérité."""
+    """What is right in ``got``, according to the truth; ``{}`` without truth."""
     rows, loose = truth.get(name.split("_")[0], (None, None))
     if rows is None:
         return {}
@@ -244,17 +244,17 @@ def judge(name, got, truth):
 
 
 def recall(results, truth):
-    """Vérifie que chaque dépense à justificatif du tableau a une image au bon total."""
+    """Check that each expense of the table with a receipt has an image with the right total."""
     found = collections.Counter()
     lost = []
     for note, (rows, _loose) in sorted(truth.items()):
         read = [got for name, got in results.items() if name.split("_")[0] == note]
         for row in rows:
             if not expected_codes(row["type"]) or row["ttc"] <= 0:
-                continue  # forfaits, indemnités : pas de justificatif
-            found["lignes"] += 1
+                continue  # flat rates, allowances: no receipt
+            found["rows"] += 1
             hit = any(abs((got["total"] or 0) - row["ttc"]) < 0.015 for got in read)
-            found["trouvées"] += hit
+            found["found"] += hit
             if not hit:
                 lost.append("%s %s %s %.2f %s" % (
                     note, row["date"], row["type"], row["ttc"], row["currency"]))
@@ -262,11 +262,11 @@ def recall(results, truth):
 
 
 # ---------------------------------------------------------------------------
-# Compte rendu
+# Report
 # ---------------------------------------------------------------------------
 
 FIELDS = ("total", "date", "tax", "category")
-LABELS = {"total": "total", "date": "date", "tax": "TVA", "category": "catégorie"}
+LABELS = {"total": "total", "date": "date", "tax": "VAT", "category": "category"}
 
 
 def summarize(verdicts):
@@ -280,19 +280,19 @@ def summarize(verdicts):
 
 def print_summary(results, verdicts, truth, seconds):
     counts = summarize(verdicts)
-    print("fichiers rejoués : %d en %.1f s" % (len(results), seconds))
+    print("files replayed: %d in %.1f s" % (len(results), seconds))
     if not truth:
         return
     for field in FIELDS:
         n, ok = counts[field, "n"], counts[field, "ok"]
         print("  %-10s %4d / %-4d %5.1f %%" % (LABELS[field], ok, n, 100.0 * ok / max(n, 1)))
     found, _lost = recall(results, truth)
-    print("  dépenses à justificatif retrouvées : %d / %d (%.1f %%)" % (
-        found["trouvées"], found["lignes"], 100.0 * found["trouvées"] / max(found["lignes"], 1)))
+    print("  expenses with a receipt found: %d / %d (%.1f %%)" % (
+        found["found"], found["rows"], 100.0 * found["found"] / max(found["rows"], 1)))
 
 
 def compare(baseline, results, verdicts):
-    """Différences avec la mesure de référence, fichier par fichier."""
+    """Differences with the reference measure, file by file."""
     regressions, gains, changes = [], [], []
     for name, got in sorted(results.items()):
         before = baseline.get(name)
@@ -316,42 +316,42 @@ def compare(baseline, results, verdicts):
 
 def print_comparison(baseline, results, verdicts):
     regressions, gains, changes = compare(baseline, results, verdicts)
-    for title, lines in (("RÉGRESSIONS (juste -> faux)", regressions), ("gains (faux -> juste)", gains),
-                         ("autres différences", changes)):
-        print("\n%s : %d" % (title, len(lines)))
+    for title, lines in (("REGRESSIONS (right -> wrong)", regressions), ("gains (wrong -> right)", gains),
+                         ("other differences", changes)):
+        print("\n%s: %d" % (title, len(lines)))
         for line in lines[:60]:
             print("  " + line)
         if len(lines) > 60:
-            print("  … et %d autres" % (len(lines) - 60))
+            print("  ... and %d more" % (len(lines) - 60))
     return len(regressions)
 
 
 def print_fidelity(items, results):
-    """Compare le rejeu à ce qu'Odoo avait écrit ; un écart signale un instantané périmé."""
+    """Compare the replay with what Odoo had written; a gap points to a stale snapshot."""
     differ = collections.Counter()
     for name, item in items.items():
         odoo, got = item.get("odoo") or {}, results[name]
         if odoo.get("total") is not None and abs((got["total"] or 0) - odoo["total"]) > 0.005:
             differ["total"] += 1
-        # Sans date lue, Odoo met celle du jour : ce n'est pas un écart.
+        # Without a date read, Odoo sets today's: it is not a gap.
         if got["date"] and odoo.get("date") and odoo["date"] != got["date"]:
             differ["date"] += 1
         if odoo.get("category") and got["category"] and odoo["category"] != got["category"]:
-            differ["catégorie"] += 1
-    print("\nécarts avec Odoo (historique des enseignes, retouches comprises) : %s" % (
-        dict(differ) or "aucun"))
+            differ["category"] += 1
+    print("\ngaps with Odoo (merchant history, retouches included): %s" % (
+        dict(differ) or "none"))
 
 
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     argp = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    argp.add_argument("snapshot", help="dossier de l'instantané (mots lus)")
-    argp.add_argument("--truth", help="dossier des tableaux de vérité")
-    argp.add_argument("--open-prices", help="truth.jsonl des tickets d'Open Prices")
-    argp.add_argument("--save", help="écrit la mesure dans ce fichier")
-    argp.add_argument("--baseline", help="mesure de référence à comparer")
-    argp.add_argument("--only", help="ne rejouer que les fichiers dont le nom contient ce texte")
+    argp.add_argument("snapshot", help="snapshot folder (words read)")
+    argp.add_argument("--truth", help="folder of the truth tables")
+    argp.add_argument("--open-prices", help="truth.jsonl of the Open Prices receipts")
+    argp.add_argument("--save", help="write the measure to this file")
+    argp.add_argument("--baseline", help="reference measure to compare with")
+    argp.add_argument("--only", help="only replay the files whose name contains this text")
     args = argp.parse_args()
 
     meta, items = load_snapshot(args.snapshot)
@@ -380,7 +380,7 @@ def main():
         with open(args.save, "w", encoding="utf-8") as handle:
             json.dump({name: {"got": got, "verdict": verdicts[name]}
                        for name, got in results.items()}, handle, ensure_ascii=False)
-        print("\nmesure enregistrée : %s" % args.save)
+        print("\nmeasure saved: %s" % args.save)
     return 1 if regressions else 0
 
 

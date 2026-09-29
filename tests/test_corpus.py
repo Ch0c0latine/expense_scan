@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Passe un dossier de justificatifs réels dans la chaîne complète.
+"""Run a folder of real receipts through the whole chain.
 
-Ne fait rien si ``/tmp/expense_scan_corpus`` n'existe pas : les justificatifs
-sont des données personnelles, jamais versionnées. Chaque fichier donne une
-ligne « CORPUS| » dans le journal, sans le texte du justificatif.
+Does nothing if ``/tmp/expense_scan_corpus`` does not exist: the receipts are
+personal data, never versioned. Each file gives a "CORPUS|" line in the log,
+without the text of the receipt.
 
-Si ``/tmp/expense_scan_snapshot`` existe aussi, chaque justificatif y laisse
-un instantané de ses mots lus (voir ``tools/bench.py``), ce qui permet de
-rejouer l'analyse en quelques secondes sans repasser par l'OCR. Le texte
-lu est une donnée personnelle : il est écrit dans ce dossier et jamais dans
-le journal, que d'autres personnes lisent.
+If ``/tmp/expense_scan_snapshot`` exists too, each receipt leaves a snapshot
+of its words read there (see ``tools/bench.py``), which lets the parsing be
+replayed in a few seconds without going through the OCR again. The text read
+is personal data: it is written to that folder and never to the log, which
+other people read.
 """
 import gc
 import hashlib
@@ -29,13 +29,13 @@ from ..ocr import parser
 _logger = logging.getLogger(__name__)
 CORPUS_DIR = '/tmp/expense_scan_corpus'
 SNAPSHOT_DIR = '/tmp/expense_scan_snapshot'
-#: Limite de mémoire au-delà de laquelle le test s'arrête (la machine de
-#: test héberge aussi la production).
+#: Memory limit beyond which the test stops (the test machine may run other
+#: services).
 RSS_LIMIT_MB = 3000
 
 
 def _rss_mb():
-    """Mémoire résidente du processus, en Mo (0 hors Linux)."""
+    """Resident memory of the process, in MB (0 outside Linux)."""
     try:
         with open('/proc/self/status') as status:
             for line in status:
@@ -59,11 +59,10 @@ def _code(product):
 class TestCorpus(common.TransactionCase):
 
     def _category_meta(self, company):
-        """Données dont le banc a besoin pour deviner une catégorie sans Odoo.
+        """Data the benchmark needs to guess a category without Odoo.
 
-        Les catégories désignées par des mots et la catégorie de chaque
-        famille de frais. Sans elles, l'instantané ne permettrait pas de
-        déterminer la catégorie.
+        The categories designated by words and the category of each expense
+        family. Without them, the snapshot could not determine the category.
         """
         Expense = self.env['hr.expense']
         Product = self.env['product.product'].sudo()
@@ -82,17 +81,17 @@ class TestCorpus(common.TransactionCase):
 
     def test_real_receipts(self):
         if not os.path.isdir(CORPUS_DIR):
-            self.skipTest("pas de corpus")
+            self.skipTest("no corpus")
         snapshot = os.path.isdir(SNAPSHOT_DIR)
-        # Un salarié ordinaire, sans droit de gestion : la chaîne doit passer
-        # sous ses règles d'accès, comme depuis le bouton « Téléverser ».
+        # An ordinary employee, without management rights: the chain must go
+        # through under their access rules, as from the "Upload" button.
         user = self.env['res.users'].with_context(no_reset_password=True).create({
             'name': "Corpus", 'login': 'expense_scan_corpus',
             'group_ids': [(6, 0, [self.env.ref('base.group_user').id])]})
         employee = self.env['hr.employee'].create({'name': "Corpus", 'user_id': user.id})
         env = self.env(user=user)
-        # Le corpus remonte à plusieurs années : la limite d'ancienneté ne
-        # doit pas faire écarter la date d'un ticket de 2023.
+        # The corpus goes back several years: the age limit must not rule out
+        # the date of a receipt from 2023.
         self.env.company.expense_scan_max_age_days = 3650
         if snapshot:
             module = self.env['ir.module.module'].sudo().search([('name', '=', 'expense_scan')])
@@ -127,7 +126,7 @@ class TestCorpus(common.TransactionCase):
                 expense = env['hr.expense'].browse(ids[:1])
                 elapsed = time.time() - started
                 line = (
-                    "CORPUS|%s|%.1fs|%s|%s|total=%s|tva=%s/%s|marchand=%s|date=%s|todo=%s|%s" % (
+                    "CORPUS|%s|%.1fs|%s|%s|total=%s|tax=%s/%s|merchant=%s|date=%s|todo=%s|%s" % (
                         name, elapsed, expense.scan_state,
                         expense.product_id.display_name, expense.total_amount_currency,
                         expense.scan_tax_amount, expense.tax_ids.mapped('amount'),
@@ -136,30 +135,29 @@ class TestCorpus(common.TransactionCase):
                 if snapshot and captured:
                     self._write_snapshot(name, captured, expense)
                 if name.startswith('OP-'):
-                    # Tickets d'Open Prices : des achats sans lien entre eux.
-                    # Gardées, ces dépenses du même salarié, souvent datées du
-                    # jour faute de date lue, feraient recalculer à chaque
-                    # ticket les règles de dépenses de toutes les autres :
-                    # une durée qui croît avec le corpus.
+                    # Open Prices receipts: unrelated purchases. If kept,
+                    # these expenses of the same employee, often dated today
+                    # for want of a date read, would make every receipt
+                    # recompute the expense rules of all the others: a
+                    # duration that grows with the corpus.
                     expense.sudo().unlink()
             except Exception as error:  # noqa: BLE001
-                _logger.warning("CORPUS|%s|ERREUR|%s", name, error, exc_info=True)
+                _logger.warning("CORPUS|%s|ERROR|%s", name, error, exc_info=True)
                 continue
-            # Un cache conservé sur tout le corpus, dans une seule
-            # transaction, ne correspond pas à un worker : le cache est vidé
-            # pour que la mémoire mesurée ne concerne que la chaîne.
+            # A cache kept over the whole corpus, in a single transaction,
+            # does not match a worker: the cache is cleared so that the
+            # memory measured only concerns the chain.
             self.env.flush_all()
             self.env.invalidate_all()
             gc.collect()
             rss = _rss_mb()
-            _logger.info("%s|rss=%dMo", line, rss)
+            _logger.info("%s|rss=%dMB", line, rss)
             if rss > RSS_LIMIT_MB:
-                # Le serveur de développement héberge aussi la production.
-                _logger.warning("CORPUS|arrêt : %d Mo de mémoire après %s", rss, name)
+                _logger.warning("CORPUS|stopped: %d MB of memory after %s", rss, name)
                 break
 
     def _write_snapshot(self, name, captured, expense):
-        """Les mots lus, tels que l'analyseur les a reçus, et ce qu'Odoo en a tiré."""
+        """The words read, as the parser received them, and what Odoo made of them."""
         kwargs = captured['kwargs']
         number = captured['result'].value('company_number')
         naf = self.env['expense.scan.sirene']._expense_scan_activity(number) if number else False
@@ -174,8 +172,8 @@ class TestCorpus(common.TransactionCase):
             'words': [[w.text, round(w.score, 4), round(w.left, 2), round(w.top, 2),
                        round(w.right, 2), round(w.bottom, 2), round(w.angle, 2)]
                       for w in captured['words']],
-            # Valeurs écrites par Odoo, pour vérifier que le rejeu donne le
-            # même résultat.
+            # Values written by Odoo, to check that the replay gives the same
+            # result.
             'odoo': {
                 'total': expense.total_amount_currency,
                 'tax': expense.scan_tax_amount,

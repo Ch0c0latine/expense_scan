@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Moteurs de reconnaissance de texte interchangeables.
+"""Interchangeable text recognition engines.
 
-Deux implémentations sont fournies, toutes deux locales, gratuites et sans
-jeton :
+Two implementations are provided, both local, free and without any token:
 
-* ``rapidocr`` : les réseaux PP-OCR exécutés par ONNX Runtime. Nettement
-  meilleur que Tesseract sur un ticket thermique (impression pâle, papier
-  froissé, police condensée), pour un coût CPU de l'ordre de la seconde.
-* ``tesseract`` : moteur de repli, sans réseau de neurones de détection.
+* ``rapidocr``: the PP-OCR networks run by ONNX Runtime. Clearly better than
+  Tesseract on a thermal receipt (faded print, crumpled paper, condensed
+  font), for a CPU cost of about a second.
+* ``tesseract``: fallback engine, without a neural detection network.
 
-Pour ajouter un moteur, écrire une sous-classe de :class:`ScanEngine` et
-l'enregistrer dans ``ENGINE_CLASSES``.
+To add an engine, write a subclass of :class:`ScanEngine` and register it in
+``ENGINE_CLASSES``.
 """
 import logging
 import math
@@ -22,9 +21,9 @@ import time
 
 _logger = logging.getLogger(__name__)
 
-# Les erreurs d'import sont conservées : une dépendance absente doit
-# pouvoir être nommée à l'utilisateur, et non se traduire par un « module
-# requis » qui n'indique pas ce qui manque réellement.
+# Import errors are kept: a missing dependency must be named to the user,
+# not turn into a "required module" message that does not say what is
+# actually missing.
 try:
     import numpy as np
 except Exception as error:  # noqa: BLE001
@@ -43,24 +42,24 @@ else:
 
 from .types import OcrWord
 
-#: Threads de calcul ONNX par worker, faute de réglage dans la société.
+#: ONNX compute threads per worker, when the company sets none.
 DEFAULT_THREADS = 4
 
 
 def imaging_status():
-    """État des bibliothèques de traitement d'image, avec la cause exacte."""
+    """State of the image processing libraries, with the exact cause."""
     problems = []
     if np is None:
-        problems.append("numpy : %r" % (NUMPY_IMPORT_ERROR,))
+        problems.append("numpy: %r" % (NUMPY_IMPORT_ERROR,))
     if cv2 is None:
-        problems.append("cv2 (opencv-python) : %r" % (CV2_IMPORT_ERROR,))
+        problems.append("cv2 (opencv-python): %r" % (CV2_IMPORT_ERROR,))
     if problems:
-        return False, "Import impossible — " + " / ".join(problems)
+        return False, "Import failed: " + " / ".join(problems)
     return True, "numpy %s, OpenCV %s" % (np.__version__, cv2.__version__)
 
 
 class ScanEngine(object):
-    """Interface commune : une image BGR entre, des mots situés sortent."""
+    """Common interface: a BGR image goes in, positioned words come out."""
 
     code = ""
     label = ""
@@ -70,29 +69,29 @@ class ScanEngine(object):
 
     @property
     def working_side(self):
-        """Plus grand côté, en pixels, auquel le moteur ramène l'image.
+        """Longest side, in pixels, the engine scales the image down to.
 
-        ``None`` : le moteur lit l'image à sa taille d'origine.
+        ``None``: the engine reads the image at its original size.
         """
         return None
 
     @classmethod
     def availability(cls):
-        """Renvoie (disponible, message lisible)."""
+        """Return (available, readable message)."""
         raise NotImplementedError
 
     def recognize(self, image, use_cls=None):
-        """Renvoie une liste d'``OcrWord`` pour l'image BGR fournie."""
+        """Return a list of ``OcrWord`` for the given BGR image."""
         raise NotImplementedError
 
-    #: Lignes du ticket de contrôle servant à la chauffe et au diagnostic.
+    #: Lines of the control receipt used for warm-up and diagnosis.
     WARMUP_LINES = (
         "SUPERMARCHE TEST",
         "12 RUE DE LA PAIX",
         "04/09/2026 14:32",
         "TOTAL 12,34 EUR",
     )
-    #: Polices cherchées dans cet ordre pour dessiner ce ticket.
+    #: Fonts looked for in this order to draw that receipt.
     WARMUP_FONTS = (
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -102,12 +101,12 @@ class ScanEngine(object):
 
     @classmethod
     def _warmup_image(cls):
-        """Ticket de contrôle, dessiné avec une véritable police.
+        """Control receipt, drawn with a real font.
 
-        La police vectorielle d'OpenCV (Hershey) est un tracé au trait, sans
-        épaisseur de glyphe : les modèles PP-OCR, entraînés sur du texte
-        imprimé, n'y détectent rien. Une image de contrôle dessinée ainsi ne
-        prouve donc rien sur l'état réel du moteur.
+        OpenCV's vector font (Hershey) is a stroke drawing, without glyph
+        thickness: the PP-OCR models, trained on printed text, detect nothing
+        in it. A control image drawn that way proves nothing about the real
+        state of the engine.
         """
         if np is None or cv2 is None:
             return None
@@ -134,26 +133,26 @@ class ScanEngine(object):
 
 
 class RapidOcrEngine(ScanEngine):
-    """PP-OCR (détection + reconnaissance) exécuté par ONNX Runtime."""
+    """PP-OCR (detection + recognition) run by ONNX Runtime."""
 
     code = "rapidocr"
     label = "RapidOCR / PP-OCR (ONNX Runtime)"
 
-    # Candidats essayés dans l'ordre, jusqu'à en trouver un qui relit
-    # réellement le ticket de contrôle.
+    # Candidates tried in order, until one actually reads the control
+    # receipt back.
     #
-    # Mesuré sur rapidocr 3.9.2 : les modèles de reconnaissance « latin »
-    # (PP-OCRv5 comme PP-OCRv3) se chargent sans erreur mais ne reconnaissent
-    # rien du tout, tandis que le modèle d'usine lit le français accentué
-    # sans faute (« SUPERMARCHÉ », « NET À PAYER » à 1,00 de score). Le
-    # modèle d'usine passe donc en premier ; les variantes latines restent
-    # en repli au cas où une version ultérieure les corrigerait.
+    # Measured on rapidocr 3.9.2: the "latin" recognition models (PP-OCRv5
+    # as well as PP-OCRv3) load without error but recognise nothing at all,
+    # while the default model reads accented French without a mistake
+    # ("SUPERMARCHÉ", "NET À PAYER" at a score of 1.00). The default model
+    # therefore comes first; the latin variants stay as a fallback in case a
+    # later version fixes them.
     MODEL_CANDIDATES = [
-        (None, None),  # configuration d'usine de la bibliothèque
+        (None, None),  # the library's default configuration
         ("PP-OCRv5", "latin"),
         ("PP-OCRv4", "latin"),
     ]
-    #: Seuils de validation d'un candidat sur le ticket de contrôle.
+    #: Thresholds for accepting a candidate on the control receipt.
     WARMUP_MIN_WORDS = 3
     WARMUP_MIN_SCORE = 0.5
 
@@ -168,34 +167,33 @@ class RapidOcrEngine(ScanEngine):
         try:
             import rapidocr  # noqa: F401
         except ImportError:
-            return False, "Paquet Python « rapidocr » non installé"
+            return False, "Python package \"rapidocr\" not installed"
         try:
             import onnxruntime  # noqa: F401
         except ImportError:
-            return False, "Paquet Python « onnxruntime » non installé"
+            return False, "Python package \"onnxruntime\" not installed"
         return True, "rapidocr %s" % getattr(rapidocr, "__version__", "?")
 
     def _build_params(self, ocr_version, lang):
         from rapidocr import LangRec, ModelType, OCRVersion
 
         params = {
-            # En dessous de ce score, le texte reconnu est écarté. Un ticket
-            # thermique produit beaucoup de lignes moyennement lisibles qu'il
-            # vaut mieux garder : le parseur sait les pondérer.
+            # Text below this score is dropped. A thermal receipt produces
+            # many fairly readable lines that are better kept: the parser
+            # knows how to weigh them.
             "Global.text_score": float(self.options.get("text_score", 0.35)),
             "Global.max_side_len": int(self.options.get("max_side_len", 1800)),
         }
         model_dir = self.options.get("model_dir")
         if model_dir:
             params["Global.model_root_dir"] = model_dir
-        # Odoo fait déjà tourner plusieurs workers : laisser ONNX ouvrir
-        # autant de threads que de cœurs dans chacun d'eux dégrade le débit
-        # global au lieu de l'améliorer. Chaque thread supplémentaire fait
-        # aussi réserver à l'allocateur (glibc) sa propre zone de mémoire
-        # virtuelle, ce qui faisait franchir aux workers leur limite à chaque
-        # scan (voir MALLOC_ARENA_MAX dans le README). Quatre threads lisent un
-        # ticket aussi vite, et les opérations s'enchaînent sans en demander
-        # d'autres.
+        # Odoo already runs several workers: letting ONNX open as many
+        # threads as there are cores in each of them lowers the overall
+        # throughput instead of raising it. Each extra thread also makes the
+        # allocator (glibc) reserve its own virtual memory arena, which pushed
+        # the workers past their limit on every scan (see MALLOC_ARENA_MAX in
+        # the README). Four threads read a receipt just as fast, and the
+        # operations follow one another without asking for more.
         threads = int(self.options.get("threads", 0) or 0) or min(DEFAULT_THREADS, os.cpu_count() or 1)
         params["EngineConfig.onnxruntime.intra_op_num_threads"] = threads
         params["EngineConfig.onnxruntime.inter_op_num_threads"] = 1
@@ -206,47 +204,47 @@ class RapidOcrEngine(ScanEngine):
         return params
 
     def _load(self):
-        """Instancie le moteur, charge les modèles et vérifie qu'ils lisent.
+        """Create the engine, load the models and check that they read.
 
-        Il ne suffit pas d'instancier, pour deux raisons :
+        Creating it is not enough, for two reasons:
 
-        * le chargement des modèles est paresseux dans RapidOCR : une
-          combinaison langue/version inexistante n'échouerait qu'au premier
-          vrai ticket, hors de portée du repli ;
-        * un jeu de modèles peut se charger sans erreur et ne rien reconnaître.
-          C'est le cas de ``latin/PP-OCRv5`` : la détection trouve les zones
-          de texte, la reconnaissance ne rend rien et RapidOCR élimine alors
-          les boîtes, sans lever d'erreur. Un candidat n'est donc retenu que
-          s'il relit le ticket de contrôle.
+        * RapidOCR loads its models lazily: a language/version combination
+          that does not exist would only fail on the first real receipt, out
+          of reach of the fallback;
+        * a set of models can load without error and recognise nothing.
+          That is the case of ``latin/PP-OCRv5``: detection finds the text
+          areas, recognition returns nothing and RapidOCR then drops the
+          boxes, without raising an error. A candidate is therefore only
+          kept if it reads the control receipt back.
         """
         from rapidocr import RapidOCR
 
         last_error = None
         warmup = self._warmup_image()
         for ocr_version, lang in self.MODEL_CANDIDATES:
-            label = "PP-OCR %s / %s" % (ocr_version or "défaut", lang or "défaut")
+            label = "PP-OCR %s / %s" % (ocr_version or "default", lang or "default")
             try:
                 engine = RapidOCR(params=self._build_params(ocr_version, lang))
                 if warmup is not None:
                     words = self._words_from_result(engine(warmup))
                     if not self._warmup_ok(words):
                         last_error = RuntimeError(
-                            "%s se charge mais ne relit pas le ticket de contrôle "
-                            "(%d mots reconnus)" % (label, len(words)))
+                            "%s loads but does not read the control receipt back "
+                            "(%d words read)" % (label, len(words)))
                         _logger.warning("%s", last_error)
                         continue
                 self._description = label
-                _logger.info("Moteur de scan RapidOCR chargé (%s)", label)
+                _logger.info("RapidOCR scan engine loaded (%s)", label)
                 return engine
             except Exception as error:  # noqa: BLE001
                 last_error = error
-                _logger.warning("Modèles RapidOCR %s/%s indisponibles : %s",
+                _logger.warning("RapidOCR models %s/%s unavailable: %s",
                                 ocr_version, lang, error)
-        raise RuntimeError("Aucun jeu de modèles RapidOCR utilisable : %s" % last_error)
+        raise RuntimeError("No usable set of RapidOCR models: %s" % last_error)
 
     @classmethod
     def _warmup_ok(cls, words):
-        """Le candidat relit-il assez du ticket de contrôle pour être retenu ?"""
+        """Does the candidate read enough of the control receipt to be kept?"""
         if len(words) < cls.WARMUP_MIN_WORDS:
             return False
         return sum(word.score for word in words) / len(words) >= cls.WARMUP_MIN_SCORE
@@ -271,7 +269,7 @@ class RapidOcrEngine(ScanEngine):
 
     @staticmethod
     def _words_from_result(result):
-        """Traduit la sortie de RapidOCR en mots situés."""
+        """Turn the RapidOCR output into positioned words."""
         if result is None or not getattr(result, "txts", None):
             return []
 
@@ -287,25 +285,25 @@ class RapidOcrEngine(ScanEngine):
                 box = np.asarray(boxes[index], dtype="float32")
                 left, top = float(box[:, 0].min()), float(box[:, 1].min())
                 right, bottom = float(box[:, 0].max()), float(box[:, 1].max())
-                # PP-OCR renvoie un quadrilatère orienté, et non un
-                # rectangle : la direction de la ligne se lit sur son plus
-                # grand côté. La mesure est directe et sans coût, la donnée
-                # étant déjà disponible.
+                # PP-OCR returns an oriented quadrilateral, not a rectangle:
+                # the line direction is read on its longest side. The
+                # measurement is direct and free, the data being already
+                # there.
                 if len(box) == 4:
-                    # Le détecteur ordonne ses points depuis le coin
-                    # supérieur gauche de l'image. Le premier côté est donc
-                    # la longueur pour une ligne couchée, mais l'épaisseur
-                    # pour une ligne debout : il faut prendre le plus long
-                    # des deux, seul à suivre le sens d'écriture.
+                    # The detector orders its points from the top left corner
+                    # of the image. The first side is therefore the length
+                    # for a lying line, but the thickness for a standing one:
+                    # the longer of the two is the only one that follows the
+                    # writing direction.
                     edges = (box[1] - box[0], box[2] - box[1])
                     edge = max(edges, key=lambda side: float(side[0]) ** 2
                                + float(side[1]) ** 2)
                     angle = math.degrees(math.atan2(float(edge[1]), float(edge[0])))
-                    # Ramené dans (-90, 90] : une ligne et la même ligne lue
-                    # à l'envers ont la même direction. L'écart à
-                    # l'horizontale est en revanche conservé, car il est le
-                    # seul à distinguer un ticket couché d'un ticket debout
-                    # (le moteur lit aussi bien dans les deux sens).
+                    # Brought back into (-90, 90]: a line and the same line
+                    # read upside down have the same direction. The gap to
+                    # the horizontal is kept, though, as it alone tells a
+                    # lying receipt from a standing one (the engine reads
+                    # just as well both ways).
                     angle = ((angle + 90.0) % 180.0) - 90.0
             except Exception:  # noqa: BLE001
                 left = top = 0.0
@@ -317,7 +315,7 @@ class RapidOcrEngine(ScanEngine):
 
 
 class TesseractEngine(ScanEngine):
-    """Repli : Tesseract, sans détection neuronale des zones de texte."""
+    """Fallback: Tesseract, without neural detection of the text areas."""
 
     code = "tesseract"
     label = "Tesseract (local)"
@@ -327,11 +325,11 @@ class TesseractEngine(ScanEngine):
         try:
             import pytesseract
         except ImportError:
-            return False, "Paquet Python « pytesseract » non installé"
+            return False, "Python package \"pytesseract\" not installed"
         try:
             version = pytesseract.get_tesseract_version()
         except Exception as error:  # noqa: BLE001
-            return False, "Binaire tesseract introuvable (%s)" % error
+            return False, "tesseract binary not found (%s)" % error
         return True, "tesseract %s" % version
 
     @property
@@ -343,9 +341,9 @@ class TesseractEngine(ScanEngine):
         from PIL import Image
 
         lang = self.options.get("lang") or "fra"
-        # --psm 6 : le ticket est traité comme un bloc de texte homogène.
-        # Le mode automatique découpe volontiers un ticket en colonnes et
-        # mélange l'ordre de lecture des lignes.
+        # --psm 6: the receipt is handled as a single block of text. The
+        # automatic mode readily splits a receipt into columns and mixes up
+        # the reading order of the lines.
         config = self.options.get("config") or "--psm 6"
         rgb = image[:, :, ::-1] if image.ndim == 3 else image
         data = pytesseract.image_to_data(Image.fromarray(rgb), lang=lang, config=config,
@@ -379,12 +377,11 @@ ENGINE_CLASSES = {
     RapidOcrEngine.code: RapidOcrEngine,
     TesseractEngine.code: TesseractEngine,
 }
-# Ordre de préférence quand la configuration est sur « automatique ».
+# Order of preference when the setting is "automatic".
 AUTO_ORDER = [RapidOcrEngine.code, TesseractEngine.code]
 
-# Les modèles pèsent plusieurs dizaines de mégaoctets et leur chargement
-# coûte 1 à 3 secondes : une instance est conservée par jeu d'options et par
-# processus worker.
+# The models weigh several tens of megabytes and take 1 to 3 seconds to load:
+# one instance is kept per set of options and per worker process.
 _ENGINE_CACHE = {}
 _CACHE_LOCK = threading.Lock()
 
@@ -394,9 +391,9 @@ def _cache_key(code, options):
 
 
 def get_engine(code, **options):
-    """Renvoie l'instance partagée du moteur ``code`` pour ces options."""
+    """Return the shared instance of engine ``code`` for these options."""
     if code not in ENGINE_CLASSES:
-        raise ValueError("Moteur de scan inconnu : %s" % code)
+        raise ValueError("Unknown scan engine: %s" % code)
     key = _cache_key(code, options)
     engine = _ENGINE_CACHE.get(key)
     if engine is None:
@@ -409,28 +406,27 @@ def get_engine(code, **options):
 
 
 def resolve_engine(preferred, **options):
-    """Choisit un moteur disponible, en partant du moteur préféré.
+    """Choose an available engine, starting from the preferred one.
 
-    ``preferred`` vaut ``auto`` ou un code de moteur. Renvoie l'instance ;
-    lève ``RuntimeError`` si aucun moteur n'est utilisable, avec le détail
-    de ce qui manque pour chacun.
+    ``preferred`` is ``auto`` or an engine code. Returns the instance; raises
+    ``RuntimeError`` if no engine can be used, with what is missing for each.
     """
     candidates = AUTO_ORDER if preferred in (None, "", "auto") else [preferred]
     problems = []
     for code in candidates:
         engine_class = ENGINE_CLASSES.get(code)
         if engine_class is None:
-            problems.append("%s : moteur inconnu" % code)
+            problems.append("%s: unknown engine" % code)
             continue
         available, message = engine_class.availability()
         if available:
             return get_engine(code, **options)
-        problems.append("%s : %s" % (engine_class.label, message))
-    raise RuntimeError("Aucun moteur OCR disponible. " + " / ".join(problems))
+        problems.append("%s: %s" % (engine_class.label, message))
+    raise RuntimeError("No OCR engine available. " + " / ".join(problems))
 
 
 def engines_status():
-    """État de chaque moteur, pour l'écran de configuration."""
+    """State of each engine, for the settings screen."""
     status = []
     for code in AUTO_ORDER:
         engine_class = ENGINE_CLASSES[code]
@@ -445,11 +441,10 @@ def engines_status():
 
 
 def self_test(preferred="auto", **options):
-    """Charge le moteur et lit une image de test. Renvoie un dictionnaire.
+    """Load the engine and read a test image. Returns a dictionary.
 
-    Sert à la fois de diagnostic et de préchauffage : les modèles sont
-    téléchargés ici la première fois, et non au moment où l'utilisateur
-    vient de photographier son ticket.
+    Serves both as a diagnosis and as a warm-up: the models are downloaded
+    here the first time, not when the user has just photographed a receipt.
     """
     started = time.time()
     engine = resolve_engine(preferred, **options)

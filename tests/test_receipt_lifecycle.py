@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Vie du justificatif après l'analyse : suppression, remplacement, retouche.
+"""Life of the receipt after the scan: deletion, replacement, retouch.
 
-Après l'analyse, le justificatif affiché est une image tirée de la photo
-d'origine (recadrée, ou retouchée à la main) ; l'original est une pièce
-jointe de champ, invisible. Ces scénarios vérifient que l'original, les
-réglages de retouche et le repère de retouche manuelle suivent le
-justificatif affiché quand l'utilisateur le supprime ou en joint un autre.
+After the scan, the displayed receipt is an image taken from the original
+photo (cropped, or retouched by hand); the original is a hidden field
+attachment. These scenarios check that the original, the retouch settings
+and the manual retouch flag follow the displayed receipt when the user
+deletes it or attaches another one.
 """
 import base64
 from types import SimpleNamespace
@@ -41,7 +41,7 @@ class TestReceiptLifecycle(common.TransactionCase):
         return attachment
 
     def scanned(self):
-        """Dépense analysée : image recadrée affichée, photo d'origine cachée."""
+        """Scanned expense: cropped image displayed, original photo hidden."""
         expense = self.Expense.create({'name': "Ticket", 'employee_id': self.employee.id})
         original = self.attach(expense, "ticket.png", (200, 30, 30), main=True)
         self.store(expense, original, (180, 40, 40))
@@ -59,18 +59,18 @@ class TestReceiptLifecycle(common.TransactionCase):
             params or {'quarter': 1, 'fine': 0, 'crop': [0, 0, 1, 1]})
 
     def replace_receipt(self, expense):
-        """L'utilisateur supprime le justificatif affiché et en joint un autre."""
+        """The user deletes the displayed receipt and attaches another one."""
         expense.message_main_attachment_id.unlink()
         return self.attach(expense, "nouveau.png", (30, 30, 200), main=True)
 
     def prepare_options(self, expense, attachment):
-        """Options de préparation de l'image retenues par l'analyse."""
+        """Image preparation options chosen by the scan."""
         from ..ocr.types import PreprocessInfo
         options = {}
 
         def prepare(data, **kwargs):
             options.update(kwargs)
-            raise RuntimeError("arrêt après la préparation")
+            raise RuntimeError("stop after the preparation")
 
         with patch.object(preprocess, 'dependencies_status', return_value=(True, "")), \
                 patch.object(preprocess, 'prepare', side_effect=prepare):
@@ -78,7 +78,7 @@ class TestReceiptLifecycle(common.TransactionCase):
                 expense._expense_scan_process(attachment)
         return options
 
-    # -- Suppression du justificatif affiché ---------------------------------
+    # -- Deleting the displayed receipt -------------------------------------
 
     def test_deleting_the_shown_receipt_deletes_its_original(self):
         expense, original = self.scanned()
@@ -87,7 +87,7 @@ class TestReceiptLifecycle(common.TransactionCase):
         self.assertFalse(expense.scan_original_attachment_id)
 
     def test_the_editor_opens_the_new_receipt(self):
-        """Le cas signalé : analyse, suppression, nouveau justificatif, retouche."""
+        """The reported case: scan, deletion, new receipt, retouch."""
         expense, _original = self.scanned()
         new = self.replace_receipt(expense)
         self.assertEqual(expense.expense_scan_retouch_data(),
@@ -104,16 +104,16 @@ class TestReceiptLifecycle(common.TransactionCase):
         self.assertEqual(expense.expense_scan_retouch_data()['url'], '/web/image/%d' % new.id)
 
     def test_a_new_receipt_is_cropped_again(self):
-        """Après une retouche manuelle supprimée, l'analyse recadre le nouveau."""
+        """After a deleted manual retouch, the scan crops the new receipt."""
         expense, _original = self.scanned()
         self.retouch(expense)
         new = self.replace_receipt(expense)
         self.assertEqual(self.prepare_options(expense, new), {'autocrop': True, 'deskew': True})
 
-    # -- Données laissées par une version précédente -------------------------
+    # -- Data left by a previous version -------------------------------------
 
     def stale(self):
-        """Justificatif remplacé avant ce correctif : l'original est resté lié."""
+        """Receipt replaced before this fix: the original stayed linked."""
         expense, original = self.scanned()
         self.retouch(expense)
         cropped = expense.scan_cropped_attachment_id
@@ -147,7 +147,7 @@ class TestReceiptLifecycle(common.TransactionCase):
         self.assertEqual(expense.scan_original_attachment_id, new)
         self.assertEqual(expense.message_main_attachment_id, expense.scan_cropped_attachment_id)
 
-    # -- Ce qui doit rester en place ----------------------------------------
+    # -- What must stay in place --------------------------------------------
 
     def test_a_second_receipt_leaves_the_original_in_place(self):
         expense, original = self.scanned()
@@ -186,7 +186,7 @@ class TestReceiptLifecycle(common.TransactionCase):
         self.assertFalse(expense.exists())
 
     def test_a_guessed_category_does_not_outlive_its_reading(self):
-        """Nouvelle lecture sans catégorie reconnue : retour à la catégorie par défaut."""
+        """New reading without a recognised category: back to the default category."""
         from ..ocr import parser
         from .test_parser import words_from_text
         Product = self.env['product.product']
@@ -207,7 +207,7 @@ class TestReceiptLifecycle(common.TransactionCase):
 
 @tagged('post_install', '-at_install')
 class TestAutomaticName(common.TransactionCase):
-    """Description automatique : écrite dans la langue du salarié, reconnue dans toutes."""
+    """Automatic description: written in the employee's language, recognised in all."""
 
     @classmethod
     def setUpClass(cls):
@@ -224,10 +224,16 @@ class TestAutomaticName(common.TransactionCase):
         return self.env['hr.expense'].with_context(lang='fr_FR').create({
             'name': name, 'employee_id': self.employee.id, 'product_id': self.product.id})
 
+    def dated(self, label):
+        """Expense named like an automatic description: "<label> on 23/09/2026"."""
+        expense = self.expense("Neuve")
+        expense.name = expense._expense_scan_date_name(label, "23/09/2026")
+        return expense
+
     def test_an_english_automatic_name_is_recognized(self):
-        self.assertTrue(self.expense("Zorblax Meals du 23/09/2026")._expense_scan_name_is_automatic())
-        self.assertTrue(self.expense("Zorblax Repas du 23/09/2026")._expense_scan_name_is_automatic())
-        self.assertFalse(self.expense("Salon Zorblax du 23/09/2026")._expense_scan_name_is_automatic())
+        self.assertTrue(self.dated("Zorblax Meals")._expense_scan_name_is_automatic())
+        self.assertTrue(self.dated("Zorblax Repas")._expense_scan_name_is_automatic())
+        self.assertFalse(self.dated("Salon Zorblax")._expense_scan_name_is_automatic())
 
     def test_the_automatic_name_is_in_the_employee_language(self):
         from datetime import date

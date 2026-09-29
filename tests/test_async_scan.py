@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Analyse lancée par la fiche : la dépense naît avant d'être lue."""
+"""Scan started by the form: the expense exists before it is read."""
 import base64
 import json
 
@@ -40,7 +40,7 @@ class TestAsyncScan(common.TransactionCase):
         self.assertEqual(expense.scan_state, 'running')
 
     def test_other_uploads_are_read_at_once(self):
-        """Mail, envoi multiple, appel sans le drapeau : comme avant."""
+        """Mail, multiple upload, call without the flag: as before."""
         with patch.object(type(self.Expense), '_expense_scan_run', autospec=True) as run:
             self.upload()
         run.assert_called_once()
@@ -62,7 +62,7 @@ class TestAsyncScan(common.TransactionCase):
         self.assertFalse(again['started'])
 
     def test_a_forgotten_analysis_is_picked_up(self):
-        """L'application s'est fermée avant de lancer l'analyse."""
+        """The app closed before starting the scan."""
         with patch.object(type(self.Expense), '_expense_scan_run', autospec=True):
             expense = self.upload(expense_scan_async=True)
         self.env.flush_all()
@@ -75,7 +75,7 @@ class TestAsyncScan(common.TransactionCase):
         run.assert_called_once()
 
     def test_a_concurrent_write_is_retried_not_recorded_as_a_failure(self):
-        """La fiche écrit la photo pendant l'analyse : Odoo doit rejouer."""
+        """The form writes the photo during the scan: Odoo must retry."""
         import psycopg2
         with patch.object(type(self.Expense), '_expense_scan_run', autospec=True):
             expense = self.upload(expense_scan_async=True)
@@ -86,7 +86,7 @@ class TestAsyncScan(common.TransactionCase):
         self.assertNotEqual(expense.scan_state, 'error')
 
     def test_a_stuck_analysis_is_given_up(self):
-        """Un justificatif qui tue son worker n'est pas repris indéfiniment."""
+        """A receipt that kills its worker is not picked up forever."""
         with patch.object(type(self.Expense), '_expense_scan_run', autospec=True):
             expense = self.upload(expense_scan_async=True)
         self.env.flush_all()
@@ -114,7 +114,7 @@ class TestAsyncScan(common.TransactionCase):
         self.assertEqual(result['values']['scan_state'], 'error')
 
     def test_rights_are_checked_before_the_row_is_locked(self):
-        """Personne ne verrouille la dépense d'un autre sans y avoir droit."""
+        """Nobody locks someone else's expense without the right to."""
         from odoo.exceptions import AccessError
         with patch.object(type(self.Expense), '_expense_scan_run', autospec=True):
             expense = self.upload(expense_scan_async=True)
@@ -125,7 +125,7 @@ class TestAsyncScan(common.TransactionCase):
             expense.with_user(stranger).action_expense_scan_start({'scan_state': {}})
 
     def test_old_submitted_texts_are_erased(self):
-        """Le texte lu est une donnée personnelle : il ne se garde pas indéfiniment."""
+        """The text read is personal data: it is not kept forever."""
         old = self.Expense.create({
             'name': "Vieux ticket", 'employee_id': self.employee.id,
             'product_id': self.env.company.expense_scan_product_id.id or
@@ -139,7 +139,7 @@ class TestAsyncScan(common.TransactionCase):
         self.env.company.expense_scan_text_retention_days = 365
         self.Expense._cron_expense_scan_purge_texts()
         self.assertFalse(old.scan_raw_text)
-        self.assertEqual(draft.scan_raw_text, "reste")  # un brouillon garde le sien
+        self.assertEqual(draft.scan_raw_text, "reste")  # a draft keeps its own
 
     def test_zero_days_keeps_texts_forever(self):
         old = self.Expense.create({
@@ -155,10 +155,10 @@ class TestAsyncScan(common.TransactionCase):
 
 @tagged('post_install', '-at_install')
 class TestRetouch(common.TransactionCase):
-    """Retouche manuelle : rotation et recadrage faits dans le navigateur.
+    """Manual retouch: rotation and crop done in the browser.
 
-    Le serveur reçoit le résultat en JPEG. Les tests portent sur le sort des
-    pièces jointes et sur l'analyse qui suit, pas sur le canevas client.
+    The server receives the result as JPEG. The tests cover what happens to
+    the attachments and the scan that follows, not the client canvas.
     """
 
     @classmethod
@@ -178,7 +178,7 @@ class TestRetouch(common.TransactionCase):
         return self.Expense.browse(ids)
 
     def test_the_original_is_kept_and_the_retouch_is_shown(self):
-        """Sans image recadrée, la retouche devient une nouvelle pièce affichée."""
+        """Without a cropped image, the retouch becomes a new displayed attachment."""
         expense = self.expense_with_attachment()
         original = expense.message_main_attachment_id
         photo = original.raw
@@ -201,11 +201,11 @@ class TestRetouch(common.TransactionCase):
         self.assertEqual(shown.raw, again)
 
     def test_the_analysis_reads_a_retouched_image_as_it_is(self):
-        """Pas de recadrage, redressement ni rotation automatiques après une retouche."""
+        """No automatic crop, straightening or rotation after a retouch."""
         from ..ocr.types import OcrWord, PreprocessInfo
 
         class Engine:
-            label = description = "faux moteur"
+            label = description = "fake engine"
 
             def recognize(self, image):
                 return [OcrWord(text="TOTAL 12,50", score=0.99,
@@ -268,7 +268,7 @@ class TestRetouch(common.TransactionCase):
         params = {'quarter': 1, 'fine': -2.5, 'crop': [0.1, 0.2, 0.9, 0.8]}
         expense.action_expense_scan_retouch(base64.b64encode(png()).decode(), params)
         data = expense.expense_scan_retouch_data()
-        self.assertEqual(data['url'], '/web/image/%d' % original.id)  # pas l'image retouchée
+        self.assertEqual(data['url'], '/web/image/%d' % original.id)  # not the retouched image
         self.assertEqual(data['params'], params)
 
     def test_retouch_settings_are_checked(self):
@@ -293,10 +293,10 @@ class TestRetouch(common.TransactionCase):
         words = [OcrWord(text="ligne", score=0.9, left=100, top=top, right=300, bottom=top + 20)
                  for top in (100, 150, 200)]
         x0, y0, x1, y1 = frame(words, 400, 1000, 0, margin_ratio=0)
-        self.assertAlmostEqual(x0 * 400, 92)   # marge fixe de 8 px
+        self.assertAlmostEqual(x0 * 400, 92)   # fixed margin of 8 px
         self.assertAlmostEqual(y1 * 1000, 228)
-        # Un quart de tour horaire : l'image fait 1000 × 400, le texte (en
-        # haut à gauche de la photo) passe en haut à droite.
+        # A clockwise quarter turn: the image is 1000 × 400, the text (top
+        # left of the photo) moves to the top right.
         x0, y0, x1, y1 = frame(words, 400, 1000, 90, margin_ratio=0)
         self.assertAlmostEqual(x0 * 1000, 1000 - 220 - 8)
         self.assertAlmostEqual(y0 * 400, 100 - 8)
@@ -305,10 +305,10 @@ class TestRetouch(common.TransactionCase):
         from ..ocr.types import OcrWord
 
         class Engine:
-            label = description = "faux moteur"
+            label = description = "fake engine"
 
             def recognize(self, image):
-                # Lignes penchées de 3° dans le sens antihoraire de l'image.
+                # Lines tilted by 3° anticlockwise in the image.
                 return [OcrWord(text="TOTAL 12,50", score=0.95, angle=3.0,
                                 left=10, top=10 + 30 * row, right=50, bottom=30 + 30 * row)
                         for row in range(4)]
@@ -328,7 +328,7 @@ class TestRetouch(common.TransactionCase):
 
 @tagged('post_install', '-at_install')
 class TestReceiptOnNewExpense(common.TransactionCase):
-    """Justificatif joint depuis le volet de discussion à une dépense neuve."""
+    """Receipt attached from the chatter to a new expense."""
 
     def test_defaults_make_a_new_expense_savable(self):
         Expense = self.env['hr.expense']
@@ -406,7 +406,7 @@ class TestReceiptOnNewExpense(common.TransactionCase):
         items = expense._expense_scan_kept_differences(
             receipt, {'date', 'total_amount_currency'})
         self.assertEqual([code for _text, code, _hint in items], ['total'])
-        self.assertIn("9,90", items[0][2])
+        self.assertRegex(items[0][2], r"9[.,]90")
         self.assertFalse(expense._expense_scan_kept_differences(receipt, set()))
 
     def test_a_new_analysis_keeps_typed_and_corrected_fields(self):
@@ -418,13 +418,13 @@ class TestReceiptOnNewExpense(common.TransactionCase):
                 for name in expense.READ_VALUE_FIELDS}
         read['date'] = '2026-09-20'
         expense.expense_scan_read_values = json.dumps(read)
-        # Montant saisi avant la première analyse, date corrigée depuis.
+        # Amount entered before the first scan, date corrected since.
         self.assertEqual(expense._expense_scan_kept_fields(), {'total_amount_currency', 'date'})
 
 
 @tagged('post_install', '-at_install')
 class TestMobilePreview(common.TransactionCase):
-    """Aperçu du justificatif sur téléphone."""
+    """Receipt preview on a phone."""
 
     def expense_with(self, name, mimetype, raw):
         expense = self.env['hr.expense'].create({

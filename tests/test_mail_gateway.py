@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Reconnaissance de l'expéditeur d'un justificatif envoyé par courriel.
+"""Recognising the sender of a receipt sent by e-mail.
 
-Odoo ne compare l'adresse qu'à l'e-mail professionnel et à celui du compte
-utilisateur. Un salarié qui transfère depuis son téléphone personnel n'est
-donc pas reconnu, et la dépense se crée sans employé.
+Odoo only compares the address with the work e-mail and with the user
+account's. An employee who forwards from their personal phone is therefore
+not recognised, and the expense is created without an employee.
 """
 from datetime import date
 
@@ -32,24 +32,23 @@ class TestExpenseScanMailGateway(common.TransactionCase):
         return self.env['hr.expense']._get_employee_from_email(address)
 
     def test_work_email_still_wins(self):
-        """L'e-mail professionnel reste prioritaire (comportement d'Odoo)."""
+        """The work e-mail still comes first (Odoo's behaviour)."""
         self.assertEqual(self.sender("camille@societe.example"), self.employee)
 
     def test_private_email_is_recognised(self):
         self.assertEqual(self.sender("camille.perso@exemple.fr"), self.employee)
 
     def test_address_is_matched_whole(self):
-        """Un fragment ne désigne personne.
+        """A fragment points to nobody.
 
-        La recherche utilise « ilike » pour rester rapide, puis la
-        comparaison finale porte sur l'adresse entière ; sinon
-        « perso@exemple.fr » désignerait tout salarié dont l'adresse
-        contient ce fragment.
+        The search uses "ilike" to stay fast, then the final comparison is on
+        the whole address; otherwise "perso@exemple.fr" would point to any
+        employee whose address contains this fragment.
         """
         self.assertFalse(self.sender("perso@exemple.fr"))
 
     def test_case_and_display_name_are_ignored(self):
-        """« Camille <CAMILLE.PERSO@Exemple.FR> » désigne bien Camille."""
+        """'Camille <CAMILLE.PERSO@Exemple.FR>' does point to Camille."""
         self.assertEqual(
             self.sender("Camille <CAMILLE.PERSO@Exemple.FR>"), self.employee)
 
@@ -60,7 +59,7 @@ class TestExpenseScanMailGateway(common.TransactionCase):
         self.assertFalse(self.sender(""))
 
     def test_alias_lets_private_address_through(self):
-        """L'alias réservé aux employés ne refuse plus l'adresse privée."""
+        """The alias reserved for employees no longer refuses the private address."""
         from email.message import EmailMessage
         alias = self.env['mail.alias'].new({'alias_contact': 'employees'})
         Expense = self.env['hr.expense']
@@ -106,11 +105,11 @@ class TestExpenseScanMailSubject(common.TransactionCase):
         })
         expense = self.env['hr.expense'].message_new({
             'email_from': "camille.objet@exemple.fr",
-            'subject': "TR: Hôtel Ibis Lyon, mission Enedis",
+            'subject': "TR: Hôtel Ibis Lyon, mission Exemple",
             'message_id': "<objet@exemple.fr>",
         })
         self.assertEqual(expense.employee_id, employee)
-        self.assertEqual(expense.name, "Hôtel Ibis Lyon, mission Enedis")
+        self.assertEqual(expense.name, "Hôtel Ibis Lyon, mission Exemple")
         self.assertTrue(expense.expense_scan_keep_name)
 
         class Result:

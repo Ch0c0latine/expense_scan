@@ -2,22 +2,21 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Contrôle rapide, sans Odoo ni base de données : syntaxe et imports.
+"""Quick check, without Odoo or a database: syntax and imports.
 
-À lancer avant chaque mise à jour du module. Il détecte les erreurs qui ne
-se manifestent qu'au chargement du registre Odoo et rendent l'instance
-inutilisable :
+To run before each update of the module. It catches the errors that only show
+when the Odoo registry loads and make the instance unusable:
 
-* faute de syntaxe dans un fichier Python du module, y compris les modèles,
-  que seul Odoo importe ;
-* paquet ``ocr`` qui ne s'importe plus, ou dépendance de traitement d'image
-  absente.
+* a syntax error in a Python file of the module, models included, which only
+  Odoo imports;
+* an ``ocr`` package that no longer imports, or a missing image processing
+  dependency.
 
-La lecture des tickets se vérifie par les tests du module (tickets de
-référence) et par le banc d'évaluation, ``tools/bench.py``.
+Receipt reading is checked by the module's tests (reference receipts) and by
+the benchmark, ``tools/bench.py``.
 
-    python3 tools/check.py            # syntaxe et imports
-    python3 tools/check.py --strict   # exige aussi les dépendances d'image (interpréteur d'Odoo)
+    python3 tools/check.py            # syntax and imports
+    python3 tools/check.py --strict   # also requires the image dependencies (Odoo's interpreter)
 """
 import os
 import sys
@@ -27,7 +26,7 @@ sys.path.insert(0, ROOT)
 
 
 def check_syntax():
-    """Compile tous les fichiers du module ; renvoie les échecs."""
+    """Compile every file of the module; return the failures."""
     failures = []
     for folder, _subfolders, names in os.walk(ROOT):
         if os.path.basename(folder) in ('__pycache__', '.git'):
@@ -36,16 +35,16 @@ def check_syntax():
             if not name.endswith('.py'):
                 continue
             path = os.path.join(folder, name)
-            # Compilation en mémoire : `py_compile` écrit un fichier de bytecode
-            # et refuse `/dev/null` depuis Python 3.14.
+            # Compiled in memory: `py_compile` writes a bytecode file and
+            # refuses `/dev/null` since Python 3.14.
             with open(path, encoding='utf-8') as handle:
                 source = handle.read()
             try:
                 compile(source, path, 'exec')
             except SyntaxError as error:
-                failures.append("%s ligne %s : %s" % (
+                failures.append("%s line %s: %s" % (
                     os.path.relpath(path, ROOT), error.lineno, error.msg))
-    print("syntaxe            : %s" % ("OK" if not failures else "ÉCHEC"))
+    print("syntax             : %s" % ("OK" if not failures else "FAILED"))
     return failures
 
 
@@ -54,19 +53,19 @@ def main():
     print("imports            : OK")
 
     available, message = preprocess.dependencies_status()
-    print("traitement image   : %s" % message)
+    print("image processing   : %s" % message)
     for status in engines.engines_status():
-        print("moteur %-11s: %s (%s)" % (
-            status['code'], "disponible" if status['available'] else "indisponible",
+        print("engine %-11s: %s (%s)" % (
+            status['code'], "available" if status['available'] else "unavailable",
             status['message']))
 
     failures = check_syntax()
     if not available and '--strict' in sys.argv:
-        failures.append("traitement d'image indisponible")
+        failures.append("image processing unavailable")
     if failures:
-        print("\nÉCHEC :\n  %s" % "\n  ".join(failures))
+        print("\nFAILED:\n  %s" % "\n  ".join(failures))
         return 1
-    print("\nTout est conforme.")
+    print("\nAll good.")
     return 0
 
 

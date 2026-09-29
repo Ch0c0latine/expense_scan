@@ -1,25 +1,23 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Reconnaissance de la catégorie d'une dépense à partir du texte du ticket.
+"""Recognising the category of an expense from the text of the receipt.
 
-Plusieurs sources, sans réseau ni modèle :
+Several sources, without network or model:
 
-* les mots du ticket que chaque catégorie déclare (« nuitée »,
-  « benzyna », « pedaggio »…), rapprochés avec une tolérance aux fautes de
-  lecture ;
-* les enseignes déjà classées : l'historique des dépenses, fourni par le
-  module Odoo, qui apprend des corrections des salariés ;
-* les codes d'activité APE/NAF et MCC ;
-* les marques européennes du Name Suggestion Index d'OpenStreetMap.
+* the receipt words each category declares ("nuitée", "benzyna",
+  "pedaggio"...), matched with a tolerance for reading mistakes;
+* the merchants already classified: the expense history, provided by the
+  Odoo module, which learns from the employees' corrections;
+* the APE/NAF and MCC activity codes;
+* the European brands of OpenStreetMap's Name Suggestion Index.
 
-Les tickets arrivent de toute l'Europe : le texte est donc replié (sans
-accent, sans casse, lettres polonaises ou nordiques ramenées à l'alphabet
-latin) avant toute comparaison. Les mots par défaut couvrent le français,
-l'anglais, l'allemand, l'italien, l'espagnol, le polonais, le néerlandais et
-le portugais.
+Receipts come from all over Europe: the text is therefore folded (no
+accents, no case, Polish or Nordic letters brought back to the Latin
+alphabet) before any comparison. The default words cover French, English,
+German, Italian, Spanish, Polish, Dutch and Portuguese.
 
-Aucune dépendance à Odoo, comme le reste du paquet.
+No dependency on Odoo, like the rest of the package.
 """
 import json
 import os
@@ -28,10 +26,10 @@ import unicodedata
 from difflib import SequenceMatcher
 
 # ---------------------------------------------------------------------------
-# Repliement du texte
+# Text folding
 # ---------------------------------------------------------------------------
 
-#: Lettres que la décomposition Unicode ne ramène pas à l'alphabet latin.
+#: Letters that Unicode decomposition does not bring back to the Latin alphabet.
 EXTRA_FOLDS = str.maketrans({
     "ł": "l", "Ł": "l", "ø": "o", "Ø": "o", "đ": "d", "Đ": "d",
     "ß": "ss", "æ": "ae", "Æ": "ae", "œ": "oe", "Œ": "oe", "ı": "i",
@@ -39,7 +37,7 @@ EXTRA_FOLDS = str.maketrans({
 
 
 def fold(text):
-    """Texte comparable : minuscules, sans accent, mots séparés d'un espace."""
+    """Comparable text: lower case, no accents, words separated by one space."""
     text = (text or "").translate(EXTRA_FOLDS)
     text = unicodedata.normalize("NFKD", text)
     text = "".join(char for char in text if not unicodedata.combining(char))
@@ -48,7 +46,7 @@ def fold(text):
 
 
 def split_keywords(raw):
-    """Les mots déclarés sur une catégorie : un par ligne, ou séparés par des virgules."""
+    """The words declared on a category: one per line, or separated by commas."""
     keywords = []
     for chunk in re.split(r"[\n,;]+", raw or ""):
         folded = fold(chunk)
@@ -58,16 +56,16 @@ def split_keywords(raw):
 
 
 # ---------------------------------------------------------------------------
-# Mots par défaut, par famille de frais
+# Default words, per expense family
 # ---------------------------------------------------------------------------
 
-#: Mots proposés à la création des catégories. Ils ne servent qu'à remplir
-#: une fiche vide : ensuite, la fiche fait foi et chacun y ajoute ses
-#: enseignes. Les marques y figurent parce qu'elles sont souvent la seule
-#: chose lisible d'un en-tête.
+#: Words suggested when the categories are created. They only fill an empty
+#: record: after that, the record prevails and everyone adds their own
+#: merchants. Brands are listed because they are often the only readable
+#: thing in a header.
 #:
-#: « total » n'y figure pas, bien que ce soit une marque de carburant : c'est
-#: aussi le libellé du montant sur tous les tickets.
+#: "total" is not listed, although it is a fuel brand: it is also the label
+#: of the amount on every receipt.
 DEFAULT_KEYWORDS = {
     'lodging': [
         # fr
@@ -85,7 +83,7 @@ DEFAULT_KEYWORDS = {
         "nocleg", "noclegi", "zakwaterowanie", "pokój", "doba hotelowa", "opłata miejscowa",
         # nl, pt
         "overnachting", "toeristenbelasting", "alojamento", "dormida",
-        # enseignes
+        # brands
         "airbnb", "booking.com", "ibis", "novotel", "mercure", "campanile", "kyriad",
         "première classe", "b&b hotel", "holiday inn", "best western", "marriott",
         "hilton", "radisson", "motel one", "logis hotels", "appart city",
@@ -93,7 +91,7 @@ DEFAULT_KEYWORDS = {
     'meal': [
         # fr
         "restaurant", "brasserie", "couverts", "couvert", "menu", "plat du jour",
-        # Mentions des titres-restaurant : un ticket qui les accepte est un repas.
+        # Meal voucher mentions: a receipt that accepts them is a meal.
         "titre restaurant", "titres restaurant", "ticket restaurant", "eligible tr",
         "dessert", "boisson", "boissons", "pizzeria", "traiteur",
         # en
@@ -109,7 +107,7 @@ DEFAULT_KEYWORDS = {
         "restauracja", "obiad", "napoje", "danie", "bar mleczny",
         # nl, pt
         "eetcafé", "dranken", "refeição", "bebidas",
-        # enseignes
+        # brands
         "mcdonald", "burger king", "subway", "flunch",
         "courtepaille", "buffalo grill", "hippopotamus", "la croissanterie",
     ],
@@ -129,7 +127,7 @@ DEFAULT_KEYWORDS = {
         "benzyna", "olej napędowy", "paliwo", "pb95", "pb 95", "stacja paliw",
         # nl, pt
         "brandstof", "tankstation", "gasóleo", "combustível",
-        # enseignes
+        # brands
         "totalenergies", "esso", "shell", "avia", "agip", "eni", "q8", "aral",
         "orlen", "lotos", "circle k", "tamoil", "repsol", "cepsa", "galp", "omv",
         "ionity", "fastned", "electra", "freshmile",
@@ -137,9 +135,9 @@ DEFAULT_KEYWORDS = {
     'toll_parking': [
         # fr
         "péage", "autoroute", "autoroutes", "stationnement", "parking", "horodateur",
-        # Mentions propres aux reçus de péage, qui n'impriment souvent pas
-        # le mot « péage » et dont l'OCR colle volontiers le sigle
-        # (« ASFLieu-dit ») au mot suivant.
+        # Mentions specific to toll receipts, which often do not print the
+        # word "péage" and whose operator initials the OCR readily glues to
+        # the next word ("ASFLieu-dit").
         "classe tarif", "classe de véhicule", "gare de péage", "bip&go", "ulys",
         "barrière de vallesque",
         # en
@@ -154,7 +152,7 @@ DEFAULT_KEYWORDS = {
         "opłata za przejazd", "autostrada", "parkowanie", "parking strzeżony",
         # nl, pt
         "parkeren", "portagem", "estacionamento",
-        # enseignes
+        # brands
         "vinci autoroutes", "sanef", "aprr", "asf", "cofiroute", "escota",
         "telepass", "indigo", "effia", "saemes", "q-park", "onepark",
         "interparking", "apcoa", "via verde",
@@ -175,7 +173,7 @@ DEFAULT_KEYWORDS = {
         "pkp", "intercity", "bilet", "pociąg",
         # nl, pt
         "treinkaartje", "comboio",
-        # enseignes
+        # brands
         "eurostar", "thalys", "sbb", "obb", "air france", "easyjet", "ryanair",
         "transavia", "lufthansa", "lot polish airlines", "vueling", "wizz air",
         "volotea", "ita airways", "klm", "tap air",
@@ -196,7 +194,7 @@ DEFAULT_KEYWORDS = {
         "trayecto", "metro de madrid", "tmb",
         # pl
         "przejazd", "ztm", "mpk", "tramwaj",
-        # enseignes
+        # brands
         "uber", "bolt", "free now", "freenow", "heetch", "g7", "cabify",
         "itaxi", "lime", "velib",
     ],
@@ -213,7 +211,7 @@ DEFAULT_KEYWORDS = {
         "alquiler de coches", "alquiler",
         # pl
         "wypożyczalnia", "najem samochodu",
-        # enseignes
+        # brands
         "hertz", "avis budget", "europcar", "sixt", "enterprise rent", "ada",
         "getaround", "goldcar", "ucar", "leasys",
     ],
@@ -224,13 +222,13 @@ DEFAULT_KEYWORDS = {
     ],
 }
 
-#: Mots ajoutés après la première proposition, par version :
-#: ``{'19.0.x.y.z': {famille: [mots]}}``. Le script de migration de la
-#: version les ajoute aux fiches déjà remplies, sans rien y retirer.
+#: Words added after the first suggestion, per version:
+#: ``{'19.0.x.y.z': {family: [words]}}``. The version's migration script adds
+#: them to the records already filled, without removing anything.
 ADDED_KEYWORDS = {
-    # Justificatifs réels que la première liste ne reconnaissait pas : un
-    # hot-dog d'aérogare classé en transport, un café de distributeur, une
-    # borne de recharge facturée en kWh, un vol payé en ligne.
+    # Real receipts the first list did not recognise: an airport hot dog
+    # classified as transport, a vending machine coffee, a charger billed in
+    # kWh, a flight paid online.
     '19.0.2.3.0': {
         'meal': ["repas", "hot dog", "fricadelle", "sandwich", "kebab",
                  "boulangerie", "viennoiserie", "baguette", "croissant",
@@ -238,37 +236,37 @@ ADDED_KEYWORDS = {
         'fuel': ["kwh", "energy tariff", "recharge", "chargement", "charging session"],
         'train_air': ["vol", "vols", "passager", "passagers", "embarquement"],
     },
-    # Un péage italien (« PEDAGGIO »), un reçu de réservation « B&B ».
+    # An Italian toll ("PEDAGGIO"), a "B&B" booking receipt.
     '19.0.2.4.1': {
         'toll_parking': ["pedaggio", "casello", "autostrada", "telepass", "maut",
                          "peaje", "autopista", "esattore", "transito",
                          "attestato di transito"],
         'lodging': ["b&b", "bed and breakfast", "bnb"],
     },
-    # Restaurant d'aéroport allemand : « Aichinger Gastro GmbH … Tisch 1122 ».
-    # Station italienne dont la raison sociale contient « risto » (restaurant).
+    # German airport restaurant: "Aichinger Gastro GmbH ... Tisch 1122".
+    # Italian filling station whose company name contains "risto" (restaurant).
     '19.0.2.4.2': {
         'meal': ["gastro", "tisch"],
         'fuel': ["senza piombo", "pompa", "stazione di servizio", "erogatore"],
     },
 }
-#: Mots retirés d'une version à l'autre, même forme. La migration ne retire
-#: que ces mots-là : le reste de chaque fiche n'est pas modifié.
+#: Words removed from one version to the next, same form. The migration only
+#: removes these words: the rest of each record is left unchanged.
 REMOVED_KEYWORDS = {
-    # « Aéroport » est un lieu, pas un achat : le mot faisait classer en
-    # billet d'avion le sandwich d'une aérogare (Starbucks, Pokawa).
+    # "Aéroport" is a place, not a purchase: the word classified an airport
+    # sandwich (Starbucks, Pokawa) as a plane ticket.
     '19.0.2.4.2': {
         'train_air': ["aeroport", "aéroport"],
     },
 }
-# Les catégories créées après cette version partent aussi de ces mots.
+# Categories created after this version start from these words too.
 for _words in ADDED_KEYWORDS.values():
     for _family, _added in _words.items():
         DEFAULT_KEYWORDS[_family] = DEFAULT_KEYWORDS[_family] + [
             word for word in _added if word not in DEFAULT_KEYWORDS[_family]]
 
-#: Comment reconnaître, à son nom ou à sa référence, la catégorie qui
-#: correspond à une famille. Premier indice trouvé, première famille servie.
+#: How to recognise, by its name or reference, the category matching a
+#: family. First clue found, first family served.
 FAMILY_HINTS = [
     ('lodging', ("heberg", "hotel", "bnb", "lodging", "accommodation")),
     ('taxi', ("taxi", "vtc", "mobilit", "mob")),
@@ -279,20 +277,20 @@ FAMILY_HINTS = [
     ('meal', ("repas", "meal", "restaur")),
     ('telecom', ("communication", "comm", "telecom", "telephon")),
 ]
-#: Catégories qu'aucune famille ne réclame : les forfaits, et les repas
-#: d'affaires, que rien sur le ticket ne distingue d'un repas ordinaire.
+#: Categories no family claims: flat allowances, and business meals, which
+#: nothing on the receipt tells apart from an ordinary meal.
 FAMILY_EXCLUDED = ("igd", "bareme", "forfait", "invit", "affaire", "kilomet", "mileage")
 
 
 def family_of(*labels):
-    """Famille de frais d'une catégorie, d'après son nom et sa référence."""
+    """Expense family of a category, from its name and reference."""
     words = fold(" ".join(label for label in labels if label)).split()
     if any(word.startswith(excluded) for word in words for excluded in FAMILY_EXCLUDED):
         return None
     for family, hints in FAMILY_HINTS:
         for hint in hints:
-            # Indice court : mot entier, sans quoi « air » reconnaîtrait
-            # « affaires » et « mob » reconnaîtrait n'importe quoi.
+            # Short clue: whole word, otherwise "air" would match "affaires"
+            # and "mob" would match anything.
             if any(word == hint if len(hint) <= 4 else word.startswith(hint)
                    for word in words):
                 return family
@@ -300,37 +298,37 @@ def family_of(*labels):
 
 
 # ---------------------------------------------------------------------------
-# Rapprochement
+# Matching
 # ---------------------------------------------------------------------------
 
-#: Seuil de ressemblance d'un mot mal lu avec un mot déclaré.
+#: Similarity threshold between a misread word and a declared word.
 FUZZY_RATIO = 0.84
-#: En deçà de cette longueur, un mot n'est comparé qu'à l'identique : « eni »,
-#: « ada », « g7 » ressemblent à trop de choses.
+#: Below this length, a word is only compared exactly: "eni", "ada", "g7"
+#: look like too many things.
 FUZZY_MIN_LENGTH = 5
-#: Nombre de lignes considérées comme l'en-tête, là où l'enseigne s'imprime.
+#: Number of lines taken as the header, where the merchant name is printed.
 HEADER_LINES = 8
-#: Poids d'un mot trouvé dans l'en-tête, puis ailleurs.
+#: Weight of a word found in the header, then elsewhere.
 HEADER_WEIGHT = 2.0
 BODY_WEIGHT = 1.0
-#: Score minimal, et avance minimale sur la deuxième catégorie, pour trancher.
+#: Minimum score, and minimum lead over the second category, to decide.
 MIN_SCORE = 2.0
 MIN_LEAD = 1.5
 
 
 def similar(first, second):
-    """Ressemblance de deux chaînes repliées, de 0 à 1."""
+    """Similarity of two folded strings, from 0 to 1."""
     if not first or not second:
         return 0.0
     return SequenceMatcher(None, first, second).ratio()
 
 
 def resembles(first, second, threshold):
-    """Les deux chaînes se ressemblent-elles au moins à ce point ?
+    """Are the two strings at least this similar?
 
-    Les bornes rapides de ``SequenceMatcher`` écartent l'immense majorité
-    des couples avant le calcul complet : un ticket compte des centaines
-    de mots, et chaque catégorie des dizaines de mots déclarés.
+    The quick bounds of ``SequenceMatcher`` rule out the vast majority of
+    pairs before the full computation: a receipt has hundreds of words, and
+    each category tens of declared words.
     """
     if not first or not second:
         return False
@@ -341,27 +339,27 @@ def resembles(first, second, threshold):
 
 
 def _same_start(candidate, keyword):
-    """Une faute de lecture change rarement la première lettre d'un mot court.
+    """A reading mistake rarely changes the first letter of a short word.
 
-    « Selecta » ressemble à « electra » à 86 % : sans ce contrôle, un
-    distributeur de café est pris pour une borne de recharge. À partir de
-    huit lettres, la ressemblance seule suffit.
+    "Selecta" is 86% similar to "electra": without this check, a coffee
+    vending machine is taken for a charger. From eight letters on, the
+    similarity alone is enough.
     """
     return len(keyword) >= 8 or candidate[:1] == keyword[:1]
 
 
 def _same_start(candidate, keyword):
-    """Une faute de lecture change rarement la première lettre d'un mot court.
+    """A reading mistake rarely changes the first letter of a short word.
 
-    « Selecta » ressemble à « electra » à 86 % : sans ce contrôle, un
-    distributeur de café est pris pour une borne de recharge. À partir de
-    huit lettres, la ressemblance seule suffit.
+    "Selecta" is 86% similar to "electra": without this check, a coffee
+    vending machine is taken for a charger. From eight letters on, the
+    similarity alone is enough.
     """
     return len(keyword) >= 8 or candidate[:1] == keyword[:1]
 
 
 def _find(keyword, line_words):
-    """Le mot déclaré figure-t-il dans la ligne ? Tolère une faute de lecture."""
+    """Is the declared word in the line? Tolerates a reading mistake."""
     parts = keyword.split()
     size = len(parts)
     for start in range(len(line_words) - size + 1):
@@ -373,19 +371,18 @@ def _find(keyword, line_words):
                 and _same_start(candidate, keyword) \
                 and resembles(candidate, keyword, FUZZY_RATIO):
             return True
-    # Mot collé à un autre par l'OCR : « TOTALENERGIESSTATION », « IBISLYON ».
+    # Word glued to another by the OCR: "TOTALENERGIESSTATION", "IBISLYON".
     if len(keyword) >= 6 and " " not in keyword:
         return any(keyword in word for word in line_words if len(word) > len(keyword))
     return False
 
 
 def score_categories(lines, categories):
-    """Score de chaque catégorie sur les lignes du ticket.
+    """Score of each category on the lines of the receipt.
 
-    ``categories`` associe un identifiant à ses mots repliés. Un mot ne
-    compte qu'une fois par catégorie, à son meilleur emplacement : un
-    « PARKING » répété dix fois en bas de ticket ne vaut pas mieux qu'une
-    seule fois.
+    ``categories`` maps an identifier to its folded words. A word only
+    counts once per category, at its best position: a "PARKING" repeated ten
+    times at the bottom of the receipt is worth no more than once.
     """
     folded = [fold(line).split() for line in lines]
     scores = {}
@@ -397,15 +394,15 @@ def score_categories(lines, categories):
                 if best >= HEADER_WEIGHT:
                     break
                 if _find(keyword, words):
-                    # Une expression de plusieurs mots (« classe tarif »,
-                    # « taxe de séjour ») est assez parlante pour valoir un
-                    # mot d'en-tête où qu'elle soit : sur un reçu de péage,
-                    # elle n'apparaît qu'à la neuvième ligne.
+                    # An expression of several words ("classe tarif",
+                    # "taxe de séjour") says enough to count as a header word
+                    # wherever it is: on a toll receipt, it only appears on
+                    # the ninth line.
                     header = position < HEADER_LINES or " " in keyword
                     best = max(best, HEADER_WEIGHT if header else BODY_WEIGHT)
             if best:
-                # Une expression de plusieurs mots est plus parlante qu'un
-                # mot isolé : son poids est multiplié par 1,25.
+                # An expression of several words says more than a single
+                # word: its weight is multiplied by 1.25.
                 score += best * (1.25 if " " in keyword else 1.0)
         if score:
             scores[category] = score
@@ -413,10 +410,10 @@ def score_categories(lines, categories):
 
 
 def pick_category(scores):
-    """La catégorie qui l'emporte nettement, ou ``None``.
+    """The category that clearly wins, or ``None``.
 
-    Mieux vaut ne rien proposer qu'une catégorie douteuse : une case vide
-    se remarque, une mauvaise catégorie passe en comptabilité.
+    Better to suggest nothing than a doubtful category: an empty field gets
+    noticed, a wrong category goes through to the accounts.
     """
     if not scores:
         return None
@@ -429,28 +426,28 @@ def pick_category(scores):
 
 
 # ---------------------------------------------------------------------------
-# Enseignes connues
+# Known merchants
 # ---------------------------------------------------------------------------
 
-#: Ressemblance exigée entre une ligne d'en-tête et une enseigne connue.
+#: Similarity required between a header line and a known merchant.
 MERCHANT_RATIO = 0.8
-#: Ressemblance exigée, en plus, entre les premiers mots : le nom du commerce.
+#: Similarity also required between the first words: the shop name.
 FIRST_WORD_RATIO = 0.75
-#: Longueur minimale d'une enseigne rapprochable : en deçà, trop d'homonymes.
+#: Minimum length of a merchant that can be matched: below it, too many namesakes.
 MERCHANT_MIN_LENGTH = 3
 
 
 def merchant_key(name):
-    """Clé de rapprochement d'une enseigne."""
+    """Matching key of a merchant."""
     return fold(name)
 
 
 def match_merchant(lines, known_keys, max_lines=HEADER_LINES + 4):
-    """L'enseigne connue que l'en-tête du ticket désigne, ou ``None``.
+    """The known merchant the receipt header points to, or ``None``.
 
-    Compare chaque ligne du haut du ticket, et chaque groupe de mots de
-    cette ligne, aux enseignes déjà rencontrées. Cela permet de retrouver
-    « Auchan » à partir de « Rchan » dès qu'un Auchan a été classé une fois.
+    Compares each line at the top of the receipt, and each group of words of
+    that line, to the merchants already met. This finds "Auchan" from
+    "Rchan" as soon as an Auchan has been classified once.
     """
     keys = [key for key in known_keys if len(key) >= MERCHANT_MIN_LENGTH]
     if not keys:
@@ -470,13 +467,13 @@ def match_merchant(lines, known_keys, max_lines=HEADER_LINES + 4):
                         or not resembles(candidate, key, MERCHANT_RATIO):
                     continue
                 elif not resembles(candidate.split()[0], key.split()[0], FIRST_WORD_RATIO):
-                    # « Nord Villefranche d'Orbec » ressemble à « Dormizz
-                    # Villefranche d'Orbec » par la ville seule : le nom du
-                    # commerce, en tête, doit aussi se ressembler.
+                    # "Nord Villefranche d'Orbec" looks like "Dormizz
+                    # Villefranche d'Orbec" by the city alone: the shop name,
+                    # first, must look alike too.
                     continue
                 else:
                     ratio = similar(candidate, key)
-                # Les premières lignes l'emportent à égalité.
+                # On a tie, the first lines win.
                 ranked = ratio - position * 0.001
                 if ratio >= MERCHANT_RATIO and ranked > best[0]:
                     best = (ranked, key)
@@ -484,13 +481,13 @@ def match_merchant(lines, known_keys, max_lines=HEADER_LINES + 4):
 
 
 # ---------------------------------------------------------------------------
-# Codes d'activité : APE/NAF, NACE, MCC
+# Activity codes: APE/NAF, NACE, MCC
 # ---------------------------------------------------------------------------
 
-#: Classe NAF rév. 2 (quatre premiers chiffres, ceux de la NACE européenne,
-#: de l'ATECO italien ou du WZ allemand) → famille de frais. Les classes
-#: de la NACE rév. 2.1, qui remplace peu à peu la précédente, y figurent
-#: aussi quand elles diffèrent (56.11, 56.12, 56.40).
+#: NAF rev. 2 class (first four digits, those of the European NACE, the
+#: Italian ATECO or the German WZ) -> expense family. The classes of NACE
+#: rev. 2.1, which gradually replaces the previous one, are listed too where
+#: they differ (56.11, 56.12, 56.40).
 NAF_FAMILIES = {
     '5510': 'lodging', '5520': 'lodging', '5530': 'lodging', '5590': 'lodging',
     '5610': 'meal', '5611': 'meal', '5612': 'meal', '5621': 'meal',
@@ -504,7 +501,7 @@ NAF_FAMILIES = {
     '6110': 'telecom', '6120': 'telecom', '6130': 'telecom', '6190': 'telecom',
 }
 
-#: Codes MCC des reçus de carte → famille de frais.
+#: MCC codes of card slips -> expense family.
 MCC_FAMILIES = {
     7011: 'lodging', 7012: 'lodging', 7032: 'lodging', 7033: 'lodging',
     5812: 'meal', 5813: 'meal', 5814: 'meal', 5411: 'meal', 5462: 'meal', 5499: 'meal',
@@ -516,19 +513,19 @@ MCC_FAMILIES = {
     7512: 'car_rental', 7513: 'car_rental', 7519: 'car_rental',
     4812: 'telecom', 4814: 'telecom', 4816: 'telecom',
 }
-#: Plages MCC réservées aux grandes enseignes d'un secteur.
+#: MCC ranges reserved for the large brands of a sector.
 MCC_RANGES = [
-    (3000, 3351, 'train_air'),     # compagnies aériennes
-    (3351, 3501, 'car_rental'),    # loueurs de voitures
-    (3501, 4000, 'lodging'),       # chaînes hôtelières
+    (3000, 3351, 'train_air'),     # airlines
+    (3351, 3501, 'car_rental'),    # car rental companies
+    (3501, 4000, 'lodging'),       # hotel chains
 ]
 
 
 def activity_family(code):
-    """Famille de frais d'un code d'activité lu sur le ticket.
+    """Expense family of an activity code read on the receipt.
 
-    ``code`` vaut ``"NAF:5610A"`` ou ``"MCC:5812"``, comme le rend le
-    parseur ; ``None`` si le code ne désigne aucune famille connue.
+    ``code`` is ``"NAF:5610A"`` or ``"MCC:5812"``, as the parser returns it;
+    ``None`` if the code designates no known family.
     """
     if not code or ':' not in code:
         return None
@@ -547,23 +544,23 @@ def activity_family(code):
 
 
 # ---------------------------------------------------------------------------
-# Marques européennes (Name Suggestion Index d'OpenStreetMap)
+# European brands (OpenStreetMap's Name Suggestion Index)
 # ---------------------------------------------------------------------------
 
 BRANDS_FILE = os.path.join(os.path.dirname(__file__), 'brands_europe.json')
 
-#: Quand une marque relève de plusieurs familles (Esso vend du carburant et
-#: des sandwichs, Indigo gère des parkings et des bornes), la première de
-#: cette liste l'emporte : la boutique d'une station reste une station.
+#: When a brand belongs to several families (Esso sells fuel and sandwiches,
+#: Indigo runs car parks and chargers), the first of this list wins: the shop
+#: of a filling station is still a filling station.
 BRAND_FAMILY_PRIORITY = ('lodging', 'toll_parking', 'car_rental', 'taxi', 'fuel', 'meal')
 
-#: Marques de moins de quatre lettres admises malgré tout : les autres
-#: (« ed », « me », « bp », qui est aussi la boîte postale) désignent
-#: n'importe quoi.
+#: Brands of fewer than four letters accepted anyway: the others ("ed",
+#: "me", "bp", which is also the French abbreviation for a PO box) could be
+#: anything.
 BRAND_SHORT_ALLOWED = {'q8', 'omv', 'kfc', 'ada', 'eni', 'erg', 'jet', 'ina', 'mol', 'dia'}
 
-#: Marques qui sont aussi des mots courants d'un ticket, d'une adresse ou
-#: d'un prénom, et qui ne sont donc pas cherchées.
+#: Brands that are also common words of a receipt, an address or a first
+#: name, and are therefore not looked for.
 BRAND_STOPWORDS = {
     'total', 'best', 'delta', 'element', 'edition', 'motto', 'greet', 'tribe',
     'petrol', 'power', 'star', 'classic', 'mobile', 'metano', 'sprint', 'pace',
@@ -591,7 +588,7 @@ BRAND_STOPWORDS = {
     'tesla', 'penny', 'norma', 'globi', 'globus', 'hubbox',
     'service', 'station', 'hotel', 'restaurant', 'parking', 'cafe', 'bar',
     'pizza', 'kebab', 'sushi', 'boulangerie', 'bakery', 'tabac', 'presse',
-    # Noms longs, cherchés aussi en milieu de ligne, qui sont des mots.
+    # Long names, also looked for in the middle of a line, that are words.
     'attendant', 'baguette', 'cappuccino', 'caffeine', 'chopsticks',
     'courtyard', 'enchilada', 'enterprise', 'fabrique', 'graduate', 'insomnia',
     'marathon', 'mercedes', 'national', 'parallel', 'practical', 'recharge',
@@ -602,16 +599,15 @@ BRAND_STOPWORDS = {
     'freshmarket', 'raiffeisen', 'westfalen', 'rosewood', 'wildwood',
     'tinseltown', 'continente', 'catalonia', 'station service',
 }
-#: Longueur (sans espaces) à partir de laquelle une marque est assez
-#: distinctive pour être cherchée partout dans une ligne d'en-tête :
-#: « … CCIAL V2 Restaurant McDonald's ».
+#: Length (without spaces) from which a brand is distinctive enough to be
+#: looked for anywhere in a header line: "... CCIAL V2 Restaurant McDonald's".
 BRAND_ANYWHERE_LENGTH = 7
 
 _BRAND_INDEX = None
 
 
 def _latin_share(name):
-    """Part des lettres d'un nom qui s'écrivent en alphabet latin."""
+    """Share of the letters of a name written in the Latin alphabet."""
     letters = [char for char in name if char.isalpha()]
     if not letters:
         return 0.0
@@ -620,17 +616,17 @@ def _latin_share(name):
 
 
 def _nicer(name, other):
-    """Des deux écritures d'une marque, celle qui s'affiche le mieux."""
+    """Of two spellings of a brand, the one that displays best."""
     def rank(value):
-        # « McDonald's » plutôt que « MCDONALD'S » ou « mcdonald's ».
+        # "McDonald's" rather than "MCDONALD'S" or "mcdonald's".
         return (value != value.upper() and value != value.lower(), -len(value))
     return name if rank(name) > rank(other) else other
 
 
 def brand_index():
-    """Index des marques, chargé une seule fois.
+    """Brand index, loaded once.
 
-    Forme : ``{marque repliée: (famille, nom affiché)}``.
+    Form: ``{folded brand: (family, displayed name)}``.
     """
     global _BRAND_INDEX
     if _BRAND_INDEX is not None:
@@ -643,8 +639,8 @@ def brand_index():
         data = {}
     for family in BRAND_FAMILY_PRIORITY:
         for name in data.get(family, ()):
-            # Écritures grecques, cyrilliques ou asiatiques : l'OCR ne les
-            # lit pas, et leur repli ne laisserait que des débris.
+            # Greek, Cyrillic or Asian scripts: the OCR does not read them,
+            # and folding them would leave only debris.
             if _latin_share(name) < 0.9:
                 continue
             key = fold(name)
@@ -662,26 +658,25 @@ def brand_index():
     return index
 
 
-#: Prix à l'unité d'un carburant ou d'une recharge : « 2,069 €/L »,
-#: « 0.28 EUR/kWh », « Energy: 23.3170 kWh ». Une bouteille d'eau de 1,5 L
-#: n'a pas de prix au litre imprimé.
+#: Unit price of fuel or of a charge: "2,069 €/L", "0.28 EUR/kWh",
+#: "Energy: 23.3170 kWh". A 1.5 L bottle of water has no printed price per
+#: litre.
 FUEL_UNIT_RE = re.compile(
     r"(?:€|\bEUR)\s*/\s*(?:L|LT|LITRES?|KWH)\b|\b\d+[.,]\d+\s*KWH\b|\bKWH\s*:?\s*\d",
     re.IGNORECASE)
 
 
 def fuel_unit(lines):
-    """La ligne qui porte un prix au litre ou au kWh, s'il y en a une."""
+    """The line carrying a price per litre or per kWh, if there is one."""
     return next((line for line in lines if FUEL_UNIT_RE.search(line)), None)
 
 
 def brand_family(lines, max_lines=HEADER_LINES, max_words=4):
-    """``(famille, marque affichée)`` d'après l'en-tête, ou ``(None, None)``.
+    """``(family, displayed brand)`` from the header, or ``(None, None)``.
 
-    Une marque courte doit ouvrir une ligne de l'en-tête ; une marque
-    longue peut y figurer n'importe où. La comparaison est toujours exacte :
-    une base de milliers de noms, dont beaucoup ressemblent à des mots, ne
-    supporte pas l'approximation.
+    A short brand must open a header line; a long brand can be anywhere in
+    it. The comparison is always exact: a base of thousands of names, many
+    of which look like words, does not allow approximation.
     """
     index = brand_index()
     for line in lines[:max_lines]:

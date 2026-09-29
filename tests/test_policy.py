@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Règles de dépenses : bonne conduite générale et exigences des clients."""
+"""Expense rules: general good practice and customer requirements."""
 from datetime import date
 
 from odoo.tests import common, tagged
@@ -13,7 +13,7 @@ class TestExpensePolicy(common.TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        # Les exemples livrés ne doivent pas se mêler aux règles d'essai.
+        # The delivered examples must not mix with the test rules.
         cls.env['expense.scan.policy'].search([]).action_archive()
         Partner = cls.env['res.partner']
         client = Partner.create({'name': "Client final Zz", 'is_company': True})
@@ -64,7 +64,7 @@ class TestExpensePolicy(common.TransactionCase):
         self.assertIn("Journée 60", lunch.expense_scan_policy_alert)
 
     def test_a_day_within_its_limit_covers_each_meal(self):
-        """Déjeuner à 25 € et dîner à 30 € : 55 € sur la journée, admis."""
+        """Lunch at 25 and dinner at 30: 55 for the day, accepted."""
         lunch = self.expense("Ticket", 25.0, scan_time="12:30")
         dinner = self.expense("Repas soir", 30.0)
         self.assertFalse(lunch.expense_scan_policy_alert)
@@ -87,14 +87,14 @@ class TestExpensePolicy(common.TransactionCase):
         dinner = self.expense("Repas soir", 45.0)
         self.assertIn("Dîner 40", dinner.expense_scan_policy_alert)
         self.assertIn("Journée 60", dinner.expense_scan_policy_alert)
-        # Le déjeuner, sous son plafond, signale aussi le dépassement du jour.
+        # The lunch, under its ceiling, also reports the day going over.
         self.assertIn("Journée 60", lunch.expense_scan_policy_alert)
 
     def test_meal_without_time_is_a_suspicion(self):
         meal = self.expense("Ticket", 30.0)
-        self.assertFalse(meal.expense_scan_policy_alert)  # seul, il tient dans la journée
+        self.assertFalse(meal.expense_scan_policy_alert)  # alone, it fits in the day
         self.expense("Repas soir", 35.0)
-        self.assertIn("sans heure lisible", meal.expense_scan_policy_alert)
+        self.assertIn("without a readable time", meal.expense_scan_policy_alert)
 
     def test_hotel_per_night_and_city_extra(self):
         lyon = self.expense("Nuits", 230.0, product=self.hotel, expense_scan_nights=2,
@@ -102,7 +102,7 @@ class TestExpensePolicy(common.TransactionCase):
         self.assertFalse(lyon.expense_scan_policy_breach)
         elsewhere = self.expense("Nuits", 230.0, product=self.hotel, expense_scan_nights=2,
                                  scan_raw_text="HOTEL DU CENTRE\n13001 MARSEILLE")
-        self.assertIn("115,00", elsewhere.expense_scan_policy_alert)
+        self.assertRegex(elsewhere.expense_scan_policy_alert, r"115[.,]00")
 
     def test_first_class_train(self):
         ticket = self.expense("Billet", 80.0, product=self.train,
@@ -114,7 +114,7 @@ class TestExpensePolicy(common.TransactionCase):
         self.assertFalse(free.expense_scan_policy_alert)
 
     def test_company_wide_rules_check_every_expense(self):
-        """Règles « toutes les dépenses » : même sans mission, et sans famille."""
+        """Rules for "all expenses": even without a project, and without a family."""
         self.env['expense.scan.policy'].create({
             'name': "Bonne conduite Zz",
             'apply_to_all': True,
@@ -140,7 +140,7 @@ class TestExpensePolicy(common.TransactionCase):
             'product_id': self.meal.id, 'date': date(2026, 9, 3),
             'total_amount_currency': 30.0, 'scan_raw_text': "MINIBAR",
         })
-        # Le minibar ne concerne que l'hôtel.
+        # The minibar only concerns the hotel.
         self.assertNotIn("minibar", meal.expense_scan_policy_alert or "")
         policy.action_archive()
         self.assertFalse(policy.active)

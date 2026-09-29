@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Tarif kilométrique et saisie pour un membre de l'équipe."""
+"""Mileage rate and entry for a team member."""
 from odoo.tests import Form, common, new_test_user, tagged
 
 
@@ -27,7 +27,7 @@ class TestExpenseScanMileage(common.TransactionCase):
         })
 
     def test_employee_rate_is_the_default(self):
-        """Trois décimales, comme le barème fiscal : aucun arrondi au centime."""
+        """Three decimals, like the tax scale: no rounding to the cent."""
         self.assertAlmostEqual(self.expense().price_unit, 0.636)
 
     def test_category_cost_without_employee_rate(self):
@@ -35,7 +35,7 @@ class TestExpenseScanMileage(common.TransactionCase):
         self.assertAlmostEqual(self.expense().price_unit, 1.0)
 
     def test_distance_category_without_cost_still_takes_a_rate(self):
-        """Catégorie kilométrique à 0 € : quantité et tarif du salarié restent."""
+        """Distance category at 0: the quantity and the employee's rate remain."""
         self.mileage.standard_price = 0.0
         expense = self.expense()
         self.assertTrue(expense.product_has_cost)
@@ -49,7 +49,7 @@ class TestExpenseScanMileage(common.TransactionCase):
             self.assertAlmostEqual(form.total_amount_currency, 6.36)
 
     def test_typed_price_survives_a_one_km_quantity(self):
-        """Avec une quantité d'un kilomètre, le prix saisi n'est pas remplacé par celui de la catégorie."""
+        """With a quantity of one kilometre, the price entered is not replaced by the category's."""
         expense = self.expense()
         expense.price_unit = 0.7
         expense.quantity = 1
@@ -63,7 +63,7 @@ class TestExpenseScanMileage(common.TransactionCase):
         self.assertAlmostEqual(expense.price_unit, 0.595)
 
     def test_switching_to_mileage_resets_the_price(self):
-        """Un prix issu d'un total saisi ne devient pas un tarif au kilomètre."""
+        """A price derived from a total entered does not become a rate per kilometre."""
         general = self.env['product.product'].create({
             'name': "Divers", 'can_be_expensed': True, 'standard_price': 0.0,
         })
@@ -102,7 +102,7 @@ class TestExpenseScanTeam(common.TransactionCase):
         self.assertNotIn(self.stranger, team)
 
     def test_manager_is_not_in_his_own_team(self):
-        """Ses propres frais ont déjà leur menu."""
+        """Their own expenses already have their menu."""
         self.assertNotIn(self.manager, self.team())
 
     def test_hierarchy_counts(self):
@@ -116,12 +116,12 @@ class TestExpenseScanTeam(common.TransactionCase):
         self.assertFalse(self.env['hr.expense'].with_user(plain)._expense_scan_team_employees())
 
     def test_account_and_analytic_fields_are_for_managers_only(self):
-        """Compte et répartition analytique : pas une affaire de salarié.
+        """Account and analytic distribution: not an employee's business.
 
-        Activer la comptabilité analytique de la société donne à tout
-        utilisateur interne le droit d'origine sur ces deux champs. Le test
-        vérifie le cas en le simulant sur un salarié ordinaire, sans modifier
-        la société de test.
+        Turning on the company's analytic accounting gives every internal
+        user Odoo's default right on these two fields. The test checks the
+        case by simulating it on an ordinary employee, without changing the
+        test company.
         """
         plain = new_test_user(
             self.env, login='plain_account', groups='base.group_user')
@@ -147,13 +147,13 @@ class TestExpenseScanTeam(common.TransactionCase):
             public.action_expense_scan_open_expenses()
 
     def test_entry_for_someone_else_is_noted(self):
-        """L'historique dit qui a saisi pour qui."""
+        """The history says who entered the expense for whom."""
         product = self.env.ref('hr_expense.expense_product_mileage')
         expense = self.env['hr.expense'].with_user(self.manager_user).create({
             'name': "Pour Léon", 'employee_id': self.member.id, 'product_id': product.id,
         })
         bodies = ' '.join(expense.sudo().message_ids.mapped('body'))
-        self.assertIn("Saisie par", bodies)
+        self.assertIn(self.manager_user.name, bodies)
         self.assertIn("Léon", bodies)
 
 
@@ -171,7 +171,7 @@ class TestExpenseScanCategories(common.TransactionCase):
         })
 
     def test_mileage_carries_no_tax(self):
-        """Une indemnité kilométrique est un forfait, sans TVA récupérable."""
+        """A mileage allowance is a flat rate, without recoverable VAT."""
         self.mileage.supplier_taxes_id = self.tax
         expense = self.env['hr.expense'].create({
             'name': "Déplacement", 'employee_id': self.employee.id,
@@ -195,7 +195,7 @@ class TestExpenseScanCategories(common.TransactionCase):
             self.assertEqual(form.scan_tax_amount, 0.0)
 
     def test_categories_follow_their_sequence(self):
-        """La liste déroulante suit la séquence, pas la référence interne."""
+        """The dropdown follows the sequence, not the internal reference."""
         first = self.env['product.product'].create({
             'name': "Zèbre", 'default_code': 'ZZZ', 'can_be_expensed': True, 'sequence': 1,
         })
@@ -208,7 +208,7 @@ class TestExpenseScanCategories(common.TransactionCase):
         self.assertEqual([product_id for product_id, _name in found], [first.id, last.id])
 
     def test_other_searches_keep_odoo_order(self):
-        """Sans le drapeau, rien ne change : tri par référence."""
+        """Without the flag, nothing changes: sorted by reference."""
         first = self.env['product.product'].create({
             'name': "Zèbre", 'default_code': 'ZZZ', 'can_be_expensed': True, 'sequence': 1,
         })
@@ -219,7 +219,7 @@ class TestExpenseScanCategories(common.TransactionCase):
         self.assertEqual([product_id for product_id, _name in found], [last.id, first.id])
 
     def test_full_screen_search_follows_the_sequence_too(self):
-        """Le sélecteur plein écran (tactile) passe par web_search_read, pas name_search."""
+        """The full screen selector (touch devices) goes through web_search_read, not name_search."""
         first = self.env['product.product'].create({
             'name': "Zèbre", 'default_code': 'ZZZ', 'can_be_expensed': True, 'sequence': 1,
         })
@@ -227,8 +227,8 @@ class TestExpenseScanCategories(common.TransactionCase):
             'name': "Âne", 'default_code': 'AAA', 'can_be_expensed': True, 'sequence': 999,
         })
         domain = [('id', 'in', (first | last).ids)]
-        # Appel par RPC, comme le fait le client : sans @api.model, le
-        # domaine serait pris pour des identifiants.
+        # Called through RPC, as the client does: without @api.model, the
+        # domain would be taken for record ids.
         from odoo.service.model import call_kw
         ordered = call_kw(
             self.env['product.product'], 'web_search_read',
@@ -239,7 +239,7 @@ class TestExpenseScanCategories(common.TransactionCase):
         self.assertEqual([r['id'] for r in unordered['records']], [last.id, first.id])
 
     def test_flat_rate_category_carries_no_tax(self):
-        """Un barème Urssaf n'a pas d'unité de distance : seule la case « sans TVA » compte."""
+        """A flat allowance scale has no distance unit: only the "no VAT" box counts."""
         per_diem = self.env['product.product'].create({
             'name': "IGD Repas", 'can_be_expensed': True, 'standard_price': 20.7,
             'supplier_taxes_id': [(6, 0, self.tax.ids)],
@@ -324,7 +324,7 @@ class TestExpenseScanNightsAndReturn(common.TransactionCase):
         self.assertFalse(expense.expense_scan_nights_required)
 
     def test_done_returns_to_the_employee_list(self):
-        """Saisie pour Jules puis « Terminé » : retour à la liste de Jules."""
+        """Entered for Jules then "Done": back to Jules's list."""
         other = self.env['product.product'].create({'name': "Divers", 'can_be_expensed': True})
         expense = self.env['hr.expense'].create({
             'name': "Pour Jules", 'employee_id': self.employee.id, 'product_id': other.id,
