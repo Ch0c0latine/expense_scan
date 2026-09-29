@@ -538,7 +538,7 @@ ASF Lieu-dit Les Pins BP 10017
         """« Article Quant Prix Action Total » est l'en-tête des articles ;
         « Total en EUR » une conversion : le total est « SOMME CHF »."""
         result = self.parse("MIGROS\nArticle Quant Prix Action Total\nPain 1 1.95 1.95\n"
-                            "SOMME CHF 30.60\nTotal en EUR 32.80\nVisa Debit 30.60")
+                            "SOMME CHF 30.60\nTotal en EUR 32.80\nVisa Debit CHF 30.60")
         self.assertEqual(result.value('currency'), 'CHF')
         self.assertEqual(result.value('total'), 30.60)
 
