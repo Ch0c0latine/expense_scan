@@ -10,7 +10,8 @@ from unittest.mock import patch
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import common, tagged
 
-from ..ocr import preprocess
+from ..ocr import parser, preprocess
+from .test_parser import words_from_text
 from .test_sheet import png
 
 
@@ -350,3 +351,49 @@ class TestReceiptOnNewExpense(common.TransactionCase):
             fresh.expense_scan_analyze_new_receipt()
             done.expense_scan_analyze_new_receipt()
         self.assertEqual([call.args[0] for call in run.call_args_list], [fresh])
+
+    def test_fields_typed_before_the_receipt_are_passed_to_the_analysis(self):
+        self.env.company.expense_scan_enabled = True
+        expense = self.env['hr.expense'].create({
+            'name': "Neuve", 'employee_id': self.env['hr.employee'].create({'name': "Nina"}).id})
+        contexts = []
+        with patch.object(type(expense), '_expense_scan_run', autospec=True,
+                          side_effect=lambda record: contexts.append(dict(record.env.context))):
+            expense.expense_scan_analyze_new_receipt(
+                ['name', 'total_amount_currency', 'analytic_distribution'])
+        self.assertTrue(contexts[0]['expense_scan_new_receipt'])
+        self.assertEqual(set(contexts[0]['expense_scan_keep_fields']),
+                         {'total_amount_currency', *type(expense).REINVOICE_FIELDS})
+
+    def test_the_analysis_leaves_typed_fields_alone(self):
+        company = self.env.company
+        company.expense_scan_apply_tax = False
+        company.expense_scan_reinvoice = False
+        expense = self.env['hr.expense'].create({
+            'name': "Neuve", 'employee_id': self.env['hr.employee'].create({'name': "Nina"}).id,
+            'total_amount_currency': 42.0, 'date': '2026-01-05'})
+        receipt = parser.parse(words_from_text("BOULANGERIE ESSAI\n20/09/2026\nTOTAL 9,90 EUR"))
+        values = expense.with_context(
+            expense_scan_new_receipt=True,
+            expense_scan_keep_fields=['date', 'total_amount_currency'],
+        )._expense_scan_field_values(receipt, company)
+        self.assertNotIn('date', values)
+        self.assertNotIn('total_amount_currency', values)
+        values = expense._expense_scan_field_values(receipt, company)
+        self.assertEqual(str(values['date']), '2026-09-20')
+        self.assertEqual(values['total_amount_currency'], 9.9)
+
+    def test_the_provisional_category_stays_free_unless_chosen(self):
+        company = self.env.company
+        other = self.env['product.product'].create({
+            'name': "Catégorie choisie", 'can_be_expensed': True})
+        company.expense_scan_product_id = False
+        expense = self.env['hr.expense'].create({
+            'name': "Neuve", 'employee_id': self.env['hr.employee'].create({'name': "Nina"}).id,
+            'product_id': other.id})
+        self.assertFalse(expense._expense_scan_category_is_free(company))
+        new = expense.with_context(expense_scan_new_receipt=True, expense_scan_keep_fields=[])
+        self.assertTrue(new._expense_scan_category_is_free(company))
+        chosen = expense.with_context(expense_scan_new_receipt=True,
+                                      expense_scan_keep_fields=['product_id'])
+        self.assertFalse(chosen._expense_scan_category_is_free(company))

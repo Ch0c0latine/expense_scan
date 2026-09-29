@@ -277,9 +277,13 @@ class HrExpense(models.Model):
         """Indique si la catégorie peut encore être choisie par l'analyse.
 
         Vrai tant que personne ne l'a choisie : vide, catégorie par défaut,
-        ou celle que l'analyse a proposée.
+        ou celle que l'analyse a proposée. Sur une dépense neuve à laquelle
+        un justificatif vient d'être joint, vrai sauf si l'utilisateur l'a
+        choisie avant l'envoi.
         """
         self.ensure_one()
+        if self.env.context.get('expense_scan_new_receipt'):
+            return 'product_id' not in self._expense_scan_kept_fields()
         product = self.product_id
         return (not product
                 or product == company.expense_scan_product_id

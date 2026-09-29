@@ -8,7 +8,8 @@
  * fichier partait alors sans identifiant de dépense et le serveur échouait.
  * Pour une dépense, les champs obligatoires encore vides reçoivent une
  * description provisoire et la catégorie par défaut ; une fois envoyé, le
- * justificatif est analysé comme un ticket scanné.
+ * justificatif est analysé comme un ticket scanné. Les champs déjà saisis
+ * sur la fiche sont transmis au serveur : l'analyse ne les remplit pas.
  */
 import { Chatter } from "@mail/chatter/web_portal/chatter";
 // Chargé avant ce correctif : il redéfinit onClickAttachFile et onUploaded
@@ -37,11 +38,15 @@ patch(Chatter.prototype, {
         // jamais une fois le composant détruit.
         this.expenseScanOrm = this.env.services.orm;
         this.expenseScanAnalyze = false;
+        this.expenseScanChanged = [];
     },
 
     async onClickAttachFile(ev) {
         const record = this.props.record;
         if (!this.state.thread.id && record?.resModel === "hr.expense") {
+            // Champs modifiés par l'utilisateur depuis l'ouverture de la
+            // fiche, relevés avant la pose des valeurs provisoires.
+            this.expenseScanChanged = Object.keys(record._changes || {});
             const defaults = await this.expenseScanOrm.call(
                 "hr.expense", "expense_scan_receipt_defaults", []);
             const values = {};
@@ -74,7 +79,8 @@ patch(Chatter.prototype, {
             }
             this.expenseScanAnalyze = false;
             await this.expenseScanOrm.call(
-                "hr.expense", "expense_scan_analyze_new_receipt", [[record.resId]]);
+                "hr.expense", "expense_scan_analyze_new_receipt",
+                [[record.resId], this.expenseScanChanged]);
             await record.model.load();
         };
     },

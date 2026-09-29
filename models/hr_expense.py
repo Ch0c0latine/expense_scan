@@ -207,6 +207,15 @@ class HrExpense(models.Model):
         'category': lambda expense: expense._expense_scan_changed('product_id'),
         'currency': lambda expense: expense._expense_scan_changed('currency_id'),
     }
+    #: Champ concerné par chaque point.
+    TODO_FIELDS = {
+        'date': 'date',
+        'total': 'total_amount_currency',
+        'category': 'product_id',
+        'currency': 'currency_id',
+        'reinvoice': 'reinvoice_mode',
+        'tax_amount': 'scan_tax_amount',
+    }
     #: Champ sous lequel s'affiche l'indication de chaque point.
     HINT_PLACES = {
         'date': 'date',
@@ -1003,17 +1012,34 @@ class HrExpense(models.Model):
             if product else False,
         }
 
-    def expense_scan_analyze_new_receipt(self):
+    #: Champs que l'analyse peut remplir et que l'utilisateur a pu saisir
+    #: sur la fiche avant d'y joindre le justificatif.
+    KEEPABLE_FIELDS = ('date', 'total_amount_currency', 'product_id', 'currency_id',
+                       'tax_ids', 'scan_tax_amount', 'vendor_id')
+
+    def expense_scan_analyze_new_receipt(self, changed=None):
         """Analyse le justificatif joint à une dépense enregistrée pour lui.
 
-        Seulement si la dépense n'a jamais été analysée : comme un ticket
-        scanné, les champs remplis par l'utilisateur sont conservés.
+        Seulement si la dépense n'a jamais été analysée. ``changed`` liste
+        les champs modifiés à la main sur la fiche neuve : l'analyse ne les
+        remplit pas. La description provisoire et la catégorie par défaut,
+        posées pour permettre l'enregistrement, restent à remplir.
         """
         self.ensure_one()
         self.check_access('write')
-        if self.scan_state == 'none' and (self.company_id or self.env.company).expense_scan_enabled:
-            self._expense_scan_run()
+        if self.scan_state != 'none'                 or not (self.company_id or self.env.company).expense_scan_enabled:
+            return True
+        changed = set(changed or ())
+        keep = changed & set(self.KEEPABLE_FIELDS)
+        if changed & set(self.REINVOICE_FIELDS):
+            keep |= set(self.REINVOICE_FIELDS)
+        self.with_context(expense_scan_new_receipt=True,
+                          expense_scan_keep_fields=sorted(keep))._expense_scan_run()
         return True
+
+    def _expense_scan_kept_fields(self):
+        """Champs saisis à la main avant l'analyse, que l'analyse ne remplit pas."""
+        return set(self.env.context.get('expense_scan_keep_fields') or ())
 
     def action_expense_scan_rescan(self):
         """Relance l'analyse sur le ou les justificatifs courants.
@@ -1598,6 +1624,9 @@ class HrExpense(models.Model):
                 # des tags fiscaux : vérifié après écriture, la catégorie
                 # reconnue pouvant en apporter une.
                 check_category_tax = True
+        # Un champ saisi à la main avant l'analyse n'est pas à vérifier.
+        keep = self._expense_scan_kept_fields()
+        items = [item for item in items if self.TODO_FIELDS.get(item[1]) not in keep]
         values.update({
             'scan_state': 'partial' if items else 'done',
             'scan_engine': result.engine,
@@ -1809,6 +1838,7 @@ class HrExpense(models.Model):
     def _expense_scan_field_values(self, result, company, foreign=None):
         """Traduit le résultat du parseur en valeurs de champs Odoo."""
         values = {}
+        keep = self._expense_scan_kept_fields()
         if foreign is None:
             foreign = self._expense_scan_foreign_tax(result, company)
 
@@ -1818,7 +1848,7 @@ class HrExpense(models.Model):
             values.get('expense_scan_guessed_product_id') or [])
 
         scan_date = result.value('date')
-        if scan_date:
+        if scan_date and 'date' not in keep:
             values['date'] = scan_date
 
         scan_time = result.value('time')
@@ -1841,11 +1871,11 @@ class HrExpense(models.Model):
                 or self._expense_scan_auto_name(self._expense_scan_target_product(values), scan_date)
 
         currency = self._expense_scan_currency(result, company)
-        if currency:
+        if currency and 'currency_id' not in keep:
             values['currency_id'] = currency.id
 
         total = result.value('total')
-        if total:
+        if total and 'total_amount_currency' not in keep:
             # Champ calculé mais modifiable : point d'entrée prévu par Odoo
             # pour un montant saisi tel quel, TTC.
             values['total_amount_currency'] = total
@@ -1908,7 +1938,11 @@ class HrExpense(models.Model):
                 values['tax_ids'] = [Command.clear()]
                 values['scan_tax_amount'] = 0.0
 
-        if company.expense_scan_reinvoice:
+        for name in ('tax_ids', 'scan_tax_amount'):
+            if name in keep:
+                values.pop(name, None)
+
+        if company.expense_scan_reinvoice and not keep & set(self.REINVOICE_FIELDS):
             # La mission est cherchée à la date du ticket et non à celle de
             # la saisie : un frais scanné le lundi peut dater du vendredi, sur
             # une autre mission.
@@ -1918,7 +1952,7 @@ class HrExpense(models.Model):
                 self._expense_scan_find_project(scan_date),
                 reinvoice=self.reinvoice_mode != 'none'))
 
-        if company.expense_scan_set_vendor:
+        if company.expense_scan_set_vendor and 'vendor_id' not in keep:
             # L'enseigne reconnue par l'historique est mieux orthographiée
             # que la lecture brute.
             known = values.get('expense_scan_merchant') \
