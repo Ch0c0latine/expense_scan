@@ -190,7 +190,7 @@ TOTAL_EXCLUDE_RE = re.compile(
     r"\bZWISCHENSUMME\b|\bTOTAL\s*H\.?\s*T\b|\bPRIX\s*H\.?\s*T\b|"
     r"\bMONTANT\s*H\.?\s*T\b|\bTVA\b(?!\s*(?:INCLUSE|INCLUS|COMPRISE|INCL))|\bT\.V\.A\b|"
     r"\bIVA\b(?!\s*INCL)|(?<!INKL\s)(?<!INKL\.\s)\b(?:MWST|UST)\b|"
-    r"\bVAT\b(?!\s*INCL)|\bBTW\b(?!\s*INCL)|\bPTU\b|\bOPOD|\bNETTO\b|"
+    r"\bVAT\b(?!\s*INCL)|\bBTW\b(?!\s*INCL)|\bPTU\b|\bOPOD|\bNETTO\b|\bSALES\s*TAX\b|"
     # MVA (no), moms (sv, da): the tax, except "inkl. moms".
     r"(?<!INKL\s)(?<!INKL\.\s)\b(?:MVA|MOMS)\b|"
     r"\bIMPONIBILE\b|\bBASE\s*IMPONIBLE\b|\bDI\s*CUI\b|"
@@ -269,8 +269,11 @@ def extract_total(lines, currency=None):
             confidence_penalty = 1.0
             if not amounts and index + 1 < len(lines):
                 # The label and the amount are often on two lines when the
-                # column is narrow.
-                amounts = find_amounts(lines[index + 1].text)
+                # column is narrow. Not when the next line is a tax or
+                # another excluded amount: the total was just misread.
+                following = normalize(lines[index + 1].text)
+                if not (TOTAL_EXCLUDE_RE.search(following) or TVA_LINE_RE.search(following)):
+                    amounts = find_amounts(lines[index + 1].text)
                 confidence_penalty = 0.85
             if not amounts:
                 continue
@@ -763,7 +766,8 @@ def extract_merchant(lines, max_lines=10, buyers=()):
 #: es, pt), MwSt and USt (de), PTU (pl), BTW (nl), DPH (cs), MOMS.
 TVA_LINE_RE = re.compile(
     r"\bT\.?\s*V\.?\s*A\b|\bV\.?A\.?T\b|\bI\.?V\.?A\b|\bMWST\b|\bUST\b|\bPTU\b"
-    r"|\bB\.?T\.?W\b|\bDPH\b|\bMOMS\b|\bPODATEK\b|\bSTEUERSUMME\b|\bTAXES?\s*TOTALES?\b")
+    r"|\bB\.?T\.?W\b|\bDPH\b|\bMOMS\b|\bPODATEK\b|\bSTEUERSUMME\b|\bTAXES?\s*TOTALES?\b"
+    r"|\bSALES\s*TAX\b")
 #: "TVA:D", "(c° tva: 2)": rate code referring to the table, without a tax
 #: amount. A single digit only counts if it does not start an amount
 #: ("TVA: 5,50").
@@ -1412,7 +1416,53 @@ def extract_tax_label(lines):
         label = re.sub(r"[^A-Z]", "", match.group(0))
         if label.startswith("TAXE"):
             label = "TVA"  # "Taxe totale": the VAT of a French invoice
+        elif label.startswith("SALES"):
+            label = "Sales tax"  # US sales tax, never deductible
         return ExtractedField(value=label, confidence=0.9, source=line.text)
+    return ExtractedField(value=None, confidence=0.0)
+
+
+#: Number of nights: "2 Nuitées x 95,00", "3 nights", "2 Übernachtungen".
+NIGHTS_RE = re.compile(
+    r"\b(\d{1,2})\s*(?:X\s*)?(?:NUITEES?|NUITS?|NIGHTS?|NACHTE|UBERNACHTUNG(?:EN)?|NOTTI|NOTTE"
+    r"|NOCHES?|NOITES?|NOCY|NOCLEGI?|NACHTEN|NETTER|NATTER|NAETTER)\b")
+#: Arrival and departure lines of a hotel bill.
+ARRIVAL_RE = re.compile(r"\bARRIV|\bCHECK\s*-?\s*IN\b|\bANREISE\b|\bARRIVO\b|\bLLEGADA\b"
+                        r"|\bCHEGADA\b|\bPRZYJAZD\b|\bANKOMST\b")
+DEPARTURE_RE = re.compile(r"\bDEPART|\bCHECK\s*-?\s*OUT\b|\bABREISE\b|\bPARTENZA\b"
+                          r"|\bSALIDA\b|\bPARTIDA\b|\bWYJAZD\b|\bAVREISE\b|\bAFREJSE\b")
+#: Longest stay believed from a receipt.
+MAX_NIGHTS = 60
+
+
+def _line_date(text, today, order):
+    for pattern, kind, _weight in DATE_PATTERNS:
+        for match in pattern.finditer(text):
+            found = _build_date(kind, match.groups(), today, order)
+            if found:
+                return found
+    return None
+
+
+def extract_nights(lines, today=None, order="dmy"):
+    """Number of nights of a hotel bill, if the receipt gives it.
+
+    Printed as a quantity ("2 Nuitées"), or deduced from the arrival and
+    departure dates.
+    """
+    today = today or date.today()
+    arrival = departure = None
+    for line in lines:
+        text = normalize(line.text)
+        match = NIGHTS_RE.search(text)
+        if match and 0 < int(match.group(1)) <= MAX_NIGHTS:
+            return ExtractedField(value=int(match.group(1)), confidence=0.8, source=line.text)
+        if arrival is None and ARRIVAL_RE.search(text):
+            arrival = _line_date(text, today, order)
+        elif departure is None and DEPARTURE_RE.search(text):
+            departure = _line_date(text, today, order)
+    if arrival and departure and 0 < (departure - arrival).days <= MAX_NIGHTS:
+        return ExtractedField(value=(departure - arrival).days, confidence=0.75)
     return ExtractedField(value=None, confidence=0.0)
 
 
@@ -1485,10 +1535,24 @@ def trip_places(lines):
     return places, cities
 
 
+#: Street before a city name: "Rue de Lyon" is in Paris, not in Lyon.
+STREET_BEFORE_RE = re.compile(
+    r"\b(?:RUE|AVENUE|AV|BD|BOULEVARD|PLACE|PL|QUAI|ROUTE|RTE|CHEMIN|ALLEE|IMPASSE|COURS"
+    r"|GARE|STRASSE|STR|VIA|CALLE|RUA|STREET|ROAD)\.?\s+(?:DE\s+|DU\s+|DES\s+|D\s*)?$")
+
+
 def cites_city(city, lines):
-    """Tell whether the city is cited, as a whole word, in these lines."""
+    """Tell whether the city is cited, as a whole word, in these lines.
+
+    A street or station named after a city does not count.
+    """
     pattern = re.compile(r"(?<![A-Z])%s(?![A-Z])" % re.escape(city))
-    return any(pattern.search(normalize(line)) for line in lines)
+    for line in lines:
+        text = normalize(line)
+        for match in pattern.finditer(text):
+            if not STREET_BEFORE_RE.search(text[:match.start()]):
+                return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -1542,6 +1606,7 @@ def parse(words, today=None, max_age_days=730, default_currency="EUR", buyers=()
         "activity": extract_activity(lines),
         "company_number": extract_company_number(lines),
         "vat_number": extract_vat_number(lines),
+        "nights": extract_nights(lines, today=today, order="mdy" if month_first else "dmy"),
     }
     return ScanResult(lines=lines, fields=fields)
 

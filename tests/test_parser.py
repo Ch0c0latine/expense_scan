@@ -544,6 +544,26 @@ ASF Lieu-dit Les Pins BP 10017
                             "Balance to pay $53.37\nVISA $53.37")
         self.assertEqual(result.value('total'), 53.37)
 
+    def test_a_total_misread_does_not_take_the_tax_line_below(self):
+        """The amount under an unreadable total is not the total if it is a tax."""
+        result = self.parse("BISTRO\nKawa 12,00\nSUMA PLN 00'09\nPTU B 8% 4,44\nGotowka 00'09")
+        self.assertNotEqual(result.value('total'), 4.44)
+        self.assertIn(parser.FIELD_LABELS['total'], parser.fields_to_check(result))
+
+    def test_us_sales_tax_is_a_foreign_tax(self):
+        result = self.parse("JOE'S DINER\nSUBTOTAL 17.49\nSALES TAX 8.875% 1.55\nTOTAL $19.04")
+        self.assertEqual(result.value('tax_label'), "Sales tax")
+        self.assertEqual(result.value('total'), 19.04)
+
+    def test_nights_of_a_hotel_bill(self):
+        printed = self.parse("HOTEL\n2 Nuitees x 95,00 190,00\nTOTAL TTC 219,76 EUR",
+                             today=date(2026, 9, 29))
+        self.assertEqual(printed.value('nights'), 2)
+        dated = self.parse("HOTEL\nCheck-in 22/09/2026\nCheck-out 25/09/2026\nTOTAL 300,00 EUR",
+                           today=date(2026, 9, 29))
+        self.assertEqual(dated.value('nights'), 3)
+        self.assertIsNone(self.parse("CAFE\nTOTAL 3,00 EUR").value('nights'))
+
     def test_norwegian_sum_of_items_beats_the_vat_table(self):
         result = self.parse("KIWI\nOrg.nr 979 443 137 MVA\nSum 3 varer 22,00\n"
                             "Mva% Grunnlag Mva Sum\nSum 17,83 4,47 22,30")

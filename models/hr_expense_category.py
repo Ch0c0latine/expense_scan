@@ -279,8 +279,11 @@ class HrExpense(models.Model):
         true unless the user chose it before uploading.
         """
         self.ensure_one()
+        # A category chosen by hand stays, even when it is the default one.
+        if 'product_id' in self._expense_scan_kept_fields():
+            return False
         if self.env.context.get('expense_scan_new_receipt'):
-            return 'product_id' not in self._expense_scan_kept_fields()
+            return True
         product = self.product_id
         return (not product
                 or product == company.expense_scan_product_id

@@ -1105,7 +1105,7 @@ class HrExpense(models.Model):
     #: Fields the scan can fill and the user may have entered on the form
     #: before attaching the receipt.
     KEEPABLE_FIELDS = ('date', 'total_amount_currency', 'product_id', 'currency_id',
-                       'tax_ids', 'scan_tax_amount', 'vendor_id')
+                       'tax_ids', 'scan_tax_amount', 'vendor_id', 'expense_scan_nights')
 
     def expense_scan_analyze_new_receipt(self, changed=None):
         """Scan the receipt attached to an expense saved for it.
@@ -1653,6 +1653,7 @@ class HrExpense(models.Model):
         company = self.company_id or self.env.company
         foreign = self._expense_scan_foreign_tax(result, company)
         values = self._expense_scan_field_values(result, company, foreign=foreign)
+        notes = values.pop('_expense_scan_notes', [])
         if result.timer:
             result.timer.lap('category')
 
@@ -1767,6 +1768,8 @@ class HrExpense(models.Model):
             name: self._expense_scan_comparable(name) for name in self.READ_VALUE_FIELDS})
         after['expense_scan_manual_fields'] = ','.join(sorted(keep)) or False
         self.write(after)
+        for note in notes:
+            self.message_post(body=note, message_type='comment', subtype_xmlid='mail.mt_note')
         if result.timer:
             result.timer.lap('write')
             _logger.info("expense_scan: timings expense=%s %s", self.id, result.timer)
@@ -1907,8 +1910,8 @@ class HrExpense(models.Model):
         return ({"cp:%s" % zip_code.strip() for zip_code in zips if zip_code},
                 {city for city in home_cities if len(city) >= 4})
 
-    def _expense_scan_trip_reason(self, scan_date, lines):
-        """Purpose of a trip, already written on a neighbouring expense.
+    def _expense_scan_trip_neighbour(self, scan_date, lines):
+        """Neighbouring expense of the same trip, whose description to take up.
 
         All the expenses of a trip share its purpose ("Sales visit Acme").
         Part of the same trip, within a few days:
@@ -1922,10 +1925,12 @@ class HrExpense(models.Model):
         Each expense that takes up the purpose serves in turn as a relay: a
         long trip is covered step by step. The city of the company and that
         of the employee's home link nothing: they appear on every receipt.
+        Nor does an expense whose date was not read on its receipt: its date
+        is only the day it was entered.
         """
         self.ensure_one()
         if not (scan_date and self.employee_id):
-            return False
+            return self.browse()
         neighbours = self.sudo().search([
             ('id', '!=', self._origin.id or 0),
             ('employee_id', '=', self.employee_id.id),
@@ -1934,15 +1939,17 @@ class HrExpense(models.Model):
             ('approval_state', '!=', 'refused'),
         ])
         labels = self._expense_scan_automatic_labels()
-        neighbours = neighbours.filtered(lambda e: not e._expense_scan_name_is_automatic(labels))
+        neighbours = neighbours.filtered(
+            lambda e: (e.scan_state == 'none' or e.scan_datetime)
+            and not e._expense_scan_name_is_automatic(labels))
         if not neighbours:
-            return False
+            return self.browse()
 
         def most_common(expenses):
             # Most frequent purpose; on a tie, the closest in date.
             counts = Counter(expenses.mapped('name'))
             return max(expenses, key=lambda e: (
-                counts[e.name], -abs((e.date - scan_date).days), e.id)).name
+                counts[e.name], -abs((e.date - scan_date).days), e.id))
 
         same_day = neighbours.filtered(lambda e: e.date == scan_date)
         if same_day:
@@ -1968,7 +1975,7 @@ class HrExpense(models.Model):
         before = set(neighbours.filtered(lambda e: e.date < scan_date).mapped('name'))
         after = set(neighbours.filtered(lambda e: e.date > scan_date).mapped('name'))
         between = neighbours.filtered(lambda e: e.name in before & after)
-        return most_common(between) if between else False
+        return most_common(between) if between else self.browse()
 
     def _expense_scan_date_name(self, label, date_text):
         """"Toll on 12/09/2026": the category, then the date of the receipt."""
@@ -2020,11 +2027,22 @@ class HrExpense(models.Model):
         if expense_date and not self.expense_scan_keep_name \
                 and self._expense_scan_name_is_automatic():
             # The purpose of the same trip, already written elsewhere, wins
-            # over the automatic description.
-            values['name'] = self._expense_scan_trip_reason(
-                expense_date, [line.text for line in result.lines]) \
-                or self._expense_scan_auto_name(self._expense_scan_target_product(values),
-                                                expense_date)
+            # over the automatic description. A date not read on the receipt
+            # places the expense on no trip.
+            neighbour = self._expense_scan_trip_neighbour(
+                expense_date if 'date' in keep or scan_date else None,
+                [line.text for line in result.lines])
+            values['name'] = neighbour.name or self._expense_scan_auto_name(
+                self._expense_scan_target_product(values), expense_date)
+            if neighbour:
+                values['_expense_scan_notes'] = [_(
+                    "Description taken from the expense of the same trip: %s",
+                    neighbour._get_html_link(title=neighbour.name))]
+
+        nights = result.value('nights')
+        if nights and self._expense_scan_target_product(values).expense_scan_nights_required \
+                and 'expense_scan_nights' not in keep:
+            values['expense_scan_nights'] = nights
 
         currency = self._expense_scan_currency(result, company)
         if currency and 'currency_id' not in keep:

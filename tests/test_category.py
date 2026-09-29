@@ -236,6 +236,13 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertEqual(values['tax_ids'], [(6, 0, high.ids)])
         self.assertEqual(values['scan_tax_amount'], 0.80)
 
+    def test_a_default_category_chosen_by_hand_survives_a_new_scan(self):
+        """The default category, chosen by hand, is a choice like any other."""
+        expense = self.expense(expense_scan_manual_fields='product_id')
+        values = expense._expense_scan_category_values(
+            reading("ZORBLAX INN\nQUIMBO 2\nTOTAL 90,00"), self.company)
+        self.assertNotIn('product_id', values)
+
     def test_nothing_sure_keeps_the_default(self):
         expense = self.expense()
         values = expense._expense_scan_category_values(
@@ -345,6 +352,24 @@ class TestCategoryRecognition(common.TransactionCase):
             "HOTEL EXEMPLE\n1 rue Exemple\n12345 Villedeux\n10/09/2026\nTOTAL 80,00"),
             self.company)
         self.assertEqual(values['name'], "Audit Exemple")
+
+    def test_a_neighbour_without_a_read_date_links_nothing(self):
+        """Its date is only the day it was entered, not the day of the trip."""
+        from datetime import date
+        self.expense(name="Saisie du jour", date=date(2026, 9, 10), scan_state='partial')
+        values = self.fresh()._expense_scan_field_values(
+            reading("BOULANGERIE EXEMPLE\n10/09/2026\nTOTAL 4,20"), self.company)
+        self.assertNotEqual(values['name'], "Saisie du jour")
+
+    def test_a_street_named_after_a_city_links_nothing(self):
+        """The hotel of "rue de Villedeux" is not in Villedeux."""
+        from datetime import date
+        self.expense(name="Salon Villedeux", date=date(2026, 9, 8),
+                     scan_raw_text="CAFE EXEMPLE\n12345 Villedeux\nTOTAL 3,00")
+        values = self.fresh()._expense_scan_field_values(reading(
+            "HOTEL EXEMPLE\n20 rue de Villedeux 54321 Villeun\n10/09/2026\nTOTAL 80,00"),
+            self.company)
+        self.assertNotEqual(values['name'], "Salon Villedeux")
 
     def test_a_day_between_two_days_of_a_trip_belongs_to_it(self):
         from datetime import date
