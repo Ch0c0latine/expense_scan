@@ -136,8 +136,9 @@ class HrExpense(models.Model):
              "expense and of the journal entry take this value, whatever the "
              "rate shown next to it. This is what lets a receipt mixing 5.5%, "
              "10% and 20% produce exactly its tax.\n\n"
-             "Zero means zero: no deductible tax, which is the case of a card "
-             "slip or of a receipt where no tax could be read.\n\n"
+             "Empty: the tax follows the rate, as in standard Odoo. A receipt "
+             "without deductible tax (card slip, tax not readable) has no tax "
+             "selected.\n\n"
              "The rate only does two things: carry the tax tags of the entry, "
              "and cap this amount. A tax higher than the rate applied to the "
              "receipt total is necessarily an error, and choosing a lower "
@@ -390,15 +391,9 @@ class HrExpense(models.Model):
                     and expense._expense_scan_name_is_automatic():
                 expense.name = expense._expense_scan_auto_name(expense.product_id, expense.date)
 
-    @api.onchange('total_amount_currency')
-    def _onchange_expense_scan_total(self):
-        """A total lowered caps the tax that would no longer fit."""
-        for expense in self:
-            expense._expense_scan_clamp_tax()
-
-    @api.onchange('tax_ids')
+    @api.onchange('tax_ids', 'product_id', 'total_amount_currency')
     def _onchange_expense_scan_taxes(self):
-        """Choosing a rate caps the tax, or fills it when empty.
+        """A rate, a category or a total caps the tax, or fills it when empty.
 
         Capping: switching the expense to "0% EX" left the amount read
         untouched, hence a deductible tax the chosen rate no longer
@@ -407,7 +402,9 @@ class HrExpense(models.Model):
 
         Filling, only when the field is empty (receipt without readable tax,
         manual entry): the total including tax, the tax is
-        total x rate / (100 + rate), not total x rate.
+        total x rate / (100 + rate), not total x rate. The category brings
+        its default tax: without filling, the form would show no tax while
+        the entry carries the rate's.
 
         An amount already there is not replaced: it often comes from the
         receipt and stays exact with several rates, which a computation from
@@ -560,6 +557,18 @@ class HrExpense(models.Model):
         untaxed['name'] = _("%s (without tax)", line_vals.get('name') or self.name)
         return Command.create(untaxed)
 
+    def _expense_scan_tax_follows_rate(self):
+        """Tell whether the receipt tax is the one the rate gives.
+
+        Odoo's own computation then already posts it, whatever the path.
+        """
+        self.ensure_one()
+        ceiling = self._expense_scan_tax_ceiling()
+        percent = self.tax_ids.filtered(lambda tax: tax.amount_type == 'percent')
+        return (ceiling is not None and len(self.tax_ids) == 1 and len(percent) == 1
+                and self.currency_id.compare_amounts(
+                    self.scan_tax_amount, self.currency_id.round(ceiling)) == 0)
+
     def _prepare_payments_vals(self):
         """Refuse to post a receipt tax that cannot be carried.
 
@@ -567,7 +576,7 @@ class HrExpense(models.Model):
         balances, without the base split above. It would post the tax of the
         rate instead of the receipt's without warning.
         """
-        if self.scan_tax_amount:
+        if self.scan_tax_amount and not self._expense_scan_tax_follows_rate():
             raise UserError(_(
                 "The receipt tax (%(amount).2f) cannot yet be carried on an "
                 "expense paid by the company. Set the expense back to "
@@ -860,6 +869,22 @@ class HrExpense(models.Model):
                 "\"poppler-utils\" system package to retouch PDFs."))
         return data, 'image/png'
 
+    def _expense_scan_multipage_pdf(self, attachment):
+        """Tell whether the attachment is a PDF of more than one page."""
+        return bool(attachment) and self._expense_scan_is_pdf(attachment) \
+            and preprocess.pdf_page_count(attachment.raw) > 1
+
+    def _expense_scan_check_retouchable(self, source):
+        """Refuse the retouch of a PDF of several pages.
+
+        The retouch replaces the receipt with an image of its first page:
+        the other pages, often the one with the total, would be lost.
+        """
+        if self._expense_scan_multipage_pdf(source):
+            raise UserError(_(
+                "This PDF has several pages: it stays the receipt as it is. "
+                "Retouch applies to photos and single-page PDFs."))
+
     def expense_scan_retouch_data(self):
         """Starting image and settings of the last retouch, for the editor.
 
@@ -869,6 +894,7 @@ class HrExpense(models.Model):
         self.ensure_one()
         self.check_access('read')
         source = self._expense_scan_retouch_source()
+        self._expense_scan_check_retouchable(source)
         if self._expense_scan_is_pdf(source):
             data, mimetype = self._expense_scan_retouch_image()
             url = 'data:%s;base64,%s' % (mimetype, base64.b64encode(data).decode())
@@ -1010,6 +1036,7 @@ class HrExpense(models.Model):
         main = self.message_main_attachment_id
         if not main:
             raise UserError(_("No receipt to retouch."))
+        self._expense_scan_check_retouchable(self._expense_scan_retouch_source())
         self._expense_scan_forget_original()
         try:
             raw = base64.b64decode(image_base64)
@@ -1348,7 +1375,10 @@ class HrExpense(models.Model):
         result.engine = getattr(engine, 'description', engine.label)
         result.duration = duration
         result.preprocess = info
-        if (info.changed or info.rotated_quarters) and not manual:
+        # A PDF of several pages stays the receipt as it is: an image of its
+        # first page would hide the others, often the one with the total.
+        if (info.changed or info.rotated_quarters) and not manual \
+                and not self._expense_scan_multipage_pdf(attachment):
             result.image_bytes = preprocess.encode_jpeg(image)
         timer.lap('parse')
         result.timer = timer

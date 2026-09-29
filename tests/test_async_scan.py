@@ -287,6 +287,18 @@ class TestRetouch(common.TransactionCase):
             data = expense.expense_scan_retouch_data()
         self.assertEqual(data['url'], 'data:image/png;base64,' + base64.b64encode(b'PNG').decode())
 
+    def test_a_pdf_of_several_pages_is_not_retouched(self):
+        """Its first page alone would replace the receipt, total included."""
+        from .test_sheet import two_page_pdf
+        expense = self.expense_with_attachment()
+        expense.message_main_attachment_id.write({
+            'name': "facture.pdf", 'mimetype': 'application/pdf', 'raw': two_page_pdf()})
+        with self.assertRaises(UserError):
+            expense.expense_scan_retouch_data()
+        with self.assertRaises(UserError):
+            expense.action_expense_scan_retouch(base64.b64encode(png()).decode())
+        self.assertEqual(expense.message_main_attachment_id.mimetype, 'application/pdf')
+
     def test_text_frame_follows_the_rotation(self):
         from ..ocr.types import OcrWord
         frame = type(self.Expense)._expense_scan_text_frame

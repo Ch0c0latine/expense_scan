@@ -251,6 +251,34 @@ class TestExpenseScanCategories(common.TransactionCase):
         self.assertTrue(expense.expense_scan_no_vat)
         self.assertFalse(expense.tax_ids)
 
+    def test_the_category_tax_shows_in_the_receipt_tax_field(self):
+        """Manual entry: the tax the entry will carry is the one shown."""
+        general = self.env['product.product'].create({
+            'name': "Divers", 'can_be_expensed': True,
+            'supplier_taxes_id': [(6, 0, self.tax.ids)],
+        })
+        with Form(self.env['hr.expense']) as form:
+            form.employee_id = self.employee
+            form.product_id = general
+            form.total_amount_currency = 24.50
+            self.assertAlmostEqual(form.scan_tax_amount, 4.08)
+            form.scan_tax_amount = 0.0
+            form.total_amount_currency = 24.60
+            self.assertAlmostEqual(form.scan_tax_amount, 4.10)
+
+    def test_a_tax_that_follows_the_rate_can_be_paid_by_the_company(self):
+        general = self.env['product.product'].create({
+            'name': "Divers", 'can_be_expensed': True,
+            'supplier_taxes_id': [(6, 0, self.tax.ids)],
+        })
+        expense = self.env['hr.expense'].create({
+            'name': "Achat", 'employee_id': self.employee.id, 'product_id': general.id,
+            'total_amount_currency': 24.50, 'scan_tax_amount': 4.08,
+        })
+        self.assertTrue(expense._expense_scan_tax_follows_rate())
+        expense.scan_tax_amount = 3.00
+        self.assertFalse(expense._expense_scan_tax_follows_rate())
+
     def test_ordinary_category_keeps_its_vat(self):
         general = self.env['product.product'].create({
             'name': "Divers", 'can_be_expensed': True,
