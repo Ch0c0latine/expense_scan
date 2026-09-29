@@ -15,7 +15,7 @@ import { patch } from "@web/core/utils/patch";
 import { useService } from "@web/core/utils/hooks";
 import { useEffect } from "@odoo/owl";
 
-import { openRetouchDialog, retouchableAttachmentId } from "@expense_scan/js/retouch_dialog";
+import { openRetouchDialog, retouchSourceId } from "@expense_scan/js/retouch_dialog";
 
 //: Boutons masqués. La rotation (`pageRotateCw/Ccw`) reste affichée.
 const HIDDEN_PDF_TOOLS = [
@@ -81,7 +81,7 @@ patch(AttachmentView.prototype, {
     /** Bouton « Retouche » : image, sur une dépense modifiable. */
     get expenseScanCanRetouch() {
         const record = this.expenseScanRecord;
-        return Boolean(record?.data.is_editable && retouchableAttachmentId(record));
+        return Boolean(record?.data.is_editable && retouchSourceId(record));
     },
 
     onExpenseScanRetouch() {

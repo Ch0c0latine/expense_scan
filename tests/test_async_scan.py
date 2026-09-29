@@ -153,10 +153,10 @@ class TestAsyncScan(common.TransactionCase):
 
 @tagged('post_install', '-at_install')
 class TestRetouch(common.TransactionCase):
-    """Retouche manuelle : rotation fine et recadrage faits dans le navigateur.
+    """Retouche manuelle : rotation et recadrage faits dans le navigateur.
 
-    Le serveur reçoit le résultat en JPEG. Les tests portent sur la
-    correction du justificatif sur place, pas sur le canevas côté client.
+    Le serveur reçoit le résultat en JPEG. Les tests portent sur le sort des
+    pièces jointes et sur l'analyse qui suit, pas sur le canevas client.
     """
 
     @classmethod
@@ -175,14 +175,63 @@ class TestRetouch(common.TransactionCase):
                     'res_model': 'hr.expense', 'res_id': 0}).id], 'list')
         return self.Expense.browse(ids)
 
-    def test_the_current_attachment_is_corrected_in_place(self):
+    def test_the_original_is_kept_and_the_retouch_is_shown(self):
+        """Sans image recadrée, la retouche devient une nouvelle pièce affichée."""
         expense = self.expense_with_attachment()
-        attachment = expense.message_main_attachment_id
+        original = expense.message_main_attachment_id
+        photo = original.raw
         retouched = png(color=(10, 200, 10))
         expense.action_expense_scan_retouch(base64.b64encode(retouched).decode())
-        self.assertEqual(expense.message_main_attachment_id, attachment)  # même pièce
-        self.assertEqual(attachment.raw, retouched)
-        self.assertEqual(attachment.mimetype, 'image/jpeg')
+        self.assertNotEqual(expense.message_main_attachment_id, original)
+        self.assertEqual(expense.message_main_attachment_id.raw, retouched)
+        self.assertEqual(expense.scan_cropped_attachment_id, expense.message_main_attachment_id)
+        self.assertEqual(expense.scan_original_attachment_id, original)
+        self.assertEqual(original.raw, photo)
+        self.assertTrue(expense.expense_scan_manual_retouch)
+
+    def test_a_second_retouch_replaces_the_first_in_place(self):
+        expense = self.expense_with_attachment()
+        expense.action_expense_scan_retouch(base64.b64encode(png(color=(10, 200, 10))).decode())
+        shown = expense.message_main_attachment_id
+        again = png(color=(10, 10, 200))
+        expense.action_expense_scan_retouch(base64.b64encode(again).decode())
+        self.assertEqual(expense.message_main_attachment_id, shown)
+        self.assertEqual(shown.raw, again)
+
+    def test_the_analysis_reads_a_retouched_image_as_it_is(self):
+        """Pas de recadrage, redressement ni rotation automatiques après une retouche."""
+        from ..ocr.types import OcrWord, PreprocessInfo
+
+        class Engine:
+            label = description = "faux moteur"
+
+            def recognize(self, image):
+                return [OcrWord(text="TOTAL 12,50", score=0.99,
+                                left=0, top=0, right=100, bottom=20)]
+
+        expense = self.expense_with_attachment()
+        expense.action_expense_scan_retouch(base64.b64encode(png()).decode())
+        options = {}
+
+        def prepare(data, **kwargs):
+            options.update(kwargs)
+            return "image", PreprocessInfo(changed=True)
+
+        Model = type(self.Expense)
+        with patch.object(preprocess, 'dependencies_status', return_value=(True, "")), \
+                patch.object(preprocess, 'prepare', side_effect=prepare), \
+                patch('odoo.addons.expense_scan.ocr.engines.resolve_engine',
+                      return_value=Engine()), \
+                patch.object(Model, '_expense_scan_straighten') as straighten, \
+                patch.object(Model, '_expense_scan_reorient') as reorient, \
+                patch.object(Model, '_expense_scan_tighten') as tighten:
+            result = expense._expense_scan_process(expense.message_main_attachment_id)
+        self.assertEqual(options, {'autocrop': False, 'deskew': False})
+        straighten.assert_not_called()
+        reorient.assert_not_called()
+        tighten.assert_not_called()
+        self.assertIsNone(result.image_bytes)
+        self.assertEqual(result.value('total'), 12.5)
 
     def test_without_attachment_it_refuses(self):
         expense = self.Expense.create({'name': "Sans photo", 'employee_id': self.employee.id})

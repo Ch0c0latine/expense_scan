@@ -171,6 +171,9 @@ class HrExpense(models.Model):
         copy=False,
         ondelete='set null',
     )
+    #: Le justificatif affiché a été retouché à la main (outil « Retouche ») :
+    #: l'analyse le lit tel quel, sans recadrage ni redressement automatiques.
+    expense_scan_manual_retouch = fields.Boolean(readonly=True, copy=False)
 
     # ------------------------------------------------------------------
     # Bandeau de relecture : se ferme quand les champs sont corrigés
@@ -779,21 +782,21 @@ class HrExpense(models.Model):
         return error
 
     def action_expense_scan_retouch(self, image_base64):
-        """Remplace le justificatif courant par une image retouchée.
+        """Remplace le justificatif affiché par une image retouchée à la main.
 
-        La retouche (rotation fine, recadrage) est faite dans le navigateur,
-        sur un canevas : le serveur reçoit uniquement le résultat, en JPEG.
-        Le justificatif est corrigé sur place, comme une relance d'analyse le
-        fait pour l'image qu'elle recadre (voir ``_expense_scan_store_image``),
-        car ici l'utilisateur a ajusté l'image lui-même.
+        La retouche (rotation, recadrage) est faite dans le navigateur, à
+        partir de la photo d'origine ; le serveur reçoit le résultat en JPEG.
+        La photo d'origine n'est jamais modifiée : le résultat remplace
+        l'image recadrée, ou devient une nouvelle pièce affichée s'il n'y en
+        a pas encore (même disposition que ``_expense_scan_store_image``).
 
-        Ne relance pas l'analyse : c'est le rôle du bouton « Relancer
-        l'analyse », sur cette image corrigée.
+        Ne relance pas l'analyse : le bouton « Relancer l'analyse » le fait,
+        et lit alors l'image retouchée sans la retoucher automatiquement.
         """
         self.ensure_one()
         self.check_access('write')
-        attachment = self.message_main_attachment_id
-        if not attachment:
+        main = self.message_main_attachment_id
+        if not main:
             raise UserError(_("Aucun justificatif à retoucher."))
         try:
             raw = base64.b64decode(image_base64)
@@ -806,7 +809,29 @@ class HrExpense(models.Model):
                 "L'image retouchée est trop volumineuse (%(size)d Mo, plafond %(max)d Mo).",
                 size=len(raw) // (1024 * 1024),
                 max=preprocess.MAX_FILE_BYTES // (1024 * 1024)))
-        attachment.write({'raw': raw, 'mimetype': 'image/jpeg'})
+        original = self.scan_original_attachment_id or main
+        values = {'expense_scan_manual_retouch': True}
+        if main != original:
+            main.write({'raw': raw, 'mimetype': 'image/jpeg'})
+        else:
+            stem = os.path.splitext(original.name or 'ticket')[0]
+            retouched = self.env['ir.attachment'].create({
+                'name': "%s (retouché).jpg" % stem,
+                'raw': raw,
+                'mimetype': 'image/jpeg',
+                'res_model': 'hr.expense',
+                'res_id': self.id,
+            })
+            self.sudo()._message_set_main_attachment_id(retouched, force=True)
+            # Comme pour l'image recadrée par l'analyse : l'original devient
+            # une pièce jointe de champ, exclue de la liste des justificatifs
+            # et de l'écriture comptable, accessible par « Photo d'origine ».
+            original.sudo().write({'res_field': 'scan_original_attachment_id'})
+            values.update({
+                'scan_original_attachment_id': original.id,
+                'scan_cropped_attachment_id': retouched.id,
+            })
+        self.write(values)
         return True
 
     def action_expense_scan_rescan(self):
@@ -975,10 +1000,14 @@ class HrExpense(models.Model):
         data = self._expense_scan_image_bytes(attachment)
         timer.lap('fichier')
 
+        # Image retouchée à la main : lue telle quelle, sans recadrage,
+        # redressement ni rotation automatiques, et sans être remplacée.
+        manual = (self.expense_scan_manual_retouch
+                  and attachment != self.scan_original_attachment_id)
         image, info = preprocess.prepare(
             data,
-            autocrop=company.expense_scan_autocrop,
-            deskew=company.expense_scan_deskew,
+            autocrop=company.expense_scan_autocrop and not manual,
+            deskew=company.expense_scan_deskew and not manual,
         )
         timer.lap('préparation')
 
@@ -992,7 +1021,10 @@ class HrExpense(models.Model):
         # quelque chose (voir _expense_scan_straighten).
         words = engine.recognize(image)
         timer.lap('lecture')
-        image, words, reread = self._expense_scan_straighten(engine, image, words, info, company)
+        reread = False
+        if not manual:
+            image, words, reread = self._expense_scan_straighten(
+                engine, image, words, info, company)
         if reread:
             words = engine.recognize(image)
             timer.lap('relecture')
@@ -1009,7 +1041,7 @@ class HrExpense(models.Model):
         # PDF est rendue telle que le document la déclare (vérifié). Décider
         # quand même, sur un texte dense où l'OCR varie d'une lecture à
         # l'autre, retournerait parfois une page qui n'en a pas besoin.
-        if company.expense_scan_auto_rotate:
+        if company.expense_scan_auto_rotate and not manual:
             words, image = self._expense_scan_reorient(
                 words, image, info, decide_180=not self._expense_scan_is_pdf(attachment))
 
@@ -1018,7 +1050,8 @@ class HrExpense(models.Model):
         # un fond clair ; la position du texte est maintenant connue.
         # L'OCR n'est pas relancé : la lecture est faite, il s'agit de
         # produire l'image que l'utilisateur verra pour vérifier les champs.
-        image = self._expense_scan_tighten(image, words, info, company)
+        if not manual:
+            image = self._expense_scan_tighten(image, words, info, company)
         timer.lap('recadrage')
 
         parse_kwargs = dict(
@@ -1036,7 +1069,7 @@ class HrExpense(models.Model):
         result.engine = getattr(engine, 'description', engine.label)
         result.duration = duration
         result.preprocess = info
-        if info.changed or info.rotated_quarters:
+        if (info.changed or info.rotated_quarters) and not manual:
             result.image_bytes = preprocess.encode_jpeg(image)
         timer.lap('analyse')
         result.timer = timer
@@ -1831,6 +1864,7 @@ class HrExpense(models.Model):
         return {
             'scan_original_attachment_id': attachment.id,
             'scan_cropped_attachment_id': cropped.id,
+            'expense_scan_manual_retouch': False,
         }
 
     # ------------------------------------------------------------------

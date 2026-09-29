@@ -19,7 +19,7 @@ import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 import { standardWidgetProps } from "@web/views/widgets/standard_widget_props";
 
-import { openRetouchDialog, retouchableAttachmentId } from "@expense_scan/js/retouch_dialog";
+import { openRetouchDialog, retouchSourceId } from "@expense_scan/js/retouch_dialog";
 
 export class ExpenseScanReceipt extends Component {
     static template = "expense_scan.ReceiptPreview";
@@ -79,7 +79,7 @@ export class ExpenseScanReceipt extends Component {
     /** Bouton « Retouche » : image, sur une dépense modifiable. */
     get canRetouch() {
         return Boolean(this.props.record.data.is_editable)
-            && Boolean(retouchableAttachmentId(this.props.record));
+            && Boolean(retouchSourceId(this.props.record));
     }
 
     onRetouch() {
@@ -103,6 +103,12 @@ export const expenseScanReceiptWidget = {
     component: ExpenseScanReceipt,
     fieldDependencies: [
         { name: "is_editable", type: "boolean", readonly: true },
+        {
+            name: "scan_original_attachment_id",
+            type: "many2one",
+            relation: "ir.attachment",
+            readonly: true,
+        },
         {
             name: "message_main_attachment_id",
             type: "many2one",

@@ -59,7 +59,7 @@
                             t-att-disabled="!state.loaded or state.busy">
                         <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-1"
                            role="img" aria-hidden="true"/>
-                        Appliquer et relancer l'analyse
+                        Appliquer
                     </button>
                 </div>
             </div>

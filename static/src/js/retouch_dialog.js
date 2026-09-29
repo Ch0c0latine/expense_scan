@@ -1,11 +1,12 @@
 // Copyright 2026 Yves Vallée
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
- * Retouche du justificatif : rotation et recadrage, puis nouvelle analyse
- * sur l'image corrigée.
+ * Retouche du justificatif : rotation et recadrage.
  *
- * L'image est transformée dans le navigateur, sur un canevas ; le serveur
- * reçoit le résultat en JPEG (action_expense_scan_retouch).
+ * La retouche part toujours de la photo d'origine. L'image est transformée
+ * dans le navigateur, sur un canevas ; le serveur reçoit le résultat en
+ * JPEG (action_expense_scan_retouch), qui remplace l'image affichée sans
+ * relancer l'analyse.
  *
  * La rotation s'applique à l'image entière, sans la rogner. Le cadre de
  * recadrage est défini sur l'image pivotée : changer la rotation le
@@ -35,33 +36,45 @@ function normalizeQuarter(quarter) {
 }
 
 /**
- * Pièce jointe principale d'une dépense, si c'est une image retouchable.
- *
- * `message_main_attachment_id` est un tuple `[id, nom]` ou un objet
- * `{id, display_name}` selon la version du modèle relationnel. Les PDF sont
- * exclus d'après leur extension : le canevas ne les affiche pas.
- *
- * @returns {number|null} l'identifiant de la pièce, ou null
+ * Pièce jointe d'un champ many2one : tuple `[id, nom]` ou objet
+ * `{id, display_name}` selon la version du modèle relationnel.
  */
-export function retouchableAttachmentId(record) {
-    const value = record.data.message_main_attachment_id;
+function attachmentOf(value) {
     if (!value) {
         return null;
     }
     const [id, name] = Array.isArray(value) ? value : [value.id, value.display_name];
-    return (name || "").toLowerCase().endsWith(".pdf") ? null : id;
+    return { id, isImage: !(name || "").toLowerCase().endsWith(".pdf") };
 }
 
 /**
- * Ouvre la retouche ; à la validation, remplace le justificatif et relance
- * l'analyse.
+ * Image de départ de la retouche : la photo d'origine, ou l'image affichée
+ * si l'origine est un PDF (le canevas n'affiche pas les PDF).
+ *
+ * @returns {number|null} l'identifiant de la pièce, ou null si rien n'est
+ * retouchable
+ */
+export function retouchSourceId(record) {
+    const main = attachmentOf(record.data.message_main_attachment_id);
+    if (!main) {
+        return null;
+    }
+    const original = attachmentOf(record.data.scan_original_attachment_id);
+    if (original?.isImage) {
+        return original.id;
+    }
+    return main.isImage ? main.id : null;
+}
+
+/**
+ * Ouvre la retouche ; à la validation, remplace l'image affichée.
  *
  * @param {{dialog: Object, orm: Object}} services
  * @param {Object} record enregistrement de la dépense dans le formulaire
  */
 export function openRetouchDialog({ dialog, orm }, record) {
     dialog.add(RetouchDialog, {
-        attachmentId: retouchableAttachmentId(record),
+        attachmentId: retouchSourceId(record),
         apply: async (base64) => {
             // Enregistre d'abord les saisies en cours, que le rechargement
             // effacerait. En cas d'échec, le formulaire affiche l'erreur.
@@ -69,7 +82,6 @@ export function openRetouchDialog({ dialog, orm }, record) {
                 return false;
             }
             await orm.call("hr.expense", "action_expense_scan_retouch", [[record.resId], base64]);
-            await orm.call("hr.expense", "action_expense_scan_rescan", [[record.resId]]);
             await record.model.load();
             return true;
         },
