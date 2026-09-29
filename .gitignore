@@ -10,3 +10,6 @@ icone-source*
 # Fichiers de frais réels (données personnelles) : jamais dans le dépôt.
 *.xlsx
 *.xls
+
+# Réglages locaux de l’éditeur.
+.claude/
