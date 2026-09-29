@@ -125,6 +125,9 @@ class HrExpense(models.Model):
     scan_score = fields.Float(string="Reading confidence", readonly=True, copy=False,
                               help="Average character recognition score, as a percentage.")
     scan_detected_tax = fields.Char(string="Tax read on the receipt", readonly=True, copy=False)
+    expense_scan_mixed_rates = fields.Boolean(
+        string="Several tax rates", readonly=True, copy=False,
+        help="The receipt prints several tax rates: none of them holds for the whole expense.")
     scan_tax_amount = fields.Monetary(
         string="Receipt tax",
         currency_field='currency_id',
@@ -1701,6 +1704,8 @@ class HrExpense(models.Model):
             **self._expense_scan_todo_values(items),
             'scan_message': self._expense_scan_summary(result),
             'scan_detected_tax': self._expense_scan_tax_label(result),
+            'expense_scan_mixed_rates': result.value('tax_rate') is None
+                                        and result.value('tax_rate_max') is not None,
         })
         values.update(self._expense_scan_store_image(result, attachment, company))
         if result.timer:
@@ -1825,10 +1830,10 @@ class HrExpense(models.Model):
                 or name == (self.expense_scan_merchant or ''):
             return True
         # "Receipt on 12/09/2026", "Toll on 12/09/2026": the name of any
-        # category (it may have changed since), followed by a date.
-        pattern = re.escape(self._expense_scan_date_name('XCATEGORYX', 'XDATEX'))
-        pattern = pattern.replace('XCATEGORYX', r'(?P<label>.+?)').replace('XDATEX', r'.*\d.*')
-        match = re.fullmatch(pattern, name)
+        # category (it may have changed since), followed by a date. Written
+        # in the employee's language, which may not be the current one.
+        match = next(filter(None, (re.fullmatch(pattern, name)
+                                   for pattern in self._expense_scan_date_name_patterns())), None)
         if not match:
             return False
         # Category name in any installed language. When it was not
@@ -1837,6 +1842,17 @@ class HrExpense(models.Model):
         if labels is None:
             labels = self._expense_scan_automatic_labels()
         return match.group('label').strip().lower() in labels
+
+    def _expense_scan_date_name_patterns(self):
+        """Patterns of an automatic description, one per installed language."""
+        patterns = []
+        for code, _name in self.env['res.lang'].get_installed():
+            text = self.with_context(lang=code)._expense_scan_date_name('XCATEGORYX', 'XDATEX')
+            pattern = re.escape(text).replace('XCATEGORYX', r'(?P<label>.+?)')
+            pattern = pattern.replace('XDATEX', r'.*\d.*')
+            if pattern not in patterns:
+                patterns.append(pattern)
+        return patterns
 
     def _expense_scan_home_places(self):
         """Places unrelated to a trip: the company, the employee's home.

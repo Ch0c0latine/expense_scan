@@ -3,7 +3,7 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 {
     'name': "Expense Scan: Receipt OCR",
-    'version': '19.0.2.7.1',
+    'version': '19.0.2.8.0',
     'summary': "Create expenses by photographing receipts: automatic crop and "
                "straightening, fields filled in by a local OCR, side by side "
                "review. No IAP credits, no API key.",

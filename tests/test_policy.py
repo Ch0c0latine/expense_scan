@@ -13,6 +13,9 @@ class TestExpensePolicy(common.TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # The warnings are checked in English, whatever the database language.
+        cls.env['res.lang']._activate_lang('en_US')
+        cls.env = cls.env(context=dict(cls.env.context, lang='en_US'))
         # The delivered examples must not mix with the test rules.
         cls.env['expense.scan.policy'].search([]).action_archive()
         Partner = cls.env['res.partner']

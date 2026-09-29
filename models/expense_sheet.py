@@ -286,8 +286,8 @@ class ExpenseScanSheet(models.AbstractModel):
         if expense._expense_scan_product_no_vat(expense.product_id) \
                 or not expense.tax_amount:
             return 0.0
-        if (expense.scan_detected_tax or '').startswith("plusieurs taux"):
-            return "plusieurs taux"
+        if expense.expense_scan_mixed_rates:
+            return _("several rates")
         rates = expense.tax_ids.filtered(
             lambda t: t.amount_type == 'percent').mapped('amount')
         return rates[0] / 100.0 if len(rates) == 1 else ''

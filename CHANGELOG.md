@@ -10,6 +10,11 @@
   kroner told apart, currency deduced from the legal mentions when none is
   printed (Polish tax number, Swiss company number, US address), total words
   of more languages, Swiss, American and Norwegian totals.
+- **Automatic descriptions** are recognised whatever the language they were
+  written in, so a new scan still replaces them.
+- **Expense sheet**: a receipt with several tax rates is recognised from a
+  stored flag instead of the French wording of the tax read (migration for
+  the receipts already scanned).
 - **WebP photos**: read by OpenCV when Pillow was built without WebP support.
 - The labels of the automatic descriptions are computed once per scan
   instead of once per neighbouring expense.

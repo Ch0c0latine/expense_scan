@@ -91,7 +91,8 @@ class TestExpenseSheet(common.TransactionCase):
         b.scan_tax_amount = 2.0
         c = self.expense("Mêlés", 3, total=12.0, tax_ids=[(6, 0, tax_20.ids)])
         c.write({'scan_tax_amount': 1.4,
-                 'scan_detected_tax': "several rates, up to 20.0 % — 1.40"})
+                 'scan_detected_tax': "several rates, up to 20.0 % — 1.40",
+                 'expense_scan_mixed_rates': True})
         d = self.expense("Sans", 4, total=5.0, tax_ids=[(5, 0, 0)])
         rows = {row['rate']: row for row in self.Sheet._vat_summary(
             self.Sheet._lines(a | b | c | d))}
