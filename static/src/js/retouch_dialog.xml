@@ -35,8 +35,15 @@
                             <i class="fa fa-rotate-right" role="img" aria-label="Tourner à droite"/>
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm"
-                                title="Tout garder" t-on-click="() => this.resetCrop()">
-                            <i class="fa fa-expand" role="img" aria-label="Tout garder"/>
+                                title="Réinitialiser : image téléversée, sans retouche"
+                                t-on-click="() => this.reset()" t-att-disabled="state.auto or state.busy">
+                            <i class="fa fa-history" role="img" aria-label="Réinitialiser"/>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                title="Retouche automatique (modifiable avant d'appliquer)"
+                                t-on-click="() => this.autoRetouch()" t-att-disabled="state.auto or state.busy">
+                            <i class="fa" t-att-class="state.auto ? 'fa-circle-o-notch fa-spin' : 'fa-magic'"
+                               role="img" aria-label="Retouche automatique"/>
                         </button>
                     </div>
                     <div class="d-flex align-items-center gap-2 px-2">
@@ -60,7 +67,7 @@
                         Annuler
                     </button>
                     <button type="button" class="btn btn-primary" t-on-click="onApply"
-                            t-att-disabled="!state.loaded or state.busy">
+                            t-att-disabled="!state.loaded or state.busy or state.auto">
                         <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-1"
                            role="img" aria-hidden="true"/>
                         Appliquer

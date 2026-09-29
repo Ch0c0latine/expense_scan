@@ -215,7 +215,8 @@
 .o_attachment_preview > .o-mail-Attachment:has(> .o_expense_scan_retouch_control) {
     display: flex;
     flex-direction: column;
-    > .o-mail-Attachment-imgContainer {
+    > .o-mail-Attachment-imgContainer,
+    > iframe {
         position: relative;
         flex: 1 1 auto;
         min-height: 0;

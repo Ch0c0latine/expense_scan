@@ -4,6 +4,7 @@
 import base64
 import json
 import logging
+import math
 import os
 import re
 import time
@@ -174,6 +175,11 @@ class HrExpense(models.Model):
     #: Le justificatif affiché a été retouché à la main (outil « Retouche ») :
     #: l'analyse le lit tel quel, sans recadrage ni redressement automatiques.
     expense_scan_manual_retouch = fields.Boolean(readonly=True, copy=False)
+    #: Réglages de la dernière retouche manuelle, en JSON : ``quarter`` (quarts
+    #: de tour horaires), ``fine`` (degrés, sens horaire), ``crop`` (cadre
+    #: ``[x0, y0, x1, y1]`` en fractions de l'image pivotée). L'éditeur les
+    #: réapplique à l'image de départ à sa réouverture.
+    expense_scan_retouch_params = fields.Text(readonly=True, copy=False)
 
     # ------------------------------------------------------------------
     # Bandeau de relecture : se ferme quand les champs sont corrigés
@@ -781,11 +787,146 @@ class HrExpense(models.Model):
                 return False
         return error
 
-    def action_expense_scan_retouch(self, image_base64):
+    # ------------------------------------------------------------------
+    # Retouche manuelle
+    # ------------------------------------------------------------------
+
+    def _expense_scan_retouch_source(self):
+        """Pièce de départ de la retouche : la photo d'origine, sinon la pièce affichée."""
+        self.ensure_one()
+        source = self.scan_original_attachment_id or self.message_main_attachment_id
+        if not source:
+            raise UserError(_("Aucun justificatif à retoucher."))
+        return source
+
+    def _expense_scan_retouch_image(self):
+        """Image de départ de la retouche : ``(octets, type MIME)``.
+
+        Un PDF est rendu en image (première page), comme pour l'analyse.
+        """
+        source = self._expense_scan_retouch_source()
+        if not self._expense_scan_is_pdf(source):
+            return source.raw, source.mimetype or 'image/jpeg'
+        data = preprocess.pdf_first_page_to_image_bytes(source.raw)
+        if not data:
+            raise UserError(_(
+                "Conversion du PDF impossible. Installez « pdf2image » et "
+                "le paquet système « poppler-utils » pour retoucher des PDF."))
+        return data, 'image/png'
+
+    def expense_scan_retouch_data(self):
+        """Image de départ et réglages de la dernière retouche, pour l'éditeur.
+
+        Une image est servie par son adresse ; un PDF, rendu à la volée, est
+        renvoyé en data URL.
+        """
+        self.ensure_one()
+        self.check_access('read')
+        source = self._expense_scan_retouch_source()
+        if self._expense_scan_is_pdf(source):
+            data, mimetype = self._expense_scan_retouch_image()
+            url = 'data:%s;base64,%s' % (mimetype, base64.b64encode(data).decode())
+        else:
+            url = '/web/image/%d' % source.id
+        try:
+            params = json.loads(self.expense_scan_retouch_params or 'null')
+        except ValueError:
+            params = None
+        return {'url': url, 'params': params}
+
+    def expense_scan_auto_retouch_params(self):
+        """Réglages que proposerait la retouche automatique, pour l'éditeur.
+
+        Calculés sur l'image de départ de l'éditeur, d'après les boîtes de
+        l'OCR : quart de tour et redressement comme dans l'analyse, cadre
+        autour du texte comme ``preprocess.crop_to_text``. La correction de
+        perspective de l'analyse n'a pas d'équivalent dans l'éditeur
+        (rotation et rectangle) : le cadre proposé en est une approximation.
+        """
+        self.ensure_one()
+        self.check_access('read')
+        ok, message = preprocess.dependencies_status()
+        if not ok:
+            raise UserError(message)
+        company = self.company_id or self.env.company
+        data, _mimetype = self._expense_scan_retouch_image()
+        image = preprocess.load_image(data)
+        engine = engines.resolve_engine(
+            company.expense_scan_engine, **company._expense_scan_engine_options())
+        words = [word for word in engine.recognize(image) if word.text.strip()]
+        height, width = image.shape[:2]
+        quarters = 0
+        if words:
+            quarters = self._expense_scan_quarters(
+                words, image,
+                decide_180=not self._expense_scan_is_pdf(self._expense_scan_retouch_source()))
+        turned = preprocess.rotate_words_quarters(words, quarters, width, height)
+        # Même convention que l'analyse : preprocess.rotate tourne dans le
+        # sens antihoraire, l'éditeur dans le sens horaire.
+        skew = preprocess.skew_angle_from_words(turned)
+        if not preprocess.MIN_DESKEW_ANGLE < abs(skew) <= preprocess.MAX_TEXT_DESKEW_ANGLE:
+            skew = 0.0
+        fine = max(-45.0, min(45.0, round(-skew * 2) / 2))
+        return {
+            'quarter': quarters,
+            'fine': fine,
+            'crop': self._expense_scan_text_frame(words, width, height, quarters * 90 + fine),
+        }
+
+    @staticmethod
+    def _expense_scan_text_frame(words, width, height, angle, margin_ratio=0.035, min_score=0.5):
+        """Cadre du texte dans l'image pivotée de ``angle`` degrés (sens horaire).
+
+        L'image pivotée est placée comme dans l'éditeur : rotation autour du
+        centre, dans le rectangle qui la contient entière. Renvoie le cadre
+        en fractions de ce rectangle ; l'image entière faute de texte.
+        """
+        kept = preprocess.text_inliers([word for word in words if word.score >= min_score])
+        if len(kept) < 3:
+            return [0.0, 0.0, 1.0, 1.0]
+        rad = math.radians(angle)
+        cos, sin = math.cos(rad), math.sin(rad)
+        bound_w = width * abs(cos) + height * abs(sin)
+        bound_h = width * abs(sin) + height * abs(cos)
+        xs, ys = [], []
+        for word in kept:
+            for x, y in ((word.left, word.top), (word.right, word.top),
+                         (word.right, word.bottom), (word.left, word.bottom)):
+                dx, dy = x - width / 2.0, y - height / 2.0
+                xs.append(dx * cos - dy * sin + bound_w / 2.0)
+                ys.append(dx * sin + dy * cos + bound_h / 2.0)
+        left, right, top, bottom = min(xs), max(xs), min(ys), max(ys)
+        margin_x = (right - left) * margin_ratio + 8
+        margin_y = (bottom - top) * margin_ratio + 8
+        return [
+            max(left - margin_x, 0.0) / bound_w,
+            max(top - margin_y, 0.0) / bound_h,
+            min(right + margin_x, bound_w) / bound_w,
+            min(bottom + margin_y, bound_h) / bound_h,
+        ]
+
+    @staticmethod
+    def _expense_scan_clean_retouch_params(params):
+        """Réglages de retouche reçus du navigateur, vérifiés, en JSON ; False sinon."""
+        try:
+            crop = [min(max(float(value), 0.0), 1.0) for value in params['crop']]
+            if len(crop) != 4 or crop[0] >= crop[2] or crop[1] >= crop[3]:
+                return False
+            return json.dumps({
+                'quarter': int(params['quarter']) % 4,
+                'fine': min(max(float(params['fine']), -45.0), 45.0),
+                'crop': crop,
+            })
+        except (KeyError, TypeError, ValueError):
+            return False
+
+    def action_expense_scan_retouch(self, image_base64, params=None):
         """Remplace le justificatif affiché par une image retouchée à la main.
 
         La retouche (rotation, recadrage) est faite dans le navigateur, à
-        partir de la photo d'origine ; le serveur reçoit le résultat en JPEG.
+        partir de l'image de départ (``expense_scan_retouch_data``) ; le
+        serveur reçoit le résultat en JPEG, et les réglages (``params``) qui
+        seront proposés à la prochaine retouche.
         La photo d'origine n'est jamais modifiée : le résultat remplace
         l'image recadrée, ou devient une nouvelle pièce affichée s'il n'y en
         a pas encore (même disposition que ``_expense_scan_store_image``).
@@ -810,7 +951,10 @@ class HrExpense(models.Model):
                 size=len(raw) // (1024 * 1024),
                 max=preprocess.MAX_FILE_BYTES // (1024 * 1024)))
         original = self.scan_original_attachment_id or main
-        values = {'expense_scan_manual_retouch': True}
+        values = {
+            'expense_scan_manual_retouch': True,
+            'expense_scan_retouch_params': self._expense_scan_clean_retouch_params(params),
+        }
         if main != original:
             main.write({'raw': raw, 'mimetype': 'image/jpeg'})
         else:

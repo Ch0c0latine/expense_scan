@@ -3,19 +3,22 @@
 /**
  * Retouche du justificatif : rotation et recadrage.
  *
- * La retouche part toujours de la photo d'origine. L'image est transformée
- * dans le navigateur, sur un canevas ; le serveur reçoit le résultat en
- * JPEG (action_expense_scan_retouch), qui remplace l'image affichée sans
- * relancer l'analyse.
+ * La retouche part toujours de l'image téléversée (photo d'origine, ou
+ * première page d'un PDF rendue par le serveur), sur laquelle l'éditeur
+ * réapplique les réglages de la retouche précédente. L'image est
+ * transformée dans le navigateur, sur un canevas ; le serveur reçoit le
+ * résultat en JPEG (action_expense_scan_retouch), qui remplace l'image
+ * affichée sans relancer l'analyse.
  *
  * La rotation s'applique à l'image entière, sans la rogner. Le cadre de
  * recadrage est défini sur l'image pivotée : changer la rotation le
- * réinitialise.
+ * remet sur toute l'image.
  */
 import { _t } from "@web/core/l10n/translation";
 import { Component, onWillUnmount, onMounted, useRef, useState } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 import { browser } from "@web/core/browser/browser";
+import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 
 //: Distance, en pixels du canevas, en deçà de laquelle un appui saisit une
@@ -35,35 +38,9 @@ function normalizeQuarter(quarter) {
     return ((quarter % 4) + 4) % 4;
 }
 
-/**
- * Pièce jointe d'un champ many2one : tuple `[id, nom]` ou objet
- * `{id, display_name}` selon la version du modèle relationnel.
- */
-function attachmentOf(value) {
-    if (!value) {
-        return null;
-    }
-    const [id, name] = Array.isArray(value) ? value : [value.id, value.display_name];
-    return { id, isImage: !(name || "").toLowerCase().endsWith(".pdf") };
-}
-
-/**
- * Image de départ de la retouche : la photo d'origine, ou l'image affichée
- * si l'origine est un PDF (le canevas n'affiche pas les PDF).
- *
- * @returns {number|null} l'identifiant de la pièce, ou null si rien n'est
- * retouchable
- */
-export function retouchSourceId(record) {
-    const main = attachmentOf(record.data.message_main_attachment_id);
-    if (!main) {
-        return null;
-    }
-    const original = attachmentOf(record.data.scan_original_attachment_id);
-    if (original?.isImage) {
-        return original.id;
-    }
-    return main.isImage ? main.id : null;
+/** Vrai si la dépense a un justificatif (image ou PDF) à retoucher. */
+export function hasReceipt(record) {
+    return Boolean(record.data.message_main_attachment_id);
 }
 
 /**
@@ -74,14 +51,15 @@ export function retouchSourceId(record) {
  */
 export function openRetouchDialog({ dialog, orm }, record) {
     dialog.add(RetouchDialog, {
-        attachmentId: retouchSourceId(record),
-        apply: async (base64) => {
+        resId: record.resId,
+        apply: async (base64, params) => {
             // Enregistre d'abord les saisies en cours, que le rechargement
             // effacerait. En cas d'échec, le formulaire affiche l'erreur.
             if (!(await record.save())) {
                 return false;
             }
-            await orm.call("hr.expense", "action_expense_scan_retouch", [[record.resId], base64]);
+            await orm.call(
+                "hr.expense", "action_expense_scan_retouch", [[record.resId], base64, params]);
             await record.model.load();
             return true;
         },
@@ -92,7 +70,7 @@ export class RetouchDialog extends Component {
     static template = "expense_scan.RetouchDialog";
     static components = { Dialog };
     static props = {
-        attachmentId: Number,
+        resId: Number,
         apply: Function,
         close: Function,
     };
@@ -106,27 +84,31 @@ export class RetouchDialog extends Component {
             crop: null,
             loaded: false,
             busy: false,
+            auto: false,
             error: null,
             dragging: false,
         });
+        this.orm = useService("orm");
         this.image = null;
         this.scale = 1;
         this.drag = null; // { handle } ou { move, startX, startY, crop0 }
 
-        this.onResize = useDebounced(() => this.layout(), 200);
+        this.onResize = useDebounced(() => this.layout(this.currentParams()), 200);
 
-        onMounted(() => {
+        onMounted(async () => {
             browser.addEventListener("resize", this.onResize);
+            const { url, params } = await this.orm.call(
+                "hr.expense", "expense_scan_retouch_data", [[this.props.resId]]);
             const image = new Image();
             image.onload = () => {
                 this.image = image;
                 this.state.loaded = true;
-                this.layout();
+                this.layout(params);
             };
             image.onerror = () => {
                 this.state.error = _t("Cette pièce ne peut pas être ouverte comme une image.");
             };
-            image.src = `/web/image/${this.props.attachmentId}`;
+            image.src = url;
         });
         onWillUnmount(() => browser.removeEventListener("resize", this.onResize));
     }
@@ -156,8 +138,8 @@ export class RetouchDialog extends Component {
     // Aperçu
     // ------------------------------------------------------------------
 
-    /** Calcule l'échelle de l'aperçu d'après la place disponible. */
-    layout() {
+    /** Calcule l'échelle de l'aperçu d'après la place disponible, puis applique ``params``. */
+    layout(params) {
         if (!this.image) {
             return;
         }
@@ -168,7 +150,62 @@ export class RetouchDialog extends Component {
         const height = Math.min(browser.innerHeight * 0.6, 560);
         this.scale = Math.min(
             width / this.image.naturalWidth, height / this.image.naturalHeight, 1);
-        this.resetCrop();
+        this.setParams(params);
+    }
+
+    /**
+     * Applique des réglages : ``{quarter, fine, crop}``, le cadre en fractions
+     * de l'image pivotée. Sans réglages : l'image téléversée, sans retouche.
+     */
+    setParams(params) {
+        this.state.quarter = normalizeQuarter(params?.quarter || 0);
+        this.state.fine = Math.min(Math.max(params?.fine || 0, -FINE_RANGE), FINE_RANGE);
+        const canvas = this.canvasRef.el;
+        if (!canvas || !this.image) {
+            return;
+        }
+        this.sizeCanvas();
+        const [x0, y0, x1, y1] = params?.crop || [0, 0, 1, 1];
+        this.state.crop = {
+            x0: x0 * canvas.width, y0: y0 * canvas.height,
+            x1: x1 * canvas.width, y1: y1 * canvas.height,
+        };
+        this.draw();
+    }
+
+    /** Réglages courants, au format de ``setParams``. */
+    currentParams() {
+        const canvas = this.canvasRef.el;
+        const crop = this.state.crop;
+        if (!canvas || !crop || !canvas.width || !canvas.height) {
+            return null;
+        }
+        return {
+            quarter: this.state.quarter,
+            fine: this.state.fine,
+            crop: [crop.x0 / canvas.width, crop.y0 / canvas.height,
+                   crop.x1 / canvas.width, crop.y1 / canvas.height],
+        };
+    }
+
+    /** Revient à l'image téléversée, sans rotation ni recadrage. */
+    reset() {
+        this.setParams(null);
+    }
+
+    /** Propose la rotation et le cadre de la retouche automatique, sans appliquer. */
+    async autoRetouch() {
+        this.state.auto = true;
+        this.state.error = null;
+        try {
+            this.setParams(await this.orm.call(
+                "hr.expense", "expense_scan_auto_retouch_params", [[this.props.resId]]));
+        } catch (error) {
+            this.state.error = _t("La retouche automatique a échoué.");
+            throw error;
+        } finally {
+            this.state.auto = false;
+        }
     }
 
     /** Remet le cadre sur toute l'image. */
@@ -369,7 +406,7 @@ export class RetouchDialog extends Component {
         this.state.busy = true;
         this.state.error = null;
         try {
-            if (await this.props.apply(this.compose())) {
+            if (await this.props.apply(this.compose(), this.currentParams())) {
                 this.props.close();
                 return;
             }

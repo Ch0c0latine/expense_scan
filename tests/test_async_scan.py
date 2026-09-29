@@ -3,6 +3,7 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Analyse lancée par la fiche : la dépense naît avant d'être lue."""
 import base64
+import json
 
 from unittest.mock import patch
 
@@ -257,3 +258,68 @@ class TestRetouch(common.TransactionCase):
         with self.assertRaises(AccessError):
             expense.with_user(stranger).action_expense_scan_retouch(
                 base64.b64encode(png()).decode())
+
+    def test_the_editor_starts_from_the_uploaded_image_with_the_last_settings(self):
+        expense = self.expense_with_attachment()
+        original = expense.message_main_attachment_id
+        data = expense.expense_scan_retouch_data()
+        self.assertEqual(data, {'url': '/web/image/%d' % original.id, 'params': None})
+        params = {'quarter': 1, 'fine': -2.5, 'crop': [0.1, 0.2, 0.9, 0.8]}
+        expense.action_expense_scan_retouch(base64.b64encode(png()).decode(), params)
+        data = expense.expense_scan_retouch_data()
+        self.assertEqual(data['url'], '/web/image/%d' % original.id)  # pas l'image retouchée
+        self.assertEqual(data['params'], params)
+
+    def test_retouch_settings_are_checked(self):
+        clean = type(self.Expense)._expense_scan_clean_retouch_params
+        self.assertFalse(clean(None))
+        self.assertFalse(clean({'quarter': 0, 'fine': 0, 'crop': [0.5, 0, 0.4, 1]}))
+        self.assertEqual(
+            json.loads(clean({'quarter': 5, 'fine': 80, 'crop': [-1, 0, 1, 2]})),
+            {'quarter': 1, 'fine': 45.0, 'crop': [0.0, 0.0, 1.0, 1.0]})
+
+    def test_a_pdf_is_rendered_for_the_editor(self):
+        expense = self.expense_with_attachment()
+        expense.message_main_attachment_id.write({'name': "facture.pdf",
+                                                  'mimetype': 'application/pdf'})
+        with patch.object(preprocess, 'pdf_first_page_to_image_bytes', return_value=b'PNG'):
+            data = expense.expense_scan_retouch_data()
+        self.assertEqual(data['url'], 'data:image/png;base64,' + base64.b64encode(b'PNG').decode())
+
+    def test_text_frame_follows_the_rotation(self):
+        from ..ocr.types import OcrWord
+        frame = type(self.Expense)._expense_scan_text_frame
+        words = [OcrWord(text="ligne", score=0.9, left=100, top=top, right=300, bottom=top + 20)
+                 for top in (100, 150, 200)]
+        x0, y0, x1, y1 = frame(words, 400, 1000, 0, margin_ratio=0)
+        self.assertAlmostEqual(x0 * 400, 92)   # marge fixe de 8 px
+        self.assertAlmostEqual(y1 * 1000, 228)
+        # Un quart de tour horaire : l'image fait 1000 × 400, le texte (en
+        # haut à gauche de la photo) passe en haut à droite.
+        x0, y0, x1, y1 = frame(words, 400, 1000, 90, margin_ratio=0)
+        self.assertAlmostEqual(x0 * 1000, 1000 - 220 - 8)
+        self.assertAlmostEqual(y0 * 400, 100 - 8)
+
+    def test_auto_retouch_proposes_rotation_and_frame(self):
+        from ..ocr.types import OcrWord
+
+        class Engine:
+            label = description = "faux moteur"
+
+            def recognize(self, image):
+                # Lignes penchées de 3° dans le sens antihoraire de l'image.
+                return [OcrWord(text="TOTAL 12,50", score=0.95, angle=3.0,
+                                left=10, top=10 + 30 * row, right=50, bottom=30 + 30 * row)
+                        for row in range(4)]
+
+        expense = self.expense_with_attachment()
+        Model = type(self.Expense)
+        with patch.object(preprocess, 'dependencies_status', return_value=(True, "")), \
+                patch('odoo.addons.expense_scan.ocr.engines.resolve_engine',
+                      return_value=Engine()), \
+                patch.object(Model, '_expense_scan_quarters', return_value=0):
+            params = expense.expense_scan_auto_retouch_params()
+        self.assertEqual(params['quarter'], 0)
+        self.assertEqual(params['fine'], -3.0)
+        self.assertEqual(len(params['crop']), 4)
+        self.assertLess(params['crop'][2] - params['crop'][0], 1.0)
