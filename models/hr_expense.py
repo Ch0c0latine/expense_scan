@@ -811,10 +811,45 @@ class HrExpense(models.Model):
     # Retouche manuelle
     # ------------------------------------------------------------------
 
+    def _expense_scan_main_is_derived(self):
+        """Indique si le justificatif affiché est l'image tirée de la photo d'origine.
+
+        Image recadrée par l'analyse ou retouchée à la main. Si
+        l'utilisateur l'a supprimée puis a joint un autre justificatif,
+        la photo d'origine, les réglages de retouche et le repère de
+        retouche manuelle concernent un justificatif qui n'est plus affiché.
+        """
+        self.ensure_one()
+        main = self.message_main_attachment_id
+        return bool(main) and main == self.scan_cropped_attachment_id
+
+    def _expense_scan_original(self):
+        """Photo d'origine du justificatif affiché, s'il en est tiré."""
+        self.ensure_one()
+        if self._expense_scan_main_is_derived():
+            return self.scan_original_attachment_id
+        return self.env['ir.attachment']
+
+    def _expense_scan_forget_original(self):
+        """Supprime une photo d'origine qui ne correspond plus au justificatif affiché.
+
+        Pièce jointe de champ, invisible dans la liste des justificatifs :
+        l'utilisateur ne peut pas la supprimer lui-même.
+        """
+        self.ensure_one()
+        original = self.scan_original_attachment_id
+        if original and not self._expense_scan_main_is_derived():
+            self.write({
+                'scan_original_attachment_id': False,
+                'expense_scan_manual_retouch': False,
+                'expense_scan_retouch_params': False,
+            })
+            original.sudo().unlink()
+
     def _expense_scan_retouch_source(self):
         """Pièce de départ de la retouche : la photo d'origine, sinon la pièce affichée."""
         self.ensure_one()
-        source = self.scan_original_attachment_id or self.message_main_attachment_id
+        source = self._expense_scan_original() or self.message_main_attachment_id
         if not source:
             raise UserError(_("Aucun justificatif à retoucher."))
         return source
@@ -848,10 +883,12 @@ class HrExpense(models.Model):
             url = 'data:%s;base64,%s' % (mimetype, base64.b64encode(data).decode())
         else:
             url = '/web/image/%d' % source.id
-        try:
-            params = json.loads(self.expense_scan_retouch_params or 'null')
-        except ValueError:
-            params = None
+        params = None
+        if self._expense_scan_main_is_derived():
+            try:
+                params = json.loads(self.expense_scan_retouch_params or 'null')
+            except ValueError:
+                params = None
         return {'url': url, 'params': params}
 
     @api.depends('message_main_attachment_id')
@@ -982,6 +1019,7 @@ class HrExpense(models.Model):
         main = self.message_main_attachment_id
         if not main:
             raise UserError(_("Aucun justificatif à retoucher."))
+        self._expense_scan_forget_original()
         try:
             raw = base64.b64decode(image_base64)
         except (ValueError, TypeError) as error:
@@ -993,7 +1031,7 @@ class HrExpense(models.Model):
                 "L'image retouchée est trop volumineuse (%(size)d Mo, plafond %(max)d Mo).",
                 size=len(raw) // (1024 * 1024),
                 max=preprocess.MAX_FILE_BYTES // (1024 * 1024)))
-        original = self.scan_original_attachment_id or main
+        original = self._expense_scan_original() or main
         values = {
             'expense_scan_manual_retouch': True,
             'expense_scan_retouch_params': self._expense_scan_clean_retouch_params(params),
@@ -1193,7 +1231,7 @@ class HrExpense(models.Model):
         self.ensure_one()
         attachment = self.message_main_attachment_id
         if from_original:
-            attachment = self.scan_original_attachment_id or attachment
+            attachment = self._expense_scan_original() or attachment
         if not attachment:
             attachment = self.attachment_ids[:1]
         if not attachment or not self._expense_scan_readable(attachment):
@@ -1253,7 +1291,7 @@ class HrExpense(models.Model):
         # Image retouchée à la main : lue telle quelle, sans recadrage,
         # redressement ni rotation automatiques, et sans être remplacée.
         manual = (self.expense_scan_manual_retouch
-                  and attachment != self.scan_original_attachment_id)
+                  and attachment == self.scan_cropped_attachment_id)
         image, info = preprocess.prepare(
             data,
             autocrop=company.expense_scan_autocrop and not manual,
@@ -2117,11 +2155,17 @@ class HrExpense(models.Model):
             attachment.write({'raw': result.image_bytes, 'mimetype': 'image/jpeg'})
             return {}
 
+        # Une photo d'origine d'un justificatif supprimé depuis n'a plus
+        # lieu d'être : ``attachment`` devient l'original.
+        if self.scan_original_attachment_id != attachment:
+            self._expense_scan_forget_original()
+
         # Une relance produit une nouvelle image : elle remplace la
         # précédente au lieu d'ajouter des pièces jointes à la dépense.
+        # La photo d'origine, elle, est conservée (voir ir_attachment).
         previous = self.scan_cropped_attachment_id
         if previous and previous != attachment:
-            previous.unlink()
+            previous.with_context(expense_scan_keep_original=True).unlink()
 
         stem = os.path.splitext(attachment.name or 'ticket')[0]
         cropped = self.env['ir.attachment'].create({

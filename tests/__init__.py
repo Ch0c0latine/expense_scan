@@ -15,3 +15,4 @@ from . import test_policy
 from . import test_todo_banner
 from . import test_async_scan
 from . import test_corpus
+from . import test_receipt_lifecycle
