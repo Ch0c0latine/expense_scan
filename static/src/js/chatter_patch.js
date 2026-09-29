@@ -18,6 +18,15 @@ import "@mail/chatter/web/chatter_patch";
 import { Thread } from "@mail/core/common/thread_model";
 import { patch } from "@web/core/utils/patch";
 
+/**
+ * Justificatif en attente d'analyse : ``{record, changed}``.
+ *
+ * Tenu hors du composant : sur téléphone, le volet de discussion qui reçoit
+ * le clic n'est pas toujours celui qui termine l'envoi, une fois la fiche
+ * enregistrée.
+ */
+let pendingReceipt = null;
+
 patch(Thread.prototype, {
     // Les droits d'une fiche pas encore enregistrée ne sont pas connus :
     // Odoo grise « Joindre des fichiers ». Qui crée la dépense peut y joindre
@@ -37,8 +46,6 @@ patch(Chatter.prototype, {
         // recrée le volet, et un appel passé par useService ne se termine
         // jamais une fois le composant détruit.
         this.expenseScanOrm = this.env.services.orm;
-        this.expenseScanAnalyze = false;
-        this.expenseScanChanged = [];
     },
 
     async onClickAttachFile(ev) {
@@ -46,7 +53,7 @@ patch(Chatter.prototype, {
         if (!this.state.thread.id && record?.resModel === "hr.expense") {
             // Champs modifiés par l'utilisateur depuis l'ouverture de la
             // fiche, relevés avant la pose des valeurs provisoires.
-            this.expenseScanChanged = Object.keys(record._changes || {});
+            const changed = Object.keys(record._changes || {});
             const defaults = await this.expenseScanOrm.call(
                 "hr.expense", "expense_scan_receipt_defaults", []);
             const values = {};
@@ -59,7 +66,7 @@ patch(Chatter.prototype, {
             if (Object.keys(values).length) {
                 await record.update(values);
             }
-            this.expenseScanAnalyze = true;
+            pendingReceipt = { record, changed };
         }
         return super.onClickAttachFile(...arguments);
     },
@@ -82,15 +89,13 @@ patch(Chatter.prototype, {
             // au fil de la dépense créée.
             const current = this.state.thread;
             const target = !thread?.id && current?.id ? current : thread;
-            const analyze = this.expenseScanAnalyze;
-            console.info("EXPENSE_SCAN_DEBUG avant", { analyze, target: target?.id });
             await super.onUploaded(data, { thread: target })(...args);
             const record = this.props.record;
-            console.info("EXPENSE_SCAN_DEBUG après", { analyze, resModel: record?.resModel, resId: record?.resId, flag: this.expenseScanAnalyze });
             if (record?.resModel !== "hr.expense" || !record.resId) {
                 return;
             }
-            if (!analyze) {
+            const pending = pendingReceipt?.record.resId === record.resId ? pendingReceipt : null;
+            if (!pending) {
                 // Justificatif joint à une dépense enregistrée : la fiche est
                 // rechargée pour afficher son aperçu.
                 if (!this.props.hasParentReloadOnAttachmentsChanged) {
@@ -98,10 +103,9 @@ patch(Chatter.prototype, {
                 }
                 return;
             }
-            this.expenseScanAnalyze = false;
+            pendingReceipt = null;
             await this.expenseScanOrm.call(
-                "hr.expense", "expense_scan_analyze_new_receipt",
-                [[record.resId], this.expenseScanChanged]);
+                "hr.expense", "expense_scan_analyze_new_receipt", [[record.resId], pending.changed]);
             await record.model.load();
         };
     },
