@@ -1,5 +1,47 @@
 # Journal des changements
 
+## 19.0.2.7.0 — Retouche du justificatif
+
+- **Retouche** : bouton sous l'aperçu du justificatif (bandeau sur
+  téléphone). Rotation par quart de tour et fine, recadrage aux poignées,
+  bouton « Auto » qui propose la retouche automatique sans l'appliquer,
+  « Réinitialiser » pour revenir à l'image téléversée. La retouche part
+  toujours de la photo d'origine, qui n'est jamais modifiée, et
+  réapplique les réglages précédents. Elle s'applique sans relancer
+  l'analyse ; « Relancer l'analyse » lit ensuite l'image retouchée telle
+  quelle. Un PDF se retouche aussi (première page rendue en image).
+- **PDF de plusieurs pages** : si la première page ne donne pas de total,
+  les suivantes sont lues (jusqu'à 5).
+- **Justificatif joint à une dépense neuve**, avant son enregistrement :
+  « Joindre des fichiers » était grisé. La dépense reçoit une description
+  provisoire et la catégorie par défaut, est enregistrée, puis le
+  justificatif est analysé.
+- **Saisies manuelles conservées** : les champs saisis avant l'envoi du
+  justificatif (date, montant, catégorie, devise, TVA, fournisseur,
+  mission), ou corrigés après une analyse, ne sont plus remplacés par
+  l'analyse ni par une nouvelle analyse. Un écart avec le justificatif est
+  signalé sous le champ (« Le justificatif indique 9,90 € : vérifiez le
+  montant saisi. »).
+- **Second justificatif** : le justificatif principal reste sur la
+  dépense et sert de base à une nouvelle analyse ; un justificatif sans
+  rapport est détaché sur une nouvelle dépense, avec sa propre
+  description et sa propre catégorie. Correction d'une erreur
+  (« Enregistrement inexistant ») à la relance après l'ajout d'un second
+  justificatif.
+- **Justificatif supprimé puis remplacé** : la retouche rouvrait l'ancien
+  justificatif, et l'appliquer écrasait le nouveau ; le nouveau n'était
+  plus recadré automatiquement. La photo d'origine et les réglages de
+  retouche sont désormais supprimés avec le justificatif affiché. La
+  catégorie devinée d'après l'ancien justificatif ne reste plus sur le
+  nouveau.
+- **Aperçu sur téléphone** : l'image retouchée s'affiche (l'ancienne
+  restait en cache) ; un PDF est montré par sa première page et s'ouvre
+  dans la visionneuse PDF. La fiche est rechargée après l'ajout ou la
+  suppression d'un justificatif.
+- **Aperçu sur ordinateur** : un PDF ne dépasse plus en haut du volet.
+- Commentaires et docstrings réécrits dans un style factuel ; deux tests
+  de catégorie qui ne s'exécutaient pas sont remis dans leur classe.
+
 ## 19.0.2.6.4
 
 - **Ticket à plusieurs taux de TVA** : la dépense retenait la taxe par
