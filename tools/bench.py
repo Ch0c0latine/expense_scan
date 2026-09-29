@@ -20,6 +20,9 @@ versionnés (données personnelles). Le dépôt ne contient que l'outil.
     python3 tools/bench.py SNAPSHOT --truth VERITE --save avant.json
     # 3. après un changement, comparer :
     python3 tools/bench.py SNAPSHOT --truth VERITE --baseline avant.json
+    # tickets d'Open Prices (tools/fetch_openprices.py), nommés
+    # « OP-<pays>_<id>.<ext> » dans le corpus : résultats par pays
+    python3 tools/bench.py SNAPSHOT --open-prices truth.jsonl
 
 Le banc juge ce que lit l'analyseur (``tax`` : la TVA lue, avant les règles
 de l'application comme catégorie sans TVA ou devise étrangère, donc plus
@@ -96,6 +99,60 @@ def load_truth(directory):
                     loose += [num(m.group(1)) for m in LOOSE_TOTAL.finditer(line)]
         truth[os.path.basename(path)[:-4]] = (rows, loose)
     return truth
+
+
+#: Préfixe des justificatifs tirés d'Open Prices dans l'instantané :
+#: « OP-DE_12345.webp » (pays, identifiant du ticket).
+OPEN_PRICES_PREFIX = "OP-"
+
+
+def load_open_prices(path):
+    """``{"OP-<pays>_<id>": ligne}`` d'après ``truth.jsonl`` (tools/fetch_openprices.py)."""
+    truth = {}
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            if line.strip():
+                row = json.loads(line)
+                truth["%s%s_%d" % (OPEN_PRICES_PREFIX, row["country"], row["id"])] = row
+    return truth
+
+
+def judge_open_prices(name, got, truth):
+    """Date, devise et, s'il est connu, total d'un ticket d'Open Prices."""
+    row = truth.get(os.path.splitext(name)[0])
+    if row is None:
+        return {}
+    verdict = {
+        "date": got["date"] == row["date"],
+        "currency": (got["currency"] or "EUR") == (row["currency"] or "EUR"),
+    }
+    if row.get("total"):
+        verdict["total"] = abs((got["total"] or 0) - row["total"]) < 0.015
+    return verdict
+
+
+def print_by_country(verdicts):
+    """Taux de réussite par pays, pour les tickets d'Open Prices."""
+    by_country = collections.defaultdict(collections.Counter)
+    for name, verdict in verdicts.items():
+        if not name.startswith(OPEN_PRICES_PREFIX):
+            continue
+        country = name[len(OPEN_PRICES_PREFIX):].split("_")[0]
+        by_country[country]["tickets"] += 1
+        for field, ok in verdict.items():
+            by_country[country][field, "n"] += 1
+            by_country[country][field, "ok"] += ok
+    if not by_country:
+        return
+    print("\nOpen Prices, par pays :")
+    print("  pays tickets      date          total         devise")
+    for country in sorted(by_country, key=lambda c: -by_country[c]["tickets"]):
+        counts = by_country[country]
+        cells = []
+        for field in ("date", "total", "currency"):
+            n, ok = counts[field, "n"], counts[field, "ok"]
+            cells.append("%3d/%-3d %3.0f %%" % (ok, n, 100.0 * ok / n) if n else "      -     ")
+        print("  %-4s %7d   %s" % (country, counts["tickets"], "   ".join(cells)))
 
 
 # ---------------------------------------------------------------------------
@@ -269,6 +326,7 @@ def main():
     argp = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     argp.add_argument("snapshot", help="dossier de l'instantané (mots lus)")
     argp.add_argument("--truth", help="dossier des tableaux de vérité")
+    argp.add_argument("--open-prices", help="truth.jsonl des tickets d'Open Prices")
     argp.add_argument("--save", help="écrit la mesure dans ce fichier")
     argp.add_argument("--baseline", help="mesure de référence à comparer")
     argp.add_argument("--only", help="ne rejouer que les fichiers dont le nom contient ce texte")
@@ -283,8 +341,14 @@ def main():
     results = {name: replay(item, meta) for name, item in items.items()}
     seconds = time.time() - started
     verdicts = {name: judge(name, got, truth) for name, got in results.items()}
+    if args.open_prices:
+        open_prices = load_open_prices(args.open_prices)
+        for name, got in results.items():
+            if name.startswith(OPEN_PRICES_PREFIX):
+                verdicts[name] = judge_open_prices(name, got, open_prices)
 
     print_summary(results, verdicts, truth, seconds)
+    print_by_country(verdicts)
     print_fidelity(items, results)
     regressions = 0
     if args.baseline:
