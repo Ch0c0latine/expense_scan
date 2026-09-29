@@ -56,7 +56,7 @@ patch(Chatter.prototype, {
             this.expenseScanAnalyze = false;
             await this.expenseScanOrm.call(
                 "hr.expense", "expense_scan_analyze_new_receipt", [[record.resId]]);
-            await record.load();
+            await record.model.load();
         };
     },
 });
