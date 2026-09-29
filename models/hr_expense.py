@@ -33,6 +33,9 @@ PDF_MIMETYPE = 'application/pdf'
 #: pied de la dernière. Plafond, comme les autres limites d'entrée, pour
 #: borner le temps de traitement.
 PDF_MAX_PAGES_READ = 5
+#: Résolution du rendu d'un PDF pour l'aperçu sur téléphone : lisible sur
+#: un écran étroit, léger à transférer.
+PDF_PREVIEW_DPI = 110
 #: Écart, en jours, entre deux dépenses d'un même déplacement.
 TRIP_DAYS = 3
 
@@ -97,6 +100,11 @@ class HrExpense(models.Model):
     expense_scan_hints = fields.Text(readonly=True, copy=False)
     #: Valeurs posées par l'analyse, en JSON, pour reconnaître une correction.
     expense_scan_read_values = fields.Text(readonly=True, copy=False)
+    #: Type et empreinte du justificatif principal, pour l'aperçu sur
+    #: téléphone : l'empreinte change quand l'image est retouchée sur place,
+    #: et sert de clé de version à son adresse.
+    expense_scan_main_mimetype = fields.Char(compute='_compute_expense_scan_main_file')
+    expense_scan_main_checksum = fields.Char(compute='_compute_expense_scan_main_file')
     # Champs saisis à la main avant l'analyse (liste séparée par des
     # virgules) : une nouvelle analyse ne les remplace pas non plus.
     expense_scan_manual_fields = fields.Char(readonly=True, copy=False)
@@ -845,6 +853,29 @@ class HrExpense(models.Model):
         except ValueError:
             params = None
         return {'url': url, 'params': params}
+
+    @api.depends('message_main_attachment_id')
+    def _compute_expense_scan_main_file(self):
+        for expense in self:
+            attachment = expense.message_main_attachment_id.sudo()
+            expense.expense_scan_main_mimetype = attachment.mimetype or False
+            expense.expense_scan_main_checksum = attachment.checksum or False
+
+    def expense_scan_pdf_preview(self):
+        """Première page du justificatif principal, s'il est en PDF, en data URL.
+
+        Les navigateurs de téléphone n'affichent pas un PDF dans une page :
+        l'aperçu montre cette image.
+        """
+        self.ensure_one()
+        self.check_access('read')
+        attachment = self.message_main_attachment_id
+        if not attachment or not self._expense_scan_is_pdf(attachment):
+            return False
+        data = preprocess.pdf_first_page_to_image_bytes(attachment.raw, dpi=PDF_PREVIEW_DPI)
+        if not data:
+            return False
+        return 'data:image/png;base64,%s' % base64.b64encode(data).decode()
 
     def expense_scan_auto_retouch_params(self):
         """Réglages que proposerait la retouche automatique, pour l'éditeur.

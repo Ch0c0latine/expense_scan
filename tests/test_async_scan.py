@@ -420,3 +420,33 @@ class TestReceiptOnNewExpense(common.TransactionCase):
         expense.expense_scan_read_values = json.dumps(read)
         # Montant saisi avant la première analyse, date corrigée depuis.
         self.assertEqual(expense._expense_scan_kept_fields(), {'total_amount_currency', 'date'})
+
+
+@tagged('post_install', '-at_install')
+class TestMobilePreview(common.TransactionCase):
+    """Aperçu du justificatif sur téléphone."""
+
+    def expense_with(self, name, mimetype, raw):
+        expense = self.env['hr.expense'].create({
+            'name': "Aperçu", 'employee_id': self.env['hr.employee'].create({'name': "Nina"}).id})
+        attachment = self.env['ir.attachment'].create({
+            'name': name, 'raw': raw, 'mimetype': mimetype,
+            'res_model': 'hr.expense', 'res_id': expense.id})
+        expense._message_set_main_attachment_id(attachment, force=True)
+        return expense, attachment
+
+    def test_the_checksum_follows_a_retouch_in_place(self):
+        expense, attachment = self.expense_with("ticket.png", 'image/png', png())
+        before = expense.expense_scan_main_checksum
+        self.assertEqual(expense.expense_scan_main_mimetype, 'image/png')
+        attachment.raw = png(color=(10, 20, 30))
+        expense.invalidate_recordset()
+        self.assertNotEqual(expense.expense_scan_main_checksum, before)
+
+    def test_a_pdf_is_previewed_as_an_image(self):
+        expense, _attachment = self.expense_with("facture.pdf", 'application/pdf', b'%PDF-1.4')
+        with patch.object(preprocess, 'pdf_first_page_to_image_bytes', return_value=b'PNG'):
+            self.assertEqual(expense.expense_scan_pdf_preview(),
+                             'data:image/png;base64,' + base64.b64encode(b'PNG').decode())
+        image, _attachment = self.expense_with("ticket.png", 'image/png', png())
+        self.assertFalse(image.expense_scan_pdf_preview())

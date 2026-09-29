@@ -6,8 +6,11 @@
  * Sur petit écran, Odoo n'affiche pas le volet du justificatif. Ce widget
  * l'affiche en bandeau fixé en haut de la fiche, visible pendant le
  * défilement des champs ; un appui l'ouvre en plein écran.
+ *
+ * Un navigateur de téléphone n'affiche pas un PDF dans une page : le
+ * bandeau montre sa première page, rendue par le serveur.
  */
-import { Component, onWillDestroy, useState } from "@odoo/owl";
+import { Component, onWillDestroy, useEffect, useState } from "@odoo/owl";
 
 import { browser } from "@web/core/browser/browser";
 import { FileModel } from "@web/core/file_viewer/file_model";
@@ -30,13 +33,34 @@ export class ExpenseScanReceipt extends Component {
         this.dialog = useService("dialog");
         this.orm = useService("orm");
         this.fileViewer = useFileViewer();
-        this.state = useState({ size: this.ui.size, expanded: false });
+        this.state = useState({ size: this.ui.size, expanded: false, pdfUrl: null });
 
         this.onResize = useDebounced(() => {
             this.state.size = this.ui.size;
         }, 200);
         browser.addEventListener("resize", this.onResize);
         onWillDestroy(() => browser.removeEventListener("resize", this.onResize));
+
+        useEffect(
+            (visible, isPdf) => {
+                this.state.pdfUrl = null;
+                if (visible && isPdf) {
+                    this.loadPdfPreview();
+                }
+            },
+            () => [this.visible, this.isPdf, this.attachment?.id, this.checksum]
+        );
+    }
+
+    /** Rendu de la première page du PDF ; une réponse périmée est ignorée. */
+    async loadPdfPreview() {
+        const key = `${this.attachment.id}-${this.checksum}`;
+        this.pdfKey = key;
+        const url = await this.orm.call(
+            "hr.expense", "expense_scan_pdf_preview", [[this.props.record.resId]]);
+        if (this.pdfKey === key) {
+            this.state.pdfUrl = url;
+        }
     }
 
     /**
@@ -64,8 +88,24 @@ export class ExpenseScanReceipt extends Component {
         return { id: value.id, name: value.display_name || value.name || "Ticket" };
     }
 
+    get mimetype() {
+        return this.props.record.data.expense_scan_main_mimetype || "image/jpeg";
+    }
+
+    get isPdf() {
+        return this.mimetype.startsWith("application/pdf");
+    }
+
+    /** Empreinte du fichier : l'adresse change quand l'image est retouchée. */
+    get checksum() {
+        return this.props.record.data.expense_scan_main_checksum || "";
+    }
+
     get imageUrl() {
-        return `/web/image/${this.attachment.id}`;
+        if (this.isPdf) {
+            return this.state.pdfUrl;
+        }
+        return `/web/image/${this.attachment.id}?unique=${this.checksum}`;
     }
 
     get toggleLabel() {
@@ -92,7 +132,8 @@ export class ExpenseScanReceipt extends Component {
         Object.assign(file, {
             id: this.attachment.id,
             name: this.attachment.name,
-            mimetype: "image/jpeg",
+            mimetype: this.mimetype,
+            checksum: this.checksum,
             type: "binary",
         });
         this.fileViewer.open(file);
@@ -109,6 +150,8 @@ export const expenseScanReceiptWidget = {
             relation: "ir.attachment",
             readonly: true,
         },
+        { name: "expense_scan_main_mimetype", type: "char", readonly: true },
+        { name: "expense_scan_main_checksum", type: "char", readonly: true },
     ],
 };
 
