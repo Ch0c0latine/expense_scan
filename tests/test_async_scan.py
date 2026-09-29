@@ -323,3 +323,30 @@ class TestRetouch(common.TransactionCase):
         self.assertEqual(params['fine'], -3.0)
         self.assertEqual(len(params['crop']), 4)
         self.assertLess(params['crop'][2] - params['crop'][0], 1.0)
+
+
+@tagged('post_install', '-at_install')
+class TestReceiptOnNewExpense(common.TransactionCase):
+    """Justificatif joint depuis le volet de discussion à une dépense neuve."""
+
+    def test_defaults_make_a_new_expense_savable(self):
+        Expense = self.env['hr.expense']
+        defaults = Expense.expense_scan_receipt_defaults()
+        self.assertTrue(defaults['name'])
+        self.assertTrue(defaults['product_id']['id'])
+        expense = Expense.create({
+            'name': defaults['name'], 'product_id': defaults['product_id']['id'],
+            'employee_id': self.env['hr.employee'].create({'name': "Nina Neuve"}).id})
+        self.assertTrue(expense._expense_scan_name_is_automatic())
+
+    def test_only_a_never_analysed_expense_is_analysed(self):
+        self.env.company.expense_scan_enabled = True
+        employee = self.env['hr.employee'].create({'name': "Nina Neuve"})
+        Expense = self.env['hr.expense']
+        fresh = Expense.create({'name': "Neuve", 'employee_id': employee.id})
+        done = Expense.create({'name': "Déjà lue", 'employee_id': employee.id,
+                               'scan_state': 'done'})
+        with patch.object(type(Expense), '_expense_scan_run', autospec=True) as run:
+            fresh.expense_scan_analyze_new_receipt()
+            done.expense_scan_analyze_new_receipt()
+        self.assertEqual([call.args[0] for call in run.call_args_list], [fresh])

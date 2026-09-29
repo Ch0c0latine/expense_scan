@@ -978,6 +978,43 @@ class HrExpense(models.Model):
         self.write(values)
         return True
 
+    # ------------------------------------------------------------------
+    # Justificatif joint à une dépense neuve
+    # ------------------------------------------------------------------
+
+    @api.model
+    def expense_scan_receipt_defaults(self):
+        """Valeurs qui permettent d'enregistrer une dépense neuve avant d'y joindre un justificatif.
+
+        Le volet de discussion enregistre la fiche avant l'envoi d'un
+        fichier ; la description et la catégorie sont obligatoires. Le
+        formulaire ne pose ces valeurs que sur les champs encore vides.
+        """
+        company = self.env.company
+        Product = self.env['product.product']
+        product = (company.expense_scan_product_id
+                   or Product.search([('default_code', '=', 'EXP_GEN'),
+                                      ('can_be_expensed', '=', True)], limit=1)
+                   or Product.search([('can_be_expensed', '=', True)], limit=1))
+        today = format_date(self.env, fields.Date.context_today(self))
+        return {
+            'name': self._get_untitled_expense_name(today),
+            'product_id': {'id': product.id, 'display_name': product.display_name}
+            if product else False,
+        }
+
+    def expense_scan_analyze_new_receipt(self):
+        """Analyse le justificatif joint à une dépense enregistrée pour lui.
+
+        Seulement si la dépense n'a jamais été analysée : comme un ticket
+        scanné, les champs remplis par l'utilisateur sont conservés.
+        """
+        self.ensure_one()
+        self.check_access('write')
+        if self.scan_state == 'none' and (self.company_id or self.env.company).expense_scan_enabled:
+            self._expense_scan_run()
+        return True
+
     def action_expense_scan_rescan(self):
         """Relance l'analyse sur le ou les justificatifs courants.
 
