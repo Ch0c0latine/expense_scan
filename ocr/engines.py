@@ -340,7 +340,7 @@ class TesseractEngine(ScanEngine):
         import pytesseract
         from PIL import Image
 
-        lang = self.options.get("lang") or "fra"
+        lang = self.options.get("lang") or "eng"
         # --psm 6: the receipt is handled as a single block of text. The
         # automatic mode readily splits a receipt into columns and mixes up
         # the reading order of the lines.

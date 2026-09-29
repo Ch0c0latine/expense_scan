@@ -12,10 +12,12 @@ import unicodedata
 
 from odoo import api, fields, models
 
-# Words that name a hotel night, without accents or case. "Logement" is not
-# one of them: a flat housing allowance is not counted in nights paid on a
-# receipt.
-HOTEL_WORDS = ('hotel', 'heberg', 'bnb', 'nuitee')
+# Words that name a hotel night, without accents or case, in the main
+# languages. "Logement" (housing) is not one of them: a flat housing
+# allowance is not counted in nights paid on a receipt.
+HOTEL_WORDS = ('hotel', 'heberg', 'bnb', 'nuitee', 'lodging', 'accommodation', 'albergo',
+               'alojamiento', 'alojamento', 'hospedaje', 'unterkunft', 'ubernachtung',
+               'nocleg', 'overnachting', 'overnatning')
 
 
 class ProductTemplate(models.Model):

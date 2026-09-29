@@ -2,14 +2,14 @@
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 {
-    'name': "Expense Scan: Receipt OCR",
+    'name': "Receipt Scanner for Expenses",
     'version': '19.0.2.8.0',
     'summary': "Create expenses by photographing receipts: automatic crop and "
                "straightening, fields filled in by a local OCR, side by side "
                "review. No IAP credits, no API key.",
     'description': """
-Expense Scan: Receipt OCR
-=========================
+Receipt Scanner for Expenses
+============================
 
 Photograph a receipt with your phone and get a filled-in expense, reviewed
 side by side with the image of the receipt.

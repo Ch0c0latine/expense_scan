@@ -78,7 +78,7 @@ class ExpenseScanExportTemplate(models.Model):
     _description = "Excel expense export template"
     _order = 'sequence, name'
 
-    name = fields.Char(string="Name", required=True)
+    name = fields.Char(string="Name", required=True, translate=True)
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', string="Company")
@@ -103,7 +103,7 @@ class ExpenseScanExportTemplate(models.Model):
         help="Refuses the export if the expenses belong to several projects.")
     column_ids = fields.One2many(
         'expense.scan.export.column', 'template_id', string="Mappings")
-    note = fields.Text(string="Notes")
+    note = fields.Text(string="Notes", translate=True)
 
     @api.constrains('first_row', 'last_row')
     def _check_rows(self):

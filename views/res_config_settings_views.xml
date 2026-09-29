@@ -110,7 +110,7 @@
                 </setting>
 
                 <!-- Last: support is optional. -->
-                <setting id="expense_scan_support_setting" string="Support Expense Scan"
+                <setting id="expense_scan_support_setting" string="Support this module"
                          help="Free module, developed in its author's own time">
                     <div class="content-group">
                         <a href="https://github.com/sponsors/Ch0c0latine" target="_blank"

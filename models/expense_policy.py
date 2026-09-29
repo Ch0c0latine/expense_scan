@@ -15,6 +15,7 @@ list.
 import re
 
 from odoo import _, api, fields, models
+from odoo.tools.misc import formatLang
 
 from ..ocr import lexicon
 
@@ -48,7 +49,7 @@ class ExpenseScanPolicy(models.Model):
     _description = "Expense rules"
     _order = 'name'
 
-    name = fields.Char(string="Name", required=True)
+    name = fields.Char(string="Name", required=True, translate=True)
     active = fields.Boolean(default=True)
     apply_to_all = fields.Boolean(
         string="All expenses",
@@ -67,7 +68,7 @@ class ExpenseScanPolicy(models.Model):
         help="Projects subject to these rules when their customer, in Odoo, "
              "is not the end customer.")
     rule_ids = fields.One2many('expense.scan.policy.rule', 'policy_id', string="Rules")
-    note = fields.Text(string="Notes")
+    note = fields.Text(string="Notes", translate=True)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -106,7 +107,7 @@ class ExpenseScanPolicyRule(models.Model):
     policy_id = fields.Many2one('expense.scan.policy', required=True, ondelete='cascade')
     sequence = fields.Integer(default=10)
     name = fields.Char(
-        string="Rule", required=True,
+        string="Rule", required=True, translate=True,
         help="The text shown to the employee when the rule is broken.")
     family = fields.Selection(
         FAMILIES, string="Expense family",
@@ -272,7 +273,7 @@ class HrExpense(models.Model):
         undecided_limits = []
 
         def money(value):
-            return "%s %s" % (("%.2f" % value).replace('.', ','), currency.symbol or '€')
+            return formatLang(self.env, value, currency_obj=currency)
 
         # A daily limit that is respected covers the meals of that day: an
         # expensive dinner with a light lunch may stay below it.

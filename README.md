@@ -1,4 +1,4 @@
-# Expense Scan — receipt scanning for Odoo 19
+# Receipt Scanner for Expenses — Odoo 19
 
 Photograph a receipt with your phone and get a filled-in expense, reviewed
 side by side with the image of the receipt.
@@ -131,7 +131,9 @@ real scan does not pay for the loading.
    *Test and preload the engine* checks the installation.
 2. **Scan a receipt** from the expense list (*Scan* button on a phone,
    *Upload* on a computer).
-3. **Expense rules**: set your own ceilings and words to watch
+3. **Expense rules**: the delivered "Good practice" set already watches
+   fines, hotel extras, alcohol and travel class on every expense. Add your
+   own ceilings, duplicate it for a customer, or archive it
    (*Configuration → Expense Rules*).
 4. **Expense sheet**: select expenses, then the *Expense Sheet* button. The
    delivered Excel template, "Expense sheet (basic template)", can be
@@ -167,16 +169,20 @@ and its own requirements.
 
 ---
 
-## France
+## Country specifics
 
-Some features only make sense for French companies and are only used
-there:
+Nothing in the module is tied to one country; a few things are there for the
+receipts of some countries:
 
-- the Sirene database of establishments, which gives the activity code of a
-  merchant from the SIRET printed on the receipt;
-- the good practice rules based on the URSSAF allowance scales;
-- the categories without recoverable VAT (employee accommodation, passenger
-  transport).
+- **French merchants**: many French receipts print the SIRET number but not
+  the activity code. An administrator can load the public Sirene database of
+  establishments (`expense.scan.sirene`), which then gives the activity of
+  the merchant from its SIRET. Without it, the other clues are used.
+- **Categories without recoverable VAT**: where VAT cannot be deducted on
+  some expenses (employee accommodation or passenger transport in France,
+  for instance), tick *Flat rate without VAT* on the category.
+- **Mileage**: each employee can have their own rate per kilometre or mile,
+  to follow the official scale of your country.
 
 ---
 

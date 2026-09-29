@@ -37,7 +37,9 @@ class ResCompany(models.Model):
     )
     expense_scan_tesseract_lang = fields.Char(
         string="Tesseract language",
-        default='fra',
+        default='eng',
+        help="Tesseract language codes, joined with \"+\" (\"eng+fra\"). Each "
+             "language needs its tesseract-ocr package on the server.",
     )
     expense_scan_autocrop = fields.Boolean(
         string="Crop the receipt",
@@ -155,6 +157,6 @@ class ResCompany(models.Model):
         self.ensure_one()
         return {
             'threads': self.expense_scan_threads or 0,
-            'lang': self.expense_scan_tesseract_lang or 'fra',
+            'lang': self.expense_scan_tesseract_lang or 'eng',
             'model_dir': self._expense_scan_model_dir(),
         }
