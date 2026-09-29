@@ -17,6 +17,7 @@ import re
 
 from odoo import _, api, fields, models
 from odoo.service.model import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY
+from odoo.tools import format_date
 
 _logger = logging.getLogger(__name__)
 
@@ -278,13 +279,26 @@ class HrExpense(models.Model):
 
         Les pièces jointes sont déplacées avec le groupe : sinon la première
         dépense porterait le justificatif d'un achat qu'elle ne décrit pas.
+
+        La description et la catégorie de la première dépense ne décrivent
+        pas cet achat : la nouvelle reçoit une description provisoire et la
+        catégorie par défaut, que l'analyse remplace. Seul l'objet d'un
+        courriel, commun aux pièces, est repris.
         """
         self.ensure_one()
+        product = self.company_id.expense_scan_product_id or self.product_id
+        if self.expense_scan_keep_name:
+            name = self.name
+        else:
+            name = self._get_untitled_expense_name(
+                format_date(self.env, fields.Date.context_today(self)))
         expense = self.create({
-            'name': self.name,
+            'name': name,
             'employee_id': self.employee_id.id,
             'company_id': self.company_id.id,
-            'product_id': self.product_id.id,
+            'product_id': product.id,
+            # Catégorie provisoire : l'analyse peut la remplacer.
+            'expense_scan_guessed_product_id': product.id,
             'expense_scan_from_mail': False,
             'expense_scan_keep_name': self.expense_scan_keep_name,
         })

@@ -8,6 +8,7 @@ seul achat ou deux, sans intervention de l'utilisateur. Une erreur passe
 donc inaperçue : la séparation n'a lieu que sur une différence franche.
 """
 from datetime import date
+from unittest.mock import patch
 
 from odoo.tests import common, tagged
 
@@ -134,3 +135,20 @@ class TestExpenseScanPieces(common.TransactionCase):
         ]
         groups = self.Expense._expense_scan_group_pieces(pieces)
         self.assertEqual([len(group) for group in groups], [2, 1])
+
+    def test_a_split_receipt_does_not_inherit_the_description_and_category(self):
+        """Achat sans rapport : ni la description ni la catégorie ne le décrivent."""
+        chosen = self.env['product.product'].create({
+            'name': "Catégorie choisie", 'can_be_expensed': True})
+        expense = self.Expense.create({
+            'name': "Repas client Dupont", 'product_id': chosen.id,
+            'employee_id': self.env['hr.employee'].create({'name': "Nina"}).id})
+        attachment = self.env['ir.attachment'].create({
+            'name': "second.png", 'raw': png(), 'mimetype': 'image/png',
+            'res_model': 'hr.expense', 'res_id': expense.id})
+        with patch.object(type(self.Expense), '_expense_scan_apply_group', autospec=True):
+            other = expense._expense_scan_split_off([(attachment, reading(total=15.0))])
+        self.assertNotEqual(other.name, "Repas client Dupont")
+        self.assertTrue(other._expense_scan_name_is_automatic())
+        self.assertTrue(other._expense_scan_category_is_free(other.company_id))
+        self.assertEqual(attachment.res_id, other.id)
