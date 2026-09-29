@@ -168,6 +168,7 @@ class TestCorpus(common.TransactionCase):
             'today': date.today().isoformat(),
             'max_age_days': kwargs.get('max_age_days'),
             'default_currency': kwargs.get('default_currency'),
+            'country': kwargs.get('country'),
             'buyers': list(kwargs.get('buyers') or ()),
             'naf': naf or None,
             'words': [[w.text, round(w.score, 4), round(w.left, 2), round(w.top, 2),

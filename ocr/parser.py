@@ -35,8 +35,12 @@ from .types import ExtractedField, OcrLine, ScanResult
 # (« PRIX TTC......6,80 »), et interdire le point précédent empêcherait de
 # reconnaître ces montants. Le cas « 1.234,56 » reste couvert : l'alternative
 # des milliers est tentée en premier et consomme le nombre entier.
+# Un montant n'est ni suivi ni précédé d'un autre séparateur accolé à un
+# chiffre : sans cette règle, « 20.08.2026 » et « 27.05.25 » donnaient les
+# montants 20,08, 27,05 ou 5,25 (dates pointées des tickets allemands,
+# croates, italiens, britanniques).
 AMOUNT_RE = re.compile(
-    r"(?<![\d,])(\d{1,3}(?:[  .]\d{3})+|\d+)[.,](\d{2})(?![\d])(?!\s*%)"
+    r"(?<![\d,])(?<!\d[.,])(\d{1,3}(?:[  .]\d{3})+|\d+)[.,](\d{2})(?![\d])(?![.,]\d)(?!\s*%)"
 )
 # Un taux de TVA : « 20 % », « 5,50% », « TVA 10.0 »
 RATE_RE = re.compile(r"(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
@@ -150,13 +154,20 @@ TOTAL_KEYWORDS = [
     (re.compile(r"\bMONTANT\s*(?:DU|A\s*PAYER)\b"), 0.90),
     (re.compile(r"\b(?:AMOUNT|BALANCE)\s*DUE\b|\bGRAND\s*TOTAL\b"), 0.90),  # en
     (re.compile(r"\bTE\s*BETALEN\b"), 0.90),                        # nl
+    (re.compile(r"\bA\s*BETALE\b|\bATT\s*BETALA\b"), 0.90),          # no, sv
+    (re.compile(r"\bZA\s*PLATITI\b"), 0.90),                        # hr
     (re.compile(r"\bRESTE\s*A\s*PAYER\b"), 0.88),
     (re.compile(r"\bIMPORTO\s*PAGATO\b"), 0.88),                    # it
     (re.compile(r"\bA\s*PAYER\b"), 0.86),
     # Tickets qui affichent le montant versé : « Sie haben 18.00 CHF bezahlt »,
     # « Amount paid ».
-    (re.compile(r"\bBEZAHLT\b|\bAMOUNT\s*PAID\b"), 0.86),
+    (re.compile(r"\bBEZAHLT\b|\bAMOUNT\s*PAID\b|\bBETALT\b|\bBETALAT\b"), 0.86),
     (re.compile(r"\bSUMA\b|\bSUMME\b"), 0.85),                      # pl, de
+    (re.compile(r"\bTOTALT\b|\bSUMMA\b|\bI\s*ALT\b"), 0.85),          # no, sv, da
+    # « Ukupno: 27,70 EUR » ; pas la colonne d'un article, « Ukupno 1 kom ».
+    (re.compile(r"\bUKUPNO\b(?!\s*\d+\s*KOM\b)"), 0.85),              # hr
+    # « Sum 3 varer 47,00 » ; pas « šum.voće », abréviation d'un article.
+    (re.compile(r"\bSUM\b(?!\.)"), 0.82),                           # no, da
     (re.compile(r"\bGESAMT(?:BETRAG)?\b"), 0.82),                   # de
     (re.compile(r"\bTOTAL\b|\bTOTALE\b|\bTOTAAL\b"), 0.80),
     (re.compile(r"\bRAZEM\b"), 0.75),                               # pl
@@ -164,20 +175,22 @@ TOTAL_KEYWORDS = [
     # Ticket de péage sans « total » : le prix du passage est le montant.
     (re.compile(r"\bPEDAGGIO\b|\bPEAGE\b|\bPEAJE\b|\bMAUT\b"), 0.80),
     (re.compile(r"\bPAIEMENT\b|\bREGLEMENT\b|\bPAGAMENTO\b|\bPLATNOSC\b"
-                r"|\bKARTENZAHLUNG\b|\bPAYMENT\b"), 0.65),
+                r"|\bKARTENZAHLUNG\b|\bPAYMENT\b|\bKORT\b"), 0.65),
     (re.compile(r"\bCARTE\s*BANCAIRE\b|\bCB\b|\bSANS\s*CONTACT\b|\bKARTA\b"), 0.60),
     (re.compile(r"\bESPECES\b|\bCHEQUE\b|\bCONTANT[EI]\b|\bEFECTIVO\b|\bGOTOWKA\b"
-                r"|\bCASH\b"), 0.55),
+                r"|\bCASH\b|\bKONTANT\b"), 0.55),
 ]
 # Une ligne contenant l'un de ces termes n'est pas retenue comme total.
 # Les mentions de TVA étrangères sont écartées comme « TVA », sauf si le
 # total les indique incluses : « TOTALE IVA INCLUSA », « SUMME INKL. MWST ».
 TOTAL_EXCLUDE_RE = re.compile(
-    r"\bSOUS\s*[- ]?\s*TOTAL\b|\bSUB\s*[- ]?\s*TOTAL\b|\bSUBTOTALE?\b|"
+    r"\bSOUS\s*[- ]?\s*TOTAL\b|\bSUB\s*[- ]?\s*TOTAL\b|\bSUBTOTALE?\b|\bSUBTOTAAL\b|"
     r"\bZWISCHENSUMME\b|\bTOTAL\s*H\.?\s*T\b|\bPRIX\s*H\.?\s*T\b|"
     r"\bMONTANT\s*H\.?\s*T\b|\bTVA\b(?!\s*(?:INCLUSE|INCLUS|COMPRISE|INCL))|\bT\.V\.A\b|"
     r"\bIVA\b(?!\s*INCL)|(?<!INKL\s)(?<!INKL\.\s)\b(?:MWST|UST)\b|"
     r"\bVAT\b(?!\s*INCL)|\bBTW\b(?!\s*INCL)|\bPTU\b|\bOPOD|\bNETTO\b|"
+    # MVA (no), moms (sv, da) : la taxe, sauf « inkl. moms ».
+    r"(?<!INKL\s)(?<!INKL\.\s)\b(?:MVA|MOMS)\b|"
     r"\bIMPONIBILE\b|\bBASE\s*IMPONIBLE\b|\bDI\s*CUI\b|"
     r"\bRENDU\b|\bMONNAIE\b|\bRECU\b|\bREMISE\b|\bECONOMIE\b|\bAVANTAGE\b|"
     # « Points de retrait » (Colissimo) n'est pas une cagnotte de points.
@@ -185,6 +198,11 @@ TOTAL_EXCLUDE_RE = re.compile(
     r"\bACOMPTE\b|"
     r"\bRESTO\b|\bRESZTA\b|\bRUCKGELD\b|\bWECHSELGELD\b|\bGEGEBEN\b|"
     r"\bCAMBIO\b|\bWISSELGELD\b|\bCHANGE\b|\bSCONTO\b|\bRABATT?\b|\bDESCUENTO\b|"
+    r"\bVEKSEL\b|\bVAXEL\b|\bTILBAKE\b|"
+    # En-tête du tableau des articles : « Qté Désignation PU TotalT »,
+    # « Pris Mängd Summa(SEK) », « Description Quantity Price Total ».
+    r"\bMANGD\b|\bANTAL\b|\bARTIKELNUMMER\b|\bDESIGNATION\b|\bQTY\b|"
+    r"\bDESCRIPTION\b|"
     # « Net Total: €7,73 » : en anglais, ce libellé désigne le hors-taxe d'un
     # taux, à la différence du « TOTAL NET » français, souvent le montant à
     # payer.
@@ -348,14 +366,28 @@ def _infer_year(day, month, today):
     return None
 
 
-def _build_date(kind, groups, today):
+def _day_month(first, second, order):
+    """Jour et mois d'une date numérique, selon l'ordre du pays.
+
+    ``order`` vaut ``"dmy"`` (Europe) ou ``"mdy"`` (États-Unis). Une date
+    qui n'est valable que dans l'autre ordre (« 06/26/2026 », « 26/06/2026 »)
+    y est lue quel que soit le pays.
+    """
+    day, month = (second, first) if order == "mdy" else (first, second)
+    if month > 12 >= day:
+        day, month = month, day
+    return day, month
+
+
+def _build_date(kind, groups, today, order="dmy"):
     try:
         if kind == "dmy":
-            day, month, year = int(groups[0]), int(groups[1]), int(groups[2])
+            day, month = _day_month(int(groups[0]), int(groups[1]), order)
+            year = int(groups[2])
         elif kind == "ymd":
             year, month, day = int(groups[0]), int(groups[1]), int(groups[2])
         elif kind == "dmy2":
-            day, month = int(groups[0]), int(groups[1])
+            day, month = _day_month(int(groups[0]), int(groups[1]), order)
             year = 2000 + int(groups[2])
         elif kind == "dmonthy":
             day = int(groups[0])
@@ -376,7 +408,12 @@ def _build_date(kind, groups, today):
             if not month:
                 return None
         elif kind == "dm":
-            return _infer_year(int(groups[0]), int(groups[1]), today)
+            # Sans année, « 08/25 » peut être une date d'expiration de carte
+            # (mois/année) : l'ordre n'est inversé que dans un pays qui écrit
+            # le mois en premier.
+            first, second = int(groups[0]), int(groups[1])
+            day, month = (second, first) if order == "mdy" else (first, second)
+            return _infer_year(day, month, today)
         elif kind == "dmonth":
             month = _month_number(groups[1])
             return _infer_year(int(groups[0]), month, today) if month else None
@@ -387,8 +424,12 @@ def _build_date(kind, groups, today):
         return None
 
 
-def extract_date(lines, today=None, max_age_days=730):
-    """Renvoie la date d'achat, choisie parmi les dates plausibles du ticket."""
+def extract_date(lines, today=None, max_age_days=730, order="dmy"):
+    """Renvoie la date d'achat, choisie parmi les dates plausibles du ticket.
+
+    ``order`` : ordre du jour et du mois des dates numériques, ``"dmy"`` ou
+    ``"mdy"`` (voir ``_day_month``).
+    """
     today = today or date.today()
     oldest = today - timedelta(days=max_age_days)
     newest = today + timedelta(days=1)  # tolérance fuseau horaire
@@ -398,7 +439,7 @@ def extract_date(lines, today=None, max_age_days=730):
         text = normalize(line.text)
         for pattern, kind, weight in DATE_PATTERNS:
             for match in pattern.finditer(text):
-                found = _build_date(kind, match.groups(), today)
+                found = _build_date(kind, match.groups(), today, order)
                 if not found or not (oldest <= found <= newest):
                     continue
                 if kind in INFERRED_YEAR_KINDS and (today - found).days > NO_YEAR_MAX_AGE_DAYS:
@@ -758,6 +799,16 @@ CURRENCIES = [
     (re.compile(r"\bDKK\b"), "DKK"),
     (re.compile(r"\bNOK\b"), "NOK"),
     (re.compile(r"\bUSD\b|\$"), "USD"),
+    # « kr » : couronne norvégienne, suédoise ou danoise, départagées par
+    # ``_krone``.
+    (re.compile(r"\bKR\b|\bKRONER\b|\bKRONOR\b"), "KR"),
+]
+#: Couronnes : le mot de la taxe (MVA en Norvège, moms ailleurs) et ceux du
+#: total distinguent les trois pays.
+KRONE_HINTS = [
+    (re.compile(r"\bMVA\b|\bA\s*BETALE\b|\bVARER\b"), "NOK"),
+    (re.compile(r"\bATT\s*BETALA\b|\bSUMMA\b|\bKVITTO\b|\bVAXEL\b"), "SEK"),
+    (re.compile(r"\bI\s*ALT\b|\bBELOB\b|\bKVITTERING\b"), "DKK"),
 ]
 
 
@@ -808,7 +859,7 @@ TAX_COLUMNS_RE = re.compile(
     r"\bHT\b|\bTTC\b|\bTAUX\b|\bNETTO\b|\bBRUTTO\b|\bIMPONIBILE\b|\bNET\b|\bBRUT\b"
     r"|\bHTVA\b|\bTVAC\b")
 # Un nombre suivi de « % » est un taux (« 10.00% »), non un montant.
-TAX_TABLE_AMOUNT_RE = re.compile(r"(?<![\d,])(\d+)[.,](\d{2,4})(?![\d])(?!\s*%)")
+TAX_TABLE_AMOUNT_RE = re.compile(r"(?<![\d,])(?<!\d[.,])(\d+)[.,](\d{2,4})(?![\d])(?![.,]\d)(?!\s*%)")
 #: Nombre de lignes examinées après l'en-tête du tableau, avant d'abandonner.
 TAX_TABLE_DEPTH = 8
 
@@ -1199,9 +1250,23 @@ def extract_currency(lines, default="EUR"):
         count = max(len(pattern.findall(joined)), len(pattern.findall(raw)))
         if count and (best is None or count > best[0]):
             best = (count, code)
+    if best and best[1] == "KR":
+        code = _krone(joined, default)
+        if code:
+            return ExtractedField(value=code, confidence=0.75)
+        best = None
     if best:
         return ExtractedField(value=best[1], confidence=0.85)
     return ExtractedField(value=default, confidence=0.3)
+
+
+def _krone(text, default):
+    """Couronne du ticket d'après ses mots ; la devise par défaut si elle en est une."""
+    votes = {code: len(pattern.findall(text)) for pattern, code in KRONE_HINTS}
+    code, count = max(votes.items(), key=lambda item: item[1])
+    if count:
+        return code
+    return default if default in ("NOK", "SEK", "DKK") else None
 
 
 def extract_time(lines, date_source=""):
@@ -1412,17 +1477,31 @@ FIELD_LABELS = {
 LOW_CONFIDENCE = 0.65
 
 
-def parse(words, today=None, max_age_days=730, default_currency="EUR", buyers=()):
-    """Analyse une liste de mots situés et renvoie un :class:`ScanResult`."""
+#: Pays qui écrivent le mois avant le jour.
+MONTH_FIRST_COUNTRIES = frozenset({"US"})
+
+
+def parse(words, today=None, max_age_days=730, default_currency="EUR", buyers=(),
+          country=None):
+    """Analyse une liste de mots situés et renvoie un :class:`ScanResult`.
+
+    ``country`` : code du pays de la société. Avec la devise lue, il décide de
+    l'ordre du jour et du mois (un ticket en dollars américains s'écrit
+    « 06/26/2026 »).
+    """
     lines = build_lines(words)
     tax_rate, tax_amount, tax_rate_max = extract_taxes(lines)
-    scan_date = extract_date(lines, today=today, max_age_days=max_age_days)
+    currency = extract_currency(lines, default=default_currency)
+    month_first = (currency.value == "USD" and currency.confidence >= 0.5
+                   or country in MONTH_FIRST_COUNTRIES and currency.value == default_currency)
+    scan_date = extract_date(lines, today=today, max_age_days=max_age_days,
+                             order="mdy" if month_first else "dmy")
     fields = {
         "merchant": extract_merchant(lines, buyers=buyers),
         "date": scan_date,
         "time": extract_time(lines, date_source=scan_date.source),
         "total": extract_total(lines),
-        "currency": extract_currency(lines, default=default_currency),
+        "currency": currency,
         "tax_rate": tax_rate,
         "tax_amount": tax_amount,
         "tax_rate_max": tax_rate_max,

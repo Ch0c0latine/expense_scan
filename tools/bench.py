@@ -190,7 +190,8 @@ def replay(item, meta):
     result = parser.parse(
         words, today=date.fromisoformat(item["today"]),
         max_age_days=item["max_age_days"] or 730,
-        default_currency=item["default_currency"] or "EUR", buyers=item["buyers"])
+        default_currency=item["default_currency"] or "EUR", buyers=item["buyers"],
+        country=item.get("country"))
     lines = [line.text for line in result.lines]
     scores, _reasons, _brand = categorize.score(
         lines, meta["keyword_categories"], meta["family_keys"],

@@ -1345,6 +1345,7 @@ class HrExpense(models.Model):
         parse_kwargs = dict(
             max_age_days=company.expense_scan_max_age_days or 730,
             default_currency=company.currency_id.name or 'EUR',
+            country=company.country_id.code or None,
             buyers=[name for name in (self.employee_id.name, company.name) if name],
         )
         result = parser.parse(words, **parse_kwargs)

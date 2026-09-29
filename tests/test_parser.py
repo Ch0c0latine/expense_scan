@@ -466,3 +466,43 @@ ASF Lieu-dit Les Pins BP 10017
         """Un ticket sans libellé de montant ne permet pas de trancher."""
         result = self.parse("CREDIT AGRICOLE\nCB CONTACT\n45,00 EUR")
         self.assertEqual(parser.reading_direction(result.lines), 0)
+
+    # -- Tickets étrangers --------------------------------------------------
+
+    def test_a_dotted_date_is_not_an_amount(self):
+        """« 20.08.2026 » et « 27.05.25 » : ni 20,08, ni 27,05, ni 5,25."""
+        self.assertEqual(parser.find_amounts("Datum 20.08.2026 12:30"), [])
+        self.assertEqual(parser.find_amounts("Data 27.05.25 18:02"), [])
+        result = self.parse("KONZUM\n20.08.2026 12:30\nZa platiti 13,40 EUR",
+                            today=date(2026, 9, 1))
+        self.assertEqual(result.value('total'), 13.40)
+        self.assertEqual(result.value('date'), date(2026, 8, 20))
+
+    def test_american_dates_on_a_dollar_receipt(self):
+        result = self.parse("CORNER DELI\n08/07/2026 10:20 AM\nTOTAL $28.12",
+                            today=date(2026, 9, 1))
+        self.assertEqual(result.value('date'), date(2026, 8, 7))
+        # Un jour au-delà de 12 : l'ordre ne fait pas de doute, même en euros.
+        result = self.parse("CAFE\n06/26/2026\nTOTAL 4,50 EUR", today=date(2026, 9, 1))
+        self.assertEqual(result.value('date'), date(2026, 6, 26))
+
+    def test_a_card_expiry_is_not_a_date(self):
+        """« 08/25 » sans année : mois et année d'une carte, pas le 25 août."""
+        result = self.parse("CAFE\nCARTE 08/25\nTOTAL 4,50 EUR", today=date(2026, 9, 1))
+        self.assertIsNone(result.value('date'))
+
+    def test_norwegian_kroner(self):
+        result = self.parse("REMA 1000\nOrg.nr 979 443 137 MVA\n3 varer\nTotalt 47,00\nkr 47,00\n"
+                            "Kontant 200,00\nVeksel 153,00", default_currency='EUR')
+        self.assertEqual(result.value('currency'), 'NOK')
+        self.assertEqual(result.value('total'), 47.00)
+
+    def test_swedish_item_header_is_not_the_total(self):
+        result = self.parse("COOP\nBeskrivning Pris Mängd Summa(SEK)\nMjölk 24,55 1 24,55\n"
+                            "Moms % Moms Netto Brutto\nKort 759,81\nBetalat 759,81 kr\nKvitto")
+        self.assertEqual(result.value('total'), 759.81)
+        self.assertEqual(result.value('currency'), 'SEK')
+
+    def test_croatian_item_column_is_not_the_total(self):
+        result = self.parse("PEKARA\nUkupno 1 kom 2,50 2,50\nUkupno: 13,95 EUR")
+        self.assertEqual(result.value('total'), 13.95)
