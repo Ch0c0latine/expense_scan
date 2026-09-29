@@ -1,119 +1,127 @@
-# Journal des changements
+# Changelog
+
+## Unreleased
+
+- **English base, translations**: the module is written in English; the
+  French interface is provided by a translation file, as are the other
+  languages.
+- **Foreign receipts**: US dates on dollar receipts, dotted dates
+  ("20.08.2026"), dates glued to the time, Norwegian, Swedish and Danish
+  kroner told apart, currency deduced from the legal mentions when none is
+  printed (Polish tax number, Swiss company number, US address), total words
+  of more languages, Swiss, American and Norwegian totals.
+- **WebP photos**: read by OpenCV when Pillow was built without WebP support.
+- The labels of the automatic descriptions are computed once per scan
+  instead of once per neighbouring expense.
+- **Benchmark**: international corpus drawn from Open Prices, results per
+  country (`tools/fetch_openprices.py`, `tools/bench.py --open-prices`).
 
 ## 19.0.2.7.1
 
-- **TVA non lue sur les tickets « TVA % Taxe HTVA TVAC »** (colonnes hors
-  TVA et TVA comprise, libellés belges repris par certains logiciels de
-  caisse) : l'en-tête du tableau de TVA n'était pas reconnu. Corrigé.
-- **Description « Meals du 23/09/2026 » recopiée d'une dépense à l'autre** :
-  une analyse lancée sans langue (tâche planifiée) écrivait la description
-  automatique en anglais ; non reconnue comme automatique, elle passait
-  pour la raison d'un déplacement et gagnait les dépenses du même jour
-  (jusqu'à un hôtel). La description est désormais écrite dans la langue
-  du salarié et reconnue dans toutes les langues installées ; une nouvelle
-  analyse remplace celles déjà recopiées.
+- **Tax not read on "TVA % Taxe HTVA TVAC" receipts** (columns without VAT
+  and VAT included, Belgian labels used by some till software): the header
+  of the VAT table was not recognised. Fixed.
+- **Description "Meals du 23/09/2026" copied from one expense to another**: a
+  scan run without a language (scheduled task) wrote the automatic
+  description in English; not recognised as automatic, it passed for the
+  purpose of a trip and spread to the expenses of the same day (a hotel
+  included). The description is now written in the employee's language and
+  recognised in every installed language; a new scan replaces the ones
+  already copied.
 
-## 19.0.2.7.0 — Retouche du justificatif
+## 19.0.2.7.0 — Receipt retouch
 
-- **Retouche** : bouton sous l'aperçu du justificatif (bandeau sur
-  téléphone). Rotation par quart de tour et fine, recadrage aux poignées,
-  bouton « Auto » qui propose la retouche automatique sans l'appliquer,
-  « Réinitialiser » pour revenir à l'image téléversée. La retouche part
-  toujours de la photo d'origine, qui n'est jamais modifiée, et
-  réapplique les réglages précédents. Elle s'applique sans relancer
-  l'analyse ; « Relancer l'analyse » lit ensuite l'image retouchée telle
-  quelle. Un PDF se retouche aussi (première page rendue en image).
-- **PDF de plusieurs pages** : si la première page ne donne pas de total,
-  les suivantes sont lues (jusqu'à 5).
-- **Justificatif joint à une dépense neuve**, avant son enregistrement :
-  « Joindre des fichiers » était grisé. La dépense reçoit une description
-  provisoire et la catégorie par défaut, est enregistrée, puis le
-  justificatif est analysé.
-- **Saisies manuelles conservées** : les champs saisis avant l'envoi du
-  justificatif (date, montant, catégorie, devise, TVA, fournisseur,
-  mission), ou corrigés après une analyse, ne sont plus remplacés par
-  l'analyse ni par une nouvelle analyse. Un écart avec le justificatif est
-  signalé sous le champ (« Le justificatif indique 9,90 € : vérifiez le
-  montant saisi. »).
-- **Second justificatif** : le justificatif principal reste sur la
-  dépense et sert de base à une nouvelle analyse ; un justificatif sans
-  rapport est détaché sur une nouvelle dépense, avec sa propre
-  description et sa propre catégorie. Correction d'une erreur
-  (« Enregistrement inexistant ») à la relance après l'ajout d'un second
-  justificatif.
-- **Justificatif supprimé puis remplacé** : la retouche rouvrait l'ancien
-  justificatif, et l'appliquer écrasait le nouveau ; le nouveau n'était
-  plus recadré automatiquement. La photo d'origine et les réglages de
-  retouche sont désormais supprimés avec le justificatif affiché. La
-  catégorie devinée d'après l'ancien justificatif ne reste plus sur le
-  nouveau.
-- **Aperçu sur téléphone** : l'image retouchée s'affiche (l'ancienne
-  restait en cache) ; un PDF est montré par sa première page et s'ouvre
-  dans la visionneuse PDF. La fiche est rechargée après l'ajout ou la
-  suppression d'un justificatif.
-- **Aperçu sur ordinateur** : un PDF ne dépasse plus en haut du volet.
-- Commentaires et docstrings réécrits dans un style factuel ; deux tests
-  de catégorie qui ne s'exécutaient pas sont remis dans leur classe.
+- **Retouch**: button under the receipt preview (strip on a phone). Quarter
+  and fine rotation, crop with handles, an "Auto" button that suggests the
+  automatic retouch without applying it, "Reset" to go back to the uploaded
+  image. The retouch always starts from the original photo, which is never
+  changed, and applies the previous settings again. It is applied without
+  scanning again; "Scan again" then reads the retouched image as it is. A PDF
+  can be retouched too (first page rendered as an image).
+- **Multi-page PDF**: if the first page gives no total, the next ones are
+  read (up to 5).
+- **Receipt attached to a new expense**, before it is saved: "Attach files"
+  was greyed out. The expense gets a provisional description and the default
+  category, is saved, then the receipt is scanned.
+- **Manual entries kept**: the fields entered before uploading the receipt
+  (date, amount, category, currency, tax, vendor, project), or corrected after
+  a scan, are no longer replaced by the scan or by a new scan. A difference
+  with the receipt is shown under the field ("The receipt says €9.90: check
+  the amount entered.").
+- **Second receipt**: the main receipt stays on the expense and is the base
+  of a new scan; an unrelated receipt is moved to a new expense, with its own
+  description and category. Fixed an error ("Record does not exist") when
+  scanning again after adding a second receipt.
+- **Receipt deleted then replaced**: the retouch opened the old receipt
+  again, and applying it overwrote the new one; the new one was no longer
+  cropped automatically. The original photo and the retouch settings are now
+  deleted with the displayed receipt. The category guessed from the old
+  receipt no longer stays on the new one.
+- **Preview on a phone**: the retouched image is shown (the old one stayed in
+  the cache); a PDF is shown by its first page and opens in the PDF viewer.
+  The form is reloaded after a receipt is added or deleted.
+- **Preview on a computer**: a PDF no longer overflows at the top of the
+  panel.
+- Comments and docstrings rewritten in a factual style; two category tests
+  that did not run are back in their class.
 
 ## 19.0.2.6.4
 
-- **Ticket à plusieurs taux de TVA** : la dépense retenait la taxe par
-  défaut de la catégorie plutôt que celle du ticket. Elle prend désormais
-  le taux le plus élevé effectivement imprimé (le montant de TVA, lui,
-  était déjà juste — c'est la taxe associée qui était en cause).
+- **Receipt with several VAT rates**: the expense kept the category's default
+  tax rather than the receipt's. It now takes the highest rate actually
+  printed (the tax amount was already right — the tax attached to it was
+  not).
 
 ## 19.0.2.6.3
 
-- **TVA lue à côté de la plaque, sur les tickets d'automate** : l'en-tête
-  d'un tableau de taxe se retrouve parfois, à cause de l'OCR, accolé à un
-  total voisin sur la même ligne (« TOTAL EN EUROS : 15,80 HT TVA TTC »).
-  Le module y lisait ce total comme s'il était la TVA elle-même (10 fois
-  le montant réel). Corrigé, sans perdre la lecture des tickets à deux
-  taux dont les lignes citent, elles aussi, HT/TVA/TTC mais entourés de
-  montants.
+- **Tax read wrongly on vending machine receipts**: because of the OCR, the
+  header of a tax table sometimes ends up glued to a nearby total on the same
+  line ("TOTAL EN EUROS : 15,80 HT TVA TTC"). The module read that total as
+  if it were the tax itself (10 times the real amount). Fixed, without losing
+  the reading of two-rate receipts whose lines also cite HT/TVA/TTC between
+  amounts.
 
 ## 19.0.2.6.2
 
-- **Taux de TVA mal reconnu sur les tickets « Code Taux HT Montant TTC »**
-  (caisses de restauration rapide notamment) : l'en-tête du tableau de taxe
-  n'était pas reconnu, faute du mot « TVA » (remplacé par « Montant ») ; le
-  taux retombait alors sur celui, par défaut, de la catégorie — potentiellement
-  différent de celui imprimé sur le ticket. Corrigé.
+- **Tax rate misread on "Code Taux HT Montant TTC" receipts** (fast food
+  tills in particular): the header of the tax table was not recognised, for
+  want of the word "TVA" (replaced by "Montant"); the rate then fell back on
+  the category's default, which may differ from the one printed on the
+  receipt. Fixed.
 
 ## 19.0.2.6.1
 
-- **Conservation du texte lu portée à 10 ans par défaut** (au lieu de 365 jours) :
-  c'est la durée que le Code de commerce impose pour les pièces comptables
-  (art. L123-22), tickets compris. Migration pour les sociétés restées sur
-  l'ancien défaut.
+- **Text read kept for 10 years by default** (instead of 365 days): the
+  retention period French law sets for accounting records (Commercial Code,
+  art. L123-22), receipts included. Migration for the companies still on the
+  former default.
 
-## 19.0.2.6.0 — Fiabilisation
+## 19.0.2.6.0 — Hardening
 
-Aucun changement de fonctionnement visible : ce qui pouvait faire tomber un
-worker ou garder trop longtemps des données personnelles est corrigé.
+No visible change in behaviour: what could bring a worker down or keep
+personal data for too long is fixed.
 
-- **Analyse interrompue** : une analyse « en cours » depuis plus de 15 minutes
-  passe en erreur au lieu d'être relancée à l'infini par la fiche et par la
-  tâche planifiée.
-- **Plafonds d'entrée** : fichier de 25 Mo au plus, image réduite au décodage
-  au-delà de 50 mégapixels (refusée au-delà de 250), PDF rendu à une
-  résolution bornée et avec un délai.
-- **Droits avant verrou** : le démarrage d'une analyse contrôle le droit
-  d'écriture avant de verrouiller la ligne.
-- **Données personnelles** : le texte lu sur un justificatif est effacé des
-  dépenses soumises au bout d'un délai réglable par société (0 = jamais).
-  Le journal de test du corpus n'écrit plus les textes.
-- **Historique des enseignes cloisonné par société.**
-- **Banc d'évaluation** (`tools/bench.py`) : rejeu de l'analyse sur un instantané
-  de textes lus, sans Odoo ; le calcul de catégorie vit désormais dans
-  `ocr/categorize.py`, partagé avec le module.
-- `tools/check_ocr.py` devient `tools/check.py` (syntaxe et imports).
-- Avertissement de vue « lien sans role » supprimé.
+- **Interrupted scan**: a scan "running" for more than 15 minutes goes to
+  error instead of being started again forever by the form and by the
+  scheduled task.
+- **Input limits**: files of 25 MB at most, image scaled down while decoding
+  beyond 50 megapixels (refused beyond 250), PDF rendered at a bounded
+  resolution and with a timeout.
+- **Rights before the lock**: starting a scan checks the write access before
+  locking the row.
+- **Personal data**: the text read on a receipt is erased from submitted
+  expenses after a delay set per company (0 = never). The corpus test log no
+  longer writes the texts.
+- **Merchant history kept per company.**
+- **Benchmark** (`tools/bench.py`): replays the parsing on a snapshot of the
+  texts read, without Odoo; the category computation now lives in
+  `ocr/categorize.py`, shared with the module.
+- `tools/check_ocr.py` becomes `tools/check.py` (syntax and imports).
+- View warning "link without role" removed.
 
 ## 19.0.2.5.x
 
-Analyse en arrière-plan avec progression, indications par champ à la place du
-bandeau, choix appareil photo / galerie / fichiers, menu « Fiches de frais »
-par période, ordre chronologique des dépenses, « Retour brouillon », reprise
-de la raison de déplacement, corrections de lecture (péages, factures en
-ligne, TVA).
+Background scan with progress, hints under the fields instead of the banner,
+camera / gallery / files choice, "Expense Sheets" menu by period,
+chronological order of expenses, "Back to draft", trip purpose carried over,
+reading fixes (tolls, online invoices, VAT).

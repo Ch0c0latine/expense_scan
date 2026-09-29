@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Conservation du texte lu portée à 10 ans (Code de commerce, art. L123-22).
+"""Retention of the text read raised to 10 years (French Commercial Code, art. L123-22).
 
-Ne modifie que les sociétés restées sur l'ancien défaut (365 jours) : une
-valeur choisie manuellement est conservée.
+Only changes the companies still on the former default (365 days): a value
+chosen by hand is kept.
 """
 from odoo import SUPERUSER_ID, api
 

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Détache du module les règles et modèles d'export livrés auparavant.
+"""Detach from the module the rules and export templates it delivered before.
 
-Ils étaient propres à une installation : le module n'en livre plus, hors
-données de démonstration. Les enregistrements déjà créés sont conservés,
-détachés du module pour que sa mise à jour ne les supprime pas.
+They were specific to one installation: the module no longer delivers any,
+apart from demo data. The records already created are kept, detached from
+the module so that its update does not delete them.
 """
 
 

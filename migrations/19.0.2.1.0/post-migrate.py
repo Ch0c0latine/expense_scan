@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Conserve le bandeau de relecture des dépenses déjà signalées.
+"""Keep the review banner of the expenses already flagged.
 
-Le champ ``expense_scan_todo_codes`` est nouveau : sans valeur, une dépense
-« À vérifier » perdrait son bandeau au premier calcul, alors qu'elle n'a pas
-été relue. Il est fixé à ``static`` (jamais résolu automatiquement, comme
-avant ce mécanisme) jusqu'au prochain scan.
+The ``expense_scan_todo_codes`` field is new: without a value, an expense "To
+check" would lose its banner at the first computation, although it has not
+been reviewed. It is set to ``static`` (never resolved automatically, as
+before this mechanism) until the next scan.
 """
 from odoo import SUPERUSER_ID, api
 

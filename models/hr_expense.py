@@ -1029,7 +1029,7 @@ class HrExpense(models.Model):
         else:
             stem = os.path.splitext(original.name or 'ticket')[0]
             retouched = self.env['ir.attachment'].create({
-                'name': "%s (retouché).jpg" % stem,
+                'name': _("%s (retouched).jpg", stem),
                 'raw': raw,
                 'mimetype': 'image/jpeg',
                 'res_model': 'hr.expense',
@@ -2173,7 +2173,7 @@ class HrExpense(models.Model):
 
         stem = os.path.splitext(attachment.name or 'ticket')[0]
         cropped = self.env['ir.attachment'].create({
-            'name': "%s (recadré).jpg" % stem,
+            'name': _("%s (cropped).jpg", stem),
             'raw': result.image_bytes,
             'mimetype': 'image/jpeg',
             'res_model': 'hr.expense',

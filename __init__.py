@@ -5,6 +5,6 @@ from . import models
 
 
 def post_init_hook(env):
-    """Ajoute mots du ticket et icônes aux catégories de dépenses existantes."""
+    """Add receipt words and icons to the existing expense categories."""
     env['product.template']._expense_scan_seed_keywords()
     env['product.template']._expense_scan_seed_icons()

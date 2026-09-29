@@ -3,44 +3,44 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- Exemple : règles client plus strictes que les bonnes pratiques générales. -->
+    <!-- Example: customer rules stricter than the general good practice. -->
     <record id="demo_client" model="res.partner">
-        <field name="name">Industries Exemple SA</field>
+        <field name="name">Example Industries Ltd</field>
         <field name="is_company" eval="True"/>
         <field name="city">Lyon</field>
     </record>
     <record id="demo_client_site" model="res.partner">
-        <field name="name">Site de production</field>
+        <field name="name">Production site</field>
         <field name="parent_id" ref="demo_client"/>
         <field name="type">other</field>
     </record>
     <record id="demo_project" model="project.project">
-        <field name="name">Mission de démonstration</field>
+        <field name="name">Demo project</field>
         <field name="partner_id" ref="demo_client_site"/>
     </record>
     <record id="demo_task_audit" model="project.task">
-        <field name="name">Audit sur site</field>
+        <field name="name">On-site audit</field>
         <field name="project_id" ref="demo_project"/>
         <field name="sequence">1</field>
     </record>
     <record id="demo_task_report" model="project.task">
-        <field name="name">Rapport final</field>
+        <field name="name">Final report</field>
         <field name="project_id" ref="demo_project"/>
         <field name="sequence">2</field>
     </record>
 
     <record id="demo_policy" model="expense.scan.policy"
             context="{'expense_scan_no_recheck': True}">
-        <field name="name">Exemple : exigences d'un client</field>
+        <field name="name">Example: a customer's requirements</field>
         <field name="partner_ids" eval="[(6, 0, [ref('demo_client')])]"/>
-        <field name="note">Règles fictives, fixées par contrat avec le client : elles s'appliquent aux missions de ses sites, en plus des bonnes pratiques de l'entreprise.</field>
+        <field name="note">Made-up rules, set by contract with the customer: they apply to the projects of its sites, on top of the company's good practice.</field>
     </record>
 
     <record id="demo_policy_travel_class" model="expense.scan.policy.rule"
             context="{'expense_scan_no_recheck': True}">
         <field name="policy_id" ref="demo_policy"/>
         <field name="sequence">1</field>
-        <field name="name">Train en 2de classe, avion en classe économique, sans exception</field>
+        <field name="name">Train in 2nd class, plane in economy class, no exception</field>
         <field name="family">train_air</field>
         <field name="rule_type">forbidden_words</field>
         <field name="words">1ère classe
@@ -53,7 +53,7 @@ premium economy</field>
             context="{'expense_scan_no_recheck': True}">
         <field name="policy_id" ref="demo_policy"/>
         <field name="sequence">2</field>
-        <field name="name">Petit-déjeuner : 15 € au plus</field>
+        <field name="name">Breakfast: 15 at most</field>
         <field name="family">meal</field>
         <field name="meal_period">breakfast</field>
         <field name="amount">15</field>
@@ -62,7 +62,7 @@ premium economy</field>
             context="{'expense_scan_no_recheck': True}">
         <field name="policy_id" ref="demo_policy"/>
         <field name="sequence">3</field>
-        <field name="name">Déjeuner : 25 € au plus</field>
+        <field name="name">Lunch: 25 at most</field>
         <field name="family">meal</field>
         <field name="meal_period">lunch</field>
         <field name="amount">25</field>
@@ -71,7 +71,7 @@ premium economy</field>
             context="{'expense_scan_no_recheck': True}">
         <field name="policy_id" ref="demo_policy"/>
         <field name="sequence">4</field>
-        <field name="name">Dîner : 35 € au plus</field>
+        <field name="name">Dinner: 35 at most</field>
         <field name="family">meal</field>
         <field name="meal_period">dinner</field>
         <field name="amount">35</field>
@@ -80,7 +80,7 @@ premium economy</field>
             context="{'expense_scan_no_recheck': True}">
         <field name="policy_id" ref="demo_policy"/>
         <field name="sequence">5</field>
-        <field name="name">Repas du jour : 55 € au total (un repas plus cher reste admis dans cette limite)</field>
+        <field name="name">Meals of the day: 55 in total (a more expensive meal is accepted within this limit)</field>
         <field name="family">meal</field>
         <field name="rule_type">daily_max</field>
         <field name="meal_period">day</field>
@@ -90,7 +90,7 @@ premium economy</field>
             context="{'expense_scan_no_recheck': True}">
         <field name="policy_id" ref="demo_policy"/>
         <field name="sequence">6</field>
-        <field name="name">Hôtel : 110 € la nuit, 140 € dans les grandes villes</field>
+        <field name="name">Hotel: 110 a night, 140 in large cities</field>
         <field name="family">lodging</field>
         <field name="amount">110</field>
         <field name="per_night" eval="True"/>

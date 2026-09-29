@@ -2,37 +2,39 @@
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 {
-    'name': "Scan de tickets de caisse",
+    'name': "Expense Scan: Receipt OCR",
     'version': '19.0.2.7.1',
-    'summary': "Saisir une dépense en photographiant un ticket : recadrage et "
-               "redressage automatiques, pré-remplissage des champs par OCR "
-               "local, vérification en vue scindée.",
+    'summary': "Create expenses by photographing receipts: automatic crop and "
+               "straightening, fields filled in by a local OCR, side by side "
+               "review. No IAP credits, no API key.",
     'description': """
-Scan de tickets de caisse
+Expense Scan: Receipt OCR
 =========================
 
-Photographier un ticket depuis son téléphone et obtenir une note de frais
-pré-remplie, vérifiable côte à côte avec l'image du ticket.
+Photograph a receipt with your phone and get a filled-in expense, reviewed
+side by side with the image of the receipt.
 
-* Un seul bouton (« Scan » sur mobile, « Upload » sur ordinateur) ouvre
-  directement l'appareil photo ou la photothèque.
-* Le ticket est détecté dans la photo, découpé et redressé (correction de
-  perspective + désinclinaison) avant lecture.
-* Les champs Marchand, Date, Total, Devise et TVA sont extraits et écrits
-  dans la dépense ; chaque champ douteux est signalé pour relecture.
-* La vue de vérification affiche le ticket à gauche et les champs à droite
-  (bandeau image en haut sur téléphone), pour corriger avant validation.
+* One button ("Scan" on a phone, "Upload" on a computer) opens the camera or
+  the photo library directly.
+* The receipt is detected in the photo, cut out and straightened
+  (perspective correction and deskewing) before it is read.
+* Merchant, date, total, currency and tax are extracted and written on the
+  expense; each doubtful field is flagged for review.
+* The review screen shows the receipt next to the fields (an image strip at
+  the top on a phone), to correct them before submitting.
+* Category recognition, multi-piece receipts, manual retouch, projects and
+  re-invoicing, expense sheets (PDF and Excel), expense rules, team entry.
 
-Le moteur OCR tourne **en local**, sans compte IAP, sans clé d'API, sans
-jeton payant et sans accès réseau au moment du scan :
+The OCR engine runs **on your server**, without an IAP account, API key or
+paid token, and without network access at scan time:
 
-* RapidOCR / PP-OCR (réseaux de neurones exécutés par ONNX Runtime) — défaut
-* Tesseract — repli
+* RapidOCR / PP-OCR (neural networks run by ONNX Runtime), the default
+* Tesseract, as a fallback
 
-Aucun document ne quitte le serveur.
+No document leaves the server.
 
-Module libre (LGPL-3). S'il vous rend service, vous pouvez offrir un café
-à son auteur : https://github.com/sponsors/Ch0c0latine
+Free module (LGPL-3). If it helps you, you can buy its author a coffee:
+https://github.com/sponsors/Ch0c0latine
 """,
     'author': "Yves Vallée",
     'website': "https://github.com/Ch0c0latine/expense_scan",

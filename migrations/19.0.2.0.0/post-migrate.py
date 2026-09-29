@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-"""Exemples livrés : classeur du modèle de base, contrôle des règles.
+"""Delivered examples: workbook of the basic template, rule check.
 
-À l'installation, le fichier de données s'en charge ; à la mise à jour, ses
-appels ne sont pas rejoués, d'où ce script.
+At installation, the data file takes care of it; on update, its calls are not
+replayed, hence this script.
 """
 from odoo import SUPERUSER_ID, api
 
