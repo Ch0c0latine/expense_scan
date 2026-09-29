@@ -64,6 +64,17 @@ patch(Chatter.prototype, {
         return super.onClickAttachFile(...arguments);
     },
 
+    // Supprimer le justificatif affiché supprime aussi sa photo d'origine
+    // (voir models/ir_attachment.py) : la fiche est rechargée pour ne plus
+    // afficher de lien vers une pièce disparue.
+    async unlinkAttachment(attachment) {
+        await super.unlinkAttachment(...arguments);
+        if (this.props.record?.resModel === "hr.expense"
+                && !this.props.hasParentReloadOnAttachmentsChanged) {
+            await this.reloadParentView();
+        }
+    },
+
     onUploaded(data, { thread } = {}) {
         return async (...args) => {
             // Le bouton d'envoi est rendu avec le fil de la fiche neuve, sans
