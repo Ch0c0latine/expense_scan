@@ -152,7 +152,10 @@ TOTAL_KEYWORDS = [
     # nombreux automates. Il équivaut à un « TOTAL TTC ».
     (re.compile(r"\bPRIX\s*T\.?\s*T\.?\s*C\b"), 0.92),
     (re.compile(r"\bMONTANT\s*(?:DU|A\s*PAYER)\b"), 0.90),
-    (re.compile(r"\b(?:AMOUNT|BALANCE)\s*DUE\b|\bGRAND\s*TOTAL\b"), 0.90),  # en
+    (re.compile(r"\b(?:AMOUNT|BALANCE)\s*DUE\b|\bGRAND\s*TOTAL\b|\bBALANCE\s*TO\s*PAY\b"), 0.90),  # en
+    # « Sum 3 varer 22,00 » : le montant payé, arrondi ; « Sum » seul finit
+    # aussi le tableau de la TVA.
+    (re.compile(r"\bSUM\s*\d+\s*VARER\b"), 0.88),                    # no
     (re.compile(r"\bTE\s*BETALEN\b"), 0.90),                        # nl
     (re.compile(r"\bA\s*BETALE\b|\bATT\s*BETALA\b"), 0.90),          # no, sv
     (re.compile(r"\bZA\s*PLATITI\b"), 0.90),                        # hr
@@ -162,7 +165,7 @@ TOTAL_KEYWORDS = [
     # Tickets qui affichent le montant versé : « Sie haben 18.00 CHF bezahlt »,
     # « Amount paid ».
     (re.compile(r"\bBEZAHLT\b|\bAMOUNT\s*PAID\b|\bBETALT\b|\bBETALAT\b"), 0.86),
-    (re.compile(r"\bSUMA\b|\bSUMME\b"), 0.85),                      # pl, de
+    (re.compile(r"\bSUMA\b|\bSUMME\b|\bSOMME\b"), 0.85),             # pl, de, fr (ch)
     (re.compile(r"\bTOTALT\b|\bSUMMA\b|\bI\s*ALT\b"), 0.85),          # no, sv, da
     # « Ukupno: 27,70 EUR » ; pas la colonne d'un article, « Ukupno 1 kom ».
     (re.compile(r"\bUKUPNO\b(?!\s*\d+\s*KOM\b)"), 0.85),              # hr
@@ -202,7 +205,9 @@ TOTAL_EXCLUDE_RE = re.compile(
     # En-tête du tableau des articles : « Qté Désignation PU TotalT »,
     # « Pris Mängd Summa(SEK) », « Description Quantity Price Total ».
     r"\bMANGD\b|\bANTAL\b|\bARTIKELNUMMER\b|\bDESIGNATION\b|\bQTY\b|"
-    r"\bDESCRIPTION\b|"
+    r"\bDESCRIPTION\b|\bQUANT\b|\bMENGE\b|\bARTIKELBEZEICHNUNG\b|"
+    # « Total Bottle Deposit $0.20 », « Total Savings » : consigne et remise.
+    r"\bDEPOSIT\b|\bSAVINGS?\b|"
     # « Net Total: €7,73 » : en anglais, ce libellé désigne le hors-taxe d'un
     # taux, à la différence du « TOTAL NET » français, souvent le montant à
     # payer.
@@ -238,14 +243,28 @@ def _is_rate_line(line):
     return bool(TVA_LINE_RE.search(text) and RATE_RE.search(text))
 
 
-def extract_total(lines):
-    """Renvoie le montant total payé et son indice de confiance."""
+def _other_currency(text, currency):
+    """Vrai si la ligne cite une devise, et aucune n'est celle du ticket."""
+    if not currency:
+        return False
+    cited = {code for pattern, code in CURRENCIES if pattern.search(text)}
+    return bool(cited) and currency not in cited
+
+
+def extract_total(lines, currency=None):
+    """Renvoie le montant total payé et son indice de confiance.
+
+    ``currency`` : devise du ticket. Une ligne de total dans une autre devise
+    (« Total en EUR 22.50 » sur un ticket suisse) passe après les autres.
+    """
     best = None
     for index, line in enumerate(lines):
         text = normalize(line.text)
         if TOTAL_EXCLUDE_RE.search(text):
             continue
+        shift = 0.2 if _other_currency(text, currency) else 0.0
         for pattern, weight in TOTAL_KEYWORDS:
+            weight -= shift
             if not pattern.search(text):
                 continue
             amounts = find_amounts(line.text)
@@ -1529,7 +1548,7 @@ def parse(words, today=None, max_age_days=730, default_currency="EUR", buyers=()
         "merchant": extract_merchant(lines, buyers=buyers),
         "date": scan_date,
         "time": extract_time(lines, date_source=scan_date.source),
-        "total": extract_total(lines),
+        "total": extract_total(lines, currency=currency.value),
         "currency": currency,
         "tax_rate": tax_rate,
         "tax_amount": tax_amount,

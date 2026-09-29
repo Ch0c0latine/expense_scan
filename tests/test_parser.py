@@ -533,3 +533,21 @@ ASF Lieu-dit Les Pins BP 10017
         # Une plateforme de réservation britannique facture en euros.
         result = self.parse("BOOKING.COM\nVAT ID: GB855349007\nTOTAL 123,86", default_currency='EUR')
         self.assertEqual(result.value('currency'), 'EUR')
+
+    def test_swiss_receipt_total(self):
+        """« Article Quant Prix Action Total » est l'en-tête des articles ;
+        « Total en EUR » une conversion : le total est « SOMME CHF »."""
+        result = self.parse("MIGROS\nArticle Quant Prix Action Total\nPain 1 1.95 1.95\n"
+                            "SOMME CHF 30.60\nTotal en EUR 32.80\nVisa Debit 30.60")
+        self.assertEqual(result.value('currency'), 'CHF')
+        self.assertEqual(result.value('total'), 30.60)
+
+    def test_bottle_deposit_is_not_the_total(self):
+        result = self.parse("TRADER JOE'S\nTotal Bottle Deposit $0.20\nTotal Savings: -$2.10\n"
+                            "Balance to pay $53.37\nVISA $53.37")
+        self.assertEqual(result.value('total'), 53.37)
+
+    def test_norwegian_sum_of_items_beats_the_vat_table(self):
+        result = self.parse("KIWI\nOrg.nr 979 443 137 MVA\nSum 3 varer 22,00\n"
+                            "Mva% Grunnlag Mva Sum\nSum 17,83 4,47 22,30")
+        self.assertEqual(result.value('total'), 22.00)
