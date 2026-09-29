@@ -408,3 +408,15 @@ class TestReceiptOnNewExpense(common.TransactionCase):
         self.assertEqual([code for _text, code, _hint in items], ['total'])
         self.assertIn("9,90", items[0][2])
         self.assertFalse(expense._expense_scan_kept_differences(receipt, set()))
+
+    def test_a_new_analysis_keeps_typed_and_corrected_fields(self):
+        expense = self.env['hr.expense'].create({
+            'name': "Neuve", 'employee_id': self.env['hr.employee'].create({'name': "Nina"}).id,
+            'total_amount_currency': 42.0, 'date': '2026-09-15',
+            'expense_scan_manual_fields': 'total_amount_currency'})
+        read = {name: expense._expense_scan_comparable(name)
+                for name in expense.READ_VALUE_FIELDS}
+        read['date'] = '2026-09-20'
+        expense.expense_scan_read_values = json.dumps(read)
+        # Montant saisi avant la première analyse, date corrigée depuis.
+        self.assertEqual(expense._expense_scan_kept_fields(), {'total_amount_currency', 'date'})

@@ -97,6 +97,9 @@ class HrExpense(models.Model):
     expense_scan_hints = fields.Text(readonly=True, copy=False)
     #: Valeurs posées par l'analyse, en JSON, pour reconnaître une correction.
     expense_scan_read_values = fields.Text(readonly=True, copy=False)
+    # Champs saisis à la main avant l'analyse (liste séparée par des
+    # virgules) : une nouvelle analyse ne les remplace pas non plus.
+    expense_scan_manual_fields = fields.Char(readonly=True, copy=False)
     expense_scan_hint_date = fields.Char(compute='_compute_expense_scan_field_hints')
     expense_scan_hint_total = fields.Char(compute='_compute_expense_scan_field_hints')
     expense_scan_hint_tax = fields.Char(compute='_compute_expense_scan_field_hints')
@@ -1039,8 +1042,16 @@ class HrExpense(models.Model):
         return True
 
     def _expense_scan_kept_fields(self):
-        """Champs saisis à la main avant l'analyse, que l'analyse ne remplit pas."""
-        return set(self.env.context.get('expense_scan_keep_fields') or ())
+        """Champs saisis ou corrigés à la main, que l'analyse ne remplit pas.
+
+        Ceux saisis sur la fiche neuve avant l'envoi du justificatif, et,
+        lors d'une nouvelle analyse, ceux saisis ainsi la première fois ou
+        corrigés depuis l'analyse précédente.
+        """
+        keep = set(self.env.context.get('expense_scan_keep_fields') or ())
+        keep |= set(filter(None, (self.expense_scan_manual_fields or '').split(',')))
+        keep |= {name for name in self.READ_VALUE_FIELDS if self._expense_scan_changed(name)}
+        return keep & set(self.KEEPABLE_FIELDS + self.REINVOICE_FIELDS)
 
     def action_expense_scan_rescan(self):
         """Relance l'analyse sur le ou les justificatifs courants.
@@ -1667,6 +1678,7 @@ class HrExpense(models.Model):
         # Valeurs posées par l'analyse, pour reconnaître ensuite une correction.
         after['expense_scan_read_values'] = json.dumps({
             name: self._expense_scan_comparable(name) for name in self.READ_VALUE_FIELDS})
+        after['expense_scan_manual_fields'] = ','.join(sorted(keep)) or False
         self.write(after)
         if result.timer:
             result.timer.lap('écriture')
