@@ -14,8 +14,21 @@ import { Chatter } from "@mail/chatter/web_portal/chatter";
 // Chargé avant ce correctif : il redéfinit onClickAttachFile et onUploaded
 // sans appeler la version précédente.
 import "@mail/chatter/web/chatter_patch";
+import { Thread } from "@mail/core/common/thread_model";
 import { patch } from "@web/core/utils/patch";
 import { useService } from "@web/core/utils/hooks";
+
+patch(Thread.prototype, {
+    // Les droits d'une fiche pas encore enregistrée ne sont pas connus :
+    // Odoo grise « Joindre des fichiers ». Qui crée la dépense peut y joindre
+    // son justificatif.
+    get canPostMessage() {
+        if (this.model === "hr.expense" && !this.id) {
+            return true;
+        }
+        return super.canPostMessage;
+    },
+});
 
 patch(Chatter.prototype, {
     setup() {
@@ -45,10 +58,14 @@ patch(Chatter.prototype, {
     },
 
     onUploaded(data, { thread } = {}) {
-        const handler = super.onUploaded(data, { thread });
         return async (...args) => {
+            // Le bouton d'envoi est rendu avec le fil de la fiche neuve, sans
+            // identifiant ; la fiche vient d'être enregistrée, le fichier va
+            // au fil de la dépense créée.
+            const current = this.state.thread;
+            const target = !thread?.id && current?.id ? current : thread;
             const analyze = this.expenseScanAnalyze;
-            await handler(...args);
+            await super.onUploaded(data, { thread: target })(...args);
             const record = this.props.record;
             if (!analyze || record?.resModel !== "hr.expense" || !record.resId) {
                 return;
