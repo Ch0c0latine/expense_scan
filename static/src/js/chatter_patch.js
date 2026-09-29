@@ -11,6 +11,9 @@
  * justificatif est analysé comme un ticket scanné.
  */
 import { Chatter } from "@mail/chatter/web_portal/chatter";
+// Chargé avant ce correctif : il redéfinit onClickAttachFile et onUploaded
+// sans appeler la version précédente.
+import "@mail/chatter/web/chatter_patch";
 import { patch } from "@web/core/utils/patch";
 import { useService } from "@web/core/utils/hooks";
 
