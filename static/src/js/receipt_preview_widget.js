@@ -30,7 +30,6 @@ export class ExpenseScanReceipt extends Component {
 
     setup() {
         this.ui = useService("ui");
-        this.dialog = useService("dialog");
         this.orm = useService("orm");
         this.fileViewer = useFileViewer();
         this.state = useState({ size: this.ui.size, expanded: false, pdfUrl: null });
@@ -123,7 +122,7 @@ export class ExpenseScanReceipt extends Component {
     }
 
     onRetouch() {
-        openRetouchDialog({ dialog: this.dialog, orm: this.orm }, this.props.record);
+        openRetouchDialog(this.env, this.props.record);
     }
 
     /** Ouvre la visionneuse d'Odoo (zoom, rotation, plein écran). */

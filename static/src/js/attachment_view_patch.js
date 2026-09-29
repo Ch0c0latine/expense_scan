@@ -12,7 +12,6 @@
  */
 import { AttachmentView } from "@mail/core/common/attachment_view";
 import { patch } from "@web/core/utils/patch";
-import { useService } from "@web/core/utils/hooks";
 import { useEffect } from "@odoo/owl";
 
 import { hasReceipt, openRetouchDialog } from "@expense_scan/js/retouch_dialog";
@@ -55,8 +54,6 @@ function hideExpenseScanPdfTools(rootElement) {
 patch(AttachmentView.prototype, {
     setup() {
         super.setup();
-        this.expenseScanDialog = useService("dialog");
-        this.expenseScanOrm = useService("orm");
         if (this.props.threadModel !== "hr.expense") {
             return;
         }
@@ -85,7 +82,6 @@ patch(AttachmentView.prototype, {
     },
 
     onExpenseScanRetouch() {
-        openRetouchDialog(
-            { dialog: this.expenseScanDialog, orm: this.expenseScanOrm }, this.expenseScanRecord);
+        openRetouchDialog(this.env, this.expenseScanRecord);
     },
 });

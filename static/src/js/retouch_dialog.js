@@ -40,16 +40,22 @@ function normalizeQuarter(quarter) {
 
 /** Vrai si la dépense a un justificatif (image ou PDF) à retoucher. */
 export function hasReceipt(record) {
-    return Boolean(record.data.message_main_attachment_id);
+    return Boolean(record.resId && record.data.message_main_attachment_id);
 }
 
 /**
  * Ouvre la retouche ; à la validation, remplace l'image affichée.
  *
- * @param {{dialog: Object, orm: Object}} services
+ * Les services sont pris dans ``env.services`` et non par ``useService`` :
+ * l'enregistrement qui précède la retouche peut recréer le composant qui a
+ * ouvert la fenêtre (volet d'aperçu d'un PDF), et un appel passé par un
+ * composant détruit échoue (« Component is destroyed »).
+ *
+ * @param {Object} env environnement du composant qui ouvre la retouche
  * @param {Object} record enregistrement de la dépense dans le formulaire
  */
-export function openRetouchDialog({ dialog, orm }, record) {
+export function openRetouchDialog(env, record) {
+    const { dialog, orm } = env.services;
     dialog.add(RetouchDialog, {
         resId: record.resId,
         apply: async (base64, params) => {
