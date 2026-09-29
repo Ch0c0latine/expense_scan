@@ -83,8 +83,10 @@ patch(Chatter.prototype, {
             const current = this.state.thread;
             const target = !thread?.id && current?.id ? current : thread;
             const analyze = this.expenseScanAnalyze;
+            console.info("EXPENSE_SCAN_DEBUG avant", { analyze, target: target?.id });
             await super.onUploaded(data, { thread: target })(...args);
             const record = this.props.record;
+            console.info("EXPENSE_SCAN_DEBUG après", { analyze, resModel: record?.resModel, resId: record?.resId, flag: this.expenseScanAnalyze });
             if (record?.resModel !== "hr.expense" || !record.resId) {
                 return;
             }
