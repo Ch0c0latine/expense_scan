@@ -802,9 +802,11 @@ TAX_TABLE_ROW_RE = re.compile(
 TAX_TABLE_BARE_ROW_RE = re.compile(r"^\s*(?:(?:[A-D]|\d)\s+)?(\d{1,2}[.,]\d{1,2})\s+\d")
 #: Colonnes d'un tableau de TVA, dans un ordre quelconque :
 #: « TVA Taux MONT.TTC MONT.TVA TOTAL HT », « TVA% TVA Net Brut » (taux, taxe,
-#: net, brut).
+#: net, brut), « TVA % Taxe HTVA TVAC » (hors TVA, TVA comprise : libellés
+#: belges, repris par certains logiciels de caisse français).
 TAX_COLUMNS_RE = re.compile(
-    r"\bHT\b|\bTTC\b|\bTAUX\b|\bNETTO\b|\bBRUTTO\b|\bIMPONIBILE\b|\bNET\b|\bBRUT\b")
+    r"\bHT\b|\bTTC\b|\bTAUX\b|\bNETTO\b|\bBRUTTO\b|\bIMPONIBILE\b|\bNET\b|\bBRUT\b"
+    r"|\bHTVA\b|\bTVAC\b")
 # Un nombre suivi de « % » est un taux (« 10.00% »), non un montant.
 TAX_TABLE_AMOUNT_RE = re.compile(r"(?<![\d,])(\d+)[.,](\d{2,4})(?![\d])(?!\s*%)")
 #: Nombre de lignes examinées après l'en-tête du tableau, avant d'abandonner.

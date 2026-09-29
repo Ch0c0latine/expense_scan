@@ -351,6 +351,22 @@ A 10,00 18,00 1,80 19,80
         self.assertEqual(result.value('tax_rate_max'), 10.0)
         self.assertEqual(result.value('tax_amount'), 1.80)
 
+    def test_vat_table_with_htva_and_tvac_columns(self):
+        """« TVA % Taxe HTVA TVAC » : hors TVA et TVA comprise, libellés belges."""
+        result = self.parse("""
+PIZZERIA ZORGLUB
+23/09/2026 16:54:23
+1 3 fromages 14,00 14,00 B
+Total: 14,00 EUR
+CB 14,00 EUR
+TVA % Taxe HTVA TVAC
+B 10,00 1,27 12,73 14,00
+Total 1,27 12,73 14,00
+""")
+        self.assertEqual(result.value('total'), 14.00)
+        self.assertEqual(result.value('tax_rate'), 10.0)
+        self.assertEqual(result.value('tax_amount'), 1.27)
+
     def test_vat_table_header_merged_with_an_unrelated_total(self):
         """En-tête de tableau accolée par l'OCR à un total sans rapport.
 

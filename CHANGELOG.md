@@ -1,5 +1,11 @@
 # Journal des changements
 
+## 19.0.2.7.1
+
+- **TVA non lue sur les tickets « TVA % Taxe HTVA TVAC »** (colonnes hors
+  TVA et TVA comprise, libellés belges repris par certains logiciels de
+  caisse) : l'en-tête du tableau de TVA n'était pas reconnu. Corrigé.
+
 ## 19.0.2.7.0 — Retouche du justificatif
 
 - **Retouche** : bouton sous l'aperçu du justificatif (bandeau sur
