@@ -51,12 +51,12 @@ class ResConfigSettings(models.TransientModel):
     def _compute_expense_scan_status(self):
         """Readable diagnosis: what is installed, what is missing."""
         ok, message = preprocess.dependencies_status()
-        lines = ["Image processing: %s" % ("OK - " + message if ok else message)]
+        lines = [_("Image processing: %s", "OK - " + message if ok else message)]
         for status in engines.engines_status():
             lines.append("%s: %s" % (
                 status['label'],
-                "available (%s)" % status['message'] if status['available']
-                else "unavailable - %s" % status['message'],
+                _("available (%s)", status['message']) if status['available']
+                else _("unavailable - %s", status['message']),
             ))
         text = "\n".join(lines)
         for record in self:

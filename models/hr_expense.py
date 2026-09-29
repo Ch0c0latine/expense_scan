@@ -484,14 +484,14 @@ class HrExpense(models.Model):
                 continue
             if expense.currency_id.compare_amounts(expense.scan_tax_amount, ceiling) > 0:
                 raise ValidationError(_(
-                    "Impossible receipt tax: %(saisi).2f is above the maximum of "
-                    "%(plafond).2f, which is the rate of %(taux).2f %% applied "
+                    "Impossible receipt tax: %(entered).2f is above the maximum of "
+                    "%(ceiling).2f, which is the rate of %(rate).2f %% applied "
                     "to the whole %(total).2f of the receipt.\n\n"
                     "Choose an expense category whose rate covers this tax, or "
                     "empty the \"Receipt tax\" field if this expense gives no "
                     "right to deduction.",
-                    saisi=expense.scan_tax_amount, plafond=ceiling,
-                    taux=expense._expense_scan_max_rate(),
+                    entered=expense.scan_tax_amount, ceiling=ceiling,
+                    rate=expense._expense_scan_max_rate(),
                     total=expense.total_amount_currency))
 
     def _prepare_receipts_vals(self):
@@ -531,11 +531,11 @@ class HrExpense(models.Model):
             # cannot go into the entry, and posting without it would lose it
             # without warning.
             raise UserError(_(
-                "Expense \"%(nom)s\" carries a receipt tax of %(montant).2f, "
+                "Expense \"%(name)s\" carries a receipt tax of %(amount).2f, "
                 "but no tax with a usable rate. Select the matching tax on the "
                 "expense (or on its category, for the next ones), or empty "
                 "the \"Receipt tax\" field.",
-                nom=self.name, montant=self.scan_tax_amount))
+                name=self.name, amount=self.scan_tax_amount))
 
         line_vals = command[2]
         currency = self.company_currency_id
@@ -569,11 +569,11 @@ class HrExpense(models.Model):
         """
         if self.scan_tax_amount:
             raise UserError(_(
-                "The receipt tax (%(montant).2f) cannot yet be carried on an "
+                "The receipt tax (%(amount).2f) cannot yet be carried on an "
                 "expense paid by the company. Set the expense back to "
                 "\"Employee (to reimburse)\", or empty the \"Receipt tax\" field "
                 "to let Odoo compute it from the rate.",
-                montant=self.scan_tax_amount))
+                amount=self.scan_tax_amount))
         return super()._prepare_payments_vals()
 
     # ------------------------------------------------------------------
@@ -1641,7 +1641,8 @@ class HrExpense(models.Model):
                  _("Date not found on the receipt: enter it.")),
                 ('total', _("Amount hard to read on the receipt: check it."),
                  _("Amount not found on the receipt: enter it."))):
-            for label in parser.fields_to_check(result, names=(name,)):
+            if parser.fields_to_check(result, names=(name,)):
+                label = _("Date") if name == 'date' else _("Total")
                 items.append((label, name, missing if result.value(name) is None else found))
         if not values.get('expense_scan_guessed_product_id') \
                 and self._expense_scan_category_is_free(company):

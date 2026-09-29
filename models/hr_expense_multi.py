@@ -170,7 +170,7 @@ class HrExpense(models.Model):
         if not pieces:
             self.write({
                 'scan_state': 'error',
-                'scan_message': self.scan_message or "No readable receipt.",
+                'scan_message': self.scan_message or _("No readable receipt."),
             })
             return None
 
