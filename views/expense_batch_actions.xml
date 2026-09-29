@@ -3,9 +3,9 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- Menu « Actions » de la liste des dépenses. -->
+    <!-- "Actions" menu of the expense list. -->
     <record id="action_expense_scan_reset_batch" model="ir.actions.server">
-        <field name="name">Retour brouillon</field>
+        <field name="name">Back to draft</field>
         <field name="model_id" ref="hr_expense.model_hr_expense"/>
         <field name="binding_model_id" ref="hr_expense.model_hr_expense"/>
         <field name="binding_view_types">list</field>

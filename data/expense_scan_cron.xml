@@ -3,9 +3,9 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- Reprendre les analyses en attente si l'application s'est arrêtée. -->
+    <!-- Pick up the pending scans if the app stopped. -->
     <record id="ir_cron_expense_scan_pending" model="ir.cron">
-        <field name="name">Scan de tickets : reprendre les analyses en attente</field>
+        <field name="name">Receipt scan: pick up pending scans</field>
         <field name="model_id" ref="hr_expense.model_hr_expense"/>
         <field name="state">code</field>
         <field name="code">model._cron_expense_scan_pending()</field>
@@ -14,9 +14,9 @@
         <field name="active" eval="True"/>
     </record>
 
-    <!-- Purger le texte lu (donnée personnelle) selon délai configuré. -->
+    <!-- Erase the text read (personal data) after the configured delay. -->
     <record id="ir_cron_expense_scan_purge_texts" model="ir.cron">
-        <field name="name">Scan de tickets : effacer le texte lu des anciennes dépenses</field>
+        <field name="name">Receipt scan: erase the text read on old expenses</field>
         <field name="model_id" ref="hr_expense.model_hr_expense"/>
         <field name="state">code</field>
         <field name="code">model._cron_expense_scan_purge_texts()</field>

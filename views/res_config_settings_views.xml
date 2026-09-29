@@ -11,9 +11,9 @@
         <field name="arch" type="xml">
             <xpath expr="//block[@name='expenses_setting_container']" position="inside">
 
-                <setting id="expense_scan_setting" string="Scan des tickets de caisse"
+                <setting id="expense_scan_setting" string="Receipt scanning"
                          company_dependent="1"
-                         help="Lire les tickets photographiés en local, sans crédit ni abonnement">
+                         help="Read photographed receipts on your own server, without credits or subscription">
                     <field name="expense_scan_enabled"/>
                     <div class="content-group" invisible="not expense_scan_enabled">
                         <div class="row mt16">
@@ -39,11 +39,11 @@
                         <div class="row" invisible="expense_scan_engine == 'tesseract'">
                             <label for="expense_scan_model_dir" class="col-lg-4 o_light_label"/>
                             <field name="expense_scan_model_dir"
-                                   placeholder="par défaut : répertoire de données d'Odoo"/>
+                                   placeholder="default: Odoo's data directory"/>
                         </div>
                         <div class="mt8">
                             <button name="action_expense_scan_self_test" type="object"
-                                    string="Tester et précharger le moteur"
+                                    string="Test and preload the engine"
                                     class="btn btn-link ps-0" icon="fa-play-circle"/>
                         </div>
                         <field name="expense_scan_status" widget="text" readonly="1"
@@ -51,10 +51,10 @@
                     </div>
                 </setting>
 
-                <setting id="expense_scan_image_setting" string="Traitement de la photo"
+                <setting id="expense_scan_image_setting" string="Photo processing"
                          company_dependent="1"
                          invisible="not expense_scan_enabled"
-                         help="Détourer et redresser le ticket avant lecture">
+                         help="Cut out and straighten the receipt before reading it">
                     <div class="content-group">
                         <div><field name="expense_scan_autocrop"/>
                             <label for="expense_scan_autocrop"/></div>
@@ -69,10 +69,10 @@
                     </div>
                 </setting>
 
-                <setting id="expense_scan_accounting_setting" string="Report comptable"
+                <setting id="expense_scan_accounting_setting" string="Accounting fields"
                          company_dependent="1"
                          invisible="not expense_scan_enabled"
-                         help="Ce que le scan a le droit de renseigner automatiquement">
+                         help="What the scan may fill in on its own">
                     <div class="content-group">
                         <div><field name="expense_scan_apply_tax"/>
                             <label for="expense_scan_apply_tax"/></div>
@@ -84,38 +84,38 @@
                             <label for="expense_scan_product_id" class="o_light_label"/>
                             <field name="expense_scan_product_id"
                                    options="{'no_create': True}"
-                                   placeholder="par défaut : choix d'Odoo (référence EXP_GEN)"/>
+                                   placeholder="default: Odoo's choice (reference EXP_GEN)"/>
                         </div>
                     </div>
                 </setting>
 
-                <setting id="expense_scan_sheet_setting" string="Fiches de frais et règles"
-                         help="Exemples livrés : un modèle Excel à adapter, des règles de bonne conduite à ajuster ou archiver">
+                <setting id="expense_scan_sheet_setting" string="Expense sheets and rules"
+                         help="Delivered examples: an Excel template to adapt, good practice rules to adjust or archive">
                     <div class="content-group">
                         <div>
                             <button name="%(expense_scan.expense_scan_export_template_action)d"
-                                    type="action" string="Modèles d'export Excel"
+                                    type="action" string="Excel export templates"
                                     class="btn-link ps-0" icon="oi-arrow-right"/>
                         </div>
                         <div>
                             <button name="%(expense_scan.expense_scan_policy_action)d"
-                                    type="action" string="Règles de dépenses"
+                                    type="action" string="Expense Rules"
                                     class="btn-link ps-0" icon="oi-arrow-right"/>
                         </div>
                         <div class="text-muted small mt-1">
-                            La fiche de frais s'édite depuis la liste des
-                            dépenses : sélectionnez-les, puis « Fiche de frais ».
+                            The expense sheet is produced from the expense
+                            list: select the expenses, then "Expense Sheet".
                         </div>
                     </div>
                 </setting>
 
-                <!-- En dernier : le soutien est facultatif. -->
-                <setting id="expense_scan_support_setting" string="Soutenir Expense Scan"
-                         help="Module libre, développé sur le temps de son auteur">
+                <!-- Last: support is optional. -->
+                <setting id="expense_scan_support_setting" string="Support Expense Scan"
+                         help="Free module, developed in its author's own time">
                     <div class="content-group">
                         <a href="https://github.com/sponsors/Ch0c0latine" target="_blank"
                            rel="noopener noreferrer" class="btn btn-link ps-0" role="button">
-                            <i class="fa fa-coffee me-1"/>Offrir un café à l'auteur
+                            <i class="fa fa-coffee me-1"/>Buy the author a coffee
                         </a>
                     </div>
                 </setting>

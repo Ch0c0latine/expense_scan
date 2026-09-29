@@ -3,7 +3,7 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- Tarif kilométrique, après l'approbateur des frais. Réservé aux RH, comme le champ. -->
+    <!-- Mileage rate, after the expense approver. HR only, like the field. -->
     <record id="hr_employee_view_form_expense_scan" model="ir.ui.view">
         <field name="name">hr.employee.form.expense.scan</field>
         <field name="model">hr.employee</field>

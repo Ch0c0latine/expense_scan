@@ -4,7 +4,7 @@
 <odoo>
 
     <record id="paperformat_expense_sheet" model="report.paperformat">
-        <field name="name">Fiche de frais (A4 paysage)</field>
+        <field name="name">Expense sheet (A4 landscape)</field>
         <field name="format">A4</field>
         <field name="orientation">Landscape</field>
         <field name="margin_top">12</field>
@@ -15,9 +15,9 @@
         <field name="dpi">90</field>
     </record>
 
-    <!-- Appelé par l'assistant (numérotation selon sélection). -->
+    <!-- Called by the wizard (numbering follows the selection). -->
     <record id="action_report_expense_sheet" model="ir.actions.report">
-        <field name="name">Fiche de frais</field>
+        <field name="name">Expense Sheet</field>
         <field name="model">hr.expense</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">expense_scan.report_expense_sheet</field>
@@ -27,34 +27,34 @@
 
     <template id="report_expense_sheet">
         <t t-call="web.html_container">
-            <!-- En-tête interne sans pied de page (tableau utilise toute la hauteur). -->
+            <!-- Internal header without a footer (the table uses the whole height). -->
             <t t-call="web.internal_layout">
                 <div class="page o_expense_sheet">
-                    <h5 class="mb-1">Fiche de frais — <t t-out="header['salarie']"/></h5>
+                    <h5 class="mb-1">Expense sheet — <t t-out="header['salarie']"/></h5>
                     <p class="mb-1" style="font-size: 9pt;">
                         <t t-out="header['prestation']"/>
-                        <t t-if="header['periode']"> · Période <t t-out="header['periode']"/></t>
+                        <t t-if="header['periode']"> · Period <t t-out="header['periode']"/></t>
                     </p>
                     <table class="table table-sm o_main_table" style="font-size: 9pt;">
                         <thead>
                             <tr>
-                                <th>N°</th>
+                                <th>No.</th>
                                 <th>Date</th>
-                                <th>Catégorie</th>
+                                <th>Category</th>
                                 <th>Description</th>
-                                <th>Enseigne</th>
-                                <th>Mission</th>
-                                <th class="text-end">Qté</th>
-                                <th class="text-end">HT</th>
-                                <th class="text-end">Taux TVA</th>
-                                <th class="text-end">TVA</th>
-                                <th class="text-end">TTC</th>
-                                <th>Payé par</th>
+                                <th>Merchant</th>
+                                <th>Project</th>
+                                <th class="text-end">Qty</th>
+                                <th class="text-end">Excl. tax</th>
+                                <th class="text-end">Tax rate</th>
+                                <th class="text-end">Tax</th>
+                                <th class="text-end">Incl. tax</th>
+                                <th>Paid by</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr t-foreach="lines" t-as="line">
-                                <td><t t-out="line['n']"/><t t-if="line['flat_rate']"> <em>(forfait)</em></t></td>
+                                <td><t t-out="line['n']"/><t t-if="line['flat_rate']"> <em>(flat rate)</em></t></td>
                                 <td><t t-out="format_date(line['date'])"/></td>
                                 <td><t t-out="line['categorie']"/></td>
                                 <td><t t-out="line['description']"/></td>
@@ -79,15 +79,15 @@
                             </tr>
                         </tfoot>
                     </table>
-                    <h6 class="mt-2 mb-1">TVA récupérable par taux</h6>
+                    <h6 class="mt-2 mb-1">Recoverable tax by rate</h6>
                     <table class="table table-sm" style="font-size: 9pt; width: auto;">
                         <thead>
                             <tr>
-                                <th>Taux</th>
-                                <th class="text-end">Dépenses</th>
-                                <th class="text-end">Base HT</th>
-                                <th class="text-end">TVA</th>
-                                <th class="text-end">TTC</th>
+                                <th>Rate</th>
+                                <th class="text-end">Expenses</th>
+                                <th class="text-end">Net base</th>
+                                <th class="text-end">Tax</th>
+                                <th class="text-end">Incl. tax</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -101,8 +101,8 @@
                         </tbody>
                     </table>
                     <p style="font-size: 8pt;">
-                        Les justificatifs suivent, dans l'ordre et sous le même numéro.
-                        Les forfaits (kilométrage, barèmes) n'en ont pas.
+                        The receipts follow, in order and under the same number.
+                        Flat rates (mileage, allowance scales) have none.
                     </p>
                 </div>
             </t>

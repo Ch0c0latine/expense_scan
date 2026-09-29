@@ -157,7 +157,7 @@ class TestExpenseSheet(common.TransactionCase):
         self.assertEqual(sheet['C4'].value, "Mission fiche")
         unfiltered = openpyxl.load_workbook(io.BytesIO(
             self.Sheet._excel(template, expense))).active
-        self.assertEqual(unfiltered['C4'].value, "Selected expenses")
+        self.assertEqual(unfiltered['C4'].value, "Statement of selected expenses")
         # The empty rows are gone: the total follows at once.
         self.assertEqual(sheet['A9'].value, "TOTAL")
         self.assertEqual(sheet['L9'].value, "=SUM(L8:L8)")

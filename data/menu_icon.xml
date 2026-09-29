@@ -3,7 +3,7 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- Icône Dépenses remplacée par celle du module (scan comme point d'entrée). -->
+    <!-- Expenses icon replaced by the module's (scanning as the entry point). -->
     <record id="hr_expense.menu_hr_expense_root" model="ir.ui.menu">
         <field name="web_icon">expense_scan,static/description/icon.png</field>
     </record>

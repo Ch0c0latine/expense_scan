@@ -3,13 +3,13 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo noupdate="1">
 
-    <!-- Modèle de base : classeur vierge livré à l'installation ; télécharger, adapter, redéposer. -->
+    <!-- Basic template: blank workbook delivered at installation; download, adapt, upload again. -->
     <record id="export_template_basic" model="expense.scan.export.template">
-        <field name="name">Fiche de frais (modèle de base)</field>
+        <field name="name">Expense sheet (basic template)</field>
         <field name="sequence">1</field>
         <field name="first_row">8</field>
         <field name="last_row">9</field>
-        <field name="note">Classeur livré avec le module : téléchargez-le depuis le champ « Fichier Excel », adaptez-le (logo, couleurs, colonnes), puis redéposez-le. Gardez une ligne de titres au-dessus des dépenses et les totaux juste en dessous : l'export ajoute ou retire des lignes et les totaux suivent. Le bouton « Classeur vierge » en refabrique un d'après les correspondances ci-dessous.</field>
+        <field name="note">Workbook delivered with the module: download it from the "Excel file" field, adapt it (logo, colours, columns), then upload it again. Keep a row of titles above the expenses and the totals just below: the export adds or removes rows and the totals follow. The "Blank workbook" button builds a new one from the mappings below.</field>
     </record>
 
     <record id="export_template_basic_salarie" model="expense.scan.export.column">

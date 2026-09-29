@@ -3,7 +3,7 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- Modèles d'export Excel -->
+    <!-- Excel export templates -->
 
     <record id="expense_scan_export_template_view_list" model="ir.ui.view">
         <field name="name">expense.scan.export.template.list</field>
@@ -27,25 +27,25 @@
             <form>
                 <header>
                     <button name="action_expense_scan_generate_file" type="object"
-                            string="Classeur vierge" icon="fa-file-excel-o"
-                            confirm="Remplacer le classeur actuel par un classeur vierge, construit d'après les correspondances ?"/>
+                            string="Blank workbook" icon="fa-file-excel-o"
+                            confirm="Replace the current workbook with a blank one, built from the mappings?"/>
                 </header>
                 <sheet>
-                    <widget name="web_ribbon" title="Archivé" bg_color="text-bg-danger"
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
                             invisible="active"/>
                     <div class="oe_title">
                         <label for="name"/>
-                        <h1><field name="name" placeholder="Suivi mensuel des frais"/></h1>
+                        <h1><field name="name" placeholder="Monthly expense tracking"/></h1>
                     </div>
                     <group>
-                        <group string="Classeur">
+                        <group string="Workbook">
                             <field name="file" filename="filename"/>
                             <field name="filename" invisible="1"/>
-                            <field name="sheet_name" placeholder="Première feuille"/>
+                            <field name="sheet_name" placeholder="First sheet"/>
                             <field name="first_row"/>
                             <field name="last_row"/>
                         </group>
-                        <group string="Contrôles avant export">
+                        <group string="Checks before export">
                             <field name="reinvoice_only"/>
                             <field name="single_project"/>
                             <field name="company_id" groups="base.group_multi_company"/>
@@ -54,12 +54,12 @@
                     </group>
                     <field name="column_ids">
                         <list editable="bottom">
-                            <field name="cell" placeholder="B ou K4"/>
+                            <field name="cell" placeholder="B or K4"/>
                             <field name="value" required="1"/>
                             <field name="kind" readonly="1"/>
                         </list>
                     </field>
-                    <field name="note" placeholder="Remarques sur ce modèle…"/>
+                    <field name="note" placeholder="Notes on this template..."/>
                 </sheet>
             </form>
         </field>
@@ -71,28 +71,27 @@
         <field name="arch" type="xml">
             <search>
                 <field name="name"/>
-                <filter string="Archivés" name="inactive" domain="[('active', '=', False)]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
             </search>
         </field>
     </record>
 
     <record id="expense_scan_export_template_action" model="ir.actions.act_window">
-        <field name="name">Modèles d'export</field>
+        <field name="name">Export Templates</field>
         <field name="res_model">expense.scan.export.template</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="expense_scan_export_template_view_search"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Déposez un classeur Excel de frais</p>
-            <p>Partez du « modèle de base » livré avec le module : téléchargez
-               son classeur, adaptez-le, redéposez-le. Indiquez les lignes
-               réservées aux dépenses, puis quelle colonne reçoit quelle
-               valeur ; les anciennes données du classeur sont remplacées à
-               chaque export.</p>
+            <p class="o_view_nocontent_smiling_face">Upload an Excel expense workbook</p>
+            <p>Start from the "Basic template" delivered with the module:
+               download its workbook, adapt it, upload it again. Give the rows
+               kept for the expenses, then which column receives which value;
+               the old data of the workbook is replaced at each export.</p>
         </field>
     </record>
 
     <menuitem id="menu_expense_scan_export_templates"
-              name="Modèles d'export"
+              name="Export Templates"
               parent="hr_expense.menu_hr_expense_configuration"
               action="expense_scan_export_template_action"
               groups="hr_expense.group_hr_expense_manager"
@@ -106,37 +105,37 @@
                 <field name="expense_ids" invisible="1"/>
                 <field name="available_project_ids" invisible="1"/>
                 <div class="alert alert-info fs-5 fw-bold mb-2" role="status">
-                    <i class="fa fa-file-text-o me-2" title="Dépenses sélectionnées"/>
+                    <i class="fa fa-file-text-o me-2" title="Selected expenses"/>
                     <field name="selected_summary" readonly="1" class="d-inline"/>
                 </div>
                 <group invisible="not period">
-                    <group string="Période">
+                    <group string="Period">
                         <field name="period" widget="radio" options="{'horizontal': true}"/>
                         <label for="date_from" string="Dates"/>
                         <div class="d-flex align-items-center gap-2">
                             <field name="date_from" readonly="period != 'custom'"
                                    required="period == 'custom'" class="w-auto"/>
-                            <span>au</span>
+                            <span>to</span>
                             <field name="date_to" readonly="period != 'custom'"
                                    required="period == 'custom'" class="w-auto"/>
                         </div>
                     </group>
-                    <group string="Salariés" groups="hr_expense.group_hr_expense_team_approver">
+                    <group string="Employees" groups="hr_expense.group_hr_expense_team_approver">
                         <field name="employee_ids" widget="many2many_tags" nolabel="1" colspan="2"
                                options="{'no_create': True}"/>
                         <div colspan="2" class="text-muted small">
-                            Vide : tous les salariés dont vous voyez les frais.
+                            Empty: every employee whose expenses you can see.
                         </div>
                     </group>
                 </group>
                 <group>
-                    <group string="Frais">
+                    <group string="Expenses">
                         <field name="scope" widget="radio"/>
                         <field name="project_ids" widget="many2many_tags"
                                domain="[('id', 'in', available_project_ids)]"
                                options="{'no_create': True}"/>
                     </group>
-                    <group string="Sorties">
+                    <group string="Outputs">
                         <field name="summary"/>
                         <field name="excel"/>
                         <field name="template_id" invisible="not excel" required="excel"
@@ -145,16 +144,16 @@
                     </group>
                 </group>
                 <footer>
-                    <button name="action_generate" type="object" string="Générer"
+                    <button name="action_generate" type="object" string="Generate"
                             class="btn-primary" data-hotkey="q"/>
-                    <button special="cancel" string="Annuler" data-hotkey="x"/>
+                    <button special="cancel" string="Cancel" data-hotkey="x"/>
                 </footer>
             </form>
         </field>
     </record>
 
     <record id="expense_scan_sheet_wizard_action" model="ir.actions.act_window">
-        <field name="name">Fiche de frais</field>
+        <field name="name">Expense Sheet</field>
         <field name="res_model">expense.scan.sheet.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
@@ -163,36 +162,36 @@
     </record>
 
     <record id="expense_scan_sheet_current_month_action" model="ir.actions.act_window">
-        <field name="name">Fiche de frais</field>
+        <field name="name">Expense Sheet</field>
         <field name="res_model">expense.scan.sheet.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
         <field name="context">{'default_period': 'current'}</field>
     </record>
     <record id="expense_scan_sheet_previous_month_action" model="ir.actions.act_window">
-        <field name="name">Fiche de frais</field>
+        <field name="name">Expense Sheet</field>
         <field name="res_model">expense.scan.sheet.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
         <field name="context">{'default_period': 'previous'}</field>
     </record>
     <record id="expense_scan_sheet_custom_period_action" model="ir.actions.act_window">
-        <field name="name">Fiche de frais</field>
+        <field name="name">Expense Sheet</field>
         <field name="res_model">expense.scan.sheet.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
         <field name="context">{'default_period': 'custom'}</field>
     </record>
 
-    <menuitem id="menu_expense_scan_sheets" name="Fiches de frais"
+    <menuitem id="menu_expense_scan_sheets" name="Expense Sheets"
               parent="hr_expense.menu_hr_expense_root" sequence="15"/>
-    <menuitem id="menu_expense_scan_sheet_current_month" name="Mois en cours"
+    <menuitem id="menu_expense_scan_sheet_current_month" name="This Month"
               parent="menu_expense_scan_sheets" action="expense_scan_sheet_current_month_action"
               sequence="10"/>
-    <menuitem id="menu_expense_scan_sheet_previous_month" name="Mois précédent"
+    <menuitem id="menu_expense_scan_sheet_previous_month" name="Last Month"
               parent="menu_expense_scan_sheets" action="expense_scan_sheet_previous_month_action"
               sequence="20"/>
-    <menuitem id="menu_expense_scan_sheet_custom_period" name="Autre période…"
+    <menuitem id="menu_expense_scan_sheet_custom_period" name="Other Period..."
               parent="menu_expense_scan_sheets" action="expense_scan_sheet_custom_period_action"
               sequence="30"/>
 

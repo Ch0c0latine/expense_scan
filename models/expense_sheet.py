@@ -356,7 +356,7 @@ class ExpenseScanSheet(models.AbstractModel):
         return {
             'salarie': ", ".join(expenses.employee_id.mapped('name')),
             'prestation': (", ".join(projects.mapped('name')) if projects
-                           else _("Selected expenses")),
+                           else _("Statement of selected expenses")),
             'vat_rows': self._vat_summary(lines),
             'mois': start.replace(day=1) if start else False,
             'periode': (_("from %(start)s to %(end)s",

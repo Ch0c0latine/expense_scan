@@ -3,7 +3,7 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- Catégories triées par séquence (glisser-déposer). -->
+    <!-- Categories sorted by sequence (drag and drop). -->
     <record id="product_product_expense_categories_tree_view_scan" model="ir.ui.view">
         <field name="name">product.product.expense.categories.list.scan</field>
         <field name="model">product.product</field>
@@ -24,17 +24,17 @@
         <field name="inherit_id" ref="hr_expense.product_product_expense_form_view"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='default_code']" position="after">
-                <field name="sequence" string="Ordre d'affichage" class="w-50"
-                       help="Rang de la catégorie dans la liste déroulante des dépenses. Se règle aussi par glisser-déposer dans la liste des catégories."/>
+                <field name="sequence" string="Display order" class="w-50"
+                       help="Position of the category in the expense dropdown. Can also be set by drag and drop in the list of categories."/>
             </xpath>
-            <!-- Masquer taxes si forfait sans TVA. -->
+            <!-- Hide the taxes for a flat rate without VAT. -->
             <xpath expr="//field[@name='supplier_taxes_id']" position="attributes">
                 <attribute name="invisible">expense_scan_no_vat</attribute>
             </xpath>
             <xpath expr="//field[@name='supplier_taxes_id']" position="after">
                 <field name="expense_scan_no_vat"/>
                 <field name="expense_scan_keywords"
-                       placeholder="Un mot par ligne : hôtel, nocleg, Ibis…"/>
+                       placeholder="One word per line: hotel, nocleg, Ibis..."/>
             </xpath>
         </field>
     </record>

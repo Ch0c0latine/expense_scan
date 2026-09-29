@@ -3,7 +3,7 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- Membres de l'équipe en vue kanban (profil public) ; clic pour ouvrir les dépenses du salarié. -->
+    <!-- Team members as a kanban view (public profile); a click opens the employee's expenses. -->
     <record id="hr_employee_public_view_kanban_expense_team" model="ir.ui.view">
         <field name="name">hr.employee.public.kanban.expense.team</field>
         <field name="model">hr.employee.public</field>
@@ -13,7 +13,7 @@
                     create="0" delete="0" edit="0">
                 <templates>
                     <t t-name="card" class="flex-row align-items-center">
-                        <!-- Avatar 48x48 px : taille fixe pour éviter affichage partiel sur écran étroit. -->
+                        <!-- 48x48 px avatar: fixed size so that it is not cut on a narrow screen. -->
                         <aside>
                             <field name="avatar_128" widget="image"
                                    options="{'size': [48, 48]}" class="rounded"/>
@@ -30,19 +30,19 @@
         </field>
     </record>
 
-    <!-- path requis : permet à Odoo de reconstruire l'action lors de la navigation. -->
+    <!-- path required: lets Odoo rebuild the action while navigating. -->
     <record id="action_expense_scan_team" model="ir.actions.server">
-        <field name="name">Dépenses de mon équipe</field>
+        <field name="name">My Team's Expenses</field>
         <field name="path">my-team-expenses</field>
         <field name="model_id" ref="hr_expense.model_hr_expense"/>
         <field name="state">code</field>
         <field name="code">action = model.action_expense_scan_team()</field>
     </record>
 
-    <!-- Les dépenses d'un salarié de l'équipe : le salarié est l'active_id,
-         que l'adresse de la page conserve. -->
+    <!-- The expenses of a team member: the employee is the active_id, which
+         the page address keeps. -->
     <record id="action_expense_scan_employee_expenses" model="ir.actions.act_window">
-        <field name="name">Dépenses du salarié</field>
+        <field name="name">Employee Expenses</field>
         <field name="path">team-expenses</field>
         <field name="res_model">hr.expense</field>
         <field name="view_mode">list,kanban,form,graph,pivot,activity</field>
@@ -50,8 +50,8 @@
         <field name="domain">[('employee_id', '=', active_id)]</field>
         <field name="context">{'default_employee_id': active_id, 'expense_scan_acting_for': active_id}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Aucune dépense pour ce salarié</p>
-            <p>Scannez un ticket ou créez une dépense : elle sera à son nom.</p>
+            <p class="o_view_nocontent_smiling_face">No expense for this employee</p>
+            <p>Scan a receipt or create an expense: it will be in their name.</p>
         </field>
     </record>
     <record id="action_expense_scan_employee_expenses_list" model="ir.actions.act_window.view">
@@ -67,10 +67,10 @@
         <field name="act_window_id" ref="action_expense_scan_employee_expenses"/>
     </record>
 
-    <!-- Sous « Mes dépenses », à la suite de « Dépenses à traiter ».
-         Réservé aux approbateurs : un salarié ordinaire n'a pas d'équipe. -->
+    <!-- Under "My Expenses", after "Expenses to Process". Approvers only:
+         an ordinary employee has no team. -->
     <menuitem id="menu_expense_scan_team"
-              name="Dépenses de mon équipe"
+              name="My Team's Expenses"
               parent="hr_expense.menu_hr_expense_my_expenses"
               action="action_expense_scan_team"
               groups="hr_expense.group_hr_expense_team_approver"
