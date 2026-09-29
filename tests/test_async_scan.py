@@ -397,3 +397,14 @@ class TestReceiptOnNewExpense(common.TransactionCase):
         chosen = expense.with_context(expense_scan_new_receipt=True,
                                       expense_scan_keep_fields=['product_id'])
         self.assertFalse(chosen._expense_scan_category_is_free(company))
+
+    def test_a_typed_value_that_differs_from_the_receipt_is_flagged(self):
+        expense = self.env['hr.expense'].create({
+            'name': "Neuve", 'employee_id': self.env['hr.employee'].create({'name': "Nina"}).id,
+            'total_amount_currency': 42.0, 'date': '2026-09-20'})
+        receipt = parser.parse(words_from_text("BOULANGERIE ESSAI\n20/09/2026\nTOTAL 9,90 EUR"))
+        items = expense._expense_scan_kept_differences(
+            receipt, {'date', 'total_amount_currency'})
+        self.assertEqual([code for _text, code, _hint in items], ['total'])
+        self.assertIn("9,90", items[0][2])
+        self.assertFalse(expense._expense_scan_kept_differences(receipt, set()))

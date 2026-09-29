@@ -19,7 +19,7 @@ from odoo.exceptions import UserError, ValidationError
 from odoo import tools
 from odoo.modules import module as odoo_module
 from odoo.service.model import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY
-from odoo.tools import email_normalize, format_date
+from odoo.tools import email_normalize, format_date, formatLang
 
 from ..ocr import engines, parser, preprocess
 from .hr_expense_category import CONFIRMED_STATES
@@ -1027,7 +1027,8 @@ class HrExpense(models.Model):
         """
         self.ensure_one()
         self.check_access('write')
-        if self.scan_state != 'none'                 or not (self.company_id or self.env.company).expense_scan_enabled:
+        if self.scan_state != 'none' \
+                or not (self.company_id or self.env.company).expense_scan_enabled:
             return True
         changed = set(changed or ())
         keep = changed & set(self.KEEPABLE_FIELDS)
@@ -1624,9 +1625,11 @@ class HrExpense(models.Model):
                 # des tags fiscaux : vérifié après écriture, la catégorie
                 # reconnue pouvant en apporter une.
                 check_category_tax = True
-        # Un champ saisi à la main avant l'analyse n'est pas à vérifier.
+        # Un champ saisi à la main avant l'analyse n'est à vérifier que s'il
+        # diffère du justificatif.
         keep = self._expense_scan_kept_fields()
-        items = [item for item in items if self.TODO_FIELDS.get(item[1]) not in keep]
+        items = self._expense_scan_kept_differences(result, keep) + [
+            item for item in items if self.TODO_FIELDS.get(item[1]) not in keep]
         values.update({
             'scan_state': 'partial' if items else 'done',
             'scan_engine': result.engine,
@@ -1668,6 +1671,22 @@ class HrExpense(models.Model):
         if result.timer:
             result.timer.lap('écriture')
             _logger.info("expense_scan : durées dépense=%s %s", self.id, result.timer)
+
+    def _expense_scan_kept_differences(self, result, keep):
+        """Points à vérifier : date ou montant saisis qui diffèrent du justificatif."""
+        items = []
+        date = result.value('date')
+        if 'date' in keep and date and date != self.date:
+            shown = format_date(self.env, date)
+            items.append((_("Date (%s sur le justificatif)", shown), 'date',
+                          _("Le justificatif est daté du %s : vérifiez la date saisie.", shown)))
+        total = result.value('total')
+        if 'total_amount_currency' in keep and total \
+                and self.currency_id.compare_amounts(total, self.total_amount_currency):
+            shown = formatLang(self.env, total, currency_obj=self.currency_id)
+            items.append((_("Montant (%s sur le justificatif)", shown), 'total',
+                          _("Le justificatif indique %s : vérifiez le montant saisi.", shown)))
+        return items
 
     @staticmethod
     def _expense_scan_todo_values(items):
@@ -1850,6 +1869,9 @@ class HrExpense(models.Model):
         scan_date = result.value('date')
         if scan_date and 'date' not in keep:
             values['date'] = scan_date
+        # Date de la dépense : celle saisie à la main prime sur celle du
+        # justificatif pour la description et la recherche de mission.
+        expense_date = self.date if 'date' in keep and self.date else scan_date
 
         scan_time = result.value('time')
         if scan_time:
@@ -1862,13 +1884,14 @@ class HrExpense(models.Model):
         # la date du ticket, tant que personne n'y a écrit. Dès que la
         # catégorie n'est plus la catégorie générique de la société, elle
         # nomme la dépense : « Péage du 12/09/2026 ».
-        if scan_date and not self.expense_scan_keep_name \
+        if expense_date and not self.expense_scan_keep_name \
                 and self._expense_scan_name_is_automatic():
             # La raison d'un même déplacement, déjà écrite ailleurs, prime sur
             # la description automatique.
             values['name'] = self._expense_scan_trip_reason(
-                scan_date, [line.text for line in result.lines]) \
-                or self._expense_scan_auto_name(self._expense_scan_target_product(values), scan_date)
+                expense_date, [line.text for line in result.lines]) \
+                or self._expense_scan_auto_name(self._expense_scan_target_product(values),
+                                                expense_date)
 
         currency = self._expense_scan_currency(result, company)
         if currency and 'currency_id' not in keep:
@@ -1949,7 +1972,7 @@ class HrExpense(models.Model):
             # « Non » est une décision du salarié : la mission retrouvée ne
             # sert alors qu'au suivi du budget, sans refacturation.
             values.update(self._expense_scan_project_values(
-                self._expense_scan_find_project(scan_date),
+                self._expense_scan_find_project(expense_date),
                 reinvoice=self.reinvoice_mode != 'none'))
 
         if company.expense_scan_set_vendor and 'vendor_id' not in keep:
