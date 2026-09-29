@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 19.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-29 18:38+0000\n"
-"PO-Revision-Date: 2026-09-29 18:38+0000\n"
+"POT-Creation-Date: 2026-09-29 18:49+0000\n"
+"PO-Revision-Date: 2026-09-29 18:49+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: fr\n"
@@ -2035,6 +2035,11 @@ msgid "Set the fine rotation back to 0°"
 msgstr "Remettre la rotation fine à 0°"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_mixed_rates
+msgid "Several tax rates"
+msgstr "Plusieurs taux de TVA"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__sheet_name
 msgid "Sheet"
 msgstr "Feuille"
@@ -2347,6 +2352,11 @@ msgstr "Le justificatif est vide."
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "The receipt is too large (%(size)d MB, limit %(max)d MB)."
 msgstr "Le justificatif est trop volumineux (%(size)d Mo, plafond %(max)d Mo)."
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_mixed_rates
+msgid "The receipt prints several tax rates: none of them holds for the whole expense."
+msgstr "Le ticket imprime plusieurs taux de TVA : aucun ne vaut pour la dépense entière."
 
 #. module: expense_scan
 #. odoo-python
@@ -2743,6 +2753,12 @@ msgstr "relu"
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "rotated by %d°"
 msgstr "pivoté de %d°"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_sheet.py:0
+msgid "several rates"
+msgstr "plusieurs taux"
 
 #. module: expense_scan
 #. odoo-python
