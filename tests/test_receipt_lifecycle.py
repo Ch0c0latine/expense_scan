@@ -203,3 +203,34 @@ class TestReceiptLifecycle(common.TransactionCase):
         expense.product_id = chosen
         values = expense._expense_scan_category_values(unknown, self.company)
         self.assertNotIn('product_id', values)
+
+
+@tagged('post_install', '-at_install')
+class TestAutomaticName(common.TransactionCase):
+    """Description automatique : écrite dans la langue du salarié, reconnue dans toutes."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env['res.lang']._activate_lang('fr_FR')
+        cls.product = cls.env['product.product'].with_context(lang='en_US').create({
+            'name': "Zorblax Meals", 'can_be_expensed': True})
+        cls.product.with_context(lang='fr_FR').name = "Zorblax Repas"
+        user = cls.env['res.users'].with_context(no_reset_password=True).create({
+            'name': "Nina Langue", 'login': 'expense_scan_nina_langue', 'lang': 'fr_FR'})
+        cls.employee = cls.env['hr.employee'].create({'name': "Nina Langue", 'user_id': user.id})
+
+    def expense(self, name):
+        return self.env['hr.expense'].with_context(lang='fr_FR').create({
+            'name': name, 'employee_id': self.employee.id, 'product_id': self.product.id})
+
+    def test_an_english_automatic_name_is_recognized(self):
+        self.assertTrue(self.expense("Zorblax Meals du 23/09/2026")._expense_scan_name_is_automatic())
+        self.assertTrue(self.expense("Zorblax Repas du 23/09/2026")._expense_scan_name_is_automatic())
+        self.assertFalse(self.expense("Salon Zorblax du 23/09/2026")._expense_scan_name_is_automatic())
+
+    def test_the_automatic_name_is_in_the_employee_language(self):
+        from datetime import date
+        expense = self.expense("Neuve").with_context(lang='en_US')
+        name = expense._expense_scan_auto_name(self.product, date(2026, 9, 23))
+        self.assertTrue(name.startswith("Zorblax Repas"), name)

@@ -1833,10 +1833,19 @@ class HrExpense(models.Model):
         if not match:
             return False
         label = match.group('label').strip()
-        if label == _("Ticket"):
-            return True
-        return bool(self.env['product.product'].sudo().with_context(active_test=False).search_count([
-            ('can_be_expensed', '=', True), ('name', '=ilike', label)], limit=1))
+        # Nom de catégorie dans n'importe quelle langue installée : une
+        # analyse lancée sans langue (tâche planifiée) a pu l'écrire en
+        # anglais, « Meals du 23/09/2026 ». Non reconnue, cette description
+        # passait pour la raison d'un déplacement et gagnait les dépenses
+        # voisines.
+        Product = self.env['product.product'].sudo().with_context(active_test=False)
+        for code, _name in self.env['res.lang'].get_installed():
+            if label == self.with_context(lang=code).env._("Ticket"):
+                return True
+            if Product.with_context(lang=code).search_count([
+                    ('can_be_expensed', '=', True), ('name', '=ilike', label)], limit=1):
+                return True
+        return False
 
     def _expense_scan_home_places(self):
         """Lieux sans lien avec un déplacement : la société, le domicile.
@@ -1927,13 +1936,20 @@ class HrExpense(models.Model):
 
     def _expense_scan_date_name(self, label, date_text):
         """« Péage du 12/09/2026 » : la catégorie, puis la date du ticket."""
-        return _("%(category)s du %(date)s", category=label, date=date_text)
+        return self.env._("%(category)s du %(date)s", category=label, date=date_text)
 
     def _expense_scan_auto_name(self, product, scan_date):
-        """Description posée automatiquement : la catégorie reconnue, sinon « Ticket »."""
+        """Description posée automatiquement : la catégorie reconnue, sinon « Ticket ».
+
+        Écrite dans la langue du salarié : l'analyse peut tourner sans
+        langue (tâche planifiée).
+        """
+        lang = self.employee_id.user_id.lang or self.env.user.lang or self.env.lang
+        expense = self.with_context(lang=lang)
         company_default = self.company_id.expense_scan_product_id
-        label = product.name if product and product != company_default else _("Ticket")
-        return self._expense_scan_date_name(label, format_date(self.env, scan_date))
+        label = (product.with_context(lang=lang).name
+                 if product and product != company_default else expense.env._("Ticket"))
+        return expense._expense_scan_date_name(label, format_date(expense.env, scan_date))
 
     def _expense_scan_field_values(self, result, company, foreign=None):
         """Traduit le résultat du parseur en valeurs de champs Odoo."""
