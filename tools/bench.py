@@ -104,9 +104,16 @@ def load_truth(directory):
 #: Une date, sous l'une des formes des tickets : « 20.08.2026 », « 06/26/26 »,
 #: « 2026-08-20 », « 29 januari 2026 ». Sert à reconnaître un ticket dont la
 #: photo ne montre aucune date (souvent coupée par le contributeur).
-DATE_LIKE = re.compile(
-    r"\b\d{1,4}\s?[./-]\s?\d{1,2}\s?[./-]\s?\d{2,4}\b"
-    r"|\b\d{1,2}\.?\s+[A-Za-zÀ-ÿ]{3,10}\.?\s+\d{2,4}\b")
+DATE_NUMERIC = re.compile(r"\b\d{1,4}\s?[./-]\s?\d{1,2}\s?[./-]\s?\d{2,4}")
+DATE_WORDS = re.compile(r"\b\d{1,2}\.?\s+([A-Za-zÀ-ÿ]{3,10})\.?\s+\d{2,4}\b")
+
+
+def has_date(text):
+    """Vrai si le texte porte une date ; « 1,00 Kom 39 » n'en est pas une."""
+    if DATE_NUMERIC.search(text):
+        return True
+    return any(parser._month_number(match.group(1))
+               for match in DATE_WORDS.finditer(text))
 
 #: Préfixe des justificatifs tirés d'Open Prices dans l'instantané :
 #: « OP-DE_12345.webp » (pays, identifiant du ticket).
@@ -207,7 +214,7 @@ def replay(item, meta):
         "time": str(result.value("time")) if result.value("time") else None,
         "currency": result.value("currency"), "merchant": result.value("merchant"),
         "category": picked,
-        "date_visible": bool(DATE_LIKE.search("\n".join(lines))),
+        "date_visible": has_date("\n".join(lines)),
     }
 
 

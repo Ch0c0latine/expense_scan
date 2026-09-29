@@ -320,8 +320,8 @@ DATE_PATTERNS = [
     # 04/09/2026, 04-09-2026, 04.09.2026. Certains terminaux collent l'heure à
     # l'année : « 13/06/202616:30:16 ».
     (re.compile(r"\b(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})(?:\b|(?=\d{1,2}:\d{2}))"), "dmy", 0.90),
-    # 2026-09-04
-    (re.compile(r"\b(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})\b"), "ymd", 0.90),
+    # 2026-09-04, ou collé à l'heure : « 2026-05-1413:32 » (tickets suédois).
+    (re.compile(r"\b(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})(?:\b|(?=\d{1,2}:\d{2}))"), "ymd", 0.90),
     # 04/09/26, ou collé à l'heure : « 24.02.2518:18 ». Le même séparateur
     # des deux côtés : « 08.30-21.00 » est un horaire d'ouverture.
     (re.compile(r"\b(\d{1,2})([/.\-])(\d{1,2})\2(\d{2})(?:\b|(?=\d{1,2}:\d{2}))"), "dmy2", 0.75),
