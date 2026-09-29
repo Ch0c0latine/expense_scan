@@ -101,6 +101,13 @@ def load_truth(directory):
     return truth
 
 
+#: Une date, sous l'une des formes des tickets : « 20.08.2026 », « 06/26/26 »,
+#: « 2026-08-20 », « 29 januari 2026 ». Sert à reconnaître un ticket dont la
+#: photo ne montre aucune date (souvent coupée par le contributeur).
+DATE_LIKE = re.compile(
+    r"\b\d{1,4}\s?[./-]\s?\d{1,2}\s?[./-]\s?\d{2,4}\b"
+    r"|\b\d{1,2}\.?\s+[A-Za-zÀ-ÿ]{3,10}\.?\s+\d{2,4}\b")
+
 #: Préfixe des justificatifs tirés d'Open Prices dans l'instantané :
 #: « OP-DE_12345.webp » (pays, identifiant du ticket).
 OPEN_PRICES_PREFIX = "OP-"
@@ -122,10 +129,11 @@ def judge_open_prices(name, got, truth):
     row = truth.get(os.path.splitext(name)[0])
     if row is None:
         return {}
-    verdict = {
-        "date": got["date"] == row["date"],
-        "currency": (got["currency"] or "EUR") == (row["currency"] or "EUR"),
-    }
+    verdict = {"currency": (got["currency"] or "EUR") == (row["currency"] or "EUR")}
+    # Sans aucune date sur la photo, la date saisie par le contributeur ne
+    # peut pas être lue : le ticket n'est pas compté.
+    if got.get("date_visible", True):
+        verdict["date"] = got["date"] == row["date"]
     if row.get("total"):
         verdict["total"] = abs((got["total"] or 0) - row["total"]) < 0.015
     return verdict
@@ -139,20 +147,22 @@ def print_by_country(verdicts):
             continue
         country = name[len(OPEN_PRICES_PREFIX):].split("_")[0]
         by_country[country]["tickets"] += 1
+        by_country[country]["sans date"] += "date" not in verdict
         for field, ok in verdict.items():
             by_country[country][field, "n"] += 1
             by_country[country][field, "ok"] += ok
     if not by_country:
         return
     print("\nOpen Prices, par pays :")
-    print("  pays tickets      date          total         devise")
+    print("  pays tickets      date          total         devise    sans date visible")
     for country in sorted(by_country, key=lambda c: -by_country[c]["tickets"]):
         counts = by_country[country]
         cells = []
         for field in ("date", "total", "currency"):
             n, ok = counts[field, "n"], counts[field, "ok"]
             cells.append("%3d/%-3d %3.0f %%" % (ok, n, 100.0 * ok / n) if n else "      -     ")
-        print("  %-4s %7d   %s" % (country, counts["tickets"], "   ".join(cells)))
+        print("  %-4s %7d   %s   %5d" % (country, counts["tickets"], "   ".join(cells),
+                                         counts["sans date"]))
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +203,7 @@ def replay(item, meta):
         "time": str(result.value("time")) if result.value("time") else None,
         "currency": result.value("currency"), "merchant": result.value("merchant"),
         "category": picked,
+        "date_visible": bool(DATE_LIKE.search("\n".join(lines))),
     }
 
 
