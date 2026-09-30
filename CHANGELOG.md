@@ -24,6 +24,12 @@
   "Måltider"...), flat allowances ("Pauschale") excepted. A category
   created or renamed after the installation gets the receipt words of its
   family, as the categories present at the installation did.
+- **Spanish receipts** (new database in Spain, then the Spanish corpus):
+  VAT tables "TIPO BASE CUOTA", "IVA% IVA + P N = PVP" (Lidl), "Imp. % Base
+  Cuota" with amounts under one euro printed without their zero (",33"),
+  "Tasa Sin IVA Total IVA IVA Inc."; the total "€* TOT 6,42" (Alcampo); a
+  misread "FACTURA SIMPLIFICADA", a column header or the change given are
+  no longer taken for the merchant.
 - **Total and tax read the other way round** on a crumpled receipt (tax of
   12.00 for a total of 1.92): exchanged when the total is the tax of the
   larger amount at the rate read.

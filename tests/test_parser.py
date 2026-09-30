@@ -589,6 +589,31 @@ ASF Lieu-dit Les Pins BP 10017
         self.assertEqual(result.value('total'), 12.00)
         self.assertEqual(result.value('tax_amount'), 1.92)
 
+    def test_spanish_vat_tables(self):
+        """Headers "TIPO BASE CUOTA", "IVA% IVA + P N = PVP" (Lidl), "Imp. %
+        Base Cuota" with amounts under one euro printed without their zero,
+        "Tasa Sin IVA Total IVA IVA Inc."."""
+        cases = [
+            ("CARREFOUR EXPRESS\n3 ART. TOTAL A PAGAR : 3,83\nTIPO BASE CUOTA\n"
+             "4,00% 1,35 0,05\n10,00% 1,43 0,14\n21,00% 0,71 0,15\nVENTA 3,83", 3.83, 0.34),
+            ("LIDL\nTotal 61,95\nIVA% IVA + P N = PVP\nA 4% 0,74 18,48 19,22\n"
+             "B 10% 3,88 38,85 42,73\nSuma 4,62 57,33 61,95", 61.95, 4.62),
+            ("ALCAMPO\nFACTURA SIMPLIFICADA\nCEPILLO DIENTES 1,93 A\n€* TOT 3,68\n"
+             "Imp. % Base Cuota\nA IVA 21,00 1,60 ,33\nB IVA 10,00 1,59 ,16", 3.68, 0.49),
+            ("DECATHLON\nTOTAL 9,99 EUR\nTasa Sin IVA Total IVA IVA Inc.\n"
+             "21,00 8,26 1,73 9,99 EUR", 9.99, 1.73),
+        ]
+        for text, total, tax in cases:
+            result = self.parse(text)
+            self.assertEqual(result.value('total'), total, text.split("\n")[0])
+            self.assertEqual(result.value('tax_amount'), tax, text.split("\n")[0])
+
+    def test_a_spanish_document_type_is_not_the_merchant(self):
+        result = self.parse("FACTURMPSIMPLIFICADA\nTURRON COCO 2,52 B\n€* TOT 6,42\n"
+                            "W CAMBIO ,00\nImp. % Base Cuota\nIVA 10,00 5,83 ,59")
+        self.assertIsNone(result.value('merchant'))
+        self.assertEqual(result.value('total'), 6.42)
+
     def test_us_sales_tax_is_a_foreign_tax(self):
         result = self.parse("JOE'S DINER\nSUBTOTAL 17.49\nSALES TAX 8.875% 1.55\nTOTAL $19.04")
         self.assertEqual(result.value('tax_label'), "Sales tax")

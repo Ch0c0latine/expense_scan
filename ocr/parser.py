@@ -172,6 +172,8 @@ TOTAL_KEYWORDS = [
     (re.compile(r"\bSUM\b(?!\.)"), 0.82),                           # no, da
     (re.compile(r"\bGESAMT(?:BETRAG)?\b"), 0.82),                   # de
     (re.compile(r"\bTOTAL\b|\bTOTALE\b|\bTOTAAL\b"), 0.80),
+    # "€* TOT 6,42" (Alcampo): the abbreviation opens the line.
+    (re.compile(r"^\s*TOT\b"), 0.78),                              # es
     (re.compile(r"\bRAZEM\b"), 0.75),                               # pl
     (re.compile(r"\bMONTANT\b|\bIMPORTO\b|\bIMPORTE\b|\bBETRAG\b|\bBEDRAG\b"), 0.70),
     # Toll receipt without a "total": the price of the passage is the amount.
@@ -505,6 +507,8 @@ MERCHANT_STOP_RE = re.compile(
     r"\bPARAGON\b|\bFISKALNY\b|\bNIP\b|\bREGON\b|\bSCONTRINO\b|\bFISCALE\b|"
     r"\bDOCUMENTO\b|\bCOMMERCIALE\b|\bPARTITA\b|\bP\.?\s*IVA\b|\bRECHNUNG\b|"
     r"\bKASSENBON\b|\bBELEG\b|\bQUITTUNG\b|\bSTEUER|\bFACTURA\b|\bFATURA\b|\bRECIBO\b|"
+    # "FACTURMPSIMPLIFICADA": the document type, misread and glued.
+    r"SIMPLIFICADA\b|\bCUOTA\b|\bCAMBIO\b|\bENTREGA\b|"
     r"\bCIF\b|\bNIF\b|\bRECEIPT\b|\bINVOICE\b|\bTHANK\b|\bWELCOME\b|"
     r"\bGRAZIE\b|\bDANKE\b|\bDZIEKUJEMY\b|\bGRACIAS\b|\bKASA\b|\bKASSE\b|"
     r"\bCASSA\b|\bCAJA\b|\bVAT\b|\bIVA\b|\bMWST\b|\bUST\b|"
@@ -883,7 +887,11 @@ TAX_TABLE_HEADER_RE = re.compile(
     # is read, but no rate is attached to it and the expense falls back on
     # the category's default tax, which may differ from the rate printed on
     # the receipt.
-    r"|\bTAUX\b.{0,24}\bH\.?\s*T\b|\bH\.?\s*T\b.{0,24}\bTAUX\b")
+    r"|\bTAUX\b.{0,24}\bH\.?\s*T\b|\bH\.?\s*T\b.{0,24}\bTAUX\b"
+    # Spanish tables: "TIPO BASE CUOTA", "Imp. % Base Cuota", "IVA% IVA + PN =
+    # PVP" (Lidl: net price, retail price), "Tasa Sin IVA Total IVA IVA Inc.".
+    r"|\bTIPO\b.{0,24}\bBASE\b|\bBASE\b.{0,24}\bCUOTA\b"
+    r"|\bI\.?V\.?A\s*%.{0,30}\bP\.?\s*V\.?\s*P\b|\bSIN\s*IVA\b.{0,30}\bIVA\s*INC")
 #: The three column labels net, VAT and gross, one after the other with no
 #: amount between them. This signal is stricter than ``TAX_TABLE_HEADER_RE``,
 #: which only cites two labels. It does not match a toll receipt that writes
@@ -931,7 +939,8 @@ TAX_TABLE_ROW_RE = re.compile(
     r"(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
 #: Table line whose rate has no "%": "10,00 14,36 1,44 15,80", or, when a
 #: "Code" column precedes it, "2 10,00 4 36,18 3,62 39,80".
-TAX_TABLE_BARE_ROW_RE = re.compile(r"^\s*(?:(?:[A-D]|\d)\s+)?(\d{1,2}[.,]\d{1,2})\s+\d")
+TAX_TABLE_BARE_ROW_RE = re.compile(
+    r"^\s*(?:(?:[A-D]|\d)\s+)?(?:(?:I\.?V\.?A|T\.?V\.?A|MWST|VAT)\.?\s+)?(\d{1,2}[.,]\d{1,2})\s+\d")
 #: Columns of a VAT table, in any order: "TVA Taux MONT.TTC MONT.TVA TOTAL
 #: HT", "TVA% TVA Net Brut" (rate, tax, net, gross), "TVA % Taxe HTVA TVAC"
 #: (without VAT, VAT included: Belgian labels, used by some French till
@@ -941,19 +950,23 @@ TAX_COLUMNS_RE = re.compile(
     r"|\bHTVA\b|\bTVAC\b")
 # A number followed by "%" is a rate ("10.00%"), not an amount.
 TAX_TABLE_AMOUNT_RE = re.compile(r"(?<![\d,])(?<!\d[.,])(\d+)[.,](\d{2,4})(?![\d])(?![.,]\d)(?!\s*%)")
+TAX_TABLE_CENTS_RE = re.compile(r"(?<![\w.,])[.,](\d{2})(?![\d.,])(?!\s*%)")
 #: Number of lines examined after the table header, before giving up.
 TAX_TABLE_DEPTH = 8
 
 
 def _table_amounts(text):
     """Return the amounts of a table line (four decimals accepted)."""
-    values = []
+    found = []
     for match in TAX_TABLE_AMOUNT_RE.finditer(text):
         try:
-            values.append(float("%s.%s" % (match.group(1), match.group(2))))
+            found.append((match.start(), float("%s.%s" % (match.group(1), match.group(2)))))
         except ValueError:
             continue
-    return values
+    # ",33" (Alcampo): an amount under one euro printed without its zero.
+    found += [(match.start(), float("0.%s" % match.group(1)))
+              for match in TAX_TABLE_CENTS_RE.finditer(text)]
+    return [value for _position, value in sorted(found)]
 
 
 def _consistent_tax(amounts, rate):
@@ -1028,7 +1041,7 @@ def extract_tax_table(lines):
         # "Taux HT TVA TTC": the rate opens the line, sometimes without "%".
         # A tax word followed by "%" too: "Moms% Moms Netto Brutto" (se, dk).
         has_rate_column = bool(re.search(
-            r"\bTAUX\b|\bRATE\b|\bALIQUOTA\b|\bSATS\b"
+            r"\bTAUX\b|\bRATE\b|\bALIQUOTA\b|\bSATS\b|\bTIPO\b|\bTASA\b|\bIMP\.?\s*%"
             r"|\b(?:T\.?\s*V\.?\s*A|MOMS|MVA|MWST|VAT|IVA|BTW|PTU|UST)\s*%", header))
         # "MwSt 19% Netto MwSt Brutto" then "33,28 6,32 39,60": a single rate,
         # printed in the header, for a line of amounts without one.
