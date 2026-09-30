@@ -620,6 +620,23 @@ ASF Lieu-dit Les Pins BP 10017
                                  own=("FR23334175221",)), 'ES')
         self.assertIsNone(country("BONPREU\n+45 PUNTS\nTOTAL 45.05"))
 
+    def test_spanish_restaurant_and_shop_tables(self):
+        """The rate between the base and the tax ("BASE %IVA IMP.IVA"), a rate
+        code beyond D, "Neto", "€x TOT" for "€* TOT", "IVA 4,00" as a rate."""
+        cases = [
+            ("CASA PEPE\nBASE %IVA IMP.IVA\n63.82 10.00 6,38\nTOTAL 70,20", 70.20, 6.38),
+            ("MINIPRECIO\nImp. Base Cuota TOTAL\nA 4% 5.98 0.24 6.22\n"
+             "F 10% 38.79 3.88 42.67\nTOTAL 48.89", 48.89, 4.12),
+            ("VALCARCE\nTOTAL € 3.35\nCod. IVA % Neto Importe\n2 10.00 € 3.05 € 0.30", 3.35, 0.30),
+            ("ALCAMPO\nHARINA DE TRIGO 1,00 C\n€x TOT 1,00\nImp. % Base Cuota\n"
+             "C IVA 4,00 96 ,04", 1.00, None),
+        ]
+        for text, total, tax in cases:
+            result = self.parse(text)
+            self.assertEqual(result.value('total'), total, text.split("\n")[0])
+            self.assertEqual(result.value('tax_amount'), tax, text.split("\n")[0])
+        self.assertIsNone(self.parse("PREFACTURA\nMesa 6\nTOTAL FACTURA 63,92").value('merchant'))
+
     def test_a_spanish_document_type_is_not_the_merchant(self):
         result = self.parse("FACTURMPSIMPLIFICADA\nTURRON COCO 2,52 B\n€* TOT 6,42\n"
                             "W CAMBIO ,00\nImp. % Base Cuota\nIVA 10,00 5,83 ,59")

@@ -721,6 +721,25 @@ def scale_words(words, factor):
     ]
 
 
+#: Words whose box touches the left or right edge of the image, within this
+#: share of its width, and how many make a cut receipt.
+CUT_EDGE_RATIO = 0.015
+CUT_MIN_WORDS, CUT_MIN_SHARE = 3, 0.12
+
+
+def text_cut_at_edges(words, image):
+    """Tell whether the text runs off the left or right edge of the image.
+
+    A receipt printed with margins keeps its text inside the paper. Words
+    cut by the side of the picture show that the crop went through the
+    receipt: a fold taken for its edge, for instance.
+    """
+    width = image.shape[1]
+    edge = CUT_EDGE_RATIO * width
+    cut = sum(1 for word in words if word.left <= edge or word.right >= width - edge)
+    return cut >= CUT_MIN_WORDS and cut >= CUT_MIN_SHARE * max(len(words), 1)
+
+
 def crop_to_text(image, words, margin_ratio=0.035, max_kept_ratio=0.94):
     """Crop to the outline of the recognised text, with a margin.
 

@@ -173,7 +173,7 @@ TOTAL_KEYWORDS = [
     (re.compile(r"\bGESAMT(?:BETRAG)?\b"), 0.82),                   # de
     (re.compile(r"\bTOTAL\b|\bTOTALE\b|\bTOTAAL\b"), 0.80),
     # "€* TOT 6,42" (Alcampo): the abbreviation opens the line.
-    (re.compile(r"^\s*TOT\b"), 0.78),                              # es
+    (re.compile(r"^\s*(?:X\s+)?TOT\b"), 0.78),                     # es; "€x" for "€*"
     (re.compile(r"\bRAZEM\b"), 0.75),                               # pl
     (re.compile(r"\bMONTANT\b|\bIMPORTO\b|\bIMPORTE\b|\bBETRAG\b|\bBEDRAG\b"), 0.70),
     # Toll receipt without a "total": the price of the passage is the amount.
@@ -508,7 +508,9 @@ MERCHANT_STOP_RE = re.compile(
     r"\bDOCUMENTO\b|\bCOMMERCIALE\b|\bPARTITA\b|\bP\.?\s*IVA\b|\bRECHNUNG\b|"
     r"\bKASSENBON\b|\bBELEG\b|\bQUITTUNG\b|\bSTEUER|\bFACTURA\b|\bFATURA\b|\bRECIBO\b|"
     # "FACTURMPSIMPLIFICADA": the document type, misread and glued.
-    r"SIMPLIFICADA\b|\bCUOTA\b|\bCAMBIO\b|\bENTREGA\b|"
+    r"SIMPLIFICADA\b|\bCUOTA\b|\bCAMBIO\b|\bENTREGA\b|\bPREFACTURA\b|\bATENDIO\b|"
+    # Spanish table number and column headers.
+    r"\bMESA\b|\bARTICULOS?\b|\bDESCRIPCION\b|\bUNID\b|"
     r"\bCIF\b|\bNIF\b|\bRECEIPT\b|\bINVOICE\b|\bTHANK\b|\bWELCOME\b|"
     r"\bGRAZIE\b|\bDANKE\b|\bDZIEKUJEMY\b|\bGRACIAS\b|\bKASA\b|\bKASSE\b|"
     r"\bCASSA\b|\bCAJA\b|\bVAT\b|\bIVA\b|\bMWST\b|\bUST\b|"
@@ -880,7 +882,8 @@ def _closest_known_rate(value):
 # used.
 TAX_TABLE_HEADER_RE = re.compile(
     r"\bH\.?\s*T\b.{0,24}\bT\.?\s*V\.?\s*A\b"
-    r"|\b(?:NETTO|NET|IMPONIBILE|BASE)\b.{0,24}\b(?:MWST|UST|VAT|IVA|BTW)\b"
+    r"|\b(?:NETTO|NETO|NET|IMPONIBILE|BASE)\b.{0,24}\b(?:MWST|UST|VAT|IVA|BTW)\b"
+    r"|\b(?:MWST|UST|VAT|IVA|BTW)\b.{0,24}\bNETO\b"
     # "Code Taux HT Montant TTC": some fast food tills call the tax column
     # "Montant" and never write "TVA". The word "Taux" next to "HT" is enough
     # to point to the table. Without it, the line "A 10,00 18,00 1,80 19,80"
@@ -934,13 +937,13 @@ def _column_labels_run(header):
 # A table line starts with its rate, which some receipts precede with the
 # word TVA: "10%(C) ..." as well as "TVA 10 % ...".
 TAX_TABLE_ROW_RE = re.compile(
-    r"^\s*(?:[A-D]\s+|\d{1,2}\s+)?"
+    r"^\s*(?:[A-H]\s+|\d{1,2}\s+)?"
     r"(?:(?:T\.?\s*V\.?\s*A|MWST|UST|VAT|IVA|BTW)\.?\s*)?"
     r"(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
 #: Table line whose rate has no "%": "10,00 14,36 1,44 15,80", or, when a
 #: "Code" column precedes it, "2 10,00 4 36,18 3,62 39,80".
 TAX_TABLE_BARE_ROW_RE = re.compile(
-    r"^\s*(?:(?:[A-D]|\d)\s+)?(?:(?:I\.?V\.?A|T\.?V\.?A|MWST|VAT)\.?\s+)?(\d{1,2}[.,]\d{1,2})\s+\d")
+    r"^\s*(?:(?:[A-H]|\d)\s+)?(?:(?:I\.?V\.?A|T\.?V\.?A|MWST|VAT)\.?\s+)?(\d{1,2}[.,]\d{1,2})\s+\d")
 #: Columns of a VAT table, in any order: "TVA Taux MONT.TTC MONT.TVA TOTAL
 #: HT", "TVA% TVA Net Brut" (rate, tax, net, gross), "TVA % Taxe HTVA TVAC"
 #: (without VAT, VAT included: Belgian labels, used by some French till
@@ -1041,7 +1044,7 @@ def extract_tax_table(lines):
         # "Taux HT TVA TTC": the rate opens the line, sometimes without "%".
         # A tax word followed by "%" too: "Moms% Moms Netto Brutto" (se, dk).
         has_rate_column = bool(re.search(
-            r"\bTAUX\b|\bRATE\b|\bALIQUOTA\b|\bSATS\b|\bTIPO\b|\bTASA\b|\bIMP\.?\s*%"
+            r"\bTAUX\b|\bRATE\b|\bALIQUOTA\b|\bSATS\b|\bTIPO\b|\bTASA\b|\bIMP\.?\s*%|%\s*I\.?V\.?A\b"
             r"|\b(?:T\.?\s*V\.?\s*A|MOMS|MVA|MWST|VAT|IVA|BTW|PTU|UST)\s*%", header))
         # "MwSt 19% Netto MwSt Brutto" then "33,28 6,32 39,60": a single rate,
         # printed in the header, for a line of amounts without one.
@@ -1052,6 +1055,11 @@ def extract_tax_table(lines):
         for row in lines[index + 1:index + 1 + TAX_TABLE_DEPTH]:
             text = normalize(row.text)
             match = TAX_TABLE_ROW_RE.match(text)
+            if not match and has_rate_column and not re.search(r"[A-Z]{2}", text):
+                inside = _rate_inside_row(_table_amounts(row.text))
+                if inside:
+                    entries.append((inside[0], inside[1], row.text))
+                    continue
             bare = misread = None
             if not match and has_rate_column:
                 bare = TAX_TABLE_BARE_ROW_RE.match(text)
@@ -1168,6 +1176,26 @@ def _tax_of_pair(amounts, rate):
     return second
 
 
+#: A table row opening on the tax name and its rate without "%": "C IVA
+#: 4,00". Elsewhere in a line ("FUNGHI IVA 13.00 A"), the number is a price.
+TAX_NAME_RATE_RE = re.compile(
+    r"^\s*(?:[A-H]\s+)?(?:I\.?V\.?A|T\.?V\.?A|MWST|VAT|BTW)\s+(\d{1,2}[.,]\d{1,2})\b(?!\s*%)")
+
+
+def _rate_inside_row(amounts):
+    """``(rate, tax)`` of a row whose rate is one of its columns, or ``None``.
+
+    "63,82 10,00 6,38" under "BASE %IVA IMP.IVA": the rate sits between the
+    base and the tax. It is taken only when the other amounts hold at it.
+    """
+    for position, value in enumerate(amounts):
+        if value > 0 and _closest_known_rate(value) == value:
+            tax = _consistent_row(amounts[:position] + amounts[position + 1:], value)
+            if tax:
+                return value, tax
+    return None
+
+
 def _extract_taxes_by_line(lines):
     """Fallback: receipts that print their VAT on a labelled line."""
     entries = []
@@ -1233,13 +1261,23 @@ def _extract_taxes_by_line(lines):
                     if _consistent_tax(rest, value) is not None:
                         rate, amounts = value, rest
                         break
+        named = TAX_NAME_RATE_RE.search(text) if rate is None else None
+        if named:
+            # "C IVA 4,00 96 ,04": the rate, without "%", right after the tax
+            # name, is not an amount; the amounts the OCR mangled are lost.
+            value = float(named.group(1).replace(",", "."))
+            if _closest_known_rate(value) == value and value in amounts:
+                rate = value
+                amounts.remove(value)
         amount = None
         if len(amounts) >= 3:
             amount = amounts[1]
             if rate:
                 amount = _consistent_tax(amounts, rate) or amount
         elif len(amounts) == 2 and rate:
-            amount = _tax_of_pair(amounts, rate)
+            # A rate read from the row's number ("TVA 10.00 9.91 099 10.90",
+            # "0.99" misread) only stands with amounts that hold at it.
+            amount = _consistent_row(amounts, rate) if named else _tax_of_pair(amounts, rate)
         elif amounts:
             amount = amounts[-1]
         if rate is None and amount is None:

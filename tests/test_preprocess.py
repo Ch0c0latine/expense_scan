@@ -58,6 +58,19 @@ class TestPreprocess(common.TransactionCase):
         self.assertEqual(ordered[2].tolist(), [90, 90])   # bottom right
         self.assertEqual(ordered[3].tolist(), [10, 90])   # bottom left
 
+    def test_text_cut_by_the_side_of_the_image(self):
+        """A crop through a fold leaves words against the edge of the image."""
+        import numpy as np
+
+        image = np.zeros((1000, 400, 3), dtype=np.uint8)
+
+        def word(left, right, top):
+            return OcrWord(text="X", score=0.9, left=left, top=top, right=right, bottom=top + 20)
+        inside = [word(40, 360, 30 * row) for row in range(20)]
+        self.assertFalse(preprocess.text_cut_at_edges(inside, image))
+        cut = inside[:15] + [word(0, 200, 30 * row) for row in range(15, 20)]
+        self.assertTrue(preprocess.text_cut_at_edges(cut, image))
+
     def test_an_outline_far_from_a_rectangle_is_refused(self):
         """Receipt merged with a white menu at its top right corner."""
         import numpy as np

@@ -30,6 +30,15 @@
   "Tasa Sin IVA Total IVA IVA Inc."; the total "€* TOT 6,42" (Alcampo); a
   misread "FACTURA SIMPLIFICADA", a column header or the change given are
   no longer taken for the merchant.
+- **More Spanish tables** (real restaurant and shop receipts): the rate
+  between the base and the tax ("BASE %IVA IMP.IVA / 63,82 10,00 6,38"),
+  rate codes beyond D ("F 10%"), "Neto", "€x TOT" for "€* TOT", "C IVA
+  4,00" read as a rate and not as the tax. On French receipts too, a rate
+  column no longer lets a base or a total pass for the tax.
+- **Receipt cut by the crop**: a fold was taken for the edge of the paper
+  and the crop went through the receipt. When the text runs off the side of
+  the cropped image, the photo as taken is read too, and the reading that
+  finds more is kept.
 - **Country of the receipt**: a tax name is shared by several countries
   ("IVA" in Spain, Italy and Portugal, "TVA" in France and Belgium, "MwSt"
   in Germany and Austria). The tax number with its country prefix, the

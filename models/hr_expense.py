@@ -1230,6 +1230,13 @@ class HrExpense(models.Model):
         self.with_context(expense_scan_new_receipt=True)._expense_scan_run_pieces()
         return True
 
+    @staticmethod
+    def _expense_scan_found(words):
+        """How many of the main fields a reading gives: total, date, tax, merchant."""
+        result = parser.parse(words)
+        return sum(1 for name in ('total', 'date', 'tax_amount', 'merchant')
+                   if result.value(name) is not None)
+
     def _expense_scan_lock(self):
         """Lock the expense for the time of a scan.
 
@@ -1462,6 +1469,17 @@ class HrExpense(models.Model):
         # _expense_scan_straighten).
         words = engine.recognize(image)
         timer.lap('read')
+        if info.cropped and not manual and preprocess.text_cut_at_edges(words, image):
+            # Text running off the side: the crop may have gone through the
+            # receipt (a fold taken for its edge), or the receipt prints to
+            # the edge of its paper. The photo as taken is read too, and the
+            # reading that finds more is kept.
+            whole, whole_info = preprocess.prepare(
+                data, autocrop=False, deskew=company.expense_scan_deskew)
+            whole_words = engine.recognize(whole)
+            timer.lap('read')
+            if self._expense_scan_found(whole_words) > self._expense_scan_found(words):
+                image, info, words = whole, whole_info, whole_words
         reread = False
         if not manual:
             image, words, reread = self._expense_scan_straighten(
