@@ -59,9 +59,27 @@ msgstr "%(category)s den %(date)s"
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "%(count)d receipts with a different total or date were moved to their own expenses."
+msgstr "%(count)d kvitton med annan summa eller annat datum har flyttats till egna utlägg."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
-msgid "%(count)s expense(s), %(employees)s employee(s), %(amount).2f incl. tax"
-msgstr "%(count)s utlägg, %(employees)s anställda, %(amount).2f inkl. moms"
+msgid "%(count)s expense(s), %(employees)s employee(s), %(amount)s incl. tax"
+msgstr "%(count)s utlägg, %(employees)s anställda, %(amount)s inkl. moms"
+
+#. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/expense_scan_upload.js:0
+msgid "%(count)s receipts scanned, %(check)s to check."
+msgstr "%(count)s kvitton skannade, %(check)s att kontrollera."
+
+#. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/expense_scan_upload.js:0
+msgid "%(count)s receipts scanned."
+msgstr "%(count)s kvitton skannade."
 
 #. module: expense_scan
 #. odoo-python
@@ -79,10 +97,10 @@ msgstr "%(count)s hoppades över: deras verifikation är bokförd (%(names)s). M
 #. odoo-python
 #: code:addons/expense_scan/models/res_config_settings.py:0
 msgid ""
-"%(engine)s - loaded and tested in %(duration).1f s.\n"
+"%(engine)s - loaded and tested in %(duration)s s.\n"
 "Text read: \"%(text)s\""
 msgstr ""
-"%(engine)s - laddad och testad på %(duration).1f s.\n"
+"%(engine)s - laddad och testad på %(duration)s s.\n"
 "Läst text: \"%(text)s\""
 
 #. module: expense_scan
@@ -100,7 +118,7 @@ msgstr ""
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
-msgid "%(rate)s — %(amount).2f"
+msgid "%(rate)s — %(amount)s"
 msgstr ""
 
 #. module: expense_scan
@@ -126,12 +144,6 @@ msgstr "%(rule)s - kategori att kontrollera (%(hints)s)."
 #: code:addons/expense_scan/models/expense_policy.py:0
 msgid "%(rule)s - the receipt mentions \"%(words)s\"."
 msgstr "%(rule)s - kvittot nämner \"%(words)s\"."
-
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense.py:0
-msgid "%.1f s"
-msgstr ""
 
 #. module: expense_scan
 #. odoo-python
@@ -174,6 +186,17 @@ msgstr "%s utlägg återställda till utkast."
 #: code:addons/expense_scan/models/hr_expense_team.py:0
 msgid "%s is not in your team."
 msgstr "%s ingår inte i ditt team."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "%s s"
+msgstr ""
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "0 means 4. More threads do not read a receipt faster."
+msgstr "0 betyder 4. Fler trådar läser inte ett kvitto snabbare."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
@@ -225,6 +248,13 @@ msgstr "En kolumnbokstav (\"B\"): varje utläggs värde, rad för rad. En cell (
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_max_age_days
 msgid "A date older than this is ignored: it is almost always a warranty or loyalty card date."
 msgstr "Ett äldre datum ignoreras: det är nästan alltid ett garanti- eller kundkortsdatum."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+#: code:addons/expense_scan/models/hr_expense_multi.py:0
+msgid "A receipt with a different total or date was moved to its own expense: %s"
+msgstr "Ett kvitto med annan summa eller annat datum har flyttats till ett eget utlägg: %s"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
@@ -315,6 +345,11 @@ msgstr "Beloppet är svårläst på kvittot: kontrollera det."
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Amount not found on the receipt: enter it."
 msgstr "Beloppet hittades inte på kvittot: ange det."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "An older date is ignored: usually a warranty or loyalty card date."
+msgstr "Ett äldre datum ignoreras: oftast ett garanti- eller kundkortsdatum."
 
 #. module: expense_scan
 #. odoo-javascript
@@ -527,6 +562,7 @@ msgstr "Konfigurationsinställningar"
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_deskew
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_deskew
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Corrects the remaining tilt of the text lines."
 msgstr "Rättar den kvarvarande lutningen hos textraderna."
 
@@ -564,6 +600,12 @@ msgstr "Beskuret kvitto"
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Currency (%s to activate in Odoo)"
 msgstr "Valuta (%s att aktivera i Odoo)"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "Currency (%s without an exchange rate)"
+msgstr "Valuta (%s utan växelkurs)"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__current
@@ -653,6 +695,12 @@ msgstr "Medföljande exempel: en Excel-mall att anpassa, regler för god praxis 
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Description"
 msgstr "Beskrivning"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "Description taken from the expense of the same trip: %s"
+msgstr "Beskrivningen hämtad från utlägget för samma resa: %s"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_policy_rule__meal_period__dinner
@@ -803,8 +851,8 @@ msgstr "Utlägg"
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
-msgid "Expense \"%(name)s\" carries a receipt tax of %(amount).2f, but no tax with a usable rate. Select the matching tax on the expense (or on its category, for the next ones), or empty the \"Receipt tax\" field."
-msgstr "Utlägget \"%(name)s\" har en kvittoskatt på %(amount).2f men ingen skatt med användbar sats. Välj rätt skatt på utlägget (eller på dess kategori, för nästa) eller töm fältet \"Skatt på kvittot\"."
+msgid "Expense \"%(name)s\" carries a receipt tax of %(amount)s, but no tax with a usable rate. Select the matching tax on the expense (or on its category, for the next ones), or empty the \"Receipt tax\" field."
+msgstr "Utlägget \"%(name)s\" har en kvittoskatt på %(amount)s men ingen skatt med användbar sats. Välj rätt skatt på utlägget (eller på dess kategori, för nästa) eller töm fältet \"Skatt på kvittot\"."
 
 #. module: expense_scan
 #: model:ir.actions.act_window,name:expense_scan.expense_scan_policy_action
@@ -854,16 +902,6 @@ msgid "Expense Scan Main Mimetype"
 msgstr ""
 
 #. module: expense_scan
-#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_manual_fields
-msgid "Expense Scan Manual Fields"
-msgstr ""
-
-#. module: expense_scan
-#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_manual_retouch
-msgid "Expense Scan Manual Retouch"
-msgstr ""
-
-#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_read_values
 msgid "Expense Scan Read Values"
 msgstr ""
@@ -871,11 +909,6 @@ msgstr ""
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_retouch_params
 msgid "Expense Scan Retouch Params"
-msgstr ""
-
-#. module: expense_scan
-#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_todo_codes
-msgid "Expense Scan Todo Codes"
 msgstr ""
 
 #. module: expense_scan
@@ -1013,6 +1046,11 @@ msgid "False as soon as every point listed in \"Fields to check\" is resolved: t
 msgstr "Falskt så snart varje punkt i \"Fält att kontrollera\" är löst: granskningsmeddelandet försvinner då utan att vänta på en ny skanning."
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_manual_fields
+msgid "Fields entered by hand"
+msgstr "Fält ifyllda för hand"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__scan_todo
 msgid "Fields to check"
 msgstr "Fält att kontrollera"
@@ -1033,6 +1071,11 @@ msgstr "Filer (inkl. PDF)"
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_apply_tax
 msgid "Fills the \"Receipt tax\" field with the amount read on the receipt. That amount then takes precedence over the one the rate would give, down to the journal entry, so that a receipt with several rates keeps its exact tax. The rate stays the one of the expense category."
 msgstr "Fyller fältet \"Skatt på kvittot\" med beloppet som lästs på kvittot. Det beloppet går då före det som satsen skulle ge, ända till verifikationen, så att ett kvitto med flera satser behåller sin exakta skatt. Satsen förblir utläggskategorins."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Finds the edges of the receipt and corrects the perspective."
+msgstr "Hittar kvittots kanter och rättar perspektivet."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_autocrop
@@ -1123,6 +1166,11 @@ msgid "Generate Expenses"
 msgstr ""
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Given to scanned expenses whose receipt names no category."
+msgstr "Ges till skannade utlägg vars kvitto inte anger någon kategori."
+
+#. module: expense_scan
 #: model:ir.model,name:expense_scan.model_ir_http
 msgid "HTTP Routing"
 msgstr "HTTP-routning"
@@ -1131,6 +1179,12 @@ msgstr "HTTP-routning"
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__kind__header
 msgid "Header"
 msgstr "Rubrik"
+
+#. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/xml/chatter_patch.xml:0
+msgid "History"
+msgstr "Historik"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__id
@@ -1163,11 +1217,11 @@ msgstr "Bildbehandling: %s"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid ""
-"Impossible receipt tax: %(entered).2f is above the maximum of %(ceiling).2f, which is the rate of %(rate).2f %% applied to the whole %(total).2f of the receipt.\n"
+"Impossible receipt tax: %(entered)s is above the maximum of %(ceiling)s, which is the rate of %(rate)s %% applied to the whole %(total)s of the receipt.\n"
 "\n"
 "Choose an expense category whose rate covers this tax, or empty the \"Receipt tax\" field if this expense gives no right to deduction."
 msgstr ""
-"Omöjlig kvittoskatt: %(entered).2f överstiger maxbeloppet %(ceiling).2f, det vill säga satsen %(rate).2f %% tillämpad på kvittots hela %(total).2f.\n"
+"Omöjlig kvittoskatt: %(entered)s överstiger maxbeloppet %(ceiling)s, det vill säga satsen %(rate)s %% tillämpad på kvittots hela %(total)s.\n"
 "\n"
 "Välj en utläggskategori vars sats täcker denna skatt, eller töm fältet \"Skatt på kvittot\" om utlägget inte ger rätt till avdrag."
 
@@ -1220,6 +1274,11 @@ msgstr "Sista utläggsraden"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__amount
 msgid "Limit (tax incl.)"
 msgstr "Gräns (inkl. skatt)"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Links the contact named like the merchant, when exactly one matches."
+msgstr "Kopplar kontakten med butikens namn, när exakt en matchar."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_set_vendor
@@ -1373,6 +1432,12 @@ msgid "Name"
 msgstr "Namn"
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "Neither amount nor date found: check that this image is a receipt, or enter the expense by hand."
+msgstr "Varken belopp eller datum hittades: kontrollera att bilden är ett kvitto, eller fyll i utlägget för hand."
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Net base"
 msgstr "Nettounderlag"
@@ -1391,6 +1456,18 @@ msgstr "Nätter krävs"
 #: model:ir.model.fields.selection,name:expense_scan.selection__hr_expense__reinvoice_mode__none
 msgid "No"
 msgstr "Nej"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "No exchange rate for %s in Odoo: the amount counts one for one in the company currency until a rate is entered."
+msgstr "Ingen växelkurs för %s i Odoo: beloppet räknas ett till ett i företagets valuta tills en kurs anges."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_policy.py:0
+msgid "No exchange rate for %s: the amount limits are not checked."
+msgstr "Ingen växelkurs för %s: beloppsgränserna kontrolleras inte."
 
 #. module: expense_scan
 #: model_terms:ir.actions.act_window,help:expense_scan.action_expense_scan_employee_expenses
@@ -1420,6 +1497,12 @@ msgstr "Inget läsbart kvitto."
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "No receipt to retouch."
 msgstr "Inget kvitto att redigera."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "No receipt to scan: attach one first."
+msgstr "Inget kvitto att skanna: bifoga ett först."
 
 #. module: expense_scan
 #. odoo-python
@@ -1602,6 +1685,11 @@ msgid "Photo processing"
 msgstr "Fotobehandling"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_todo_codes
+msgid "Points to check (codes)"
+msgstr "Punkter att kontrollera (koder)"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_todo_pending
 msgid "Points to check still open"
 msgstr "Punkter att kontrollera som fortfarande är öppna"
@@ -1747,6 +1835,11 @@ msgid "Reading the text"
 msgstr "Läser texten"
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Reads again after a quarter turn when the text runs vertically. Slower."
+msgstr "Läser igen efter ett kvartsvarv när texten löper lodrätt. Långsammare."
+
+#. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_auto_rotate
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_auto_rotate
 msgid "Reads the receipt again after rotating it when the text seems to run vertically. Makes that scan slower."
@@ -1759,6 +1852,11 @@ msgid "Receipt"
 msgstr "Kvitto"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_receipt_removed
+msgid "Receipt deleted"
+msgstr "Kvitto borttaget"
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Receipt in %s: activate this currency in Odoo, otherwise the amount counts in the company currency."
@@ -1766,9 +1864,20 @@ msgstr "Kvitto i %s: aktivera denna valuta i Odoo, annars räknas beloppet i fö
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/expense_policy.py:0
+msgid "Receipt in a currency not active in Odoo: the amount limits are not checked."
+msgstr "Kvitto i en valuta som inte är aktiv i Odoo: beloppsgränserna kontrolleras inte."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/hr_expense_multi.py:0
-msgid "Receipt moved here from an email whose other receipt had a different total."
-msgstr "Kvittot flyttades hit från ett e-postmeddelande vars andra kvitto hade en annan summa."
+msgid "Receipt moved here from %s: its total or date differ from the receipt of that expense."
+msgstr "Kvittot flyttat hit från %s: summan eller datumet skiljer sig från kvittot på det utlägget."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Receipt next to the form from 768 px wide instead of 1400 px."
+msgstr "Kvittot bredvid formuläret från 768 px bredd i stället för 1400 px."
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__n
@@ -1848,6 +1957,12 @@ msgstr "Kvittoord"
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "Receipt?"
+msgstr "Kvitto?"
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "Receipts"
 msgstr "Kvitton"
@@ -1924,6 +2039,11 @@ msgid "Retouch"
 msgstr "Redigera"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_manual_retouch
+msgid "Retouched by hand"
+msgstr "Redigerat för hand"
+
+#. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/retouch_dialog.xml:0
 msgid "Rotate left"
@@ -1947,6 +2067,7 @@ msgstr "Regelbrott"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__rule_ids
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_policy_status
 msgid "Rules"
 msgstr "Regler"
 
@@ -2116,6 +2237,11 @@ msgstr "Föreslagna projekt"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Suggests the employee's project running on the receipt date."
+msgstr "Föreslår den anställdes projekt som pågår på kvittots datum."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Support this module"
 msgstr "Stöd denna modul"
 
@@ -2149,8 +2275,8 @@ msgstr "Skatt"
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
-msgid "Tax (%.2f read, to carry with the total)"
-msgstr "Skatt (%.2f läst, att föra över med summan)"
+msgid "Tax (%s read, to carry with the total)"
+msgstr "Skatt (%s läst, att föra över med summan)"
 
 #. module: expense_scan
 #. odoo-python
@@ -2175,21 +2301,21 @@ msgstr "Skatt (läsningen stämmer inte med satsen)"
 msgid ""
 "Tax amount printed on the receipt. It prevails: the tax of the expense and of the journal entry take this value, whatever the rate shown next to it. This is what lets a receipt mixing 5.5%, 10% and 20% produce exactly its tax.\n"
 "\n"
-"Zero means zero: no deductible tax, which is the case of a card slip or of a receipt where no tax could be read.\n"
+"Empty: the tax follows the rate, as in standard Odoo. A receipt without deductible tax (card slip, tax not readable) has no tax selected.\n"
 "\n"
 "The rate only does two things: carry the tax tags of the entry, and cap this amount. A tax higher than the rate applied to the receipt total is necessarily an error, and choosing a lower rate trims the amount accordingly."
 msgstr ""
 "Skattebelopp tryckt på kvittot. Det gäller: utläggets skatt och verifikationens skatt tar detta värde, oavsett satsen som visas bredvid. Det gör att ett kvitto som blandar 5,5 %, 10 % och 20 % ger exakt sin skatt.\n"
 "\n"
-"Noll betyder noll: ingen avdragsgill skatt, som på ett kortkvitto eller ett kvitto där ingen skatt kunde läsas.\n"
+"Tomt: skatten följer satsen, som i standard-Odoo. Ett kvitto utan avdragsgill skatt (kortkvitto, oläslig skatt) har ingen skatt vald.\n"
 "\n"
 "Satsen används bara till två saker: bära verifikationens skattetaggar och begränsa detta belopp. En skatt högre än satsen tillämpad på kvittots summa är nödvändigtvis ett fel, och att välja en lägre sats minskar beloppet i motsvarande mån."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
-msgid "Tax of %.2f read: enter the total to carry it."
-msgstr "Skatt på %.2f läst: ange summan för att föra över den."
+msgid "Tax of %s read: enter the total to carry it."
+msgstr "Skatt på %s läst: ange summan för att föra över den."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
@@ -2384,8 +2510,8 @@ msgstr "Skanningen av kvittot misslyckades: starta den igen från formuläret."
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
-msgid "The receipt tax (%(amount).2f) cannot yet be carried on an expense paid by the company. Set the expense back to \"Employee (to reimburse)\", or empty the \"Receipt tax\" field to let Odoo compute it from the rate."
-msgstr "Kvittoskatten (%(amount).2f) kan ännu inte föras över på ett utlägg som betalats av företaget. Ställ tillbaka utlägget på \"Anställd (ska ersättas)\", eller töm fältet \"Skatt på kvittot\" så att Odoo räknar ut den från satsen."
+msgid "The receipt tax (%(amount)s) cannot yet be carried on an expense paid by the company. Set the expense back to \"Employee (to reimburse)\", or empty the \"Receipt tax\" field to let Odoo compute it from the rate."
+msgstr "Kvittoskatten (%(amount)s) kan ännu inte föras över på ett utlägg som betalats av företaget. Ställ tillbaka utlägget på \"Anställd (ska ersättas)\", eller töm fältet \"Skatt på kvittot\" så att Odoo räknar ut den från satsen."
 
 #. module: expense_scan
 #. odoo-python
@@ -2424,6 +2550,11 @@ msgid "The scan of this receipt did not finish. Enter the expense by hand."
 msgstr "Skanningen av detta kvitto slutfördes inte. Ange utlägget för hand."
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "The tax printed on the receipt goes to the journal entry, rather than the one the rate gives."
+msgstr "Skatten som står på kvittot går till verifikationen, i stället för den som satsen ger."
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "The tax read does not match the rate: enter the amount printed on the receipt."
@@ -2447,14 +2578,30 @@ msgid "The untouched photo stays attached to the expense as the receipt; the cro
 msgstr "Det oredigerade fotot förblir bifogat utlägget som kvitto; den beskurna bilden används för visningen."
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "The untouched photo stays reachable from the expense; the cropped image is shown."
+msgstr "Det orörda fotot går att nå från utlägget; den beskurna bilden visas."
+
+#. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_template__file
 msgid "The workbook as it is filled in by hand, data included: the expense lines are emptied before being filled."
 msgstr "Arbetsboken så som den fylls i för hand, data inräknade: utläggsraderna töms innan de fylls i."
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Then the text read is erased; the receipt image stays. 0: never."
+msgstr "Därefter raderas den lästa texten; kvittobilden finns kvar. 0: aldrig."
+
+#. module: expense_scan
 #: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_current_month
 msgid "This Month"
 msgstr "Denna månad"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "This PDF has several pages: it stays the receipt as it is. Retouch applies to photos and single-page PDFs."
+msgstr "Den här PDF-filen har flera sidor: den förblir kvittot som den är. Redigering gäller foton och PDF-filer med en sida."
 
 #. module: expense_scan
 #. odoo-javascript
@@ -2470,9 +2617,9 @@ msgstr "Denna kategori har ingen skatt: välj satsen så att den lästa skatten 
 
 #. module: expense_scan
 #. odoo-python
-#: code:addons/expense_scan/models/hr_expense_multi.py:0
-msgid "This message carried a receipt unrelated to this one: it was moved to its own expense."
-msgstr "Detta meddelande innehöll ett kvitto utan samband med detta: det har flyttats till ett eget utlägg."
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "This receipt is already being scanned. Try again in a moment."
+msgstr "Det här kvittot skannas redan. Försök igen om en stund."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_threads
@@ -2781,8 +2928,8 @@ msgstr "flera satser, upp till %s %%"
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
-msgid "straightened by %.1f°"
-msgstr "uppriktad %.1f°"
+msgid "straightened by %s°"
+msgstr "uppriktad %s°"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
@@ -2805,6 +2952,11 @@ msgstr "inte tillgänglig - %s"
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "· Period"
 msgstr "· Period"
+
+#. module: expense_scan
+#: model:ir.model.fields.selection,name:expense_scan.selection__hr_expense__expense_scan_policy_status__check
+msgid "ℹ︎"
+msgstr "ℹ︎"
 
 #. module: expense_scan
 #: model:expense.scan.policy,name:expense_scan.policy_good_practice
