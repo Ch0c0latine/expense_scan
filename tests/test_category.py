@@ -355,6 +355,10 @@ class TestCategoryRecognition(common.TransactionCase):
         """MWST: domestic for a German company, foreign for a French one."""
         expense = self.expense()
         german = reading("NETTO MARKEN-DISCOUNT\nMWST 19% 1,00\nSUMME 6,26")
+        # A German chart of accounts knows the 19 % rate.
+        self.env['account.tax'].create({
+            'name': "19% Vorsteuer (test)", 'amount': 19.0, 'amount_type': 'percent',
+            'type_tax_use': 'purchase', 'company_id': self.company.id})
         Country = self.env['res.country']
         self.company.account_fiscal_country_id = Country.search([('code', '=', 'DE')])
         self.assertFalse(expense._expense_scan_foreign_tax(german, self.company))
