@@ -17,6 +17,12 @@
   receipt): the photo was straightened along a wrong outline, which
   distorted the text and cut the end of the merchant name. An outline whose
   corners are far from right angles is no longer used.
+- **Categories of a new database**: Odoo's own "Meals" category was not
+  taken for meals (only "Meal" was); category names are recognised in more
+  languages ("Kraftstoff", "Parkgebühren", "Übernachtung", "Drivmedel",
+  "Måltider"...), flat allowances ("Pauschale") excepted. A category
+  created or renamed after the installation gets the receipt words of its
+  family, as the categories present at the installation did.
 - **Total and tax read the other way round** on a crumpled receipt (tax of
   12.00 for a total of 1.92): exchanged when the total is the tax of the
   larger amount at the rate read.

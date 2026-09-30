@@ -268,18 +268,27 @@ for _words in ADDED_KEYWORDS.values():
 #: How to recognise, by its name or reference, the category matching a
 #: family. First clue found, first family served.
 FAMILY_HINTS = [
-    ('lodging', ("heberg", "hotel", "bnb", "lodging", "accommodation")),
+    ('lodging', ("heberg", "hotel", "bnb", "lodging", "accommodation", "unterkunft",
+                 "ubernacht", "alloggi", "alojam", "hospedaj", "nocleg", "overnacht",
+                 "overnatt", "overnatn", "boende")),
     ('taxi', ("taxi", "vtc", "mobilit", "mob")),
-    ('train_air', ("train", "avion", "transport", "flight", "air")),
-    ('fuel', ("carbur", "energie", "fuel", "essence", "elec")),
-    ('toll_parking', ("peage", "parking", "park", "toll")),
-    ('car_rental', ("location", "rental", "loc")),
-    ('meal', ("repas", "meal", "restaur")),
+    ('train_air', ("train", "avion", "transport", "flight", "air", "bahn", "flug", "zug",
+                   "treno", "volo", "tren", "vuelo", "pociag", "trein")),
+    ('fuel', ("carbur", "energie", "fuel", "essence", "elec", "kraftstoff", "benzin",
+              "tank", "tanken", "paliw", "brandstof", "combust", "drivmedel", "drivstoff",
+              "braendstof")),
+    ('toll_parking', ("peage", "parking", "park", "toll", "maut", "parkgeb", "parkier",
+                      "parken", "pedagg", "peaje", "parcheggi", "aparcam", "parkeren", "parkering")),
+    ('car_rental', ("location", "rental", "loc", "mietwagen", "noleggio", "alquiler",
+                    "wynajem", "huurauto", "hyrbil", "leiebil", "billeje")),
+    ('meal', ("repas", "meal", "food", "restaur", "mahlzeit", "pasto",
+              "pasti", "comida", "posilk", "maaltijd", "refeic", "maltid")),
     ('telecom', ("communication", "comm", "telecom", "telephon")),
 ]
 #: Categories no family claims: flat allowances, and business meals, which
 #: nothing on the receipt tells apart from an ordinary meal.
-FAMILY_EXCLUDED = ("igd", "bareme", "forfait", "invit", "affaire", "kilomet", "mileage")
+FAMILY_EXCLUDED = ("igd", "bareme", "forfait", "invit", "affaire", "kilomet", "mileage",
+                   "pauschal", "verpflegungsmehr")
 
 
 def family_of(*labels):
@@ -289,9 +298,10 @@ def family_of(*labels):
         return None
     for family, hints in FAMILY_HINTS:
         for hint in hints:
-            # Short clue: whole word, otherwise "air" would match "affaires"
-            # and "mob" would match anything.
-            if any(word == hint if len(hint) <= 4 else word.startswith(hint)
+            # Short clue: whole word, plural allowed ("Meals", Odoo's own
+            # category), otherwise "air" would match "affaires" and "mob"
+            # would match anything.
+            if any(word in (hint, hint + "s") if len(hint) <= 4 else word.startswith(hint)
                    for word in words):
                 return family
     return None

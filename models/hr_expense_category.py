@@ -66,6 +66,21 @@ class ProductTemplate(models.Model):
              "are submitted: no need to enter them all here.",
     )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        templates = super().create(vals_list)
+        if templates.filtered('can_be_expensed'):
+            # A category created after the installation gets the words of
+            # its family too ("Fuel" added to Odoo's default categories).
+            self.sudo()._expense_scan_seed_keywords()
+        return templates
+
+    def write(self, vals):
+        result = super().write(vals)
+        if {'name', 'default_code', 'can_be_expensed'} & set(vals)                 and self.filtered('can_be_expensed'):
+            self.sudo()._expense_scan_seed_keywords()
+        return result
+
     @api.model
     def _expense_scan_seed_keywords(self):
         """Suggest words for the categories that have none.

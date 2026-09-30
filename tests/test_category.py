@@ -31,11 +31,20 @@ class TestLexicon(common.TransactionCase):
         self.assertEqual(lexicon.family_of("MOB_URB", "Taxi/VTC/Metro/Tram"), 'taxi')
         self.assertEqual(lexicon.family_of("LOC", "Location de vehicule"), 'car_rental')
         self.assertEqual(lexicon.family_of("REPAS", "Meals"), 'meal')
+        # Odoo's own category, and names in other languages.
+        self.assertEqual(lexicon.family_of("FOOD", "Meals"), 'meal')
+        self.assertEqual(lexicon.family_of("Kraftstoff"), 'fuel')
+        self.assertEqual(lexicon.family_of("Parkgebühren"), 'toll_parking')
+        self.assertEqual(lexicon.family_of("Übernachtung"), 'lodging')
+        self.assertEqual(lexicon.family_of("Drivmedel"), 'fuel')
+        self.assertEqual(lexicon.family_of("Måltider"), 'meal')
 
     def test_flat_rates_and_business_meals_have_no_family(self):
         self.assertIsNone(lexicon.family_of("IDG Logement", "IGD Logement - Bareme Urssaf"))
         self.assertIsNone(lexicon.family_of("INVITATION", "Repas d'affaires / invitations"))
         self.assertIsNone(lexicon.family_of("KM", "Kilométrage"))
+        self.assertIsNone(lexicon.family_of("Verpflegungspauschale pro Tag"))
+        self.assertIsNone(lexicon.family_of("Bewirtung"))
 
     def test_polish_fuel_receipt_scores_fuel(self):
         categories = {
@@ -456,6 +465,12 @@ class TestCategoryRecognition(common.TransactionCase):
         })
         self.env['product.template']._expense_scan_seed_keywords()
         self.assertEqual(hotel.expense_scan_keywords, "mon mot")
+
+    def test_a_category_created_later_gets_its_words(self):
+        fuel = self.env['product.template'].create({
+            'name': "Kraftstoff", 'can_be_expensed': True, 'sequence': -1000,
+        })
+        self.assertIn("tankstelle", (fuel.expense_scan_keywords or "").splitlines())
 
     def test_archived_categories_take_no_family(self):
         archived = self.env['product.template'].create({
