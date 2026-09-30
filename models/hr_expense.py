@@ -170,6 +170,13 @@ class HrExpense(models.Model):
              "uses it to hide the \"Employee\" field, which only matters when "
              "a manager enters an expense for someone else.",
     )
+    expense_scan_expense_manager = fields.Boolean(
+        string="Expense manager",
+        compute='_compute_expense_scan_expense_manager',
+        help="True when the user viewing the expense manages expenses. The "
+             "account and the analytic distribution are only shown to them, "
+             "on top of the accounting groups Odoo requires.",
+    )
     expense_scan_one_payment_method = fields.Boolean(
         string="Single payment method",
         compute='_compute_expense_scan_one_payment_method',
@@ -341,6 +348,12 @@ class HrExpense(models.Model):
             company_tax = expense.company_currency_id.round(expense.scan_tax_amount / rate)
             expense.tax_amount = company_tax
             expense.untaxed_amount = expense.total_amount - company_tax
+
+    @api.depends_context('uid')
+    def _compute_expense_scan_expense_manager(self):
+        manager = self.env.user.has_group('hr_expense.group_hr_expense_manager')
+        for expense in self:
+            expense.expense_scan_expense_manager = manager
 
     @api.depends('employee_id')
     @api.depends_context('uid')
