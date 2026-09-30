@@ -60,6 +60,11 @@
   check instead of an expense at 0 read "with 100 % confidence".
 - **Numbers** in the scan details, the tax read, error messages and the sheet
   wizard follow the user's language.
+- **Account and analytic distribution** on the expense form: shown to
+  expense managers only when Odoo shows them too (full accounting features
+  for the account, analytic accounting for the distribution). Turning off
+  analytic accounting now hides the distribution for managers as well. The
+  analytic account of the project is still set automatically.
 - **Interface**: history of the expense folded, one click away; help of the
   settings shown under each option; retouch controls that stay in place and
   a "0°" button; tax rate readable on a tablet in landscape; PDF preview
