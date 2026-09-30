@@ -112,6 +112,45 @@ class TestExpensePolicy(common.TransactionCase):
                               scan_raw_text="TGV INOUI\n1ERE CLASSE\nVOITURE 1")
         self.assertIn("1ere classe", ticket.expense_scan_policy_alert)
 
+    def test_a_class_named_in_the_conditions_is_not_the_one_bought(self):
+        """The fare conditions of an economy ticket name the business class."""
+        ticket = self.expense("Billet", 80.0, product=self.train, scan_raw_text=(
+            "EXEMPLE AIR\nECONOMY\nTOTAL 80,00\nConditions generales de transport\n"
+            "Business: bagage de 32 kg"))
+        self.assertFalse(ticket.expense_scan_policy_alert)
+
+    def test_the_signs_tell_a_breach_from_a_doubt(self):
+        lunch = self.expense("Repas midi", 25.0)
+        self.expense("Repas soir", 40.0)
+        self.assertEqual(lunch.expense_scan_policy_status, 'breach')
+        self.assertTrue(lunch.expense_scan_policy_alert.startswith("⚠ "))
+        ticket = self.expense("Billet", 80.0, product=self.train,
+                              scan_raw_text="TGV INOUI\n1ERE CLASSE")
+        self.assertEqual(ticket.expense_scan_policy_status, 'check')
+        self.assertTrue(ticket.expense_scan_policy_alert.startswith("ℹ︎ "))
+        self.assertFalse(self.expense("Repas midi", 15.0, date=date(2026, 9, 9))
+                         .expense_scan_policy_status)
+
+    def test_an_amount_without_exchange_rate_is_not_compared(self):
+        """40 units of a currency without a rate are not 40 EUR."""
+        currency = self.env['res.currency'].create({
+            'name': 'XZZ', 'symbol': 'Zz', 'active': True})
+        self.expense("Repas soir", 40.0)
+        lunch = self.expense("Repas midi", 25.0, currency_id=currency.id)
+        self.assertNotIn("Déjeuner 20", lunch.expense_scan_policy_alert)
+        self.assertIn("No exchange rate for XZZ", lunch.expense_scan_policy_alert)
+        self.assertEqual(lunch.expense_scan_policy_status, 'check')
+        self.assertTrue(lunch._expense_scan_missing_rate())
+
+    def test_an_amount_in_an_inactive_currency_is_not_compared(self):
+        """Receipt in CHF, currency not active: the amount is not in euros."""
+        self.expense("Repas soir", 40.0)
+        lunch = self.expense(
+            "Repas midi", 25.0, expense_scan_todo_codes='currency',
+            expense_scan_read_values='{"currency_id": %d}' % self.env.company.currency_id.id)
+        self.assertNotIn("Déjeuner 20", lunch.expense_scan_policy_alert)
+        self.assertIn("not active in Odoo", lunch.expense_scan_policy_alert)
+
     def test_other_clients_are_not_checked(self):
         free = self.expense("Ticket", 90.0, project=self.other_project, scan_time="12:30")
         self.assertFalse(free.expense_scan_policy_alert)

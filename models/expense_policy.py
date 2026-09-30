@@ -42,6 +42,16 @@ ACRISS_RE = re.compile(r"\b([MNEHCDIJSRFGPULWOX])[BCDWVLSTFJXPQZEMRHYNGK][MNCABD
 ECONOMY_ACRISS = set("MNEH")
 #: Words that, on a rental contract, point to a higher category.
 RENTAL_UPGRADE_WORDS = ("premium", "prestige", "luxe", "luxury", "suv", "full size", "fullsize")
+#: Heading of the general conditions printed after a ticket or an invoice
+#: (folded text). What follows describes every fare, not the purchase: the
+#: conditions of a train ticket name the "business" class.
+CONDITIONS_RE = re.compile(
+    r"^(?:\w+ ){0,3}(?:conditions (?:generales|de vente|d utilisation|tarifaires|de transport)"
+    r"|cgv|cgu|terms (?:and )?conditions|terms of (?:sale|use|carriage)|general conditions"
+    r"|agb|allgemeine geschaftsbedingungen|beforderungsbedingungen|condiciones generales"
+    r"|condizioni generali|algemene voorwaarden|warunki ogolne|regulamin)\b")
+#: Signs of the rule findings: a breach, or a point to check.
+BREACH_SIGN, CHECK_SIGN = "⚠", "ℹ︎"
 
 
 class ExpenseScanPolicy(models.Model):
@@ -157,26 +167,37 @@ class HrExpense(models.Model):
     expense_scan_policy_breach = fields.Boolean(
         string="Outside the rules", compute='_compute_expense_scan_policy',
         store=True, readonly=True)
+    #: Shown in the list, to spot the exceptions at a glance.
+    expense_scan_policy_status = fields.Selection(
+        [('breach', BREACH_SIGN), ('check', CHECK_SIGN)],
+        string="Rules", compute='_compute_expense_scan_policy', store=True, readonly=True)
 
     #: Fields the check of an expense depends on.
     POLICY_FIELDS = ('product_id', 'total_amount', 'total_amount_currency', 'date',
                      'scan_time', 'name', 'expense_scan_nights', 'scan_raw_text',
-                     'project_id', 'employee_id', 'expense_scan_merchant')
+                     'project_id', 'employee_id', 'expense_scan_merchant', 'currency_id',
+                     'expense_scan_todo_codes')
 
     @api.depends(*POLICY_FIELDS)
     def _compute_expense_scan_policy(self):
         for expense in self:
             findings = expense._expense_scan_policy_findings()
             expense.expense_scan_policy_alert = "\n".join(
-                ("⚠ " if breach else "? ") + message for breach, message in findings) or False
+                "%s %s" % (BREACH_SIGN if breach else CHECK_SIGN, message)
+                for breach, message in findings) or False
             expense.expense_scan_policy_breach = bool(findings)
+            expense.expense_scan_policy_status = (
+                'breach' if any(breach for breach, _message in findings)
+                else 'check' if findings else False)
 
     def _expense_scan_recompute_policy(self):
         if not self:
             return
-        for name in ('expense_scan_policy_alert', 'expense_scan_policy_breach'):
+        names = ['expense_scan_policy_alert', 'expense_scan_policy_breach',
+                 'expense_scan_policy_status']
+        for name in names:
             self.env.add_to_compute(self._fields[name], self)
-        self.flush_recordset(['expense_scan_policy_alert', 'expense_scan_policy_breach'])
+        self.flush_recordset(names)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -268,7 +289,7 @@ class HrExpense(models.Model):
         amount = self.total_amount
         currency = self.company_currency_id
         text = lexicon.fold(" ".join(filter(None, (
-            self.name, self.expense_scan_merchant, self.scan_raw_text))))
+            self.name, self.expense_scan_merchant, self._expense_scan_purchase_text()))))
         findings = []
         undecided_limits = []
 
@@ -279,6 +300,15 @@ class HrExpense(models.Model):
         # expensive dinner with a light lunch may stay below it.
         applicable = policies.rule_ids.filtered(
             lambda rule: self._expense_scan_rule_applies(rule, family))
+        # An amount not converted to the company currency cannot be compared
+        # with its limits: 40 CHF are not 40 EUR.
+        unconverted = self._expense_scan_unconverted_note()
+        if unconverted:
+            amount_rules = applicable.filtered(
+                lambda rule: rule.rule_type in ('max_amount', 'daily_max'))
+            if amount_rules:
+                findings.append((False, unconverted))
+            applicable -= amount_rules
         daily_rules = applicable.filtered(lambda rule: rule.rule_type == 'daily_max')
         day_within_limit = bool(daily_rules) and all(
             (total := self._expense_scan_daily_total(rule, family)) is None
@@ -345,6 +375,31 @@ class HrExpense(models.Model):
                     value=money(amount), rule=low[1])))
         return findings
 
+    def _expense_scan_purchase_text(self):
+        """Text read on the receipt, without its general conditions."""
+        lines = []
+        for line in (self.scan_raw_text or '').splitlines():
+            if CONDITIONS_RE.match(lexicon.fold(line)):
+                break
+            lines.append(line)
+        return "\n".join(lines)
+
+    def _expense_scan_unconverted_note(self):
+        """Why the amount is not in the company currency, or ``False``.
+
+        Either the receipt currency is not active in Odoo (the amount is
+        counted in the company currency), or it has no exchange rate (Odoo
+        counts one for one).
+        """
+        self.ensure_one()
+        if 'currency' in self._expense_scan_open_codes():
+            return _("Receipt in a currency not active in Odoo: "
+                     "the amount limits are not checked.")
+        if self._expense_scan_missing_rate():
+            return _("No exchange rate for %s: the amount limits are not checked.",
+                     self.currency_id.name)
+        return False
+
     def _expense_scan_daily_total(self, rule, family):
         """Total of the day's meals covered by the rule, or ``None``."""
         periods = ('lunch', 'dinner') if rule.meal_period == 'lunch_dinner' else None
@@ -362,5 +417,7 @@ class HrExpense(models.Model):
                 continue
             if periods and other._expense_scan_meal_period() not in periods:
                 continue
+            if other._expense_scan_unconverted_note():
+                continue  # not comparable, reported on that expense
             total += other.total_amount
         return total

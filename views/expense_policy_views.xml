@@ -131,6 +131,32 @@
         </field>
     </record>
 
+    <!-- Sign of the rule findings in the lists, to spot the exceptions at
+         a glance. -->
+    <record id="hr_expense_view_list_policy" model="ir.ui.view">
+        <field name="name">hr.expense.list.policy</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_expenses_analysis_tree"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="expense_scan_policy_status" nolabel="1" readonly="1"
+                       optional="show" class="text-warning"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="hr_expense_view_kanban_policy" model="ir.ui.view">
+        <field name="name">hr.expense.kanban.policy</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_expenses_analysis_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//templates//field[@name='name']" position="before">
+                <field name="expense_scan_policy_status" class="text-warning me-1"
+                       invisible="not expense_scan_policy_status"/>
+            </xpath>
+        </field>
+    </record>
+
     <!-- Warning at the top of the expense. -->
     <record id="hr_expense_view_form_policy" model="ir.ui.view">
         <field name="name">hr.expense.view.form.policy</field>

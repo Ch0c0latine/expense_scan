@@ -218,6 +218,7 @@ class HrExpense(models.Model):
         'total': lambda expense: expense._expense_scan_changed('total_amount_currency'),
         'category': lambda expense: expense._expense_scan_changed('product_id'),
         'currency': lambda expense: expense._expense_scan_changed('currency_id'),
+        'currency_rate': lambda expense: not expense._expense_scan_missing_rate(),
     }
     #: Field concerned by each point.
     TODO_FIELDS = {
@@ -231,7 +232,7 @@ class HrExpense(models.Model):
     #: Field under which the hint of each point is shown.
     HINT_PLACES = {
         'date': 'date',
-        'total': 'total', 'currency': 'total',
+        'total': 'total', 'currency': 'total', 'currency_rate': 'total',
         'tax_amount': 'tax', 'tax_total': 'tax', 'tax_category': 'tax',
         'category': 'category',
         'reinvoice': 'reinvoice',
@@ -1790,6 +1791,13 @@ class HrExpense(models.Model):
             items.append((_("Currency (%s to activate in Odoo)", code), 'currency',
                           _("Receipt in %s: activate this currency in Odoo, "
                             "otherwise the amount counts in the company currency.", code)))
+        elif values.get('currency_id') and self._expense_scan_missing_rate(values['currency_id']):
+            # Odoo counts one for one: 40 USD would be reimbursed 40 EUR.
+            code = self.env['res.currency'].browse(values['currency_id']).name
+            items.append((_("Currency (%s without an exchange rate)", code), 'currency_rate',
+                          _("No exchange rate for %s in Odoo: the amount counts one "
+                            "for one in the company currency until a rate is entered.",
+                            code)))
         if company.expense_scan_reinvoice and not values.get('project_id'):
             # No project covers this date, or several do: the employee
             # decides (including to say that the expense is not re-invoiced).
@@ -1874,6 +1882,22 @@ class HrExpense(models.Model):
         if result.timer:
             result.timer.lap('write')
             _logger.info("expense_scan: timings expense=%s %s", self.id, result.timer)
+
+    def _expense_scan_missing_rate(self, currency_id=None):
+        """Tell whether the expense currency has no exchange rate in Odoo.
+
+        Odoo then converts one for one, without a warning.
+        """
+        self.ensure_one()
+        currency = self.env['res.currency'].browse(currency_id) if currency_id \
+            else self.currency_id
+        company = self.company_id or self.env.company
+        if not currency or currency == company.currency_id:
+            return False
+        return not self.env['res.currency.rate'].sudo().search_count([
+            ('currency_id', '=', currency.id),
+            '|', ('company_id', '=', False), ('company_id', 'parent_of', company.id),
+        ], limit=1)
 
     def _expense_scan_kept_differences(self, result, keep):
         """Points to check: date or amount entered that differ from the receipt."""
