@@ -136,12 +136,6 @@ msgstr "%(rule)s - %(value)s%(unit)s per %(limit)s ammessi."
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_policy.py:0
-msgid "%(rule)s - category to check (%(hints)s)."
-msgstr "%(rule)s - categoria da verificare (%(hints)s)."
-
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/expense_policy.py:0
 msgid "%(rule)s - the receipt mentions \"%(words)s\"."
 msgstr "%(rule)s - la ricevuta riporta \"%(words)s\"."
 
@@ -260,9 +254,10 @@ msgstr "Una ricevuta con un altro totale o un'altra data è stata spostata in un
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
 msgid ""
 "A rule warns without blocking: ⚠ when a limit is\n"
-"                        exceeded, ? for a point to check. Without a family or a\n"
-"                        category, it applies to every expense."
-msgstr "Una regola avvisa senza bloccare: ⚠ per un superamento, ? per un punto da verificare. Senza famiglia né categoria, vale per tutte le spese."
+"                        exceeded, ℹ︎ for a point to check. \"Done\" puts out\n"
+"                        the ℹ︎ signs, a justification the ⚠ signs. Without a\n"
+"                        family or a category, it applies to every expense."
+msgstr "Una regola avvisa senza bloccare: ⚠ per un superamento, ℹ︎ per un punto da verificare. «Fatto» spegne i ℹ︎, una giustificazione i ⚠. Senza famiglia né categoria, vale per tutte le spese."
 
 #. module: expense_scan
 #. odoo-python
@@ -2015,11 +2010,6 @@ msgid "Refuses the export if the expenses belong to several projects."
 msgstr "Rifiuta l'esportazione se le spese appartengono a più progetti."
 
 #. module: expense_scan
-#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_policy_rule__rule_type__rental_class
-msgid "Rental: economy category"
-msgstr "Noleggio: categoria economica"
-
-#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_export_template_view_form
 msgid "Replace the current workbook with a blank one, built from the mappings?"
 msgstr "Sostituire la cartella attuale con una vuota, costruita dalle corrispondenze?"
@@ -3025,11 +3015,6 @@ msgstr "Alcol su un conto del ristorante: consumo moderato, da giustificare"
 #: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_travel_class
 msgid "Train in 2nd class, plane in economy class, unless agreed beforehand"
 msgstr "Treno in 2ª classe, aereo in classe economica, salvo accordo preventivo"
-
-#. module: expense_scan
-#: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_rental
-msgid "Car rental: economy category"
-msgstr "Noleggio auto: categoria economica"
 
 #. module: expense_scan
 #: model:expense.scan.export.template,name:expense_scan.export_template_basic

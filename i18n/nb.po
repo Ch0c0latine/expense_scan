@@ -136,12 +136,6 @@ msgstr "%(rule)s - %(value)s%(unit)s mot tillatte %(limit)s."
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_policy.py:0
-msgid "%(rule)s - category to check (%(hints)s)."
-msgstr "%(rule)s - kategori som bør kontrolleres (%(hints)s)."
-
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/expense_policy.py:0
 msgid "%(rule)s - the receipt mentions \"%(words)s\"."
 msgstr "%(rule)s - kvitteringen nevner \"%(words)s\"."
 
@@ -260,9 +254,10 @@ msgstr "En kvittering med annen sum eller dato er flyttet til et eget utlegg: %s
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
 msgid ""
 "A rule warns without blocking: ⚠ when a limit is\n"
-"                        exceeded, ? for a point to check. Without a family or a\n"
-"                        category, it applies to every expense."
-msgstr "En regel advarer uten å blokkere: ⚠ når en grense overskrides, ? for et punkt som bør kontrolleres. Uten familie eller kategori gjelder den alle utlegg."
+"                        exceeded, ℹ︎ for a point to check. \"Done\" puts out\n"
+"                        the ℹ︎ signs, a justification the ⚠ signs. Without a\n"
+"                        family or a category, it applies to every expense."
+msgstr "En regel advarer uten å blokkere: ⚠ når en grense overskrides, ℹ︎ for et punkt som bør kontrolleres. «Ferdig» slukker ℹ︎, en begrunnelse ⚠. Uten familie eller kategori gjelder den alle utlegg."
 
 #. module: expense_scan
 #. odoo-python
@@ -2015,11 +2010,6 @@ msgid "Refuses the export if the expenses belong to several projects."
 msgstr "Avviser eksporten hvis utleggene hører til flere prosjekter."
 
 #. module: expense_scan
-#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_policy_rule__rule_type__rental_class
-msgid "Rental: economy category"
-msgstr "Leie: økonomiklasse"
-
-#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_export_template_view_form
 msgid "Replace the current workbook with a blank one, built from the mappings?"
 msgstr "Erstatte den gjeldende arbeidsboken med en tom, bygget ut fra tilordningene?"
@@ -3025,11 +3015,6 @@ msgstr "Alkohol på en restaurantregning: moderat forbruk, må begrunnes"
 #: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_travel_class
 msgid "Train in 2nd class, plane in economy class, unless agreed beforehand"
 msgstr "Tog på 2. klasse, fly på økonomiklasse, med mindre annet er avtalt på forhånd"
-
-#. module: expense_scan
-#: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_rental
-msgid "Car rental: economy category"
-msgstr "Leiebil: økonomiklasse"
 
 #. module: expense_scan
 #: model:expense.scan.export.template,name:expense_scan.export_template_basic
