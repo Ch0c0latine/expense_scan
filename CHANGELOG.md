@@ -44,6 +44,9 @@
   ways.
 - **Spanish restaurant words** for the meal category: "mesa", "camarero",
   "comensal" (added to existing categories on update).
+- **"Scan again" starts from the original photo** when the receipt was not
+  retouched by hand: a wrong automatic turn or crop of an earlier scan was
+  read a second time. A retouch by hand is still kept.
 - **Receipt cut by the crop**: a fold was taken for the edge of the paper
   and the crop went through the receipt. When the text runs off the side of
   the cropped image, the photo as taken is read too, and the reading that

@@ -1259,9 +1259,11 @@ class HrExpense(models.Model):
     def action_expense_scan_rescan(self):
         """Scan the current receipt(s) again.
 
-        The scan does not start from the original photo: the user has most
-        often retouched or replaced the cropped receipt, and starting from
-        the original would lose that correction.
+        A receipt retouched by hand is read as it is: starting from the
+        original photo would lose that correction. Otherwise the scan starts
+        from the original photo again, so that a wrong automatic turn or
+        crop of an earlier scan is not read a second time. (A receipt
+        replaced by another has no original of its own left.)
 
         With several pieces, they go through the piece comparison: adding a
         second photo, then scanning again, says that the two belong
@@ -1274,7 +1276,8 @@ class HrExpense(models.Model):
         moved = self.browse()
         for expense in self:
             expense.expense_scan_receipt_removed = False
-            moved |= expense._expense_scan_run_pieces(force=True, from_original=False)
+            moved |= expense._expense_scan_run_pieces(
+                force=True, from_original=not expense.expense_scan_manual_retouch)
         if not moved:
             return True
         # A receipt leaves the form under the user's eyes: say where it went.

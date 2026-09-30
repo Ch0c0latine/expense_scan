@@ -149,6 +149,22 @@ class TestReceiptLifecycle(common.TransactionCase):
         self.assertEqual(kept, {'total_amount_currency'})
         self.assertTrue(context['expense_scan_new_receipt'])
 
+    def test_scanning_again_starts_from_the_original_unless_retouched(self):
+        """A wrong automatic turn of an earlier scan is not read twice; a
+        retouch by hand is kept."""
+        expense, original = self.scanned()
+        sources = []
+        run = patch.object(type(expense), '_expense_scan_run', autospec=True,
+                           side_effect=lambda record, force=False, from_original=True, progress=None:
+                           sources.append(record._expense_scan_source_attachment(from_original)))
+        with run:
+            expense.action_expense_scan_rescan()
+            self.retouch(expense)
+            expense.action_expense_scan_rescan()
+        self.assertEqual(sources[0], original)
+        self.assertEqual(sources[1], expense.message_main_attachment_id)
+        self.assertNotEqual(sources[1], original)
+
     def test_scanning_again_without_a_receipt_says_so(self):
         from odoo.exceptions import UserError
         expense = self.Expense.create({'name': "Sans ticket", 'employee_id': self.employee.id})
