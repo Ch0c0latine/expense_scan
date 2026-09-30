@@ -58,6 +58,15 @@ class TestPreprocess(common.TransactionCase):
         self.assertEqual(ordered[2].tolist(), [90, 90])   # bottom right
         self.assertEqual(ordered[3].tolist(), [10, 90])   # bottom left
 
+    def test_an_outline_far_from_a_rectangle_is_refused(self):
+        """Receipt merged with a white menu at its top right corner."""
+        import numpy as np
+
+        perspective = np.array([[120, 80], [880, 60], [940, 1900], [60, 1880]], dtype="float32")
+        self.assertTrue(preprocess._square_enough(perspective))
+        merged = np.array([[371, 295], [1694, 688], [1340, 2385], [371, 2413]], dtype="float32")
+        self.assertFalse(preprocess._square_enough(merged))
+
     def test_detect_and_crop_receipt(self):
         """The receipt is found in the photo and cut out."""
         photo = self._receipt_photo()

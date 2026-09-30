@@ -309,6 +309,29 @@ def _has_several_receipts(gray, image_area):
             and areas[1] >= SECOND_RECEIPT_RELATIVE_AREA * areas[0])
 
 
+#: Largest gap between a corner of the outline and a right angle, in
+#: degrees. Photos of receipts, perspective included, stay under 14; beyond,
+#: the outline has taken in something else (a white menu touching the
+#: receipt) or cuts through it, and straightening it would distort the text.
+MAX_CORNER_GAP = 15.0
+
+
+def _square_enough(quad):
+    """Tell whether the four corners are close enough to right angles."""
+    ordered = _order_points(quad)
+    for index in range(4):
+        corner = ordered[index]
+        first = ordered[index - 1] - corner
+        second = ordered[(index + 1) % 4] - corner
+        norms = np.linalg.norm(first) * np.linalg.norm(second)
+        if not norms:
+            return False
+        cosine = float(np.clip(np.dot(first, second) / norms, -1.0, 1.0))
+        if abs(90.0 - np.degrees(np.arccos(cosine))) > MAX_CORNER_GAP:
+            return False
+    return True
+
+
 def detect_receipt_quad(image):
     """Return the 4 corners of the detected receipt, or None."""
     height, width = image.shape[:2]
@@ -324,9 +347,9 @@ def detect_receipt_quad(image):
         return None
 
     quad = _find_quad_by_edges(gray, small_area)
-    if quad is None:
+    if quad is None or not _square_enough(quad):
         quad = _find_quad_by_brightness(gray, small_area)
-    if quad is None:
+    if quad is None or not _square_enough(quad):
         return None
 
     area_ratio = _quad_area(quad) / float(small_area)
