@@ -1,5 +1,12 @@
 # Changelog
 
+## 19.0.2.8.1
+
+- **Tax not read when the OCR glues an amount to the header of the VAT
+  table** ("Total Promotion TVA Taux MONT.TTC MONT.TVA TOTAL HT 3,02", Lidl):
+  three column labels in a row, the tax among them, with no figure between
+  them, now make a header whatever the order of the columns.
+
 ## 19.0.2.8.0 — English base, translations, review fixes
 
 - **English base, translations**: the module is written in English; the

@@ -877,6 +877,24 @@ TAX_TABLE_HEADER_RE = re.compile(
 #: the amounts ("53,64 HT 5,36 TVA 59,00 TTC") without being a header.
 TAX_TABLE_ALL_LABELS_RE = re.compile(
     r"\bH\.?\s*T\b[^\d]{0,20}\bT\.?\s*V\.?\s*A\b[^\d]{0,20}\bT\.?\s*T\.?\s*C\b")
+#: Column labels of a VAT table. Three different ones in a row, the tax
+#: among them, with no figure between them, make a header even when the OCR
+#: glued an amount of the next line to it: "Total Promotion TVA Taux
+#: MONT.TTC MONT.TVA TOTAL HT 3,02" (Lidl).
+TAX_COLUMN_LABEL_RE = re.compile(
+    r"\b(HT|TTC|TVA|TAUX|NET|NETTO|BRUT|BRUTTO|HTVA|TVAC|MWST|UST|VAT|IVA|BTW|IMPONIBILE)\b")
+TAX_LABELS = {"TVA", "MWST", "UST", "VAT", "IVA", "BTW"}
+
+
+def _column_labels_run(header):
+    """Tell whether the line holds three column labels in a row, the tax among them."""
+    for part in re.split(r"\d", header):
+        labels = set(TAX_COLUMN_LABEL_RE.findall(part))
+        if len(labels) >= 3 and labels & TAX_LABELS:
+            return True
+    return False
+
+
 # A table line starts with its rate, which some receipts precede with the
 # word TVA: "10%(C) ..." as well as "TVA 10 % ...".
 TAX_TABLE_ROW_RE = re.compile(
@@ -955,7 +973,7 @@ def extract_tax_table(lines):
         # 59,00 TTC"), but with amounts between them: it is not a header.
         # Any other, weaker signal requires a line without an amount, so as
         # not to take a line of totals for the header before it.
-        explicit = bool(TAX_TABLE_ALL_LABELS_RE.search(header))
+        explicit = bool(TAX_TABLE_ALL_LABELS_RE.search(header)) or _column_labels_run(header)
         if not explicit:
             if find_amounts(line.text):
                 continue  # a header line carries no amount

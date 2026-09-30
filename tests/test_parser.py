@@ -550,6 +550,15 @@ ASF Lieu-dit Les Pins BP 10017
         self.assertNotEqual(result.value('total'), 4.44)
         self.assertIn(parser.FIELD_LABELS['total'], parser.fields_to_check(result))
 
+    def test_a_vat_header_glued_to_an_amount_is_still_a_header(self):
+        """Lidl: the promotion total ends up on the header line of the table."""
+        result = self.parse(
+            "LIDL\nA payer 64,37\nCarte 64,37\n"
+            "Total Promotion TVA Taux MONT.TTC MONT.TVA TOTAL HT 3,02\n"
+            "A 5,5% 44,32 2,31 42,01\nB 20% 20,05 3,34 16,71")
+        self.assertEqual(result.value('tax_amount'), 5.65)
+        self.assertEqual(result.value('tax_rate_max'), 20.0)
+
     def test_us_sales_tax_is_a_foreign_tax(self):
         result = self.parse("JOE'S DINER\nSUBTOTAL 17.49\nSALES TAX 8.875% 1.55\nTOTAL $19.04")
         self.assertEqual(result.value('tax_label'), "Sales tax")
