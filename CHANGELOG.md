@@ -16,8 +16,8 @@
   stored flag instead of the French wording of the tax read (migration for
   the receipts already scanned).
 - **Delivered rules**: a general "Good practice" set in English, without
-  amounts (fines and personal expenses, hotel extras, alcohol, travel class,
-  car rental). The URSSAF ceilings are no longer delivered; existing
+  amounts (fines and personal expenses, hotel extras, alcohol, travel class).
+  The rental car category check is removed. The URSSAF ceilings are no longer delivered; existing
   installations keep their rules. Names and notes of rules and export
   templates are translatable.
 - Amounts in rule warnings follow the user's format; hotel categories are

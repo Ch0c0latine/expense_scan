@@ -61,8 +61,9 @@
                     </group>
                     <div class="text-muted mb-2">
                         A rule warns without blocking: ⚠ when a limit is
-                        exceeded, ? for a point to check. Without a family or a
-                        category, it applies to every expense.
+                        exceeded, ℹ︎ for a point to check. "Done" puts out
+                        the ℹ︎ signs, a justification the ⚠ signs. Without a
+                        family or a category, it applies to every expense.
                     </div>
                     <field name="rule_ids">
                         <list editable="bottom">

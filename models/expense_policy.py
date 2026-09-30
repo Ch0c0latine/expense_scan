@@ -5,7 +5,7 @@
 
 A rule set applies to every expense (meal and hotel limits, personal
 expenses to exclude) or to the projects of some customers, who often impose
-their own: travel class, rental car category, their own limits.
+their own: travel class, their own limits.
 
 The check warns without blocking: going over may be justified and the
 reading of a receipt may be wrong. Two levels, the breach ("over") and the
@@ -36,12 +36,6 @@ MEAL_PERIODS = [
     ('lunch_dinner', "Lunch and dinner of the same day"),
     ('day', "All meals of the same day"),
 ]
-#: ACRISS code of a rental car: its first letter gives the category (M, N, E,
-#: H: mini and economy; the others cost more).
-ACRISS_RE = re.compile(r"\b([MNEHCDIJSRFGPULWOX])[BCDWVLSTFJXPQZEMRHYNGK][MNCABD][RNDQHIECLSABMFVZUX]\b")
-ECONOMY_ACRISS = set("MNEH")
-#: Words that, on a rental contract, point to a higher category.
-RENTAL_UPGRADE_WORDS = ("premium", "prestige", "luxe", "luxury", "suv", "full size", "fullsize")
 #: Heading of the general conditions printed after a ticket or an invoice
 #: (folded text). What follows describes every fare, not the purchase: the
 #: conditions of a train ticket name the "business" class.
@@ -130,7 +124,6 @@ class ExpenseScanPolicyRule(models.Model):
         ('max_amount', "Maximum amount per expense"),
         ('daily_max', "Maximum amount per day"),
         ('forbidden_words', "Forbidden words on the receipt"),
-        ('rental_class', "Rental: economy category"),
     ], string="Check", required=True, default='max_amount')
     meal_period = fields.Selection(MEAL_PERIODS, string="Meal")
     amount = fields.Float(string="Limit (tax incl.)", digits='Account')
@@ -413,15 +406,6 @@ class HrExpense(models.Model):
                     findings.append((False, _(
                         "%(rule)s - the receipt mentions \"%(words)s\".",
                         rule=rule.name, words=", ".join(hits))))
-            elif rule.rule_type == 'rental_class':
-                codes = [m.group(0) for m in ACRISS_RE.finditer((self.scan_raw_text or '').upper())
-                         if m.group(1) not in ECONOMY_ACRISS]
-                words = [word for word in RENTAL_UPGRADE_WORDS
-                         if re.search(r"\b%s\b" % re.escape(word), text)]
-                if codes or words:
-                    findings.append((False, _(
-                        "%(rule)s - category to check (%(hints)s).",
-                        rule=rule.name, hints=", ".join(codes + words))))
 
         if undecided_limits and period is None:
             low = min(undecided_limits)

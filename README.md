@@ -160,10 +160,11 @@ and its own requirements.
   (*Configuration → Export Templates*), one sheet per employee, gathered in
   an archive when there are several.
 - **Expense rules** (*Configuration → Expense Rules*): ceilings per meal, per
-  day or per night, words and rental categories to watch. The warning shows
-  at the top of the expense and can be filtered ("Rule breaches"). A set of
-  rules applies to all expenses, to the projects of some customers, or to
-  chosen projects.
+  day or per night, words to watch. The warning shows at the top of the
+  expense, with a sign in the list (⚠ breach, ℹ︎ point to check) that "Done"
+  or a justification puts out; breaches can be filtered ("Rule breaches"). A
+  set of rules applies to all expenses, to the projects of some customers,
+  or to chosen projects.
 - **Team and batches**: *My Team's Expenses* to enter expenses in a team
   member's name, and *Actions → Back to draft* on a selection.
 

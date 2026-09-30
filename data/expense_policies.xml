@@ -93,15 +93,6 @@ classe affaires
 1. klasse
 prima classe</field>
     </record>
-    <record id="policy_good_practice_rental" model="expense.scan.policy.rule"
-            context="{'expense_scan_no_recheck': True}">
-        <field name="policy_id" ref="policy_good_practice"/>
-        <field name="sequence">8</field>
-        <field name="name">Car rental: economy category</field>
-        <field name="family">car_rental</field>
-        <field name="rule_type">rental_class</field>
-    </record>
-
     <function model="expense.scan.policy" name="_expense_scan_recheck_all"/>
 
 </odoo>
