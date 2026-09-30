@@ -282,6 +282,11 @@ msgid "A single project"
 msgstr "Ett enkelt prosjekt"
 
 #. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_policy_breach
+msgid "Above a limit of the rules, justified or not."
+msgstr "Over en grense i reglene, begrunnet eller ikke."
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Accounting fields"
 msgstr "Regnskapsfelt"
@@ -608,6 +613,11 @@ msgid "Currency (%s without an exchange rate)"
 msgstr "Valuta (%s uten valutakurs)"
 
 #. module: expense_scan
+#: model:ir.model,name:expense_scan.model_res_currency_rate
+msgid "Currency Rate"
+msgstr "Valutakurs"
+
+#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__current
 msgid "Current month"
 msgstr "Inneværende måned"
@@ -725,6 +735,7 @@ msgstr "Middag"
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__display_name
+#: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__display_name
 msgid "Display Name"
 msgstr "Visningsnavn"
 
@@ -1073,6 +1084,11 @@ msgid "Fills the \"Receipt tax\" field with the amount read on the receipt. That
 msgstr "Fyller feltet \"Avgift på kvitteringen\" med beløpet som er lest på kvitteringen. Det beløpet går da foran det satsen ville gitt, helt til bilaget, slik at en kvittering med flere satser beholder sin nøyaktige avgift. Satsen forblir utleggskategoriens."
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_policy_seen
+msgid "Findings dealt with"
+msgstr "Behandlede merknader"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Finds the edges of the receipt and corrects the perspective."
 msgstr "Finner kantene på kvitteringen og retter perspektivet."
@@ -1204,6 +1220,7 @@ msgstr "Historikk"
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__id
+#: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__id
 msgid "ID"
 msgstr ""
 
@@ -1229,6 +1246,11 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Incl. tax"
 msgstr "Inkl. avgift"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_policy_justification
+msgid "Justification"
+msgstr "Begrunnelse"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_keep_original
@@ -2776,6 +2798,16 @@ msgstr "Hvor gjenkjenningsmodellene lastes ned. La stå tom for å bruke en unde
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
 msgid "Where the rules come from, date of the last update..."
 msgstr "Hvor reglene kommer fra, dato for siste oppdatering..."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_policy
+msgid "Why this expense goes beyond the rules"
+msgstr "Hvorfor utlegget går utover reglene"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_policy_justification
+msgid "Why this expense goes beyond the rules. The manager reads it when approving the expense."
+msgstr "Hvorfor utlegget går utover reglene. Lederen leser det når utlegget godkjennes."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_no_vat

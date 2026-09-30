@@ -282,6 +282,11 @@ msgid "A single project"
 msgstr "Jeden projekt"
 
 #. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_policy_breach
+msgid "Above a limit of the rules, justified or not."
+msgstr "Powyżej limitu zasad, uzasadnione lub nie."
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Accounting fields"
 msgstr "Pola księgowe"
@@ -608,6 +613,11 @@ msgid "Currency (%s without an exchange rate)"
 msgstr "Waluta (%s bez kursu wymiany)"
 
 #. module: expense_scan
+#: model:ir.model,name:expense_scan.model_res_currency_rate
+msgid "Currency Rate"
+msgstr "Kurs waluty"
+
+#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__current
 msgid "Current month"
 msgstr "Bieżący miesiąc"
@@ -725,6 +735,7 @@ msgstr "Kolacja"
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__display_name
+#: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__display_name
 msgid "Display Name"
 msgstr "Nazwa wyświetlana"
 
@@ -1073,6 +1084,11 @@ msgid "Fills the \"Receipt tax\" field with the amount read on the receipt. That
 msgstr "Wypełnia pole \"Podatek z paragonu\" kwotą odczytaną z paragonu. Ta kwota ma wtedy pierwszeństwo przed tą, którą dałaby stawka, aż do zapisu księgowego, aby paragon z kilkoma stawkami zachował dokładny podatek. Stawka pozostaje stawką kategorii wydatku."
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_policy_seen
+msgid "Findings dealt with"
+msgstr "Obsłużone uwagi"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Finds the edges of the receipt and corrects the perspective."
 msgstr "Wykrywa krawędzie paragonu i koryguje perspektywę."
@@ -1204,6 +1220,7 @@ msgstr "Historia"
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__id
+#: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__id
 msgid "ID"
 msgstr ""
 
@@ -1229,6 +1246,11 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Incl. tax"
 msgstr "Brutto"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_policy_justification
+msgid "Justification"
+msgstr "Uzasadnienie"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_keep_original
@@ -2776,6 +2798,16 @@ msgstr "Gdzie pobierane są modele rozpoznawania. Zostaw puste, aby użyć podfo
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
 msgid "Where the rules come from, date of the last update..."
 msgstr "Skąd pochodzą zasady, data ostatniej aktualizacji..."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_policy
+msgid "Why this expense goes beyond the rules"
+msgstr "Dlaczego ten wydatek wykracza poza zasady"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_policy_justification
+msgid "Why this expense goes beyond the rules. The manager reads it when approving the expense."
+msgstr "Dlaczego ten wydatek wykracza poza zasady. Przełożony czyta to przy zatwierdzaniu."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_no_vat

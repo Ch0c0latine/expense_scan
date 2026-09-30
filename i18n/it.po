@@ -282,6 +282,11 @@ msgid "A single project"
 msgstr "Un solo progetto"
 
 #. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_policy_breach
+msgid "Above a limit of the rules, justified or not."
+msgstr "Oltre un limite delle regole, giustificato o no."
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Accounting fields"
 msgstr "Campi contabili"
@@ -608,6 +613,11 @@ msgid "Currency (%s without an exchange rate)"
 msgstr "Valuta (%s senza tasso di cambio)"
 
 #. module: expense_scan
+#: model:ir.model,name:expense_scan.model_res_currency_rate
+msgid "Currency Rate"
+msgstr "Tasso di cambio"
+
+#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__current
 msgid "Current month"
 msgstr "Mese corrente"
@@ -725,6 +735,7 @@ msgstr "Cena"
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__display_name
+#: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__display_name
 msgid "Display Name"
 msgstr "Nome visualizzato"
 
@@ -1073,6 +1084,11 @@ msgid "Fills the \"Receipt tax\" field with the amount read on the receipt. That
 msgstr "Compila il campo \"Imposta della ricevuta\" con l'importo letto sulla ricevuta. Quell'importo prevale su quello che darebbe l'aliquota, fino alla registrazione contabile, così che una ricevuta con più aliquote mantenga la sua imposta esatta. L'aliquota resta quella della categoria di spesa."
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_policy_seen
+msgid "Findings dealt with"
+msgstr "Avvisi gestiti"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Finds the edges of the receipt and corrects the perspective."
 msgstr "Trova i bordi della ricevuta e corregge la prospettiva."
@@ -1204,6 +1220,7 @@ msgstr "Cronologia"
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__id
+#: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__id
 msgid "ID"
 msgstr ""
 
@@ -1229,6 +1246,11 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Incl. tax"
 msgstr "Imposte incl."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_policy_justification
+msgid "Justification"
+msgstr "Giustificazione"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_keep_original
@@ -2776,6 +2798,16 @@ msgstr "Dove vengono scaricati i modelli di riconoscimento. Lasciate vuoto per u
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
 msgid "Where the rules come from, date of the last update..."
 msgstr "Provenienza delle regole, data dell'ultimo aggiornamento..."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_policy
+msgid "Why this expense goes beyond the rules"
+msgstr "Perché questa spesa supera le regole"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_policy_justification
+msgid "Why this expense goes beyond the rules. The manager reads it when approving the expense."
+msgstr "Perché questa spesa supera le regole. Il responsabile la legge quando approva la spesa."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_no_vat

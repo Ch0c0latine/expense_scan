@@ -282,6 +282,11 @@ msgid "A single project"
 msgstr "Eén project"
 
 #. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_policy_breach
+msgid "Above a limit of the rules, justified or not."
+msgstr "Boven een limiet van de regels, verantwoord of niet."
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Accounting fields"
 msgstr "Boekhoudvelden"
@@ -608,6 +613,11 @@ msgid "Currency (%s without an exchange rate)"
 msgstr "Valuta (%s zonder wisselkoers)"
 
 #. module: expense_scan
+#: model:ir.model,name:expense_scan.model_res_currency_rate
+msgid "Currency Rate"
+msgstr "Wisselkoers"
+
+#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__current
 msgid "Current month"
 msgstr "Huidige maand"
@@ -725,6 +735,7 @@ msgstr "Diner"
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__display_name
+#: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__display_name
 msgid "Display Name"
 msgstr "Weergavenaam"
 
@@ -1073,6 +1084,11 @@ msgid "Fills the \"Receipt tax\" field with the amount read on the receipt. That
 msgstr "Vult het veld \"Belasting op de bon\" met het bedrag dat op de bon is gelezen. Dat bedrag gaat dan tot in de boeking voor op het bedrag dat het tarief zou geven, zodat een bon met meerdere tarieven zijn exacte belasting houdt. Het tarief blijft dat van de declaratiecategorie."
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_policy_seen
+msgid "Findings dealt with"
+msgstr "Afgehandelde meldingen"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Finds the edges of the receipt and corrects the perspective."
 msgstr "Vindt de randen van de bon en corrigeert het perspectief."
@@ -1204,6 +1220,7 @@ msgstr "Geschiedenis"
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__id
+#: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__id
 msgid "ID"
 msgstr ""
 
@@ -1229,6 +1246,11 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Incl. tax"
 msgstr "Incl. belasting"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_policy_justification
+msgid "Justification"
+msgstr "Verantwoording"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_keep_original
@@ -2776,6 +2798,16 @@ msgstr "Waar de herkenningsmodellen worden gedownload. Laat leeg om een submap v
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
 msgid "Where the rules come from, date of the last update..."
 msgstr "Herkomst van de regels, datum van de laatste update..."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_policy
+msgid "Why this expense goes beyond the rules"
+msgstr "Waarom deze declaratie buiten de regels valt"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_policy_justification
+msgid "Why this expense goes beyond the rules. The manager reads it when approving the expense."
+msgstr "Waarom deze declaratie buiten de regels valt. De manager leest dit bij het goedkeuren."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_no_vat
