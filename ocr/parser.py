@@ -896,8 +896,9 @@ TAX_LABELS = {"TVA", "MWST", "UST", "VAT", "IVA", "BTW", "MOMS", "MVA"}
 #: word is misread ("NUST BRUTTO NETTO" for "MWST BRUTTO NETTO").
 NET_GROSS_PAIRS = ({"NETTO", "BRUTTO"}, {"NET", "BRUT"}, {"HT", "TTC"}, {"HTVA", "TVAC"})
 #: Table line whose "%" the OCR read as an 8: "A 198 0.68 4.28 3.60" for
-#: "A 19% ...". Only kept when the amounts hold at that rate.
-TAX_TABLE_MISREAD_ROW_RE = re.compile(r"^\s*[A-D]\s+(\d{1,2})[8B]\s+\d")
+#: "A 19% ...", even its letter at times ("8 78 1,98 30,29 28,31" for
+#: "B 7% ..."). Only kept when the amounts hold at that rate.
+TAX_TABLE_MISREAD_ROW_RE = re.compile(r"^\s*[A-D8]\s+(\d{1,2})[8B]\s+\d")
 
 
 def _column_labels_run(header):
