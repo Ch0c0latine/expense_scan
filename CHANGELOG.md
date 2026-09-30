@@ -37,6 +37,11 @@
   now tells where the receipt was issued: an Italian receipt is foreign for
   a Spanish company, a Belgian one for a French company. The buyer's own
   tax number, printed on hotel invoices, is left out.
+- **Tax picked in a large chart of accounts** (Spain: 4, 10 and 21 % for
+  goods, services, investment goods, intra-EU purchases, imports): a tax of
+  a fiscal position (intra-EU, import) is no longer taken for a receipt paid
+  on the spot, and the tax named like the company's default purchase tax
+  wins ("10% G" next to "21% G"); "10% EX G", an import tax, was set.
 - **Total and tax read the other way round** on a crumpled receipt (tax of
   12.00 for a total of 1.92): exchanged when the total is the tax of the
   larger amount at the rate read.

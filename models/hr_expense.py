@@ -2354,9 +2354,13 @@ class HrExpense(models.Model):
         Most charts of accounts hold several taxes at one rate: goods and
         services, purchases from another EU country (Sweden: "12% G",
         "12% S", "12% EU G"...). The category's own tax comes first;
-        otherwise the first ordinary tax of the chart. A reverse-charge tax,
-        whose tax lines cancel out, never applies to a receipt; a tax
-        included in the price only when no other is left.
+        otherwise an ordinary domestic tax, the one named like the company's
+        default purchase tax if there is one ("10% G" next to "21% G" in
+        Spain, rather than "10% IG", investment goods). A tax of a fiscal
+        position (intra-EU purchase, import) replaces a domestic one and does
+        not apply to a receipt paid on the spot; a reverse-charge tax, whose
+        tax lines cancel out, never applies; a tax included in the price only
+        when no other is left.
         """
         if rate is None:
             return self.env['account.tax']
@@ -2378,7 +2382,19 @@ class HrExpense(models.Model):
             return abs(sum(lines.mapped('factor_percent')) - 100.0) < 0.01
 
         plain = taxes.filtered(ordinary)
-        return ((plain.filtered(lambda tax: not tax.price_include) or plain) or taxes)[:1]
+        plain = (plain.filtered(lambda tax: not tax.price_include) or plain) or taxes
+        domestic = plain.filtered(lambda tax: not tax.fiscal_position_ids) or plain
+
+        def family(tax):
+            """The name without its rate: "21% G" and "10% G" are one family."""
+            return re.sub(r"\d+(?:[.,]\d+)?\s*%", "%", tax.name or "").strip()
+
+        default = company.account_purchase_tax_id
+        if default:
+            same = domestic.filtered(lambda tax: family(tax) == family(default))
+            if same:
+                return same[:1]
+        return domestic[:1]
 
     def _expense_scan_tax_fits(self, amount, total=None, rate=None):
         """Tell whether the VAT read fits under the ceiling of the expense rate.

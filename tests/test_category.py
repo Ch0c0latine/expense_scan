@@ -249,6 +249,32 @@ class TestCategoryRecognition(common.TransactionCase):
         self.food.supplier_taxes_id = services
         self.assertEqual(expense._expense_scan_tax(7.0, self.company, self.food), services)
 
+    def test_the_domestic_tax_like_the_default_one(self):
+        """Spanish chart: "10% IG" (investment goods) and "10% EX G" (import)
+        come first; "10% G" is named like the default purchase tax "21% G"."""
+        Tax = self.env['account.tax']
+        Tax.search([
+            ('company_id', '=', self.company.id), ('type_tax_use', '=', 'purchase'),
+            ('amount_type', '=', 'percent'), ('amount', '=', 10.0),
+        ]).active = False
+
+        def tax(name, amount, sequence):
+            return Tax.create({'name': name, 'amount': amount, 'amount_type': 'percent',
+                               'type_tax_use': 'purchase', 'company_id': self.company.id,
+                               'sequence': sequence})
+        default = tax("21% Gx (test)", 21.0, 1)
+        investment = tax("10% IGx (test)", 10.0, 1)
+        imported = tax("10% EX Gx (test)", 10.0, 0)
+        goods = tax("10% Gx (test)", 10.0, 2)
+        imported.fiscal_position_ids = self.env['account.fiscal.position'].create(
+            {'name': "Import (test)", 'company_id': self.company.id})
+        self.company.account_purchase_tax_id = default
+        expense = self.fresh()
+        self.assertEqual(expense._expense_scan_tax(10.0, self.company), goods)
+        # Without a default tax of the same family: the first domestic one.
+        self.company.account_purchase_tax_id = False
+        self.assertEqual(expense._expense_scan_tax(10.0, self.company), investment)
+
     def test_a_tax_rounded_line_by_line_is_accepted(self):
         """9.41 printed at 12 % on 87.75: the exact ceiling is 9.40."""
         expense = self.fresh()
