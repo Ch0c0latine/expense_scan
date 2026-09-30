@@ -141,7 +141,9 @@
         <field name="arch" type="xml">
             <field name="name" position="after">
                 <field name="expense_scan_policy_status" nolabel="1" readonly="1"
-                       optional="show" class="text-warning"/>
+                       optional="show" class="o_expense_scan_policy_sign"
+                       decoration-warning="expense_scan_policy_status == 'breach'"
+                       decoration-info="expense_scan_policy_status == 'check'"/>
             </field>
         </field>
     </record>
@@ -152,7 +154,7 @@
         <field name="inherit_id" ref="hr_expense.hr_expense_view_expenses_analysis_kanban"/>
         <field name="arch" type="xml">
             <xpath expr="//templates//field[@name='name']" position="before">
-                <field name="expense_scan_policy_status" class="text-warning me-1"
+                <field name="expense_scan_policy_status" class="o_expense_scan_policy_sign text-warning me-1"
                        invisible="not expense_scan_policy_status"/>
             </xpath>
         </field>

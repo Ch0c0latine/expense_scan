@@ -286,8 +286,10 @@
                            invisible="not expense_scan_category_reason"/>
                     <field name="scan_detected_tax" readonly="1"
                            invisible="not scan_detected_tax"/>
+                    <!-- Without a printed time, the timestamp would show midnight. -->
+                    <field name="scan_time" invisible="1"/>
                     <field name="scan_datetime" readonly="1"
-                           invisible="not scan_datetime"/>
+                           invisible="not scan_datetime or not scan_time"/>
                     <field name="scan_original_attachment_id" readonly="1"
                            invisible="not scan_original_attachment_id"/>
                     <field name="scan_engine" invisible="1"/>

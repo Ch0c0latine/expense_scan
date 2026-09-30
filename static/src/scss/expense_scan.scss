@@ -260,3 +260,10 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
 }
+
+// Signs of the expense rules: the text form of "ℹ︎" is a small letter, hard
+// to see next to "⚠" without a larger, bold glyph.
+.o_expense_scan_policy_sign {
+    font-size: 1.15em;
+    font-weight: bold;
+}
