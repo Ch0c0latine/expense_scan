@@ -37,6 +37,9 @@ PDF_MAX_PAGES_READ = 5
 PDF_PREVIEW_DPI = 110
 #: Gap, in days, between two expenses of the same trip.
 TRIP_DAYS = 3
+#: Tax printed above the exact ceiling of its rate, still accepted: tills
+#: round the tax line by line.
+TAX_ROUNDING_MARGIN = 0.02
 
 
 class Stopwatch:
@@ -459,7 +462,8 @@ class HrExpense(models.Model):
             # posting time, where the lack of a rate prevents carrying the
             # tax into the entry.
             return False
-        if self.currency_id.compare_amounts(self.scan_tax_amount, ceiling) > 0:
+        if self.currency_id.compare_amounts(
+                self.scan_tax_amount, ceiling + TAX_ROUNDING_MARGIN) > 0:
             self.scan_tax_amount = self.currency_id.round(ceiling)
             return True
         return False
@@ -500,7 +504,8 @@ class HrExpense(models.Model):
                 # block happens at accounting validation, where the lack of a
                 # rate prevents carrying the tax.
                 continue
-            if expense.currency_id.compare_amounts(expense.scan_tax_amount, ceiling) > 0:
+            if expense.currency_id.compare_amounts(
+                    expense.scan_tax_amount, ceiling + TAX_ROUNDING_MARGIN) > 0:
                 money = expense._expense_scan_money
                 raise ValidationError(_(
                     "Impossible receipt tax: %(entered)s is above the maximum of "
@@ -2226,13 +2231,14 @@ class HrExpense(models.Model):
             # says so. Condition: a single tax matches this rate; on a crowded
             # chart of accounts, choosing between goods and services is the
             # accountant's call.
-            tax = self._expense_scan_tax(result.value('tax_rate'), company)
+            category = self._expense_scan_target_product(values)
+            tax = self._expense_scan_tax(result.value('tax_rate'), company, category)
             if not tax and result.value('tax_rate_max'):
                 # Several rates on the same receipt (meal at 5.5% and 10%):
                 # none holds for the whole expense, but a tax must be set.
                 # The highest is kept (the cautious choice for deductible
                 # VAT; the accountant can correct it).
-                tax = self._expense_scan_tax(result.value('tax_rate_max'), company)
+                tax = self._expense_scan_tax(result.value('tax_rate_max'), company, category)
             if tax:
                 values['tax_ids'] = [Command.set(tax.ids)]
                 effective_rate = tax.amount
@@ -2312,8 +2318,16 @@ class HrExpense(models.Model):
             _logger.warning("Unusable time zone: %s", zone)
             return moment
 
-    def _expense_scan_tax(self, rate, company):
-        """Purchase tax at the rate read, if a single one matches."""
+    def _expense_scan_tax(self, rate, company, category=None):
+        """Purchase tax at the rate read.
+
+        Most charts of accounts hold several taxes at one rate: goods and
+        services, purchases from another EU country (Sweden: "12% G",
+        "12% S", "12% EU G"...). The category's own tax comes first;
+        otherwise the first ordinary tax of the chart. A reverse-charge tax,
+        whose tax lines cancel out, never applies to a receipt; a tax
+        included in the price only when no other is left.
+        """
         if rate is None:
             return self.env['account.tax']
         taxes = self.env['account.tax'].search([
@@ -2321,10 +2335,20 @@ class HrExpense(models.Model):
             ('type_tax_use', '=', 'purchase'),
             ('amount_type', '=', 'percent'),
             ('amount', '=', rate),
-        ], limit=2)
-        # An ambiguous match is worse than none: it would go unnoticed. The
-        # category's tax is kept.
-        return taxes if len(taxes) == 1 else self.env['account.tax']
+        ], order='sequence, id')
+        if len(taxes) <= 1:
+            return taxes
+        own = taxes & (category.supplier_taxes_id if category else taxes.browse())
+        if own:
+            return own[:1]
+
+        def ordinary(tax):
+            lines = tax.invoice_repartition_line_ids.filtered(
+                lambda line: line.repartition_type == 'tax')
+            return abs(sum(lines.mapped('factor_percent')) - 100.0) < 0.01
+
+        plain = taxes.filtered(ordinary)
+        return ((plain.filtered(lambda tax: not tax.price_include) or plain) or taxes)[:1]
 
     def _expense_scan_tax_fits(self, amount, total=None, rate=None):
         """Tell whether the VAT read fits under the ceiling of the expense rate.
@@ -2339,7 +2363,9 @@ class HrExpense(models.Model):
         if rate is None:
             return True  # no rate: blocked at validation, not here
         total = self.total_amount_currency if total is None else total
-        ceiling = total * rate / (100.0 + rate)
+        # Tills round the tax line by line: 9.41 printed for a ceiling of
+        # 9.40 is not a misreading.
+        ceiling = total * rate / (100.0 + rate) + TAX_ROUNDING_MARGIN
         return self.currency_id.compare_amounts(amount, ceiling) <= 0
 
     def _expense_scan_currency(self, result, company):

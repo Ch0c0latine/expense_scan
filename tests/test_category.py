@@ -216,6 +216,24 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertTrue(chf.active)
         self.assertTrue(values['_expense_scan_notes'])
 
+    def test_several_taxes_at_one_rate(self):
+        """Goods and services at 7 %: the category's own tax, else the first one."""
+        Tax = self.env['account.tax']
+        goods, services = [Tax.create({
+            'name': name, 'amount': 7.0, 'amount_type': 'percent', 'type_tax_use': 'purchase',
+            'company_id': self.company.id, 'sequence': sequence})
+            for name, sequence in (("7% goods", 1), ("7% services", 2))]
+        expense = self.fresh()
+        self.assertEqual(expense._expense_scan_tax(7.0, self.company), goods)
+        self.food.supplier_taxes_id = services
+        self.assertEqual(expense._expense_scan_tax(7.0, self.company, self.food), services)
+
+    def test_a_tax_rounded_line_by_line_is_accepted(self):
+        """9.41 printed at 12 % on 87.75: the exact ceiling is 9.40."""
+        expense = self.fresh()
+        self.assertTrue(expense._expense_scan_tax_fits(9.41, 87.75, 12.0))
+        self.assertFalse(expense._expense_scan_tax_fits(9.50, 87.75, 12.0))
+
     def test_several_rates_apply_the_highest(self):
         """Two rates on the same receipt: the highest is set on the expense.
 
