@@ -52,7 +52,14 @@
                     the price per litre or kWh, known brands, and the merchants your team already
                     filed.</li>
                 <li><b>Receipts from abroad</b>: dates, totals and currencies of European, Nordic,
-                    Swiss and US receipts; foreign VAT is not carried as deductible tax.</li>
+                    Swiss and US receipts. The expense is recorded in the currency of the receipt;
+                    a tax paid abroad (MwSt, IVA, Moms... depending on your country) is not carried
+                    as deductible tax.</li>
+                <li><b>Exchange rates</b>: the reference rates of the European Central Bank are
+                    added every day, so that a foreign receipt is converted at the rate of its own
+                    day. Odoo Community updates no rate on its own.</li>
+                <li><b>Your chart of accounts</b>: the tax printed on the receipt goes to the
+                    journal entry, with the tax of its rate, even on receipts with several rates.</li>
                 <li><b>Receipts in several pieces</b> (till receipt and card slip) are merged into
                     one expense, or split when they describe two purchases.</li>
                 <li><b>Manual retouch</b>: rotate and crop in the browser, or accept the
@@ -61,8 +68,10 @@
                     project budget only; the analytic account follows the project.</li>
                 <li><b>Expense sheets</b>: PDF summary with tax by rate and numbered receipts,
                     Excel export on your own workbook.</li>
-                <li><b>Expense rules</b>: ceilings per meal, per day or per night, words to watch;
-                    a warning shows on the expense and a filter gathers them.</li>
+                <li><b>Expense rules</b>: ceilings per meal, per day or per night, words to watch.
+                    A warning shows on the expense, with a sign in the list: &#9888; for a breach,
+                    &#8505;&#65038; for a point to check. "Done" or a justification puts the sign
+                    out; the manager reads the justification when approving.</li>
                 <li><b>Team entry</b>: managers enter expenses for their team members.</li>
                 <li><b>E-mail</b>: receipts sent from an employee's private address are
                     recognised; the subject becomes the description.</li>
@@ -89,11 +98,11 @@
         <div class="oe_span12">
             <h3 class="text-center">Installation</h3>
             <p>Install the Python packages in Odoo's environment:</p>
-            <pre>pip install rapidocr onnxruntime opencv-python-headless numpy pdf2image openpyxl</pre>
-            <p>For PDF receipts, also install the <code>poppler-utils</code> system package.
-                The module installs even when a package is missing: the settings screen says
-                exactly what is missing, and the <b>Test and preload the engine</b> button checks
-                the installation.</p>
+            <pre>pip install rapidocr onnxruntime opencv-python-headless pdf2image openpyxl</pre>
+            <p>And the <code>poppler-utils</code> system package, for PDF receipts. These
+                dependencies are declared: Odoo names a missing one when the module is installed.
+                Tesseract stays an optional fallback engine. The <b>Test and preload the
+                engine</b> button checks the installation.</p>
             <p>With Odoo workers, set <code>MALLOC_ARENA_MAX=2</code> in the service environment,
                 so that the memory reserved by the OCR threads does not make workers restart
                 after each scan. The README gives the details.</p>

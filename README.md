@@ -59,6 +59,15 @@ what is missing:
 - **E-mail**: receipts sent from an employee's private address are
   recognised; the subject becomes the description.
 - **Mileage**: a mileage rate per employee.
+- **Foreign receipts**: the currency printed on the receipt is recorded (and
+  activated in Odoo if needed); a tax paid abroad (German MwSt for a French
+  company, Italian IVA for a German one...) is not carried as deductible VAT.
+- **Exchange rates**: the reference rates of the European Central Bank are
+  added every day for the active currencies, so that a foreign receipt is
+  converted at the rate of its own day — Odoo Community updates no rate on
+  its own.
+- **Languages**: English, French, Spanish, German, Italian, Dutch,
+  Portuguese, Polish, Swedish, Norwegian and Danish.
 
 ---
 
@@ -67,19 +76,25 @@ what is missing:
 To install in Odoo's Python environment, with `pip` for the Python packages
 and the system package manager for Tesseract and Poppler:
 
-| Package | Role | Required |
+| Package | Role | Declared |
 |---|---|---|
-| `opencv-python` (or `-headless`) | cropping, straightening | yes |
+| `opencv-python-headless` | cropping, straightening | yes |
 | `numpy` | same | yes (pulled by OpenCV) |
-| `Pillow` | EXIF reading | already in Odoo |
-| `rapidocr` + `onnxruntime` | recommended OCR engine | yes (unless Tesseract is used) |
-| `pytesseract` + a `tesseract-ocr-<lang>` package | fallback engine | no |
-| `pdf2image` + `poppler-utils` | PDF receipts | no |
-| `openpyxl` | Excel export of expense sheets | for that export |
+| `rapidocr` + `onnxruntime` | OCR engine | yes |
+| `pdf2image` + `poppler-utils` (`pdftoppm`) | PDF receipts | yes |
+| `openpyxl` | Excel export of expense sheets | yes |
+| `Pillow`, `requests`, `reportlab` | images, exchange rates, PDF sheets | already in Odoo |
+| `pytesseract` + a `tesseract-ocr-<lang>` package | fallback engine | no, optional |
 
-None of these dependencies is declared in the manifest: the module installs
-even if they are missing, and the settings screen then says exactly what is
-missing.
+```bash
+pip install opencv-python-headless rapidocr onnxruntime pdf2image openpyxl
+sudo apt install poppler-utils
+```
+
+The declared dependencies are checked by Odoo when the module is installed:
+a missing one stops the installation with its name, rather than leaving a
+module that installs but cannot read a receipt. The settings screen also
+shows the state of each engine.
 
 **Footprint**: the PP-OCR models weigh a few tens of megabytes and are
 downloaded once, at the first scan or with the *Test and preload the engine*
@@ -113,9 +128,14 @@ Environment=MALLOC_ARENA_MAX=2
   instead of raising it.
 - **Photo processing**: crop, straighten, fix quarter turns, keep the
   original photo.
-- **Accounting fields**: using the tax read and looking up the vendor, **off
-  by default**. A wrong reading there has accounting consequences, unlike an
-  amount checked on screen.
+- **Accounting fields**: *Use the tax read on the receipt* is on by default:
+  the tax printed on the receipt goes to the journal entry, and the tax of
+  its rate is set on the expense. *Look up the vendor* is off by default.
+- **Exchange rates from the European Central Bank**: on by default. A daily
+  task adds the reference rates of the last ninety days for the active
+  currencies, and the rate of its day for an older receipt. It is the only
+  network request of the module: a public file, never during a scan, and
+  nothing leaves the server.
 - **Split view from 768 px**: shows the receipt next to the form on laptop
   screens, which Odoo otherwise leaves without a preview.
 
@@ -175,6 +195,14 @@ and its own requirements.
 Nothing in the module is tied to one country; a few things are there for the
 receipts of some countries:
 
+- **Domestic and foreign VAT**: the name printed on the receipt is compared
+  with those of the company's country (TVA in France, MwSt/USt in Germany
+  and Austria, Moms in Sweden and Denmark, MVA in Norway, BTW, IVA, PTU...).
+  A foreign tax, a foreign currency or a rate unknown to the chart of
+  accounts marks the tax as foreign: it is not deducted.
+- **Several taxes at one rate** (goods, services, intra-EU purchases, as in
+  the Swedish or German charts of accounts): the tax of the category comes
+  first, otherwise the first ordinary tax of the chart.
 - **French merchants**: many French receipts print the SIRET number but not
   the activity code. An administrator can load the public Sirene database of
   establishments (`expense.scan.sirene`), which then gives the activity of

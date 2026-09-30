@@ -41,6 +41,11 @@ https://github.com/sponsors/Ch0c0latine
     'category': 'Human Resources/Expenses',
     'license': 'LGPL-3',
     'depends': ['hr_expense', 'project'],
+    # Tesseract, the fallback engine, stays optional.
+    'external_dependencies': {
+        'python': ['numpy', 'cv2', 'rapidocr', 'onnxruntime', 'pdf2image', 'openpyxl'],
+        'bin': ['pdftoppm'],
+    },
     'data': [
         'security/ir.model.access.csv',
         'report/expense_sheet_report.xml',

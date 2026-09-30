@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Dependencies declared** in the manifest (OpenCV, NumPy, RapidOCR, ONNX
+  Runtime, pdf2image, openpyxl, and the `pdftoppm` program of Poppler): Odoo
+  names a missing one when the module is installed. Tesseract stays optional.
+- README and store page: exchange rates, rule signs and justification,
+  languages, domestic and foreign VAT.
+
 ## 19.0.2.8.6
 
 Found while installing the module on a new German database.
