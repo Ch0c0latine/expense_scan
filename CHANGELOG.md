@@ -1,5 +1,20 @@
 # Changelog
 
+## 19.0.2.8.6
+
+Found while installing the module on a new German database.
+
+- **Domestic tax per company country**: "MWST" was taken for a foreign tax,
+  and not deducted, for a German company; only "TVA" counted as domestic.
+  Each country has its names (MWST/USt, MOMS, MVA, BTW, IVA, PTU...);
+  "VAT", the English word, belongs to all.
+- **Old receipts converted at their day's rate**: an expense older than the
+  rates known took the oldest one; the rate of its day now comes from the
+  ECB history, downloaded only then.
+- **VAT tables misread by the OCR**: net and gross columns make a header
+  even when the tax word is misread ("NUST BRUTTO NETTO"); a "%" read as an
+  8 ("A 198 0.68 4.28 3.60") is accepted when the amounts hold at that rate.
+
 ## 19.0.2.8.5
 
 - **Exchange rates of the European Central Bank**: Odoo Community updates
