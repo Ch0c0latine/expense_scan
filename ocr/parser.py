@@ -1842,11 +1842,12 @@ def parse(words, today=None, max_age_days=730, default_currency="EUR", buyers=()
     }
     _swap_total_and_tax(fields)
     _rate_from_items(fields, lines)
+    _total_from_tax(fields)
     return ScanResult(lines=lines, fields=fields)
 
 
 #: Item line with its own rate: "FOCACCIA FORMAGGIO 10,00% 13,00".
-ITEM_RATE_RE = re.compile(r"(\d{1,2}[.,]\d{2})\s*%")
+ITEM_RATE_RE = re.compile(r"(?<![\d.,])(\d{1,2}(?:[.,]\d{2})?)\s*%")
 
 
 def _rate_from_items(fields, lines):
@@ -1876,6 +1877,29 @@ def _rate_from_items(fields, lines):
     if len(rates) == 1:
         fields["tax_rate"] = ExtractedField(value=next(iter(rates)), confidence=0.7, source=joined)
     fields["tax_rate_max"] = ExtractedField(value=max(rates), confidence=0.7, source=joined)
+
+
+def _total_from_tax(fields):
+    """Another amount of the total's line, when only that one holds with the tax.
+
+    "TOTALE COMPLESSIVO COCA BOTT 10,00% 19,30 3,90": the OCR glued the
+    price of an item to the total. With the tax (1,75) and its single rate
+    (10 %) known, the total is the amount whose tax at that rate it is.
+    """
+    total, tax, rate = fields["total"], fields["tax_amount"].value, fields["tax_rate"].value
+    if not (total.value and tax and rate) or not total.source:
+        return
+
+    def holds(amount):
+        return abs(amount * rate / (100.0 + rate) - tax) <= 0.02
+
+    if holds(total.value):
+        return
+    candidates = [value for value, _position in find_amounts(total.source)
+                  if value != total.value and holds(value)]
+    if len(candidates) == 1:
+        fields["total"] = ExtractedField(value=candidates[0], confidence=min(total.confidence, 0.7),
+                                         source=total.source)
 
 
 def _swap_total_and_tax(fields):

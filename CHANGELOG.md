@@ -43,6 +43,10 @@
   hotel invoices; an exempt line at 0 % carries no tax ("ESC.IVA ART.15");
   "10.0000%" read as 10 %, not 0 %; "Total des taxes", "TVA totale" as the
   sum; "Cena bez DPH", "sin IVA", "ohne MwSt" as bases without tax.
+- **Total checked against the tax**: when the tax and its single rate are
+  read, the total is the amount of its line that they fit ("TOTALE
+  COMPLESSIVO COCA BOTT 10,00% 19,30 3,90": 19,30, not the item price
+  glued to it; "Total € 42.30 (HT: € 38.45)": 42,30).
 - **Tax picked in the Italian chart**: at 4 % the only active purchase tax
   is "4% INPS", a pension contribution. A tax of another kind than the
   company's default purchase tax is no longer set; none is set rather than

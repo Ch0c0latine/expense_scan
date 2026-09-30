@@ -676,6 +676,14 @@ ADRIA SANT ALCAMPO
         self.assertIsNone(mixed.value('tax_rate'))
         self.assertEqual(mixed.value('tax_rate_max'), 22.0)
 
+    def test_total_that_fits_the_tax(self):
+        """The OCR glued an item price to the total line."""
+        result = self.parse("LAGARDERE TRAVEL RETAIL\nBICCHIERE MELONE 10,00% 6,50\n"
+                            "TOTALE COMPLESSIVO COCA BOTT 10,00% 19,30 3,90\n"
+                            "di cui IVA Pagamento elettronico 19,30 1,75")
+        self.assertEqual(result.value('total'), 19.30)
+        self.assertEqual(result.value('tax_amount'), 1.75)
+
     def test_rate_among_three_amounts_and_exempt_lines(self):
         tesla = self.parse("TESLA\nTVA totale 4.19\nMontant total (EUR) 26.25\n"
                            "DESR 22.06 19.00 4.19 Taux de TVA locale standard")
