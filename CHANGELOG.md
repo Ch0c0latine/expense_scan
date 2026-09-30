@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 19.0.2.8.0 — English base, translations, review fixes
 
 - **English base, translations**: the module is written in English; the
   French interface is provided by a translation file, as are the other
