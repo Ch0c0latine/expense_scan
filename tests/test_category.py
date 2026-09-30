@@ -253,10 +253,12 @@ class TestCategoryRecognition(common.TransactionCase):
         highest is kept rather than the category's tax (5.5% here, which
         would let too little VAT through).
 
-        The module holds back if several taxes exist for the same rate (an
-        ambiguous match would go unnoticed at review): any other purchase tax
-        at these two rates, for this company, is archived for the test.
+        Any other purchase tax at these two rates is archived, so that the
+        tax picked is the one created here. A French receipt, for a French
+        company: elsewhere its "TVA" would be a foreign tax.
         """
+        self.company.account_fiscal_country_id = self.env['res.country'].search(
+            [('code', '=', 'FR')])
         Tax = self.env['account.tax']
         Tax.search([
             ('company_id', '=', self.company.id), ('type_tax_use', '=', 'purchase'),
