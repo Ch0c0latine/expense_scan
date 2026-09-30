@@ -161,6 +161,43 @@ class TestExpensePolicy(common.TransactionCase):
         self.assertEqual(lunch.env.lang, 'en_US')
         self.assertIn("autorisés", lunch.expense_scan_policy_alert)
 
+    def test_done_puts_out_the_points_to_check(self):
+        """The text stays, for the record; the sign goes out of the lists."""
+        ticket = self.expense("Billet", 80.0, product=self.train,
+                              scan_raw_text="TGV INOUI\n1ERE CLASSE")
+        self.assertEqual(ticket.expense_scan_policy_status, 'check')
+        ticket.action_expense_scan_done()
+        self.assertFalse(ticket.expense_scan_policy_status)
+        self.assertIn("1ere classe", ticket.expense_scan_policy_alert)
+        ticket.scan_raw_text = "TGV INOUI\n1ERE CLASSE\nBUSINESS"
+        self.assertEqual(ticket.expense_scan_policy_status, 'check')
+
+    def test_a_justification_puts_out_the_breach(self):
+        self.expense("Repas soir", 40.0)
+        lunch = self.expense("Repas midi", 25.0)
+        lunch.action_expense_scan_done()
+        self.assertEqual(lunch.expense_scan_policy_status, 'breach')
+        lunch.expense_scan_policy_justification = "Repas avec le client, accord du chef de projet"
+        self.assertFalse(lunch.expense_scan_policy_status)
+        self.assertTrue(lunch.expense_scan_policy_breach)
+        # Another amount, another breach: its sign shows again.
+        lunch.total_amount_currency = 28.0
+        self.assertEqual(lunch.expense_scan_policy_status, 'breach')
+        lunch.expense_scan_policy_justification = "Repas avec le client, accord écrit"
+        self.assertFalse(lunch.expense_scan_policy_status)
+        lunch.expense_scan_policy_justification = False
+        self.assertEqual(lunch.expense_scan_policy_status, 'breach')
+
+    def test_a_rate_entered_brings_the_limits_back(self):
+        currency = self.env['res.currency'].create({
+            'name': 'XZY', 'symbol': 'Zy', 'active': True})
+        self.expense("Repas soir", 40.0)
+        lunch = self.expense("Repas midi", 25.0, currency_id=currency.id)
+        self.assertIn("No exchange rate for XZY", lunch.expense_scan_policy_alert)
+        self.env['res.currency.rate'].create({
+            'currency_id': currency.id, 'rate': 1.0, 'name': date(2026, 1, 1)})
+        self.assertNotIn("No exchange rate", lunch.expense_scan_policy_alert or "")
+
     def test_other_clients_are_not_checked(self):
         free = self.expense("Ticket", 90.0, project=self.other_project, scan_time="12:30")
         self.assertFalse(free.expense_scan_policy_alert)

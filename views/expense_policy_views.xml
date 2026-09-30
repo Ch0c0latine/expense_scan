@@ -169,6 +169,15 @@
                     <strong>Expense rules</strong>
                     <field name="expense_scan_policy_alert" readonly="1" nolabel="1"
                            class="d-block" style="white-space: pre-line;"/>
+                    <!-- A justified breach no longer shows its sign in the
+                         lists; the manager reads the reason here. -->
+                    <div class="d-flex align-items-baseline gap-2 mt-2"
+                         invisible="not expense_scan_policy_breach">
+                        <label for="expense_scan_policy_justification" class="fw-bold text-nowrap"/>
+                        <field name="expense_scan_policy_justification" class="flex-grow-1"
+                               readonly="not is_editable"
+                               placeholder="Why this expense goes beyond the rules"/>
+                    </div>
                 </div>
             </xpath>
         </field>

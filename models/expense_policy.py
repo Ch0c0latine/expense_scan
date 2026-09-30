@@ -166,11 +166,21 @@ class HrExpense(models.Model):
         store=True, readonly=True)
     expense_scan_policy_breach = fields.Boolean(
         string="Outside the rules", compute='_compute_expense_scan_policy',
-        store=True, readonly=True)
-    #: Shown in the list, to spot the exceptions at a glance.
+        store=True, readonly=True,
+        help="Above a limit of the rules, justified or not.")
+    #: Shown in the list, to spot at a glance the findings nobody has dealt
+    #: with yet.
     expense_scan_policy_status = fields.Selection(
         [('breach', BREACH_SIGN), ('check', CHECK_SIGN)],
         string="Rules", compute='_compute_expense_scan_policy', store=True, readonly=True)
+    expense_scan_policy_justification = fields.Char(
+        string="Justification", copy=False,
+        help="Why this expense goes beyond the rules. The manager reads it "
+             "when approving the expense.")
+    #: Findings already dealt with, one per line: the points to check seen
+    #: ("Done"), the breaches justified. Their sign goes out; a new finding
+    #: (another amount, another category) shows again.
+    expense_scan_policy_seen = fields.Text(string="Findings dealt with", readonly=True, copy=False)
 
     #: Fields the check of an expense depends on.
     POLICY_FIELDS = ('product_id', 'total_amount', 'total_amount_currency', 'date',
@@ -178,20 +188,48 @@ class HrExpense(models.Model):
                      'project_id', 'employee_id', 'expense_scan_merchant', 'currency_id',
                      'expense_scan_todo_codes')
 
-    @api.depends(*POLICY_FIELDS)
+    @api.depends(*POLICY_FIELDS, 'expense_scan_policy_seen')
     def _compute_expense_scan_policy(self):
         for expense in self:
             # The text is stored: it is written in the employee's language,
             # whoever triggers the check (a manager, a module update).
             findings = expense.with_context(
                 lang=expense._expense_scan_policy_lang())._expense_scan_policy_findings()
-            expense.expense_scan_policy_alert = "\n".join(
-                "%s %s" % (BREACH_SIGN if breach else CHECK_SIGN, message)
-                for breach, message in findings) or False
-            expense.expense_scan_policy_breach = bool(findings)
+            lines = [(breach, "%s %s" % (BREACH_SIGN if breach else CHECK_SIGN, message))
+                     for breach, message in findings]
+            seen = expense._expense_scan_policy_seen_lines()
+            open_lines = [(breach, line) for breach, line in lines if line not in seen]
+            expense.expense_scan_policy_alert = "\n".join(line for _b, line in lines) or False
+            expense.expense_scan_policy_breach = any(breach for breach, _line in lines)
             expense.expense_scan_policy_status = (
-                'breach' if any(breach for breach, _message in findings)
-                else 'check' if findings else False)
+                'breach' if any(breach for breach, _line in open_lines)
+                else 'check' if open_lines else False)
+
+    def _expense_scan_policy_seen_lines(self):
+        return set(filter(None, (self.expense_scan_policy_seen or '').split('\n')))
+
+    def _expense_scan_policy_lines(self, sign):
+        """Current findings of one kind, as stored in the alert."""
+        return {line for line in (self.expense_scan_policy_alert or '').split('\n')
+                if line.startswith(sign + ' ')}
+
+    def _expense_scan_policy_mark_seen(self, sign, seen=True):
+        """Put out (or light again) the signs of the current findings of one kind."""
+        for expense in self:
+            lines = expense._expense_scan_policy_seen_lines()
+            current = expense._expense_scan_policy_lines(sign)
+            lines = lines | current if seen else lines - current
+            # Only the findings still there: the text does not grow forever.
+            lines &= expense._expense_scan_policy_lines(BREACH_SIGN) \
+                | expense._expense_scan_policy_lines(CHECK_SIGN)
+            value = "\n".join(sorted(lines)) or False
+            if value != (expense.expense_scan_policy_seen or False):
+                expense.expense_scan_policy_seen = value
+
+    def action_expense_scan_done(self):
+        """Finishing the review also counts as having seen the points to check."""
+        self.filtered(lambda e: e.state == 'draft')._expense_scan_policy_mark_seen(CHECK_SIGN)
+        return super().action_expense_scan_done()
 
     def _expense_scan_recompute_policy(self):
         if not self:
@@ -209,6 +247,8 @@ class HrExpense(models.Model):
         return expenses
 
     def write(self, vals):
+        if 'expense_scan_policy_justification' in vals:
+            return self._expense_scan_policy_write_justification(vals)
         checked = any(name in vals for name in self.POLICY_FIELDS)
         # The daily limit depends on the other meals of the day: those of the
         # day left, when the date or the employee changes, and those of the
@@ -217,6 +257,25 @@ class HrExpense(models.Model):
         result = super().write(vals)
         if checked:
             (before | self._expense_scan_policy_siblings())._expense_scan_recompute_policy()
+        return result
+
+    def _expense_scan_policy_write_justification(self, vals):
+        """A justification puts out the signs of the breaches it answers.
+
+        Written again or emptied, it follows the breaches of the moment: a
+        breach that appears afterwards (the amount changed) shows its sign
+        again until the justification is updated.
+        """
+        justification = (vals['expense_scan_policy_justification'] or '').strip()
+        vals = dict(vals, expense_scan_policy_justification=justification or False)
+        result = super(HrExpense, self).write(
+            {name: value for name, value in vals.items()
+             if name == 'expense_scan_policy_justification'})
+        rest = {name: value for name, value in vals.items()
+                if name != 'expense_scan_policy_justification'}
+        if rest:
+            result = self.write(rest)
+        self._expense_scan_policy_mark_seen(BREACH_SIGN, seen=bool(justification))
         return result
 
     def _expense_scan_policy_siblings(self):
@@ -431,3 +490,28 @@ class HrExpense(models.Model):
                 continue  # not comparable, reported on that expense
             total += other.total_amount
         return total
+
+
+class ResCurrencyRate(models.Model):
+    _inherit = 'res.currency.rate'
+
+    # The amount limits skip an expense in a currency without a rate: the
+    # first rate entered brings them back.
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        rates = super().create(vals_list)
+        rates._expense_scan_recheck_expenses()
+        return rates
+
+    def unlink(self):
+        currencies = self.currency_id
+        result = super().unlink()
+        self._expense_scan_recheck_expenses(currencies)
+        return result
+
+    def _expense_scan_recheck_expenses(self, currencies=None):
+        currencies = currencies if currencies is not None else self.currency_id
+        self.env['hr.expense'].sudo().search([
+            ('currency_id', 'in', currencies.ids), ('state', '=', 'draft'),
+        ])._expense_scan_recompute_policy()
