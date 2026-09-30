@@ -27,6 +27,38 @@
   instead of once per neighbouring expense.
 - **Benchmark**: international corpus drawn from Open Prices, results per
   country (`tools/fetch_openprices.py`, `tools/bench.py --open-prices`).
+- **Receipt tax** shown as the journal entry will carry it: a manual entry
+  showed 0.00 while the entry deducted the tax of the rate.
+- **Multi-page PDF** receipts are kept whole: no longer replaced by an image
+  of their first page, and not offered for retouch.
+- **Parsing**: an unreadable total no longer takes the tax line below it; US
+  sales tax is a foreign tax; the nights of a hotel bill are read; a
+  merchant written in capitals keeps its contractions ("Joe's").
+- **Trip description**: taken from a neighbouring expense only when its date
+  was read on its receipt, never from a street named after a city, and
+  noted in the history. A category chosen by hand survives "Scan again".
+- **Receipt deleted, then replaced**: the reading of the deleted receipt is
+  forgotten and the next receipt is scanned, keeping the fields entered by
+  hand. "Scan again" without a receipt says so; two scans of one expense at
+  once no longer end in a database conflict.
+- **Receipt moved to its own expense** (different total or date): both
+  expenses say it in their history, with a link, and "Scan again" shows a
+  notification.
+- **Expense rules**: an amount not converted to the company currency (currency
+  not active, no exchange rate) is no longer compared with the limits; the
+  general conditions printed on a ticket are left out of the word checks;
+  "ℹ︎" marks a point to check, "⚠" a breach, both shown in the expense list
+  and on the cards; the text is written in the employee's language.
+- **Exchange rate missing**: a receipt in an active currency without a rate
+  gets a point to check (Odoo would count it one for one).
+- **Not a receipt**: an image without amount or date gets one clear point to
+  check instead of an expense at 0 read "with 100 % confidence".
+- **Numbers** in the scan details, the tax read, error messages and the sheet
+  wizard follow the user's language.
+- **Interface**: history of the expense folded, one click away; help of the
+  settings shown under each option; retouch controls that stay in place and
+  a "0°" button; tax rate readable on a tablet in landscape; PDF preview
+  fitting a tablet in portrait; one notification for several receipts.
 
 ## 19.0.2.7.1
 
