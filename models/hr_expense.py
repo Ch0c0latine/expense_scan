@@ -2394,7 +2394,7 @@ class HrExpense(models.Model):
             ('amount_type', '=', 'percent'),
             ('amount', '=', rate),
         ], order='sequence, id')
-        if len(taxes) <= 1:
+        if not taxes:
             return taxes
         own = taxes & (category.supplier_taxes_id if category else taxes.browse())
         if own:
@@ -2413,11 +2413,20 @@ class HrExpense(models.Model):
             """The name without its rate: "21% G" and "10% G" are one family."""
             return re.sub(r"\d+(?:[.,]\d+)?\s*%", "%", tax.name or "").strip()
 
+        def group(tax):
+            """The tax group without its rate: "22% VAT" and "4% VAT" are one."""
+            return re.sub(r"\d+(?:[.,]\d+)?\s*%", "%", tax.tax_group_id.name or "").strip()
+
         default = company.account_purchase_tax_id
         if default:
             same = domestic.filtered(lambda tax: family(tax) == family(default))
             if same:
                 return same[:1]
+            # No such tax at this rate: another one of the same kind, never a
+            # tax of another kind ("4% INPS", a pension contribution, is the
+            # only active purchase tax at 4 % of the Italian chart).
+            kind = plain.filtered(lambda tax: group(tax) == group(default))
+            return (kind.filtered(lambda tax: not tax.fiscal_position_ids) or kind)[:1]
         return domestic[:1]
 
     def _expense_scan_tax_fits(self, amount, total=None, rate=None):

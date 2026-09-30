@@ -275,6 +275,25 @@ class TestCategoryRecognition(common.TransactionCase):
         self.company.account_purchase_tax_id = False
         self.assertEqual(expense._expense_scan_tax(10.0, self.company), investment)
 
+    def test_no_tax_of_another_kind(self):
+        """Italian chart: at 4 %, only "4% INPS", a pension contribution."""
+        Tax = self.env['account.tax']
+        Group = self.env['account.tax.group']
+        Tax.search([
+            ('company_id', '=', self.company.id), ('type_tax_use', '=', 'purchase'),
+            ('amount_type', '=', 'percent'), ('amount', '=', 4.0),
+        ]).active = False
+        vat = Group.create({'name': "22% VATx", 'company_id': self.company.id})
+        pension = Group.create({'name': "Pension Fundsx", 'company_id': self.company.id})
+        default = Tax.create({'name': "22% Gy (test)", 'amount': 22.0, 'amount_type': 'percent',
+                              'type_tax_use': 'purchase', 'company_id': self.company.id,
+                              'tax_group_id': vat.id})
+        Tax.create({'name': "4% INPSy (test)", 'amount': 4.0, 'amount_type': 'percent',
+                    'type_tax_use': 'purchase', 'company_id': self.company.id,
+                    'tax_group_id': pension.id})
+        self.company.account_purchase_tax_id = default
+        self.assertFalse(self.fresh()._expense_scan_tax(4.0, self.company))
+
     def test_a_tax_rounded_line_by_line_is_accepted(self):
         """9.41 printed at 12 % on 87.75: the exact ceiling is 9.40."""
         expense = self.fresh()
