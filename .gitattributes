@@ -1,3 +1,9 @@
 * text=auto eol=lf
 *.png binary
 *.jpg binary
+
+# Left out of the store copy (git archive, tools/publish_store.py).
+.github export-ignore
+tools export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore
