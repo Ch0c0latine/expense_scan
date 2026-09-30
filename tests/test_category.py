@@ -216,6 +216,18 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertTrue(chf.active)
         self.assertTrue(values['_expense_scan_notes'])
 
+    def test_odoo_default_category_is_not_a_choice(self):
+        """No default category in the settings: Odoo's "Expenses" is no choice either."""
+        self.company.expense_scan_product_id = False
+        generic = self.env['product.product'].search([
+            ('default_code', '=', 'EXP_GEN'), ('can_be_expensed', '=', True)], limit=1)
+        if not generic:
+            generic = self.env['product.product'].create({
+                'name': "Expenses", 'default_code': 'EXP_GEN', 'can_be_expensed': True})
+        expense = self.expense(product_id=generic.id)
+        self.assertEqual(self.company._expense_scan_default_product(), generic)
+        self.assertTrue(expense._expense_scan_category_is_free(self.company))
+
     def test_several_taxes_at_one_rate(self):
         """Goods and services at 7 %: the category's own tax, else the first one."""
         Tax = self.env['account.tax']

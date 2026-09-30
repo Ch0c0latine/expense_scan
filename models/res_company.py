@@ -135,6 +135,21 @@ class ResCompany(models.Model):
              "always write to.",
     )
 
+    def _expense_scan_default_product(self):
+        """Category of an expense the scan has not filed yet.
+
+        The one of the settings; otherwise the one Odoo gives a new expense
+        (internal reference "EXP_GEN"). Both are "no category chosen": the
+        scan may replace them, and flags them when it cannot.
+        """
+        self.ensure_one()
+        if self.expense_scan_product_id:
+            return self.expense_scan_product_id
+        return self.env['product.product'].search([
+            ('default_code', '=', 'EXP_GEN'), ('can_be_expensed', '=', True),
+            '|', ('company_id', '=', False), ('company_id', '=', self.id),
+        ], limit=1)
+
     def _expense_scan_model_dir(self):
         """OCR model folder, created if needed.
 

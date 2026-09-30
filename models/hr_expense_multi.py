@@ -103,7 +103,7 @@ class HrExpense(models.Model):
                 values.update(name=description, expense_scan_keep_name=True)
             # As with the scan button: the company's default category,
             # replaced by the scan when the receipt reveals one.
-            default = expense.company_id.expense_scan_product_id
+            default = expense.company_id._expense_scan_default_product()
             if not expense.product_id and default:
                 values['product_id'] = default.id
             expense.write(values)
@@ -281,7 +281,7 @@ class HrExpense(models.Model):
         shared by all pieces, is kept.
         """
         self.ensure_one()
-        product = self.company_id.expense_scan_product_id or self.product_id
+        product = self.company_id._expense_scan_default_product() or self.product_id
         if self.expense_scan_keep_name:
             name = self.name
         else:

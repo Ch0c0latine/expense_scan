@@ -1117,11 +1117,9 @@ class HrExpense(models.Model):
         fields still empty.
         """
         company = self.env.company
-        Product = self.env['product.product']
-        product = (company.expense_scan_product_id
-                   or Product.search([('default_code', '=', 'EXP_GEN'),
-                                      ('can_be_expensed', '=', True)], limit=1)
-                   or Product.search([('can_be_expensed', '=', True)], limit=1))
+        product = (company._expense_scan_default_product()
+                   or self.env['product.product'].search([('can_be_expensed', '=', True)],
+                                                         limit=1))
         today = format_date(self.env, fields.Date.context_today(self))
         return {
             'name': self._get_untitled_expense_name(today),
@@ -2146,7 +2144,7 @@ class HrExpense(models.Model):
         """
         lang = self.employee_id.user_id.lang or self.env.user.lang or self.env.lang
         expense = self.with_context(lang=lang)
-        company_default = self.company_id.expense_scan_product_id
+        company_default = (self.company_id or self.env.company)._expense_scan_default_product()
         label = (product.with_context(lang=lang).name
                  if product and product != company_default else expense.env._("Receipt"))
         return expense._expense_scan_date_name(label, format_date(expense.env, scan_date))

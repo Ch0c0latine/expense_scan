@@ -289,7 +289,7 @@ class HrExpense(models.Model):
             return True
         product = self.product_id
         return (not product
-                or product == company.expense_scan_product_id
+                or product == company._expense_scan_default_product()
                 or product == self.expense_scan_guessed_product_id)
 
     def _expense_scan_target_product(self, values):
@@ -392,7 +392,7 @@ class HrExpense(models.Model):
         # make it repeat itself (a restaurant scanned while recognition
         # failed would stay "Expenses").
         history = Counter(known[key]['products']) if key else Counter()
-        history.pop(company.expense_scan_product_id.id, None)
+        history.pop(company._expense_scan_default_product().id, None)
         if history:
             products = history
             product_id, count = products.most_common(1)[0]
@@ -454,8 +454,9 @@ class HrExpense(models.Model):
                 # default category.
                 guessed_before = (self.product_id
                                   and self.product_id == self.expense_scan_guessed_product_id)
-                if (not self.product_id or guessed_before) and company.expense_scan_product_id:
-                    values['product_id'] = company.expense_scan_product_id.id
+                default = company._expense_scan_default_product()
+                if (not self.product_id or guessed_before) and default:
+                    values['product_id'] = default.id
         else:
             # Category chosen by hand: the reason of an earlier automatic
             # choice no longer applies.
