@@ -35,6 +35,13 @@
   rate codes beyond D ("F 10%"), "Neto", "€x TOT" for "€* TOT", "C IVA
   4,00" read as a rate and not as the tax. On French receipts too, a rate
   column no longer lets a base or a total pass for the tax.
+- **Categories learn the words of their receipts**: every day, the words
+  found on the receipts of a category once submitted, and almost never on
+  the others, are learnt for it (at least 3 receipts and a third of them).
+  A category named like no known family ("Subscriptions", "Training")
+  is thus recognised without anyone entering words. Words common to all
+  receipts and the names of the employees and companies are never learnt.
+  Shown read-only on the category, next to the declared words.
 - **Italian receipts** (new database in Italy, the Italian corpus and real
   receipts of trips): the rate printed on the items when the tax line has
   none ("di cui IVA 3,55" under items at "10,00%"; several rates give the

@@ -50,6 +50,8 @@ HISTORY_WEIGHT = 5.0
 HISTORY_FUZZY_WEIGHT = 3.0
 #: States where someone has confirmed the category.
 CONFIRMED_STATES = ('submitted', 'approved', 'posted', 'in_payment', 'paid')
+#: Receipts read by the daily learning of category words, the latest first.
+LEARN_LIMIT = 5000
 
 
 class ProductTemplate(models.Model):
@@ -64,6 +66,13 @@ class ProductTemplate(models.Model):
              "letters or more.\n\n"
              "Merchants already filed are learnt on their own when expenses "
              "are submitted: no need to enter them all here.",
+    )
+    expense_scan_learned_keywords = fields.Text(
+        string="Words learnt from receipts",
+        readonly=True,
+        help="Words found on the receipts of this category once submitted, "
+             "and almost never on the others. Updated every day; they point "
+             "to this category like the receipt words above.",
     )
 
     @api.model_create_multi
@@ -339,17 +348,53 @@ class HrExpense(models.Model):
         return product.uom_id not in distances
 
     def _expense_scan_keyword_categories(self, company):
-        """``{category id: folded words}`` of the categories that declare words."""
+        """``{category id: folded words}`` of the categories that declare or learnt words."""
         products = self.env['product.product'].sudo().search([
             ('can_be_expensed', '=', True),
-            ('expense_scan_keywords', '!=', False),
+            '|', ('expense_scan_keywords', '!=', False),
+                 ('expense_scan_learned_keywords', '!=', False),
             ('company_id', 'in', (False, company.id)),
         ])
         return {
             product.id: lexicon.split_keywords(product.expense_scan_keywords)
+            + lexicon.split_keywords(product.expense_scan_learned_keywords)
             for product in products
             if self._expense_scan_guessable(product, company)
         }
+
+    @api.model
+    def _cron_expense_scan_learn_words(self):
+        """Learn the words of each category from the receipts filed by the team.
+
+        Only expenses confirmed by a person (submitted or later) teach, and
+        only their text still kept (see the retention delay). The names of
+        the employees and companies are never learnt: they are on the
+        receipts (hotel bills) without saying anything about the category.
+        """
+        Expense = self.sudo()
+        expenses = Expense.search([
+            ('state', 'in', CONFIRMED_STATES),
+            ('product_id', '!=', False),
+            ('scan_raw_text', '!=', False),
+        ], order='id desc', limit=LEARN_LIMIT)
+        defaults = {company._expense_scan_default_product().id
+                    for company in self.env['res.company'].sudo().search([])}
+        receipts = [(expense.product_id.product_tmpl_id.id, expense.scan_raw_text)
+                    for expense in expenses if expense.product_id.id not in defaults]
+        names = (self.env['hr.employee'].sudo().with_context(active_test=False).search([]).mapped('name')
+                 + self.env['res.company'].sudo().search([]).mapped('name')
+                 + self.env['res.users'].sudo().with_context(active_test=False).search([]).mapped('name'))
+        excluded = set(lexicon.fold(" ".join(name for name in names if name)).split())
+        Template = self.env['product.template'].sudo()
+        templates = Template.search([('can_be_expensed', '=', True)])
+        known = {template.id: lexicon.split_keywords(template.expense_scan_keywords)
+                 for template in templates}
+        learnt = categorize.learn_words(receipts, excluded=excluded, known=known)
+        for template in templates:
+            words = "\n".join(learnt.get(template.id, [])) or False
+            if (template.expense_scan_learned_keywords or False) != words:
+                template.expense_scan_learned_keywords = words
+        return len(learnt)
 
     def _expense_scan_reason(self, reason, number=None):
         """Sentence explaining the category clue that was kept.

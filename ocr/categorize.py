@@ -69,3 +69,87 @@ def score(lines, keyword_categories, family_keys, activity=None, naf_of=None):
     if brand_family:
         add(brand_family, BRAND_WEIGHT, (BRAND, brand))
     return scores, reasons, brand if brand_family else None
+
+
+# ---------------------------------------------------------------------------
+# Words learnt from the receipts filed by the team
+# ---------------------------------------------------------------------------
+
+#: A word is learnt for a category when it is on at least this many of its
+#: receipts, on this share of them, and almost only on them.
+LEARN_MIN_RECEIPTS = 3
+LEARN_MIN_SHARE = 0.3
+LEARN_MIN_PRECISION = 0.85
+#: Below this many receipts in all, the words say nothing: with a single
+#: category in use, every word of its receipts would look specific.
+LEARN_MIN_CORPUS = 10
+#: Words kept per category, the most frequent first.
+LEARN_MAX_WORDS = 30
+LEARN_MIN_LENGTH = 4
+
+#: Words of every receipt, in the languages met: they point to no category.
+COMMON_WORDS = set("""
+total totale totaal totalt summe suma summa subtotal sous somme gesamt importe importo montant
+amount betrag bedrag prix price preis precio prezzo preco cena net netto brutto brut ttc
+tva iva mwst vat btw moms mva ptu dph taxe taxes steuer imposta impuesto
+euro euros eur chf gbp usd sek nok dkk pln czk
+carte card karte tarjeta carta cartao karta visa mastercard maestro contactless sans contact
+debit credit terminal transaction autorisation autorizzazione autorizacion
+paiement payment zahlung pago pagamento platnosc reglement especes cash contanti efectivo bargeld
+rendu change cambio resto ruckgeld monnaie
+merci grazie gracias danke thank thanks obrigado bedankt tack takk dziekujemy visite visita besuch
+ticket recu receipt beleg quittung scontrino factura fattura facture invoice rechnung fatura
+paragon kvittering documento commerciale simplificada simplifiee
+date heure time datum fecha data uhrzeit hora
+client cliente kunde customer caisse kasse caja cassa kasa operateur vendeur
+article articles artikel articulo articoli qte quantite quantity menge cantidad
+siret siren tel telephone telefono telefon www http https email mail adresse address
+rue avenue boulevard route place calle avda strasse via piazza
+numero number nummer code conserver votre vous nous pour avec dans les des the and for with your
+und der die das per con del della los las para por
+""".split())
+
+
+def receipt_words(text, excluded=()):
+    """Distinct words of a receipt that may name a category."""
+    words = set()
+    for word in lexicon.fold(text or "").split():
+        if len(word) < LEARN_MIN_LENGTH or not word.isalpha():
+            continue
+        if word in COMMON_WORDS or word in excluded:
+            continue
+        words.add(word)
+    return words
+
+
+def learn_words(receipts, excluded=(), known=None):
+    """``{category: [words]}`` learnt from receipts already filed.
+
+    ``receipts``: ``[(category, text)]``, the category confirmed by a
+    person. ``excluded``: words never to learn (names of the employees and
+    of the company). ``known``: ``{category: [words]}`` already declared,
+    not learnt twice.
+    """
+    known = known or {}
+    per_category, everywhere, sizes = {}, {}, {}
+    for category, text in receipts:
+        words = receipt_words(text, excluded)
+        sizes[category] = sizes.get(category, 0) + 1
+        counts = per_category.setdefault(category, {})
+        for word in words:
+            counts[word] = counts.get(word, 0) + 1
+            everywhere[word] = everywhere.get(word, 0) + 1
+    if sum(sizes.values()) < LEARN_MIN_CORPUS:
+        return {}
+    learnt = {}
+    for category, counts in per_category.items():
+        declared = set(known.get(category, ()))
+        words = [word for word, count in counts.items()
+                 if count >= LEARN_MIN_RECEIPTS
+                 and count >= LEARN_MIN_SHARE * sizes[category]
+                 and count >= LEARN_MIN_PRECISION * everywhere[word]
+                 and word not in declared]
+        words.sort(key=lambda word: (-counts[word], word))
+        if words:
+            learnt[category] = words[:LEARN_MAX_WORDS]
+    return learnt

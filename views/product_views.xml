@@ -35,6 +35,8 @@
                 <field name="expense_scan_no_vat"/>
                 <field name="expense_scan_keywords"
                        placeholder="One word per line: hotel, nocleg, Ibis..."/>
+                <field name="expense_scan_learned_keywords"
+                       invisible="not expense_scan_learned_keywords"/>
             </xpath>
         </field>
     </record>

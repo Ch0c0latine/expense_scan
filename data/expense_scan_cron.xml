@@ -26,6 +26,17 @@
         <field name="active" eval="True"/>
     </record>
 
+    <!-- Words of each category, learnt from the receipts filed by the team. -->
+    <record id="ir_cron_expense_scan_learn_words" model="ir.cron">
+        <field name="name">Receipt scan: learn the words of each category</field>
+        <field name="model_id" ref="hr_expense.model_hr_expense"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_expense_scan_learn_words()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+
     <!-- Erase the text read (personal data) after the configured delay. -->
     <record id="ir_cron_expense_scan_purge_texts" model="ir.cron">
         <field name="name">Receipt scan: erase the text read on old expenses</field>
