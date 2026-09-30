@@ -392,11 +392,12 @@ class TestCategoryRecognition(common.TransactionCase):
         self.employee.name = "Zelinska"
         for index in range(6):
             product, text = texts[index % 2]
-            self.expense(product_id=product.id, scan_raw_text=text + "\nTOTAL %d,00" % (10 + index)
+            self.expense(product_id=product.id, total_amount_currency=10.0 + index,
+                         scan_raw_text=text + "\nTOTAL %d,00" % (10 + index)
                          ).approval_state = 'submitted'
         for index in range(6):
-            self.expense(product_id=self.lodging.id, scan_raw_text="HOTEL %d\nNuit" % index
-                         ).approval_state = 'submitted'
+            self.expense(product_id=self.lodging.id, total_amount_currency=80.0,
+                         scan_raw_text="HOTEL %d\nNuit" % index).approval_state = 'submitted'
         self.env['hr.expense']._cron_expense_scan_learn_words()
         learnt = (software.expense_scan_learned_keywords or "").split("\n")
         self.assertIn("glorpsoft", learnt)
