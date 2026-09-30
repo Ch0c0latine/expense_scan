@@ -35,7 +35,8 @@ class TestTodoBanner(common.TransactionCase):
             scan_state='partial', scan_todo="Tax (none on the receipt)",
             expense_scan_todo_codes='tax_amount')
         self.assertTrue(expense.expense_scan_todo_pending)
-        expense.scan_tax_amount = 1.5
+        # Below the ceiling of any usual rate on 10.00, whatever the country.
+        expense.scan_tax_amount = 0.5
         self.assertFalse(expense.expense_scan_todo_pending)
 
     def test_tax_category_flag_clears_once_a_tax_is_set(self):

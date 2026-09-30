@@ -231,7 +231,7 @@ class TestCategoryRecognition(common.TransactionCase):
         expense = self.expense(product_id=self.food.id)
         receipt = reading(
             "FROMZAK\nTVA 5.50% HT 1,80 0,10 TVA 1,90 TTC\nTVA 10% 7,00 0,70 7,70\n"
-            "TOTAL 9,60 EUR")
+            "TOTAL 9,60")  # no currency: domestic, whatever the company's currency
         values = expense._expense_scan_field_values(receipt, self.company)
         self.assertEqual(values['tax_ids'], [(6, 0, high.ids)])
         self.assertEqual(values['scan_tax_amount'], 0.80)
