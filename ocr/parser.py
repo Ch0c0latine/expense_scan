@@ -892,11 +892,22 @@ TAX_COLUMN_LABEL_RE = re.compile(
 TAX_LABELS = {"TVA", "MWST", "UST", "VAT", "IVA", "BTW", "MOMS", "MVA"}
 
 
+#: Net and gross columns side by side: a table header even when the tax
+#: word is misread ("NUST BRUTTO NETTO" for "MWST BRUTTO NETTO").
+NET_GROSS_PAIRS = ({"NETTO", "BRUTTO"}, {"NET", "BRUT"}, {"HT", "TTC"}, {"HTVA", "TVAC"})
+#: Table line whose "%" the OCR read as an 8: "A 198 0.68 4.28 3.60" for
+#: "A 19% ...". Only kept when the amounts hold at that rate.
+TAX_TABLE_MISREAD_ROW_RE = re.compile(r"^\s*[A-D]\s+(\d{1,2})[8B]\s+\d")
+
+
 def _column_labels_run(header):
-    """Tell whether the line holds three column labels in a row, the tax among them."""
+    """Tell whether the line holds column labels in a row, without a figure
+    between them: three with the tax, or the net and gross pair."""
     for part in re.split(r"\d", header):
         labels = set(TAX_COLUMN_LABEL_RE.findall(part))
         if len(labels) >= 3 and labels & TAX_LABELS:
+            return True
+        if any(pair <= labels for pair in NET_GROSS_PAIRS):
             return True
     return False
 
@@ -995,16 +1006,26 @@ def extract_tax_table(lines):
         for row in lines[index + 1:index + 1 + TAX_TABLE_DEPTH]:
             text = normalize(row.text)
             match = TAX_TABLE_ROW_RE.match(text)
-            bare = None
+            bare = misread = None
             if not match and has_rate_column:
                 bare = TAX_TABLE_BARE_ROW_RE.match(text)
             if not (match or bare):
+                misread = TAX_TABLE_MISREAD_ROW_RE.match(text)
+            if not (match or bare or misread):
                 continue
-            rate = _closest_known_rate(float((match or bare).group(1).replace(",", ".")))
+            rate = _closest_known_rate(
+                float((match or bare or misread).group(1).replace(",", ".")))
             amounts = _table_amounts(row.text)
             if bare:
                 amounts = amounts[1:]  # the rate itself, read as an amount
             if rate is None or len(amounts) < 2:
+                continue
+            if misread:
+                # A rate guessed from a misread "%": only amounts that hold at
+                # that rate confirm it.
+                amount = _consistent_tax(amounts, rate) if len(amounts) >= 3 else None
+                if amount:
+                    entries.append((rate, amount, row.text))
                 continue
             # Net, VAT, gross columns: the tax is the second. But the order
             # varies ("TVA Net Brut") and, on a slanted photo, the columns of

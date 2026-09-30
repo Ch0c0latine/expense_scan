@@ -589,6 +589,13 @@ ASF Lieu-dit Les Pins BP 10017
                             "Mva% Grunnlag Mva Sum\nSum 17,83 4,47 22,30")
         self.assertEqual(result.value('total'), 22.00)
 
+    def test_a_percent_read_as_an_eight(self):
+        """"NUST BRUTTO NETTO / A 198 ...": MWST and 19 % misread by the OCR."""
+        result = self.parse("NETTO\nSUMME [19] 27.91\nNUST BRUTTO NETTO\n"
+                            "A 198 0.68 4.28 3.60\nB 78 1.55 23.63 22.08")
+        self.assertEqual(result.value('tax_amount'), 2.23)
+        self.assertEqual(result.value('tax_rate_max'), 19.0)
+
     def test_swedish_vat_table(self):
         """"Moms% Moms Netto Brutto": the rate column has no "%" on its lines."""
         result = self.parse("BORJES\nTo.alt 87,75 SEK\nMoms% Moms Netto Brutto\n"
