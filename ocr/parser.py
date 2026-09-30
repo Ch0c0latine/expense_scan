@@ -738,7 +738,7 @@ def extract_merchant(lines, max_lines=10, buyers=()):
         # seller is the one of the legal notice, which the header cites.
         name, source = entity
         if name.isupper():
-            name = name.title()
+            name = title_case(name)
         return ExtractedField(value=name, confidence=0.75, source=source)
     if best is None:
         return ExtractedField(value=None, confidence=0.0)
@@ -754,8 +754,15 @@ def extract_merchant(lines, max_lines=10, buyers=()):
     if raw.endswith(".") and LEGAL_FORM_RE.search(name):
         name += "."  # "S.p.A.": the last dot is part of the legal form
     if name.isupper() and len(name) > 3:
-        name = name.title()
+        name = title_case(name)
     return ExtractedField(value=name, confidence=min(confidence, 0.95), source=raw)
+
+
+def title_case(name):
+    """Capitalise each word, English contractions aside: "JOE'S DINER" gives
+    "Joe's Diner", "L'ATELIER" gives "L'Atelier"."""
+    return re.sub(r"(?<=\w)['\u2019](S|T|D|Ll|Re|Ve|M)\b",
+                  lambda match: match.group(0).lower(), name.title())
 
 
 # ---------------------------------------------------------------------------

@@ -94,7 +94,8 @@ class HrExpense(models.Model):
     #: expense is edited. ``static`` marks the points that cannot be
     #: reopened automatically (date, category...): they stay open, as before
     #: this field existed.
-    expense_scan_todo_codes = fields.Char(readonly=True, copy=False)
+    expense_scan_todo_codes = fields.Char(string="Points to check (codes)", readonly=True,
+                                          copy=False)
     #: Help sentence of each point, as JSON: ``{code: sentence}``.
     expense_scan_hints = fields.Text(readonly=True, copy=False)
     #: Values set by the scan, as JSON, to recognise a correction.
@@ -106,7 +107,8 @@ class HrExpense(models.Model):
     expense_scan_main_checksum = fields.Char(compute='_compute_expense_scan_main_file')
     # Fields entered by hand before the scan (comma-separated list): a new
     # scan does not replace them either.
-    expense_scan_manual_fields = fields.Char(readonly=True, copy=False)
+    expense_scan_manual_fields = fields.Char(string="Fields entered by hand", readonly=True,
+                                             copy=False)
     expense_scan_hint_date = fields.Char(compute='_compute_expense_scan_field_hints')
     expense_scan_hint_total = fields.Char(compute='_compute_expense_scan_field_hints')
     expense_scan_hint_tax = fields.Char(compute='_compute_expense_scan_field_hints')
@@ -184,7 +186,8 @@ class HrExpense(models.Model):
     )
     #: The displayed receipt was retouched by hand (Retouch tool): the scan
     #: reads it as it is, without automatic cropping or straightening.
-    expense_scan_manual_retouch = fields.Boolean(readonly=True, copy=False)
+    expense_scan_manual_retouch = fields.Boolean(string="Retouched by hand", readonly=True,
+                                                 copy=False)
     #: Settings of the last manual retouch, as JSON: ``quarter`` (clockwise
     #: quarter turns), ``fine`` (degrees, clockwise), ``crop`` (frame
     #: ``[x0, y0, x1, y1]`` as fractions of the rotated image). The editor
@@ -192,7 +195,8 @@ class HrExpense(models.Model):
     expense_scan_retouch_params = fields.Text(readonly=True, copy=False)
     #: The scanned receipt was deleted: the next receipt attached is scanned
     #: (see expense_scan_receipt_attached).
-    expense_scan_receipt_removed = fields.Boolean(readonly=True, copy=False)
+    expense_scan_receipt_removed = fields.Boolean(string="Receipt deleted", readonly=True,
+                                                  copy=False)
 
     # ------------------------------------------------------------------
     # Review banner: closes once the fields are corrected

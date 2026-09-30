@@ -93,6 +93,10 @@ export class RetouchDialog extends Component {
             auto: false,
             error: null,
             dragging: false,
+            // Height of the image area, fixed for the whole retouch: the
+            // controls below must not move under the finger when the image
+            // turns.
+            stageHeight: 0,
         });
         this.orm = useService("orm");
         this.image = null;
@@ -156,6 +160,10 @@ export class RetouchDialog extends Component {
         const height = Math.min(browser.innerHeight * 0.6, 560);
         this.scale = Math.min(
             width / this.image.naturalWidth, height / this.image.naturalHeight, 1);
+        // Tallest the image can get: upright, turned a quarter, or at 45°.
+        const w = this.image.naturalWidth * this.scale;
+        const h = this.image.naturalHeight * this.scale;
+        this.state.stageHeight = Math.ceil(Math.min(height, Math.max(w, h, (w + h) / Math.SQRT2)));
         this.setParams(params);
     }
 

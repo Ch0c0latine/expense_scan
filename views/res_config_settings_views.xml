@@ -27,14 +27,17 @@
                         <div class="row">
                             <label for="expense_scan_threads" class="col-lg-4 o_light_label"/>
                             <field name="expense_scan_threads"/>
+                            <div class="text-muted small">0 means 4. More threads do not read a receipt faster.</div>
                         </div>
                         <div class="row">
                             <label for="expense_scan_max_age_days" class="col-lg-4 o_light_label"/>
                             <field name="expense_scan_max_age_days"/>
+                            <div class="text-muted small">An older date is ignored: usually a warranty or loyalty card date.</div>
                         </div>
                         <div class="row">
                             <label for="expense_scan_text_retention_days" class="col-lg-4 o_light_label"/>
                             <field name="expense_scan_text_retention_days"/>
+                            <div class="text-muted small">Then the text read is erased; the receipt image stays. 0: never.</div>
                         </div>
                         <div class="row" invisible="expense_scan_engine == 'tesseract'">
                             <label for="expense_scan_model_dir" class="col-lg-4 o_light_label"/>
@@ -57,15 +60,20 @@
                          help="Cut out and straighten the receipt before reading it">
                     <div class="content-group">
                         <div><field name="expense_scan_autocrop"/>
-                            <label for="expense_scan_autocrop"/></div>
+                            <label for="expense_scan_autocrop"/>
+                            <div class="text-muted small">Finds the edges of the receipt and corrects the perspective.</div></div>
                         <div><field name="expense_scan_deskew"/>
-                            <label for="expense_scan_deskew"/></div>
+                            <label for="expense_scan_deskew"/>
+                            <div class="text-muted small">Corrects the remaining tilt of the text lines.</div></div>
                         <div><field name="expense_scan_auto_rotate"/>
-                            <label for="expense_scan_auto_rotate"/></div>
+                            <label for="expense_scan_auto_rotate"/>
+                            <div class="text-muted small">Reads again after a quarter turn when the text runs vertically. Slower.</div></div>
                         <div><field name="expense_scan_keep_original"/>
-                            <label for="expense_scan_keep_original"/></div>
+                            <label for="expense_scan_keep_original"/>
+                            <div class="text-muted small">The untouched photo stays reachable from the expense; the cropped image is shown.</div></div>
                         <div><field name="expense_scan_wide_split"/>
-                            <label for="expense_scan_wide_split"/></div>
+                            <label for="expense_scan_wide_split"/>
+                            <div class="text-muted small">Receipt next to the form from 768 px wide instead of 1400 px.</div></div>
                     </div>
                 </setting>
 
@@ -75,16 +83,20 @@
                          help="What the scan may fill in on its own">
                     <div class="content-group">
                         <div><field name="expense_scan_apply_tax"/>
-                            <label for="expense_scan_apply_tax"/></div>
+                            <label for="expense_scan_apply_tax"/>
+                            <div class="text-muted small">The tax printed on the receipt goes to the journal entry, rather than the one the rate gives.</div></div>
                         <div><field name="expense_scan_set_vendor"/>
-                            <label for="expense_scan_set_vendor"/></div>
+                            <label for="expense_scan_set_vendor"/>
+                            <div class="text-muted small">Links the contact named like the merchant, when exactly one matches.</div></div>
                         <div><field name="expense_scan_reinvoice"/>
-                            <label for="expense_scan_reinvoice"/></div>
+                            <label for="expense_scan_reinvoice"/>
+                            <div class="text-muted small">Suggests the employee's project running on the receipt date.</div></div>
                         <div class="mt-2">
                             <label for="expense_scan_product_id" class="o_light_label"/>
                             <field name="expense_scan_product_id"
                                    options="{'no_create': True}"
                                    placeholder="default: Odoo's choice (reference EXP_GEN)"/>
+                            <div class="text-muted small">Given to scanned expenses whose receipt names no category.</div>
                         </div>
                     </div>
                 </setting>

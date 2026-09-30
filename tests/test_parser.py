@@ -555,6 +555,10 @@ ASF Lieu-dit Les Pins BP 10017
         self.assertEqual(result.value('tax_label'), "Sales tax")
         self.assertEqual(result.value('total'), 19.04)
 
+    def test_a_contraction_keeps_its_small_letter(self):
+        self.assertEqual(parser.title_case("JOE'S DINER"), "Joe's Diner")
+        self.assertEqual(parser.title_case("L'ATELIER DU PAIN"), "L'Atelier Du Pain")
+
     def test_nights_of_a_hotel_bill(self):
         printed = self.parse("HOTEL\n2 Nuitees x 95,00 190,00\nTOTAL TTC 219,76 EUR",
                              today=date(2026, 9, 29))

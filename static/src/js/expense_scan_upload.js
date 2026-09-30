@@ -168,8 +168,20 @@ const expenseScanUpload = () => ({
             return;
         }
         const toCheck = records.map((record) => record.scan_todo).filter(Boolean);
-        if (toCheck.length) {
-            this.notification.add(_t("Receipt scanned. To check: %s", toCheck.join(" · ")), {
+        if (records.length > 1) {
+            // The points of each receipt, put end to end, would repeat the
+            // same labels without saying which receipt they concern.
+            this.notification.add(
+                toCheck.length
+                    ? _t("%(count)s receipts scanned, %(check)s to check.", {
+                          count: records.length,
+                          check: toCheck.length,
+                      })
+                    : _t("%(count)s receipts scanned.", { count: records.length }),
+                { type: toCheck.length ? "warning" : "success" }
+            );
+        } else if (toCheck.length) {
+            this.notification.add(_t("Receipt scanned. To check: %s", toCheck[0]), {
                 type: "warning",
             });
         } else {

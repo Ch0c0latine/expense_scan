@@ -14,7 +14,8 @@
                 </div>
                 <!-- Always in the DOM, so that it can be sized as soon as the
                      image loads. -->
-                <div class="text-center" t-att-class="{ 'd-none': !state.loaded }">
+                <div class="o_expense_scan_retouch_stage" t-att-class="{ 'd-none': !state.loaded }"
+                     t-att-style="state.stageHeight ? 'height: ' + state.stageHeight + 'px' : ''">
                     <canvas t-ref="canvas"
                             class="o_expense_scan_retouch_canvas"
                             t-att-class="{ 'o_expense_scan_retouch_dragging': state.dragging }"
@@ -49,9 +50,7 @@
                     <div class="d-flex align-items-center gap-2 px-2">
                         <button type="button" class="btn btn-outline-secondary btn-sm"
                                 title="Set the fine rotation back to 0°" t-on-click="() => this.resetFine()"
-                                t-att-disabled="!state.fine">
-                            <i class="fa fa-undo" role="img" aria-label="Set the fine rotation back to 0°"/>
-                        </button>
+                                t-att-disabled="!state.fine">0°</button>
                         <input type="range" class="form-range flex-grow-1"
                                t-att-min="-fineRange" t-att-max="fineRange" step="0.5"
                                t-att-value="state.fine" t-on-input="onFineInput"

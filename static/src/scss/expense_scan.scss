@@ -97,6 +97,17 @@
         flex: 0 0 6rem;
     }
 }
+// Receipt tax and its rate share a line. In a narrow form (split view on a
+// tablet in landscape), the rate goes under the amount instead of shrinking
+// to an unreadable dot.
+.o_form_view .o_row:has(> .o_expense_scan_amount) {
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+    > .o_field_many2many_tax_tags {
+        flex: 1 0 8rem;
+        min-width: 8rem;
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Preview strip on a phone
@@ -195,8 +206,14 @@
 
 // Retouch canvas: `touch-action: none` stops the page from scrolling while a
 // handle is dragged on a phone.
+.o_expense_scan_retouch_stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 .o_expense_scan_retouch_canvas {
     max-width: 100%;
+    max-height: 100%;
     touch-action: none;
     cursor: crosshair;
     background: repeating-conic-gradient(#e9ecef 0% 25%, #fff 0% 50%) 50% / 16px 16px;
