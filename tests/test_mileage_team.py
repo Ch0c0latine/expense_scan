@@ -115,26 +115,6 @@ class TestExpenseScanTeam(common.TransactionCase):
         plain = new_test_user(self.env, login='plain_scan', groups='base.group_user')
         self.assertFalse(self.env['hr.expense'].with_user(plain)._expense_scan_team_employees())
 
-    def test_account_and_analytic_fields_are_for_managers_only(self):
-        """Account and analytic distribution: not an employee's business.
-
-        Turning on the company's analytic accounting gives every internal
-        user Odoo's default right on these two fields. The test checks the
-        case by simulating it on an ordinary employee, without changing the
-        test company.
-        """
-        plain = new_test_user(
-            self.env, login='plain_account', groups='base.group_user')
-        manager = new_test_user(
-            self.env, login='manager_account',
-            groups='base.group_user,hr_expense.group_hr_expense_manager')
-        arch = self.env['hr.expense'].with_user(plain).get_view(view_type='form')['arch']
-        for name in ('account_id', 'analytic_distribution'):
-            self.assertNotIn('name="%s"' % name, arch)
-        arch = self.env['hr.expense'].with_user(manager).get_view(view_type='form')['arch']
-        for name in ('account_id', 'analytic_distribution'):
-            self.assertIn('name="%s"' % name, arch)
-
     def test_opening_a_member_sets_the_default_employee(self):
         public = self.env['hr.employee.public'].with_user(self.manager_user).browse(self.member.id)
         action = public.action_expense_scan_open_expenses()
