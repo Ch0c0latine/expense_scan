@@ -48,7 +48,12 @@
   not active, no exchange rate) is no longer compared with the limits; the
   general conditions printed on a ticket are left out of the word checks;
   "ℹ︎" marks a point to check, "⚠" a breach, both shown in the expense list
-  and on the cards; the text is written in the employee's language.
+  and on the cards; the text is written in the employee's language. "Done"
+  puts out the ℹ︎ signs, a justification the ⚠ signs; the text stays on the
+  expense, the justification is shown to the manager, and a new finding
+  lights its sign again. "Outside the rules" lists the breaches, justified
+  or not. Entering an exchange rate checks the expenses in that currency
+  again.
 - **Exchange rate missing**: a receipt in an active currency without a rate
   gets a point to check (Odoo would count it one for one).
 - **Not a receipt**: an image without amount or date gets one clear point to
