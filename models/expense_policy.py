@@ -181,7 +181,10 @@ class HrExpense(models.Model):
     @api.depends(*POLICY_FIELDS)
     def _compute_expense_scan_policy(self):
         for expense in self:
-            findings = expense._expense_scan_policy_findings()
+            # The text is stored: it is written in the employee's language,
+            # whoever triggers the check (a manager, a module update).
+            findings = expense.with_context(
+                lang=expense._expense_scan_policy_lang())._expense_scan_policy_findings()
             expense.expense_scan_policy_alert = "\n".join(
                 "%s %s" % (BREACH_SIGN if breach else CHECK_SIGN, message)
                 for breach, message in findings) or False
@@ -374,6 +377,13 @@ class HrExpense(models.Model):
                     "if it is that meal. Say which meal in the description.",
                     value=money(amount), rule=low[1])))
         return findings
+
+    def _expense_scan_policy_lang(self):
+        """Language of the rule findings: the employee's, else the company's."""
+        employee = self.sudo().employee_id
+        return (employee.user_id.lang or employee.work_contact_id.lang
+                or (self.company_id or self.env.company).partner_id.lang
+                or self.env.lang)
 
     def _expense_scan_purchase_text(self):
         """Text read on the receipt, without its general conditions."""

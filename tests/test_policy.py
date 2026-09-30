@@ -25,6 +25,7 @@ class TestExpensePolicy(common.TransactionCase):
             {'name': "Mission Zz", 'partner_id': site.id})
         cls.other_project = cls.env['project.project'].create({'name': "Mission libre Zz"})
         cls.employee = cls.env['hr.employee'].create({'name': "Camille Règles"})
+        cls.employee.work_contact_id.lang = 'en_US'
         Product = cls.env['product.product']
         cls.meal = Product.create({'name': "Repas règles", 'can_be_expensed': True})
         cls.hotel = Product.create({'name': "Hôtel règles", 'can_be_expensed': True})
@@ -150,6 +151,15 @@ class TestExpensePolicy(common.TransactionCase):
             expense_scan_read_values='{"currency_id": %d}' % self.env.company.currency_id.id)
         self.assertNotIn("Déjeuner 20", lunch.expense_scan_policy_alert)
         self.assertIn("not active in Odoo", lunch.expense_scan_policy_alert)
+
+    def test_the_findings_speak_the_employee_language(self):
+        """Stored text: written for the employee, whoever triggers the check."""
+        self.env['res.lang']._activate_lang('fr_FR')
+        self.employee.work_contact_id.lang = 'fr_FR'
+        self.expense("Repas soir", 40.0)
+        lunch = self.expense("Repas midi", 25.0)
+        self.assertEqual(lunch.env.lang, 'en_US')
+        self.assertIn("autorisés", lunch.expense_scan_policy_alert)
 
     def test_other_clients_are_not_checked(self):
         free = self.expense("Ticket", 90.0, project=self.other_project, scan_time="12:30")
