@@ -504,7 +504,7 @@ MERCHANT_STOP_RE = re.compile(
     # Foreign header mentions: fiscal receipt, tax identifier, greetings.
     r"\bPARAGON\b|\bFISKALNY\b|\bNIP\b|\bREGON\b|\bSCONTRINO\b|\bFISCALE\b|"
     r"\bDOCUMENTO\b|\bCOMMERCIALE\b|\bPARTITA\b|\bP\.?\s*IVA\b|\bRECHNUNG\b|"
-    r"\bKASSENBON\b|\bBELEG\b|\bQUITTUNG\b|\bSTEUER|\bFACTURA\b|\bRECIBO\b|"
+    r"\bKASSENBON\b|\bBELEG\b|\bQUITTUNG\b|\bSTEUER|\bFACTURA\b|\bFATURA\b|\bRECIBO\b|"
     r"\bCIF\b|\bNIF\b|\bRECEIPT\b|\bINVOICE\b|\bTHANK\b|\bWELCOME\b|"
     r"\bGRAZIE\b|\bDANKE\b|\bDZIEKUJEMY\b|\bGRACIAS\b|\bKASA\b|\bKASSE\b|"
     r"\bCASSA\b|\bCAJA\b|\bVAT\b|\bIVA\b|\bMWST\b|\bUST\b|"
@@ -515,6 +515,9 @@ MERCHANT_STOP_RE = re.compile(
     r"\bCOORDONNEES\b|\bVOICI\b|\bPAIEMENTS\b|"
     # "Servi par : Cassandra": first name of the waiter, not the merchant.
     r"\bSERVI\b|\bSERVEUR\b|\bSERVEUSE\b|\bCAISSIER\b|\bCAISSIERE\b|"
+    # "Commentaire:" of an order (Shopcaisse), followed by the customer's
+    # request.
+    r"\bCOMMENTAIRES?\b|\bREMARQUES?\b|\bOBSERVATIONS?\b|"
     # Service mode printed large at the top of restaurant receipts.
     r"\bEMPORTER\b|\bSUR\s*PLACE\b|\bTAKE\s*(?:OUT|AWAY)\b|"
     # Screenshot of a web page: close button, journey as a title.
@@ -713,6 +716,8 @@ def extract_merchant(lines, max_lines=10, buyers=()):
             continue
         if find_amounts(raw):
             continue  # "Vol aller x 1 passager 34,05 €": a purchase line
+        if raw.endswith(":"):
+            continue  # a label ("Caisse :"), whose value follows
         if "@" in raw:
             continue  # e-mail address, most often the customer's
         if digits > 2 or digits > letters / 2:

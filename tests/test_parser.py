@@ -559,6 +559,13 @@ ASF Lieu-dit Les Pins BP 10017
         self.assertEqual(result.value('tax_amount'), 5.65)
         self.assertEqual(result.value('tax_rate_max'), 20.0)
 
+    def test_a_label_is_not_the_merchant(self):
+        """Shopcaisse: a logo instead of the name, then the order comment."""
+        result = self.parse("TICKET N 14401 - VENTE\n23/09/2026 16:54:23\nCommentaire:\n"
+                            "Demande du client\nTotal: 14,00 EUR\nCB 14,00 EUR")
+        self.assertNotEqual(result.value('merchant'), "Commentaire:")
+        self.assertNotIn("Commentaire", result.value('merchant') or "")
+
     def test_us_sales_tax_is_a_foreign_tax(self):
         result = self.parse("JOE'S DINER\nSUBTOTAL 17.49\nSALES TAX 8.875% 1.55\nTOTAL $19.04")
         self.assertEqual(result.value('tax_label'), "Sales tax")

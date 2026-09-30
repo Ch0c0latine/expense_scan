@@ -127,12 +127,21 @@
     border-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.08);
 
+    // Expanded: the whole receipt, as wide as the screen. The strip is no
+    // longer pinned, the page scrolls along a long receipt.
     &.o_expense_scan_preview_expanded {
-        max-height: 72vh;
+        position: static;
+        max-height: none;
+
+        .o_expense_scan_preview_img {
+            max-height: none;
+        }
     }
 
+    // The strip only has a maximum height: a percentage would not apply to
+    // the image, which kept its own height and had its top and bottom cut.
     .o_expense_scan_preview_img {
-        max-height: 100%;
+        max-height: calc(32vh - 8px);
         max-width: 100%;
         object-fit: contain;
         cursor: zoom-in;

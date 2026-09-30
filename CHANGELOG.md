@@ -1,5 +1,14 @@
 # Changelog
 
+## 19.0.2.8.2
+
+- **Merchant**: a label waiting for its value ("Commentaire:", "Horário de
+  funcionamento:") is no longer taken for the merchant, nor the comment of
+  an order (Shopcaisse), nor the Portuguese word for invoice.
+- **Long receipt on a phone**: "Expand the preview" shows the whole receipt,
+  as wide as the screen; the strip kept a maximum height that cut the top
+  and bottom of the image, expanded or not.
+
 ## 19.0.2.8.1
 
 - **Tax not read when the OCR glues an amount to the header of the VAT
