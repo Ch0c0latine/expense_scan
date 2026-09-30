@@ -1,5 +1,15 @@
 # Changelog
 
+## 19.0.2.8.5
+
+- **Exchange rates of the European Central Bank**: Odoo Community updates
+  no rate, so a foreign receipt was converted one for one (29.19 EUR shown
+  as 29.19 kr). A daily task adds the reference rates of the last ninety
+  days for the active currencies, and runs at once when a scan activates a
+  currency; draft expenses still counted one for one are converted again.
+  Setting "Exchange rates from the European Central Bank", on by default.
+  The only network request of the module: a public file, outside the scan.
+
 ## 19.0.2.8.4
 
 Found while installing the module on a new Swedish database, then scanning

@@ -142,12 +142,6 @@ msgstr "%(rule)s - kvittot nämner \"%(words)s\"."
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
-msgid "%.2f"
-msgstr ""
-
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense.py:0
 msgid "%s %%"
 msgstr ""
 
@@ -596,6 +590,17 @@ msgid "Cropped receipt"
 msgstr "Beskuret kvitto"
 
 #. module: expense_scan
+#: model:ir.model,name:expense_scan.model_res_currency
+msgid "Currency"
+msgstr "Valuta"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "Currency %s activated in Odoo: the receipt is in this currency."
+msgstr "Valutan %s aktiverad i Odoo: kvittot är i denna valuta."
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Currency (%s to activate in Odoo)"
@@ -626,6 +631,11 @@ msgstr "Kunder"
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Cut out and straighten the receipt before reading it"
 msgstr "Klipp ut och räta upp kvittot innan det läses"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Daily reference rates for the active currencies: a foreign receipt is converted at the rate of its day."
+msgstr "Dagliga referenskurser för de aktiva valutorna: ett utländskt kvitto räknas om till kursen för sin dag."
 
 #. module: expense_scan
 #. odoo-python
@@ -730,6 +740,7 @@ msgstr "Middag"
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__display_name
+#: model:ir.model.fields,field_description:expense_scan.field_res_currency__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__display_name
 msgid "Display Name"
 msgstr "Visningsnamn"
@@ -819,6 +830,12 @@ msgid "Establishment activity (Sirene database)"
 msgstr "Etablissemangets verksamhet (Sirene-databasen)"
 
 #. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_ecb_rates
+#: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_ecb_rates
+msgid "Every day, the reference rates of the European Central Bank (free, no account) are added for the active currencies, over the last ninety days. Without them, Odoo Community converts a foreign receipt one for one. Only this public file is downloaded; nothing leaves the server."
+msgstr "Varje dag läggs Europeiska centralbankens referenskurser (gratis, utan konto) till för de aktiva valutorna, för de senaste nittio dagarna. Utan dem räknar Odoo Community om ett utländskt kvitto ett till ett. Endast denna offentliga fil hämtas; inget lämnar servern."
+
+#. module: expense_scan
 #: model:ir.model,name:expense_scan.model_expense_scan_export_template
 msgid "Excel expense export template"
 msgstr "Excel-exportmall för utlägg"
@@ -837,6 +854,12 @@ msgstr "Excel-exportmallar"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__file
 msgid "Excel file"
 msgstr "Excel-fil"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_ecb_rates
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_ecb_rates
+msgid "Exchange rates from the European Central Bank"
+msgstr "Växelkurser från Europeiska centralbanken"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
@@ -954,6 +977,11 @@ msgstr ""
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__family
 msgid "Expense family"
 msgstr "Utläggsfamilj"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_expense_manager
+msgid "Expense manager"
+msgstr "Utläggsansvarig"
 
 #. module: expense_scan
 #: model:ir.model,name:expense_scan.model_expense_scan_policy_rule
@@ -1215,6 +1243,7 @@ msgstr "Historik"
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__id
+#: model:ir.model.fields,field_description:expense_scan.field_res_currency__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__id
 msgid "ID"
 msgstr ""
@@ -1919,6 +1948,11 @@ msgid "Receipt scan: erase the text read on old expenses"
 msgstr "Kvittoskanning: radera läst text på gamla utlägg"
 
 #. module: expense_scan
+#: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_ecb_rates_ir_actions_server
+msgid "Receipt scan: exchange rates of the European Central Bank"
+msgstr "Kvittoskanning: växelkurser från Europeiska centralbanken"
+
+#. module: expense_scan
 #: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_pending_ir_actions_server
 msgid "Receipt scan: pick up pending scans"
 msgstr "Kvittoskanning: återuppta väntande skanningar"
@@ -2262,12 +2296,6 @@ msgstr "Stöd denna modul"
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "TOTAL"
 msgstr "TOTALT"
-
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense.py:0
-msgid "TVA"
-msgstr ""
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_task_id
@@ -2702,6 +2730,11 @@ msgstr "Sant när företaget bara har en möjlig betalningsmetod. Formuläret d�
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_own
 msgid "True when the expense belongs to the user viewing it. The form uses it to hide the \"Employee\" field, which only matters when a manager enters an expense for someone else."
 msgstr "Sant när utlägget tillhör användaren som tittar på det. Formuläret använder det för att dölja fältet \"Anställd\", som bara spelar roll när en chef registrerar ett utlägg åt någon annan."
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_expense_manager
+msgid "True when the user viewing the expense manages expenses. The account and the analytic distribution are only shown to them, on top of the accounting groups Odoo requires."
+msgstr "Sant när användaren som visar utlägget hanterar utlägg. Kontot och den analytiska fördelningen visas bara för denne, utöver de bokföringsgrupper som Odoo kräver."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__kind

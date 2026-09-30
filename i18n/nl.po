@@ -142,12 +142,6 @@ msgstr "%(rule)s - de bon vermeldt \"%(words)s\"."
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
-msgid "%.2f"
-msgstr ""
-
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense.py:0
 msgid "%s %%"
 msgstr ""
 
@@ -596,6 +590,17 @@ msgid "Cropped receipt"
 msgstr "Bijgesneden bon"
 
 #. module: expense_scan
+#: model:ir.model,name:expense_scan.model_res_currency
+msgid "Currency"
+msgstr "Valuta"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "Currency %s activated in Odoo: the receipt is in this currency."
+msgstr "Valuta %s geactiveerd in Odoo: de bon is in deze valuta."
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Currency (%s to activate in Odoo)"
@@ -626,6 +631,11 @@ msgstr "Klanten"
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Cut out and straighten the receipt before reading it"
 msgstr "De bon uitsnijden en rechtzetten voor het lezen"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Daily reference rates for the active currencies: a foreign receipt is converted at the rate of its day."
+msgstr "Dagelijkse referentiekoersen voor de actieve valuta's: een buitenlandse bon wordt omgerekend tegen de koers van zijn dag."
 
 #. module: expense_scan
 #. odoo-python
@@ -730,6 +740,7 @@ msgstr "Diner"
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__display_name
+#: model:ir.model.fields,field_description:expense_scan.field_res_currency__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__display_name
 msgid "Display Name"
 msgstr "Weergavenaam"
@@ -819,6 +830,12 @@ msgid "Establishment activity (Sirene database)"
 msgstr "Activiteit van de vestiging (Sirene-database)"
 
 #. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_ecb_rates
+#: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_ecb_rates
+msgid "Every day, the reference rates of the European Central Bank (free, no account) are added for the active currencies, over the last ninety days. Without them, Odoo Community converts a foreign receipt one for one. Only this public file is downloaded; nothing leaves the server."
+msgstr "Elke dag worden de referentiekoersen van de Europese Centrale Bank (gratis, zonder account) toegevoegd voor de actieve valuta's, over de laatste negentig dagen. Zonder deze rekent Odoo Community een buitenlandse bon één op één om. Alleen dit openbare bestand wordt gedownload; niets verlaat de server."
+
+#. module: expense_scan
 #: model:ir.model,name:expense_scan.model_expense_scan_export_template
 msgid "Excel expense export template"
 msgstr "Excel-exportsjabloon voor declaraties"
@@ -837,6 +854,12 @@ msgstr "Excel-exportsjablonen"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__file
 msgid "Excel file"
 msgstr "Excel-bestand"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_ecb_rates
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_ecb_rates
+msgid "Exchange rates from the European Central Bank"
+msgstr "Wisselkoersen van de Europese Centrale Bank"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
@@ -954,6 +977,11 @@ msgstr ""
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__family
 msgid "Expense family"
 msgstr "Declaratiefamilie"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_expense_manager
+msgid "Expense manager"
+msgstr "Declaratiebeheerder"
 
 #. module: expense_scan
 #: model:ir.model,name:expense_scan.model_expense_scan_policy_rule
@@ -1215,6 +1243,7 @@ msgstr "Geschiedenis"
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__id
+#: model:ir.model.fields,field_description:expense_scan.field_res_currency__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__id
 msgid "ID"
 msgstr ""
@@ -1919,6 +1948,11 @@ msgid "Receipt scan: erase the text read on old expenses"
 msgstr "Bonscan: gelezen tekst van oude declaraties wissen"
 
 #. module: expense_scan
+#: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_ecb_rates_ir_actions_server
+msgid "Receipt scan: exchange rates of the European Central Bank"
+msgstr "Bonscan: wisselkoersen van de Europese Centrale Bank"
+
+#. module: expense_scan
 #: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_pending_ir_actions_server
 msgid "Receipt scan: pick up pending scans"
 msgstr "Bonscan: wachtende scans hervatten"
@@ -2262,12 +2296,6 @@ msgstr "Deze module steunen"
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "TOTAL"
 msgstr "TOTAAL"
-
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense.py:0
-msgid "TVA"
-msgstr ""
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_task_id
@@ -2702,6 +2730,11 @@ msgstr "Waar als het bedrijf maar één mogelijke betaalmethode heeft. Het formu
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_own
 msgid "True when the expense belongs to the user viewing it. The form uses it to hide the \"Employee\" field, which only matters when a manager enters an expense for someone else."
 msgstr "Waar als de declaratie van de gebruiker is die haar bekijkt. Het formulier verbergt daarmee het veld \"Werknemer\", dat alleen telt als een manager voor iemand anders invoert."
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_expense_manager
+msgid "True when the user viewing the expense manages expenses. The account and the analytic distribution are only shown to them, on top of the accounting groups Odoo requires."
+msgstr "Waar wanneer de gebruiker die de declaratie bekijkt declaraties beheert. De rekening en de analytische verdeling worden alleen aan hem getoond, bovenop de boekhoudgroepen die Odoo vereist."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__kind
