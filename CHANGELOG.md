@@ -30,6 +30,13 @@
   "Tasa Sin IVA Total IVA IVA Inc."; the total "€* TOT 6,42" (Alcampo); a
   misread "FACTURA SIMPLIFICADA", a column header or the change given are
   no longer taken for the merchant.
+- **Country of the receipt**: a tax name is shared by several countries
+  ("IVA" in Spain, Italy and Portugal, "TVA" in France and Belgium, "MwSt"
+  in Germany and Austria). The tax number with its country prefix, the
+  national identifier (SIRET, P.IVA, CIF, NIF, NIP, CHE) or the phone prefix
+  now tells where the receipt was issued: an Italian receipt is foreign for
+  a Spanish company, a Belgian one for a French company. The buyer's own
+  tax number, printed on hotel invoices, is left out.
 - **Total and tax read the other way round** on a crumpled receipt (tax of
   12.00 for a total of 1.92): exchanged when the total is the tax of the
   larger amount at the rate read.

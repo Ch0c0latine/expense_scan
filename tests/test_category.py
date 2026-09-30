@@ -356,8 +356,13 @@ class TestCategoryRecognition(common.TransactionCase):
         expense.name = expense._expense_scan_date_name("Zorglub", "12/09/2026")
         self.assertFalse(expense._expense_scan_name_is_automatic())
 
+    def fiscal_country(self, code):
+        self.company.account_fiscal_country_id = self.env['res.country'].search(
+            [('code', '=', code)])
+
     def test_foreign_tax_is_not_deducted(self):
         expense = self.expense()
+        self.fiscal_country('FR')
         italian = reading("AUTOGRILL\nTOTALE COMPLESSIVO 8,00\nDI CUI IVA 0,73")
         self.assertEqual(expense._expense_scan_foreign_tax(italian, self.company), "IVA")
         values = expense._expense_scan_field_values(italian, self.company)
@@ -379,6 +384,7 @@ class TestCategoryRecognition(common.TransactionCase):
 
     def test_french_receipt_is_not_foreign(self):
         expense = self.expense()
+        self.fiscal_country('FR')
         french = reading("BRASSERIE\nTVA 10 % 1,00\nTOTAL 11,00 EUR")
         rates = self.env['account.tax'].search([
             ('company_id', '=', self.company.id), ('type_tax_use', '=', 'purchase'),
@@ -386,6 +392,28 @@ class TestCategoryRecognition(common.TransactionCase):
         if rates or not self.env['account.tax'].search_count([
                 ('company_id', '=', self.company.id), ('type_tax_use', '=', 'purchase')]):
             self.assertFalse(expense._expense_scan_foreign_tax(french, self.company))
+
+    def test_the_receipt_country_decides_for_a_shared_tax_name(self):
+        """"IVA" is Spanish, Italian and Portuguese; "TVA" French and Belgian."""
+        expense = self.expense()
+        self.fiscal_country('ES')
+        italian = reading("AUTOGRILL SPA\nP.IVA 00000000000\nTOTALE COMPLESSIVO 8,00\n"
+                          "DI CUI IVA 10% 0,73")
+        self.assertEqual(expense._expense_scan_foreign_tax(italian, self.company), "IVA")
+        spanish = reading("CARREFOUR\nCIF: A28090108\nTOTAL A PAGAR 3,83\nIVA 10% 0,35")
+        self.assertFalse(expense._expense_scan_foreign_tax(spanish, self.company))
+        self.fiscal_country('FR')
+        belgian = reading("BRASSERIE EXEMPLE\nTVA BE0123.456.789\nTOTAL 12,10\nTVA 21% 2,10")
+        self.assertEqual(expense._expense_scan_foreign_tax(belgian, self.company), "TVA")
+
+    def test_the_buyer_tax_number_says_nothing_of_the_seller(self):
+        """A Spanish hotel prints the French customer's VAT number."""
+        expense = self.expense()
+        self.fiscal_country('FR')
+        self.company.vat = "FR23334175221"
+        hotel = reading("HOTEL EXEMPLO\nCIF B12345678\nCliente: FR 23 334175221\n"
+                        "TOTAL 110,00\nIVA 10% 10,00")
+        self.assertEqual(expense._expense_scan_foreign_tax(hotel, self.company), "IVA")
 
     def test_same_day_reason_is_kept(self):
         from datetime import date

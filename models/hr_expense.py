@@ -1975,17 +1975,26 @@ class HrExpense(models.Model):
         reclaimed, if at all, from the country concerned. Carrying it as
         deductible VAT would make the accounts wrong.
 
-        Three clues: a tax not called VAT (IVA, MwSt, PTU...), a foreign
-        currency, or a rate no tax of the company knows (Belgian VAT at 21%,
-        printed "TVA", for instance).
+        First the country the receipt shows (tax number with its country
+        prefix, national identifier, phone prefix): an Italian "IVA" is
+        foreign for a Spanish company, a Belgian "TVA" for a French one.
+        Without it, three clues: a tax not called VAT (IVA, MwSt, PTU...), a
+        foreign currency, or a rate no tax of the company knows.
         """
         label = result.value('tax_label')
         if not (label or result.value('tax_amount') or result.value('tax_rate_max')):
             return False
         country = (company.account_fiscal_country_id or company.country_id).code
+        origin = parser.receipt_country(result.value('country_clues') or [],
+                                        own_numbers=[company.vat, company.company_registry])
+        if origin and country and origin != country:
+            return label or _("VAT")
         domestic = DOMESTIC_TAX_LABELS.get(country)
         # Unknown country: the name proves nothing, the other clues decide.
-        if label and domestic is not None and label not in domestic | {'VAT'}:
+        # A receipt that shows the company's own country is not judged by
+        # the name of its tax.
+        if label and domestic is not None and label not in domestic | {'VAT'} \
+                and origin != country:
             return label
         code = result.value('currency')
         if code and company.currency_id and code != company.currency_id.name \

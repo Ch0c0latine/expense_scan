@@ -608,6 +608,18 @@ ASF Lieu-dit Les Pins BP 10017
             self.assertEqual(result.value('total'), total, text.split("\n")[0])
             self.assertEqual(result.value('tax_amount'), tax, text.split("\n")[0])
 
+    def test_country_of_the_receipt(self):
+        def country(text, own=()):
+            return parser.receipt_country(self.parse(text).value('country_clues') or [], own)
+        self.assertEqual(country("AUTOGRILL\nP.IVA 00000000000\nTOTALE 8,00"), 'IT')
+        self.assertEqual(country("CARREFOUR\nCIF: A28090108\nTOTAL 3,83"), 'ES')
+        self.assertEqual(country("BRASSERIE\nTVA BE0123.456.789\nTOTAL 12,10"), 'BE')
+        self.assertEqual(country("HOTEL\nTel. +39 02 94757100\nTOTALE 80,00"), 'IT')
+        # The buyer's own number is left out; points of a loyalty card are no phone.
+        self.assertEqual(country("HOTEL\nCIF B12345678\nCliente: FR 23 334175221",
+                                 own=("FR23334175221",)), 'ES')
+        self.assertIsNone(country("BONPREU\n+45 PUNTS\nTOTAL 45.05"))
+
     def test_a_spanish_document_type_is_not_the_merchant(self):
         result = self.parse("FACTURMPSIMPLIFICADA\nTURRON COCO 2,52 B\n€* TOT 6,42\n"
                             "W CAMBIO ,00\nImp. % Base Cuota\nIVA 10,00 5,83 ,59")

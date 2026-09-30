@@ -1483,6 +1483,68 @@ def _luhn(digits):
     return total % 10 == 0
 
 
+#: Clues of the country a receipt comes from, with their weight: tax
+#: numbers with their country prefix and national identifiers (2), phone
+#: prefixes (1). A tax name is shared by several countries ("IVA" in Spain,
+#: Italy and Portugal, "TVA" in France and Belgium): these clues tell them
+#: apart.
+COUNTRY_CLUES = [
+    (re.compile(r"\bATU\s?\d{8}\b"), 'AT', 2),
+    (re.compile(r"\bBE\s?[01]\d{3}[.\s]?\d{3}[.\s]?\d{3}\b"), 'BE', 2),
+    (re.compile(r"\bDE\s?\d{9}\b|\bST\.?\s?-?\s?NR\b|\bSTEUERNUMMER\b"), 'DE', 2),
+    (re.compile(r"\bES\s?[A-Z]\d{7}[0-9A-Z]\b"
+                r"|\b(?:C\.?\s?I\.?\s?F|N\.?\s?I\.?\s?F)\.?\s*:?\s*[A-HJ-NP-SUVW]-?\d{7}[0-9A-J]\b"),
+     'ES', 2),
+    (re.compile(r"\bFR\s?[0-9A-Z]{2}\s?\d{3}\s?\d{3}\s?\d{3}\b|\bSIRE[TN]\b"), 'FR', 2),
+    (re.compile(r"\bIT\s?\d{11}\b|\bP\.?\s?IVA\b|\bPARTITA\s+IVA\b"), 'IT', 2),
+    (re.compile(r"\bLU\s?\d{8}\b"), 'LU', 2),
+    (re.compile(r"\bNL\s?\d{9}\s?B\s?\d{2}\b"), 'NL', 2),
+    (re.compile(r"\bPT\s?\d{9}\b|\bCONTRIBUINTE\b|\bN\.?\s?I\.?\s?F\.?\s*:?\s*[1-9]\d{8}\b"), 'PT', 2),
+    (re.compile(r"\bPL\s?\d{10}\b|\bNIP\b"), 'PL', 2),
+    (re.compile(r"\bCHE[-\s]?\d{3}\.?\d{3}\.?\d{3}\b"), 'CH', 2),
+]
+#: A whole number after the prefix: "+45 PUNTS" or "+43" alone is no phone.
+PHONE_PREFIX_RE = re.compile(
+    r"\+\s?(351|352|30|31|32|33|34|39|41|43|44|45|46|47|48|49)[\s.()/-]*\d(?:[\s.()/-]?\d){6,}")
+PHONE_COUNTRIES = {
+    '351': 'PT', '352': 'LU', '30': 'GR', '31': 'NL', '32': 'BE', '33': 'FR', '34': 'ES',
+    '39': 'IT', '41': 'CH', '43': 'AT', '44': 'GB', '45': 'DK', '46': 'SE', '47': 'NO',
+    '48': 'PL', '49': 'DE',
+}
+
+
+def extract_country_clues(lines):
+    """``[(country, weight, text)]``: what tells where the receipt was issued."""
+    clues = []
+    for line in lines:
+        text = strip_accents(line.text).upper()
+        for pattern, country, weight in COUNTRY_CLUES:
+            clues += [(country, weight, match.group(0)) for match in pattern.finditer(text)]
+        clues += [(PHONE_COUNTRIES[match.group(1)], 1, match.group(0))
+                  for match in PHONE_PREFIX_RE.finditer(text)]
+    return clues
+
+
+def receipt_country(clues, own_numbers=()):
+    """Country the clues point to, or ``None`` when they are missing or disagree.
+
+    ``own_numbers``: tax numbers of the buying company, which an invoice
+    prints for the customer and which say nothing of the seller.
+    """
+    own = {re.sub(r"\W", "", number).upper() for number in own_numbers if number}
+    scores = {}
+    for country, weight, text in clues:
+        if re.sub(r"\W", "", text) in own:
+            continue
+        scores[country] = scores.get(country, 0) + weight
+    if not scores:
+        return None
+    ranked = sorted(scores.values(), reverse=True)
+    if len(ranked) > 1 and ranked[0] == ranked[1]:
+        return None
+    return max(scores, key=scores.get)
+
+
 def extract_company_number(lines):
     """Return the merchant's SIRET (14 digits) or, failing that, its SIREN (9 digits).
 
@@ -1715,6 +1777,10 @@ def parse(words, today=None, max_age_days=730, default_currency="EUR", buyers=()
         "activity": extract_activity(lines),
         "company_number": extract_company_number(lines),
         "vat_number": extract_vat_number(lines),
+        # Not a field of the expense: no confidence, so as not to weigh in the
+        # choice of the richest piece of a receipt.
+        "country_clues": ExtractedField(value=extract_country_clues(lines) or None,
+                                        confidence=0.0),
         "nights": extract_nights(lines, today=today, order="mdy" if month_first else "dmy"),
     }
     _swap_total_and_tax(fields)
