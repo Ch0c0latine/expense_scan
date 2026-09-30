@@ -44,6 +44,7 @@ patch(Chatter.prototype, {
         // the chatter, and a call made through useService never completes
         // once the component is destroyed.
         this.expenseScanOrm = this.env.services.orm;
+        this.state.expenseScanHistory = false;
     },
 
     async onClickAttachFile(ev) {

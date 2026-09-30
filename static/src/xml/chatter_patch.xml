@@ -4,9 +4,9 @@
 <templates xml:space="preserve">
 
     <!--
-        On a scanned expense, the discussion thread is of no use: the form is
-        there to review a few fields. Its three buttons and its history are
-        hidden.
+        On a scanned expense, the discussion thread is of little use: the form
+        is there to review a few fields. Its three buttons are hidden and its
+        history is folded.
 
         A class on the <form> tag does not work: Odoo's form compiler does not
         pass it on to the DOM (it only keeps a component property from it),
@@ -28,11 +28,22 @@
         <xpath expr="//button[hasclass('o-mail-Chatter-activity')]" position="attributes">
             <attribute name="t-if">props.has_activities and props.threadModel !== 'hr.expense'</attribute>
         </xpath>
-        <!-- The history is rendered by a component in a `t-else`, which
-             takes no condition. The container gets a class, and the
-             stylesheet hides the history. -->
+        <!-- The history stays folded, one click away. It is rendered by a
+             component in a `t-else`, which takes no condition: the container
+             gets a class, and the stylesheet hides the history. -->
+        <xpath expr="//span[hasclass('o-mail-Chatter-topbarGrow')]" position="before">
+            <button t-if="props.threadModel === 'hr.expense'"
+                    class="o-mail-Chatter-expenseScanHistory btn btn-link text-action text-nowrap px-1"
+                    t-att-class="{ 'my-2': !props.compactHeight }"
+                    t-att-aria-expanded="state.expenseScanHistory ? 'true' : 'false'"
+                    t-on-click="() => state.expenseScanHistory = !state.expenseScanHistory">
+                <i class="fa fa-fw" t-att-class="state.expenseScanHistory ? 'fa-caret-down' : 'fa-caret-right'"
+                   aria-hidden="true"/>
+                History
+            </button>
+        </xpath>
         <xpath expr="//div[hasclass('o-mail-Chatter-content')]" position="attributes">
-            <attribute name="t-att-class">props.threadModel === 'hr.expense' ? 'o_expense_scan_slim' : ''</attribute>
+            <attribute name="t-att-class">props.threadModel === 'hr.expense' and !state.expenseScanHistory ? 'o_expense_scan_slim' : ''</attribute>
         </xpath>
     </t>
 
