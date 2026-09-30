@@ -257,8 +257,6 @@ class TestCategoryRecognition(common.TransactionCase):
         tax picked is the one created here. A French receipt, for a French
         company: elsewhere its "TVA" would be a foreign tax.
         """
-        self.company.account_fiscal_country_id = self.env['res.country'].search(
-            [('code', '=', 'FR')])
         Tax = self.env['account.tax']
         Tax.search([
             ('company_id', '=', self.company.id), ('type_tax_use', '=', 'purchase'),
@@ -273,6 +271,9 @@ class TestCategoryRecognition(common.TransactionCase):
             'amount_type': 'percent', 'type_tax_use': 'purchase',
             'company_id': self.company.id})
         self.food.supplier_taxes_id = low
+        # Set once the taxes exist: their default group follows the country.
+        self.company.account_fiscal_country_id = self.env['res.country'].search(
+            [('code', '=', 'FR')])
         expense = self.expense(product_id=self.food.id)
         receipt = reading(
             "FROMZAK\nTVA 5.50% HT 1,80 0,10 TVA 1,90 TTC\nTVA 10% 7,00 0,70 7,70\n"
