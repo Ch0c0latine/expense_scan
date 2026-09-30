@@ -1,5 +1,14 @@
 # Changelog
 
+## 19.0.2.8.3
+
+- **Installation on a database without French**: the installation read the
+  category names in French and failed ("Invalid language code: fr_FR") when
+  that language was not installed. Names are now read in the installed
+  languages only; so is the language of the rule findings.
+- Tests no longer assume a French company in euros: they pass on a new
+  database (United States, dollars, generic taxes) as on a French one.
+
 ## 19.0.2.8.2
 
 - **Merchant**: a label waiting for its value ("Commentaire:", "Horário de
