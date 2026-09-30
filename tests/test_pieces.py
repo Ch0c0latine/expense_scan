@@ -152,3 +152,31 @@ class TestExpenseScanPieces(common.TransactionCase):
         self.assertTrue(other._expense_scan_name_is_automatic())
         self.assertTrue(other._expense_scan_category_is_free(other.company_id))
         self.assertEqual(attachment.res_id, other.id)
+
+    def test_scanning_again_says_where_a_receipt_went(self):
+        """The receipt leaves the form under the user's eyes: both sides say it."""
+        expense = self.Expense.create({
+            'name': "Deux achats",
+            'employee_id': self.env['hr.employee'].create({'name': "Nina"}).id})
+        Attachment = self.env['ir.attachment']
+        first, added = [Attachment.create({
+            'name': name, 'raw': png(), 'mimetype': 'image/png',
+            'res_model': 'hr.expense', 'res_id': expense.id,
+        }) for name in ("premier.png", "second.png")]
+        expense._message_set_main_attachment_id(first, force=True)
+        readings = {first: reading(total=33.10), added: reading(total=8.40)}
+        Model = type(self.Expense)
+        with patch.object(Model, '_expense_scan_process', autospec=True,
+                          side_effect=lambda record, attachment: readings[attachment]), \
+                patch.object(Model, '_expense_scan_apply', autospec=True):
+            action = expense.action_expense_scan_rescan()
+        other = added.res_id and self.Expense.browse(added.res_id)
+        self.assertNotEqual(other, expense)
+        self.assertEqual(action['tag'], 'display_notification')
+        self.assertEqual(action['params']['links'][0]['url'], '/odoo/hr.expense/%d' % other.id)
+
+        def links_to(record, target):
+            return record.message_ids.filtered(
+                lambda m: 'data-oe-id' in (m.body or '') and str(target.id) in m.body)
+        self.assertTrue(links_to(expense, other))
+        self.assertTrue(links_to(other, expense))

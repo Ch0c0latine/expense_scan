@@ -147,12 +147,15 @@ class HrExpense(models.Model):
         The first group stays on this expense; each other group moves to a
         new expense. Adding up two different receipts would make the
         accounts wrong; an extra expense is easy to delete.
+
+        Returns the new expenses.
         """
         self.ensure_one()
         attachments = self._expense_scan_image_attachments()
         if len(attachments) < 2:
             # A single receipt: nothing to compare, the usual scan.
-            return self._expense_scan_run(force=force, from_original=from_original)
+            self._expense_scan_run(force=force, from_original=from_original)
+            return self.browse()
 
         pieces = []
         for attachment in attachments:
@@ -172,7 +175,7 @@ class HrExpense(models.Model):
                 'scan_state': 'error',
                 'scan_message': self.scan_message or _("No readable receipt."),
             })
-            return None
+            return self.browse()
 
         groups = self._expense_scan_group_pieces(pieces)
         first, others = groups[0], groups[1:]
@@ -181,9 +184,7 @@ class HrExpense(models.Model):
         # without contradicting it.
         self._expense_scan_apply_group(
             first, main_first=self.scan_state in ('done', 'partial'))
-        for group in others:
-            self._expense_scan_split_off(group)
-        return None
+        return self.browse().union(*[self._expense_scan_split_off(group) for group in others])
 
     def _expense_scan_group_pieces(self, pieces):
         """Group the pieces that describe the same receipt.
@@ -301,10 +302,12 @@ class HrExpense(models.Model):
         attachments.sudo().write({'res_id': expense.id})
         expense._expense_scan_apply_group(group)
 
+        # Both sides say it: the user who scanned the first expense sees a
+        # receipt vanish from it.
         self.message_post(body=_(
-            "This message carried a receipt unrelated to this one: it was "
-            "moved to its own expense."))
+            "A receipt with a different total or date was moved to its own expense: %s",
+            expense._get_html_link(title=expense.name)))
         expense.message_post(body=_(
-            "Receipt moved here from an email whose other receipt had a "
-            "different total."))
+            "Receipt moved here from %s: its total or date differ from the "
+            "receipt of that expense.", self._get_html_link(title=self.name)))
         return expense

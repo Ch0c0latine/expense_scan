@@ -94,9 +94,14 @@ patch(Chatter.prototype, {
             }
             const pending = pendingReceipt?.record.resId === record.resId ? pendingReceipt : null;
             if (!pending) {
-                // Receipt attached to a saved expense: the form is reloaded
-                // to show its preview.
-                if (!this.props.hasParentReloadOnAttachmentsChanged) {
+                // Receipt attached to a saved expense: scanned if it replaces
+                // a deleted one, then the form is reloaded to show its
+                // preview.
+                const scanned = await this.expenseScanOrm.call(
+                    "hr.expense", "expense_scan_receipt_attached", [[record.resId]]);
+                if (scanned) {
+                    await record.model.load();
+                } else if (!this.props.hasParentReloadOnAttachmentsChanged) {
                     await this.reloadParentView();
                 }
                 return;

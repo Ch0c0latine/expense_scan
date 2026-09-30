@@ -190,6 +190,9 @@ class HrExpense(models.Model):
     #: ``[x0, y0, x1, y1]`` as fractions of the rotated image). The editor
     #: applies them again to the source image when it reopens.
     expense_scan_retouch_params = fields.Text(readonly=True, copy=False)
+    #: The scanned receipt was deleted: the next receipt attached is scanned
+    #: (see expense_scan_receipt_attached).
+    expense_scan_receipt_removed = fields.Boolean(readonly=True, copy=False)
 
     # ------------------------------------------------------------------
     # Review banner: closes once the fields are corrected
@@ -1140,6 +1143,77 @@ class HrExpense(models.Model):
         keep |= {name for name in self.READ_VALUE_FIELDS if self._expense_scan_changed(name)}
         return keep & set(self.KEEPABLE_FIELDS + self.REINVOICE_FIELDS)
 
+    # ------------------------------------------------------------------
+    # Receipt deleted, then replaced
+    # ------------------------------------------------------------------
+
+    #: What the scan noted about the receipt it read.
+    READING_FIELDS = (
+        'scan_message', 'scan_todo', 'expense_scan_todo_codes', 'expense_scan_hints',
+        'expense_scan_read_values', 'scan_engine', 'scan_duration', 'scan_score',
+        'scan_detected_tax', 'expense_scan_mixed_rates', 'scan_time', 'scan_datetime',
+        'scan_raw_text', 'expense_scan_merchant_read', 'expense_scan_guessed_product_id',
+        'expense_scan_category_reason')
+
+    def _expense_scan_receipt_removed(self, kept):
+        """Forget the reading of a receipt the user deleted.
+
+        Its points to check and its figures describe a receipt that is gone;
+        its text would still link the expense to a trip, and the merchant
+        read would teach a wrong category on submission. The fields of the
+        expense keep their values until the next receipt is scanned, except
+        ``kept``, the fields entered or corrected by hand, which that scan
+        does not fill.
+        """
+        self.ensure_one()
+        values = dict.fromkeys(self.READING_FIELDS, False)
+        values.update({
+            'scan_state': 'none',
+            'expense_scan_manual_fields': ','.join(sorted(kept)) or False,
+            'expense_scan_receipt_removed': True,
+        })
+        self.sudo().write(values)
+
+    def expense_scan_receipt_attached(self):
+        """Scan the receipt attached in place of a deleted one.
+
+        Called by the form after an upload. A receipt attached to an expense
+        entered by hand is not scanned: the scan would overwrite what the
+        user entered.
+        """
+        self.ensure_one()
+        self.check_access('write')
+        if not self.expense_scan_receipt_removed:
+            return False
+        if not self._expense_scan_image_attachments():
+            return False  # a file the engine cannot read: wait for the next one
+        self.expense_scan_receipt_removed = False
+        if self.scan_state != 'none' \
+                or not (self.company_id or self.env.company).expense_scan_enabled:
+            return False
+        self._expense_scan_lock()
+        self.with_context(expense_scan_new_receipt=True)._expense_scan_run_pieces()
+        return True
+
+    def _expense_scan_lock(self):
+        """Lock the expense for the time of a scan.
+
+        Two scans of the same expense at once (a double click, a second tab)
+        would write the same row and fail on a deadlock, one of them after
+        a long wait.
+        """
+        # Access rights first: the row lock is taken in SQL, without the
+        # ORM's access control.
+        self.check_access('write')
+        try:
+            with self.env.cr.savepoint():
+                self.env.cr.execute(
+                    "SELECT id FROM hr_expense WHERE id IN %s FOR UPDATE NOWAIT",
+                    [tuple(self.ids)])
+        except psycopg2.errors.LockNotAvailable:
+            raise UserError(_("This receipt is already being scanned. "
+                              "Try again in a moment.")) from None
+
     def action_expense_scan_rescan(self):
         """Scan the current receipt(s) again.
 
@@ -1152,8 +1226,35 @@ class HrExpense(models.Model):
         together.
         """
         for expense in self:
-            expense._expense_scan_run_pieces(force=True, from_original=False)
-        return True
+            if not expense._expense_scan_image_attachments():
+                raise UserError(_("No receipt to scan: attach one first."))
+        self._expense_scan_lock()
+        moved = self.browse()
+        for expense in self:
+            expense.expense_scan_receipt_removed = False
+            moved |= expense._expense_scan_run_pieces(force=True, from_original=False)
+        if not moved:
+            return True
+        # A receipt leaves the form under the user's eyes: say where it went.
+        if len(moved) == 1:
+            message = _("A receipt with a different total or date was moved to "
+                        "its own expense: %s")
+            links = [{'label': moved.name, 'url': '/odoo/hr.expense/%d' % moved.id}]
+        else:
+            message = _("%(count)d receipts with a different total or date were moved "
+                        "to their own expenses.", count=len(moved))
+            links = []
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'type': 'warning',
+                'sticky': True,
+                'message': message,
+                'links': links,
+                'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'},
+            },
+        }
 
     def action_expense_scan_done(self):
         """Mark the review as done and go back to the list.

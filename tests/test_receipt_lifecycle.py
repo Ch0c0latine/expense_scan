@@ -103,6 +103,58 @@ class TestReceiptLifecycle(common.TransactionCase):
         self.assertFalse(expense.expense_scan_retouch_params)
         self.assertEqual(expense.expense_scan_retouch_data()['url'], '/web/image/%d' % new.id)
 
+    def read(self, expense):
+        """The scan has read the displayed receipt; the amount was corrected since."""
+        expense.write({
+            'scan_state': 'partial', 'scan_todo': "Date", 'expense_scan_todo_codes': 'date',
+            'scan_raw_text': "CAFE EXEMPLE\nTOTAL 3,00", 'total_amount_currency': 3.0,
+            'expense_scan_merchant_read': "CAFE EXEMPLE"})
+        expense.expense_scan_read_values = '{"total_amount_currency": 3.0}'
+        expense.total_amount_currency = 4.5
+
+    def test_deleting_the_last_receipt_forgets_its_reading(self):
+        expense, _original = self.scanned()
+        self.read(expense)
+        expense.message_main_attachment_id.unlink()
+        self.assertEqual(expense.scan_state, 'none')
+        self.assertFalse(expense.scan_todo or expense.expense_scan_todo_codes)
+        self.assertFalse(expense.scan_raw_text or expense.expense_scan_merchant_read)
+        self.assertTrue(expense.expense_scan_receipt_removed)
+        self.assertEqual(expense.expense_scan_manual_fields, 'total_amount_currency')
+        self.assertEqual(expense.total_amount_currency, 4.5)
+
+    def test_deleting_a_second_receipt_keeps_the_reading(self):
+        expense, _original = self.scanned()
+        self.read(expense)
+        self.attach(expense, "second.png", (30, 200, 30)).unlink()
+        self.assertEqual(expense.scan_state, 'partial')
+        self.assertFalse(expense.expense_scan_receipt_removed)
+
+    def test_the_receipt_attached_next_is_scanned(self):
+        """The fields corrected by hand are kept by the new scan."""
+        self.company.expense_scan_enabled = True
+        expense, _original = self.scanned()
+        self.read(expense)
+        contexts = []
+        run = patch.object(type(expense), '_expense_scan_run_pieces', autospec=True,
+                           side_effect=lambda record: contexts.append(
+                               (record._expense_scan_kept_fields(), dict(record.env.context))))
+        with run:
+            self.assertFalse(expense.expense_scan_receipt_attached())
+            self.replace_receipt(expense)
+            self.assertTrue(expense.expense_scan_receipt_attached())
+            self.assertFalse(expense.expense_scan_receipt_attached())
+        self.assertEqual(len(contexts), 1)
+        kept, context = contexts[0]
+        self.assertEqual(kept, {'total_amount_currency'})
+        self.assertTrue(context['expense_scan_new_receipt'])
+
+    def test_scanning_again_without_a_receipt_says_so(self):
+        from odoo.exceptions import UserError
+        expense = self.Expense.create({'name': "Sans ticket", 'employee_id': self.employee.id})
+        with self.assertRaises(UserError):
+            expense.action_expense_scan_rescan()
+
     def test_a_new_receipt_is_cropped_again(self):
         """After a deleted manual retouch, the scan crops the new receipt."""
         expense, _original = self.scanned()
