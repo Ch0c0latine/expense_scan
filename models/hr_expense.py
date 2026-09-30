@@ -484,16 +484,17 @@ class HrExpense(models.Model):
                 # rate prevents carrying the tax.
                 continue
             if expense.currency_id.compare_amounts(expense.scan_tax_amount, ceiling) > 0:
+                money = expense._expense_scan_money
                 raise ValidationError(_(
-                    "Impossible receipt tax: %(entered).2f is above the maximum of "
-                    "%(ceiling).2f, which is the rate of %(rate).2f %% applied "
-                    "to the whole %(total).2f of the receipt.\n\n"
+                    "Impossible receipt tax: %(entered)s is above the maximum of "
+                    "%(ceiling)s, which is the rate of %(rate)s %% applied "
+                    "to the whole %(total)s of the receipt.\n\n"
                     "Choose an expense category whose rate covers this tax, or "
                     "empty the \"Receipt tax\" field if this expense gives no "
                     "right to deduction.",
-                    entered=expense.scan_tax_amount, ceiling=ceiling,
-                    rate=expense._expense_scan_max_rate(),
-                    total=expense.total_amount_currency))
+                    entered=money(expense.scan_tax_amount), ceiling=money(ceiling),
+                    rate=expense._expense_scan_rate_text(expense._expense_scan_max_rate()),
+                    total=money(expense.total_amount_currency)))
 
     def _prepare_receipts_vals(self):
         """Split the base so that the entry carries the receipt tax.
@@ -532,11 +533,11 @@ class HrExpense(models.Model):
             # cannot go into the entry, and posting without it would lose it
             # without warning.
             raise UserError(_(
-                "Expense \"%(name)s\" carries a receipt tax of %(amount).2f, "
+                "Expense \"%(name)s\" carries a receipt tax of %(amount)s, "
                 "but no tax with a usable rate. Select the matching tax on the "
                 "expense (or on its category, for the next ones), or empty "
                 "the \"Receipt tax\" field.",
-                name=self.name, amount=self.scan_tax_amount))
+                name=self.name, amount=self._expense_scan_money(self.scan_tax_amount)))
 
         line_vals = command[2]
         currency = self.company_currency_id
@@ -582,11 +583,11 @@ class HrExpense(models.Model):
         """
         if self.scan_tax_amount and not self._expense_scan_tax_follows_rate():
             raise UserError(_(
-                "The receipt tax (%(amount).2f) cannot yet be carried on an "
+                "The receipt tax (%(amount)s) cannot yet be carried on an "
                 "expense paid by the company. Set the expense back to "
                 "\"Employee (to reimburse)\", or empty the \"Receipt tax\" field "
                 "to let Odoo compute it from the rate.",
-                amount=self.scan_tax_amount))
+                amount=self._expense_scan_money(self.scan_tax_amount)))
         return super()._prepare_payments_vals()
 
     # ------------------------------------------------------------------
@@ -1777,6 +1778,12 @@ class HrExpense(models.Model):
             if parser.fields_to_check(result, names=(name,)):
                 label = _("Date") if name == 'date' else _("Total")
                 items.append((label, name, missing if result.value(name) is None else found))
+        if result.value('date') is None and result.value('total') is None:
+            # A logo, a photo of something else: one clear point rather than
+            # two, and the expense does not look like a receipt read at 0.
+            items = [(_("Receipt?"), 'total',
+                      _("Neither amount nor date found: check that this image is "
+                        "a receipt, or enter the expense by hand."))]
         if not values.get('expense_scan_guessed_product_id') \
                 and self._expense_scan_category_is_free(company):
             # Nothing certain on the receipt: the default category is only a
@@ -1816,10 +1823,9 @@ class HrExpense(models.Model):
                 items.append((_("Tax (none on the receipt)"), 'tax_amount',
                               _("No tax read on the receipt: enter it if it is printed.")))
             elif not (values.get('total_amount_currency') or self.total_amount_currency):
-                items.append((_("Tax (%.2f read, to carry with the total)",
-                              result.value('tax_amount')), 'tax_total',
-                              _("Tax of %.2f read: enter the total to carry it.",
-                                result.value('tax_amount'))))
+                read = self._expense_scan_number(result.value('tax_amount'))
+                items.append((_("Tax (%s read, to carry with the total)", read), 'tax_total',
+                              _("Tax of %s read: enter the total to carry it.", read)))
             elif not values.get('scan_tax_amount'):
                 # Reading dismissed because it is above the rate ceiling:
                 # usually another amount read instead of the tax.
@@ -2391,15 +2397,19 @@ class HrExpense(models.Model):
     def _expense_scan_summary(self, result):
         """Information line shown under the form."""
         parts = [result.engine or ""]
-        parts.append(_("%.1f s", result.duration))
-        parts.append(_("confidence %d %%", round(result.mean_score * 100)))
+        parts.append(_("%s s", self._expense_scan_number(result.duration, 1)))
+        if result.value('date') is not None or result.value('total') is not None:
+            # On an image that is not a receipt, the few words read say
+            # nothing of the reading.
+            parts.append(_("confidence %d %%", round(result.mean_score * 100)))
         info = result.preprocess
         if info:
             steps = []
             if info.cropped:
                 steps.append(_("cropped"))
             if info.deskew_angle:
-                steps.append(_("straightened by %.1f°", info.deskew_angle))
+                steps.append(_("straightened by %s°",
+                               self._expense_scan_number(info.deskew_angle, 1)))
             if info.rotated_quarters:
                 steps.append(_("rotated by %d°", info.rotated_quarters * 90))
             if info.reread:
@@ -2418,15 +2428,30 @@ class HrExpense(models.Model):
         rate = result.value('tax_rate')
         amount = result.value('tax_amount')
         if rate is None and result.value('tax_rate_max') is not None:
-            rate_text = _("several rates, up to %s %%", result.value('tax_rate_max'))
+            rate_text = _("several rates, up to %s %%",
+                          self._expense_scan_rate_text(result.value('tax_rate_max')))
         elif rate is not None:
-            rate_text = _("%s %%", rate)
+            rate_text = _("%s %%", self._expense_scan_rate_text(rate))
         else:
             rate_text = False
         if not rate_text and amount is None:
             return False
         if rate_text and amount is not None:
-            return _("%(rate)s — %(amount).2f", rate=rate_text, amount=amount)
+            return _("%(rate)s — %(amount)s", rate=rate_text,
+                     amount=self._expense_scan_number(amount))
         if rate_text:
             return rate_text
-        return _("%.2f", amount)
+        return self._expense_scan_number(amount)
+
+    def _expense_scan_number(self, value, digits=2):
+        """A number written the way the user's language writes it."""
+        return formatLang(self.env, value, digits=digits)
+
+    def _expense_scan_money(self, amount):
+        """An amount in the expense currency, with its symbol."""
+        return formatLang(self.env, amount, currency_obj=self.currency_id or None)
+
+    def _expense_scan_rate_text(self, rate):
+        """A tax rate with its own decimals only: "20", "5,5", "8,875"."""
+        decimals = ('%.3f' % rate).rstrip('0').partition('.')[2]
+        return self._expense_scan_number(rate, len(decimals))

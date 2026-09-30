@@ -222,7 +222,7 @@ class RapidOcrEngine(ScanEngine):
         last_error = None
         warmup = self._warmup_image()
         for ocr_version, lang in self.MODEL_CANDIDATES:
-            label = "PP-OCR %s / %s" % (ocr_version or "default", lang or "default")
+            label = "RapidOCR / %s %s" % (ocr_version, lang) if ocr_version else self.label
             try:
                 engine = RapidOCR(params=self._build_params(ocr_version, lang))
                 if warmup is not None:

@@ -60,3 +60,15 @@ class TestTranslations(common.TransactionCase):
                         PLACEHOLDER_RE.findall(msgstr)):
                     problems.append("%s: %s" % (os.path.basename(path), msgid[:60]))
         self.assertFalse(problems, "\n".join(problems))
+
+    def test_numbers_follow_the_language(self):
+        """"3,03" in French, "3.03" in English, and a rate keeps its own decimals."""
+        self.env['res.lang']._activate_lang('fr_FR')
+        self.env['res.lang']._activate_lang('en_US')
+        expense = self.env['hr.expense']
+        french, english = expense.with_context(lang='fr_FR'), expense.with_context(lang='en_US')
+        self.assertEqual(french._expense_scan_number(3.03), "3,03")
+        self.assertEqual(english._expense_scan_number(3.03), "3.03")
+        self.assertEqual(french._expense_scan_rate_text(5.5), "5,5")
+        self.assertEqual(french._expense_scan_rate_text(20.0), "20")
+        self.assertEqual(english._expense_scan_rate_text(8.875), "8.875")

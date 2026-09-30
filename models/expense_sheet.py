@@ -20,7 +20,7 @@ from datetime import date, timedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import format_date
+from odoo.tools import format_date, formatLang
 
 from ..ocr import preprocess
 
@@ -862,9 +862,10 @@ class ExpenseScanSheetWizard(models.TransientModel):
             selected = wizard._selected()
             wizard.selected_count = len(selected)
             wizard.selected_summary = _(
-                "%(count)s expense(s), %(employees)s employee(s), %(amount).2f incl. tax",
+                "%(count)s expense(s), %(employees)s employee(s), %(amount)s incl. tax",
                 count=len(selected), employees=len(selected.employee_id),
-                amount=sum(selected.mapped('total_amount')))
+                amount=formatLang(self.env, sum(selected.mapped('total_amount')),
+                                  currency_obj=self.env.company.currency_id))
 
     def action_generate(self):
         self.ensure_one()

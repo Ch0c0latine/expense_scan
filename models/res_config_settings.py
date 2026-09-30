@@ -2,6 +2,7 @@
 # Copyright 2026 Yves Vallée
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 from odoo import _, api, fields, models
+from odoo.tools import formatLang
 
 from ..ocr import engines, preprocess
 
@@ -78,8 +79,9 @@ class ResConfigSettings(models.TransientModel):
                 _("OCR engine test"), str(error), 'danger')
         return self._expense_scan_notification(
             _("OCR engine test"),
-            _("%(engine)s - loaded and tested in %(duration).1f s.\nText read: \"%(text)s\"",
-              engine=report['engine'], duration=report['duration'], text=report['text']),
+            _("%(engine)s - loaded and tested in %(duration)s s.\nText read: \"%(text)s\"",
+              engine=report['engine'], duration=formatLang(self.env, report['duration'], digits=1),
+              text=report['text']),
             'success' if report['word_count'] else 'warning',
         )
 

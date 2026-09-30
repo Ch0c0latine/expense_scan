@@ -155,6 +155,21 @@ class TestReceiptLifecycle(common.TransactionCase):
         with self.assertRaises(UserError):
             expense.action_expense_scan_rescan()
 
+    def test_an_image_that_is_not_a_receipt_says_so(self):
+        """A logo: one point to check, and no reading confidence shown."""
+        from ..ocr import parser
+        from .test_parser import words_from_text
+        expense = self.Expense.create({'name': "Logo", 'employee_id': self.employee.id})
+        result = parser.parse(words_from_text("EXEMPLE SARL\nINGENIERIE"))
+        with patch.object(type(expense), '_expense_scan_store_image', autospec=True,
+                          return_value={}):
+            expense.with_context(lang='en_US')._expense_scan_apply(result, self.Attachment)
+        codes = expense.expense_scan_todo_codes.split(',')
+        self.assertIn('total', codes)
+        self.assertNotIn('date', codes)
+        self.assertIn("Receipt?", expense.scan_todo)
+        self.assertNotIn("%", expense.scan_message)
+
     def test_a_new_receipt_is_cropped_again(self):
         """After a deleted manual retouch, the scan crops the new receipt."""
         expense, _original = self.scanned()
