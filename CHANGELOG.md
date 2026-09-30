@@ -1,5 +1,25 @@
 # Changelog
 
+## 19.0.2.8.4
+
+Found while installing the module on a new Swedish database, then scanning
+Swedish and foreign receipts.
+
+- **Receipt in an inactive currency**: the currency is activated and the
+  expense recorded in it; it was recorded in the company currency (12.50
+  EUR counted as 12.50 USD). A missing exchange rate stays a point to check.
+- **Nordic VAT tables** ("Moms% Moms Netto Brutto", Norwegian "MVA") are
+  read.
+- **Several taxes at one rate** (goods, services, intra-EU purchases, as in
+  the Swedish chart of accounts): the category's own tax, else the first
+  ordinary one; no tax was set.
+- **Tax rounded line by line** (9.41 printed for a ceiling of 9.40) is no
+  longer taken for a misreading.
+- **Odoo's default category** ("Expenses") counts as no category chosen when
+  the settings name none: the scan recognised no category at all.
+- **"Use the tax read on the receipt"** is on for new companies; when it is
+  off, the receipt tax shows the tax the rate gives, as the journal entry.
+
 ## 19.0.2.8.3
 
 - **Installation on a database without French**: the installation read the
