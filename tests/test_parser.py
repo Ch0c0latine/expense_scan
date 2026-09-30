@@ -566,6 +566,29 @@ ASF Lieu-dit Les Pins BP 10017
         self.assertNotEqual(result.value('merchant'), "Commentaire:")
         self.assertNotIn("Commentaire", result.value('merchant') or "")
 
+    def test_a_street_word_in_the_name(self):
+        """"Brasserie du Quai" is a name; "3 quai des Bateliers" the address."""
+        result = self.parse("Brasserie du Quai\n3 quai des Bateliers\n67000 Strasbourg\n"
+                            "27/09/2026 20:14\nTOTAL TTC 43,80 €")
+        self.assertEqual(result.value('merchant'), "Brasserie du Quai")
+        result = self.parse("Place de la Gare\nCafe 2,40\nTOTAL 2,40")
+        self.assertNotEqual(result.value('merchant'), "Place de la Gare")
+
+    def test_vat_table_rate_in_the_header(self):
+        result = self.parse("GASTHAUS\nSUMME EUR 39,60\nMwSt 19% Netto MwSt Brutto\n"
+                            "33,28 6,32 39,60\nBezahlt mit Karte")
+        self.assertEqual(result.value('tax_amount'), 6.32)
+        self.assertEqual(result.value('tax_rate'), 19.0)
+        result = self.parse("BRASSERIE\nTOTAL TTC 43,80 €\nTVA 10 % HT TVA\n39,82 3,98")
+        self.assertEqual(result.value('tax_amount'), 3.98)
+
+    def test_total_and_tax_read_the_other_way_round(self):
+        """Crumpled parking ticket: each amount joined to the other label."""
+        result = self.parse("PARKHAUS AM MARKT\nBetrag:\ninkl. 19% MwSt 12,00 EUR\n"
+                            "Vielen Dank! 1,92")
+        self.assertEqual(result.value('total'), 12.00)
+        self.assertEqual(result.value('tax_amount'), 1.92)
+
     def test_us_sales_tax_is_a_foreign_tax(self):
         result = self.parse("JOE'S DINER\nSUBTOTAL 17.49\nSALES TAX 8.875% 1.55\nTOTAL $19.04")
         self.assertEqual(result.value('tax_label'), "Sales tax")

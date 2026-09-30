@@ -8,6 +8,14 @@
 - README and store page: exchange rates, rule signs and justification,
   languages, domestic and foreign VAT.
 - The module is published by T.T.C. SAS (author and copyright notices).
+- **Merchant with a street word** ("Brasserie du Quai", "Café de la Place")
+  was taken for an address and left out.
+- **VAT table whose rate is in the header** ("MwSt 19% Netto MwSt Brutto",
+  then "33,28 6,32 39,60"): the tax is read when the amounts hold at that
+  rate.
+- **Total and tax read the other way round** on a crumpled receipt (tax of
+  12.00 for a total of 1.92): exchanged when the total is the tax of the
+  larger amount at the rate read.
 
 ## 19.0.2.8.6
 

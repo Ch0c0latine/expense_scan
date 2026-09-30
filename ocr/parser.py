@@ -531,6 +531,16 @@ ADDRESS_RE = re.compile(
     r"UL|ULICA|ALEJA|VIA|VIALE|PIAZZA|CORSO|STRASSE|STR|PLATZ|WEG|"
     r"CALLE|AVENIDA|PLAZA|RUA|STREET|ROAD|STRAAT)\b"
 )
+#: Street word inside a name, after an article and without any number:
+#: "Brasserie du Quai", "Café de la Place", "Pizzeria della Piazza".
+NAME_WITH_STREET_WORD_RE = re.compile(
+    r"^[^\d]*\w[^\d]*\s(?:DU|DE LA|DE L|DES|AU|AUX|DE|DEL|DELLA|AM|ZUR|ZUM|THE)\s+"
+    r"(?:QUAI|PLACE|AVENUE|BOULEVARD|RUE|ROUTE|CHEMIN|PLATZ|PIAZZA|CORSO|PLAZA|ROAD)\b[^\d]*$")
+
+
+def _is_address(text):
+    """Tell whether the normalised line is an address."""
+    return bool(ADDRESS_RE.search(text)) and not NAME_WITH_STREET_WORD_RE.match(text)
 
 
 def _has_date(text, today=None):
@@ -706,7 +716,7 @@ def extract_merchant(lines, max_lines=10, buyers=()):
         digits = sum(1 for char in text if char.isdigit())
         if letters < 3 or len(raw) < 3:
             continue
-        if MERCHANT_STOP_RE.search(text) or ADDRESS_RE.search(text):
+        if MERCHANT_STOP_RE.search(text) or _is_address(text):
             continue
         if _has_date(text):
             continue  # "← 18 novembre": a date, not a merchant
@@ -963,6 +973,23 @@ def _consistent_tax(amounts, rate):
     return None
 
 
+def _consistent_row(amounts, rate):
+    """Return the VAT of a line of two or three amounts that hold at this rate.
+
+    Three amounts: net, VAT and gross in any order. Two: net and VAT, or VAT
+    and gross ("39,82 3,98" under "TVA 10 % HT TVA").
+    """
+    if len(amounts) >= 3:
+        return _consistent_tax(amounts, rate)
+    if len(amounts) != 2:
+        return None
+    for tax, other in (amounts, reversed(amounts)):
+        if 0 < tax < other and (abs(other * rate / 100.0 - tax) <= 0.03
+                                or abs(other * rate / (100.0 + rate) - tax) <= 0.03):
+            return round(tax, 2)
+    return None
+
+
 def extract_tax_table(lines):
     """Read the VAT table of the receipt, if it has one.
 
@@ -1003,6 +1030,11 @@ def extract_tax_table(lines):
         has_rate_column = bool(re.search(
             r"\bTAUX\b|\bRATE\b|\bALIQUOTA\b|\bSATS\b"
             r"|\b(?:T\.?\s*V\.?\s*A|MOMS|MVA|MWST|VAT|IVA|BTW|PTU|UST)\s*%", header))
+        # "MwSt 19% Netto MwSt Brutto" then "33,28 6,32 39,60": a single rate,
+        # printed in the header, for a line of amounts without one.
+        header_rates = RATE_RE.findall(header)
+        header_rate = (_closest_known_rate(float(header_rates[0].replace(",", ".")))
+                       if len(header_rates) == 1 else None)
         entries = []
         for row in lines[index + 1:index + 1 + TAX_TABLE_DEPTH]:
             text = normalize(row.text)
@@ -1013,6 +1045,15 @@ def extract_tax_table(lines):
             if not (match or bare):
                 misread = TAX_TABLE_MISREAD_ROW_RE.match(text)
             if not (match or bare or misread):
+                if (header_rate and not entries
+                        and not re.search(r"[A-Z%]", re.sub(r"\b(?:EUR|CHF)\b", "", text))):
+                    # A line of amounts only ("Product 68.24 13.65 81.89" is
+                    # an item of an invoice). Only amounts that hold at that
+                    # rate are taken, and only once: a line of totals below
+                    # repeats them.
+                    amount = _consistent_row(_table_amounts(row.text), header_rate)
+                    if amount:
+                        return [(header_rate, amount, "%s | %s" % (line.text, row.text))]
                 continue
             rate = _closest_known_rate(
                 float((match or bare or misread).group(1).replace(",", ".")))
@@ -1663,7 +1704,28 @@ def parse(words, today=None, max_age_days=730, default_currency="EUR", buyers=()
         "vat_number": extract_vat_number(lines),
         "nights": extract_nights(lines, today=today, order="mdy" if month_first else "dmy"),
     }
+    _swap_total_and_tax(fields)
     return ScanResult(lines=lines, fields=fields)
+
+
+def _swap_total_and_tax(fields):
+    """Put back a total and a tax read the other way round.
+
+    On a crumpled or slanted receipt, the OCR can join the amount of each
+    line to the label of the other ("inkl. 19% MwSt 12,00 EUR", "Betrag
+    1,92"). A tax larger than the total is impossible; when the total is the
+    tax of that larger amount at the rate read, the two are exchanged.
+    """
+    total, tax = fields["total"], fields["tax_amount"]
+    rate = fields["tax_rate"].value or fields["tax_rate_max"].value
+    if not (total.value and tax.value and rate) or tax.value <= total.value:
+        return
+    if abs(tax.value * rate / (100.0 + rate) - total.value) > 0.02:
+        return
+    fields["total"] = ExtractedField(value=tax.value, confidence=min(total.confidence, 0.6),
+                                     source=tax.source)
+    fields["tax_amount"] = ExtractedField(value=total.value, confidence=min(tax.confidence, 0.6),
+                                          source=total.source)
 
 
 def fields_to_check(result, names=("date", "total")):
