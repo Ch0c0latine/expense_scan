@@ -56,7 +56,7 @@
                                t-att-value="state.fine" t-on-input="onFineInput"
                                aria-label="Fine rotation"/>
                         <span class="text-muted small o_expense_scan_retouch_angle"
-                              t-esc="angleDegrees.toFixed(1) + '°'"/>
+                              t-esc="angleText"/>
                     </div>
                 </div>
 

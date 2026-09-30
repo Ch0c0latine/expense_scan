@@ -61,19 +61,19 @@
                     <div class="content-group">
                         <div><field name="expense_scan_autocrop"/>
                             <label for="expense_scan_autocrop"/>
-                            <div class="text-muted small">Finds the edges of the receipt and corrects the perspective.</div></div>
+                            <div class="text-muted small ps-4">Finds the edges of the receipt and corrects the perspective.</div></div>
                         <div><field name="expense_scan_deskew"/>
                             <label for="expense_scan_deskew"/>
-                            <div class="text-muted small">Corrects the remaining tilt of the text lines.</div></div>
+                            <div class="text-muted small ps-4">Corrects the remaining tilt of the text lines.</div></div>
                         <div><field name="expense_scan_auto_rotate"/>
                             <label for="expense_scan_auto_rotate"/>
-                            <div class="text-muted small">Reads again after a quarter turn when the text runs vertically. Slower.</div></div>
+                            <div class="text-muted small ps-4">Reads again after a quarter turn when the text runs vertically. Slower.</div></div>
                         <div><field name="expense_scan_keep_original"/>
                             <label for="expense_scan_keep_original"/>
-                            <div class="text-muted small">The untouched photo stays reachable from the expense; the cropped image is shown.</div></div>
+                            <div class="text-muted small ps-4">The untouched photo stays reachable from the expense; the cropped image is shown.</div></div>
                         <div><field name="expense_scan_wide_split"/>
                             <label for="expense_scan_wide_split"/>
-                            <div class="text-muted small">Receipt next to the form from 768 px wide instead of 1400 px.</div></div>
+                            <div class="text-muted small ps-4">Receipt next to the form from 768 px wide instead of 1400 px.</div></div>
                     </div>
                 </setting>
 
@@ -84,13 +84,13 @@
                     <div class="content-group">
                         <div><field name="expense_scan_apply_tax"/>
                             <label for="expense_scan_apply_tax"/>
-                            <div class="text-muted small">The tax printed on the receipt goes to the journal entry, rather than the one the rate gives.</div></div>
+                            <div class="text-muted small ps-4">The tax printed on the receipt goes to the journal entry, rather than the one the rate gives.</div></div>
                         <div><field name="expense_scan_set_vendor"/>
                             <label for="expense_scan_set_vendor"/>
-                            <div class="text-muted small">Links the contact named like the merchant, when exactly one matches.</div></div>
+                            <div class="text-muted small ps-4">Links the contact named like the merchant, when exactly one matches.</div></div>
                         <div><field name="expense_scan_reinvoice"/>
                             <label for="expense_scan_reinvoice"/>
-                            <div class="text-muted small">Suggests the employee's project running on the receipt date.</div></div>
+                            <div class="text-muted small ps-4">Suggests the employee's project running on the receipt date.</div></div>
                         <div class="mt-2">
                             <label for="expense_scan_product_id" class="o_light_label"/>
                             <field name="expense_scan_product_id"

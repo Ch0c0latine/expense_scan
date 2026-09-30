@@ -20,6 +20,7 @@ import { Dialog } from "@web/core/dialog/dialog";
 import { browser } from "@web/core/browser/browser";
 import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
+import { formatFloat } from "@web/core/utils/numbers";
 
 //: Distance, in canvas pixels, below which a press grabs a handle; beyond
 //: it, a press inside the frame moves it.
@@ -134,6 +135,11 @@ export class RetouchDialog extends Component {
     /** Total rotation, in degrees. */
     get angleDegrees() {
         return this.state.quarter * 90 + this.state.fine;
+    }
+
+    /** The rotation as the user's language writes it: "1,5°". */
+    get angleText() {
+        return formatFloat(this.angleDegrees, { digits: [false, 1] }) + "°";
     }
 
     /** Bounding rectangle of a ``width`` × ``height`` image after rotation. */

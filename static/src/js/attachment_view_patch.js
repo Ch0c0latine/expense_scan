@@ -41,7 +41,11 @@ function hideExpenseScanPdfTools(rootElement) {
             return;
         }
         const style = document.createElement("style");
-        style.textContent = `${HIDDEN_PDF_TOOLS.join(", ")} { display: none !important; }`;
+        // PDF.js keeps its viewer 350 px wide at least: in the narrow panel
+        // of a tablet in portrait, the page overflowed and scrolled sideways.
+        // The reduced toolbar fits in less.
+        style.textContent = `${HIDDEN_PDF_TOOLS.join(", ")} { display: none !important; }
+            #mainContainer { min-width: 0 !important; }`;
         iframe.contentDocument.head.appendChild(style);
     });
 }
