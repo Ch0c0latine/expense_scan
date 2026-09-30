@@ -172,7 +172,13 @@ class RapidOcrEngine(ScanEngine):
             import onnxruntime  # noqa: F401
         except ImportError:
             return False, "Python package \"onnxruntime\" not installed"
-        return True, "rapidocr %s" % getattr(rapidocr, "__version__", "?")
+        # rapidocr 3 has no __version__: the installed package says it.
+        try:
+            from importlib.metadata import version
+            installed = version("rapidocr")
+        except Exception:  # noqa: BLE001 - metadata missing in some installs
+            installed = getattr(rapidocr, "__version__", "?")
+        return True, "rapidocr %s, onnxruntime %s" % (installed, onnxruntime.__version__)
 
     def _build_params(self, ocr_version, lang):
         from rapidocr import LangRec, ModelType, OCRVersion
