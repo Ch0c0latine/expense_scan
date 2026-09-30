@@ -588,3 +588,10 @@ ASF Lieu-dit Les Pins BP 10017
         result = self.parse("KIWI\nOrg.nr 979 443 137 MVA\nSum 3 varer 22,00\n"
                             "Mva% Grunnlag Mva Sum\nSum 17,83 4,47 22,30")
         self.assertEqual(result.value('total'), 22.00)
+
+    def test_swedish_vat_table(self):
+        """"Moms% Moms Netto Brutto": the rate column has no "%" on its lines."""
+        result = self.parse("BORJES\nTo.alt 87,75 SEK\nMoms% Moms Netto Brutto\n"
+                            "12,00 9,41 78,34 87,75\nSPARA KVITTOT")
+        self.assertEqual(result.value('tax_amount'), 9.41)
+        self.assertEqual(result.value('tax_rate'), 12.0)

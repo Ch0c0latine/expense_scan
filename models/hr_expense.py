@@ -1900,6 +1900,10 @@ class HrExpense(models.Model):
             name: self._expense_scan_comparable(name) for name in self.READ_VALUE_FIELDS})
         after['expense_scan_manual_fields'] = ','.join(sorted(keep)) or False
         self.write(after)
+        if not company.expense_scan_apply_tax and 'scan_tax_amount' not in keep:
+            # The tax read is not used: the field shows the tax the rate
+            # gives, which the entry will carry, rather than an empty 0.00.
+            self._onchange_expense_scan_taxes()
         for note in notes:
             self.message_post(body=note, message_type='comment', subtype_xmlid='mail.mt_note')
         if result.timer:

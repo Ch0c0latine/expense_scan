@@ -778,7 +778,7 @@ def title_case(name):
 #: es, pt), MwSt and USt (de), PTU (pl), BTW (nl), DPH (cs), MOMS.
 TVA_LINE_RE = re.compile(
     r"\bT\.?\s*V\.?\s*A\b|\bV\.?A\.?T\b|\bI\.?V\.?A\b|\bMWST\b|\bUST\b|\bPTU\b"
-    r"|\bB\.?T\.?W\b|\bDPH\b|\bMOMS\b|\bPODATEK\b|\bSTEUERSUMME\b|\bTAXES?\s*TOTALES?\b"
+    r"|\bB\.?T\.?W\b|\bDPH\b|\bMOMS\b|\bMVA\b|\bPODATEK\b|\bSTEUERSUMME\b|\bTAXES?\s*TOTALES?\b"
     r"|\bSALES\s*TAX\b")
 #: "TVA:D", "(c° tva: 2)": rate code referring to the table, without a tax
 #: amount. A single digit only counts if it does not start an amount
@@ -887,8 +887,9 @@ TAX_TABLE_ALL_LABELS_RE = re.compile(
 #: glued an amount of the next line to it: "Total Promotion TVA Taux
 #: MONT.TTC MONT.TVA TOTAL HT 3,02" (Lidl).
 TAX_COLUMN_LABEL_RE = re.compile(
-    r"\b(HT|TTC|TVA|TAUX|NET|NETTO|BRUT|BRUTTO|HTVA|TVAC|MWST|UST|VAT|IVA|BTW|IMPONIBILE)\b")
-TAX_LABELS = {"TVA", "MWST", "UST", "VAT", "IVA", "BTW"}
+    r"\b(HT|TTC|TVA|TAUX|NET|NETTO|BRUT|BRUTTO|HTVA|TVAC|MWST|UST|VAT|IVA|BTW|IMPONIBILE"
+    r"|MOMS|MVA)\b")
+TAX_LABELS = {"TVA", "MWST", "UST", "VAT", "IVA", "BTW", "MOMS", "MVA"}
 
 
 def _column_labels_run(header):
@@ -986,8 +987,10 @@ def extract_tax_table(lines):
                     or (TVA_LINE_RE.search(header) and TAX_COLUMNS_RE.search(header))):
                 continue
         # "Taux HT TVA TTC": the rate opens the line, sometimes without "%".
+        # A tax word followed by "%" too: "Moms% Moms Netto Brutto" (se, dk).
         has_rate_column = bool(re.search(
-            r"\bTAUX\b|\bRATE\b|\bALIQUOTA\b|\bT\.?\s*V\.?\s*A\s*%", header))
+            r"\bTAUX\b|\bRATE\b|\bALIQUOTA\b|\bSATS\b"
+            r"|\b(?:T\.?\s*V\.?\s*A|MOMS|MVA|MWST|VAT|IVA|BTW|PTU|UST)\s*%", header))
         entries = []
         for row in lines[index + 1:index + 1 + TAX_TABLE_DEPTH]:
             text = normalize(row.text)

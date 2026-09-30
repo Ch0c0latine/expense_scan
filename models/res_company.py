@@ -83,7 +83,7 @@ class ResCompany(models.Model):
     )
     expense_scan_apply_tax = fields.Boolean(
         string="Use the tax read on the receipt",
-        default=False,
+        default=True,
         help="Fills the \"Receipt tax\" field with the amount read on the "
              "receipt. That amount then takes precedence over the one the "
              "rate would give, down to the journal entry, so that a receipt "
