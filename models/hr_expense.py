@@ -2194,6 +2194,14 @@ class HrExpense(models.Model):
 
         currency = self._expense_scan_currency(result, company)
         if currency and 'currency_id' not in keep:
+            if not currency.active:
+                # Left in the company currency, 12.50 EUR would count as
+                # 12.50 USD. The currency is activated; a missing exchange
+                # rate is flagged as a point to check.
+                currency.sudo().active = True
+                values.setdefault('_expense_scan_notes', []).append(_(
+                    "Currency %s activated in Odoo: the receipt is in this currency.",
+                    currency.name))
             values['currency_id'] = currency.id
 
         total = result.value('total')
@@ -2331,13 +2339,14 @@ class HrExpense(models.Model):
         return self.currency_id.compare_amounts(amount, ceiling) <= 0
 
     def _expense_scan_currency(self, result, company):
-        """Currency matching the code read, if it is active in Odoo."""
+        """Currency matching the code read, active or not."""
         code = result.value('currency')
         if not code or result.confidence('currency') < 0.5:
             return self.env['res.currency']
         if company.currency_id.name == code:
             return self.env['res.currency']  # already the default currency
-        return self.env['res.currency'].search([('name', '=', code)], limit=1)
+        return self.env['res.currency'].with_context(active_test=False).search(
+            [('name', '=', code)], limit=1)
 
     def _expense_scan_vendor(self, result, company, merchant=None):
         """Vendor contact whose name matches the merchant read."""

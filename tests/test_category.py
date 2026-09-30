@@ -203,6 +203,19 @@ class TestCategoryRecognition(common.TransactionCase):
         self.assertEqual(values['product_id'], self.train.id)
         self.assertEqual(values['scan_tax_amount'], 0.0)
 
+    def test_a_receipt_in_an_inactive_currency_is_recorded_in_it(self):
+        """12.50 CHF are not 12.50 in the company currency: the currency is activated."""
+        chf = self.env['res.currency'].with_context(active_test=False).search(
+            [('name', '=', 'CHF')], limit=1)
+        if not chf or self.company.currency_id == chf:
+            self.skipTest("needs CHF as a foreign currency")
+        chf.active = False
+        values = self.fresh()._expense_scan_field_values(
+            reading("CAFE ZUERI\n8001 Zurich\nTOTAL CHF 12.50\nMWST 8.1% 0.94"), self.company)
+        self.assertEqual(values['currency_id'], chf.id)
+        self.assertTrue(chf.active)
+        self.assertTrue(values['_expense_scan_notes'])
+
     def test_several_rates_apply_the_highest(self):
         """Two rates on the same receipt: the highest is set on the expense.
 
