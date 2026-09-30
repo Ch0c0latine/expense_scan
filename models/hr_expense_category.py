@@ -166,6 +166,7 @@ class ProductTemplate(models.Model):
         for xmlid in ('uom.product_uom_km', 'uom.product_uom_mile'):
             distances |= self.env.ref(xmlid, raise_if_not_found=False) or distances
         templates = self.search([('can_be_expensed', '=', True)], order='sequence, id')
+        installed = [code for code, _name in self.env['res.lang'].get_installed()]
         result = {}
         taken = set()
         for template in templates:
@@ -174,9 +175,11 @@ class ProductTemplate(models.Model):
             # VAT, but a receipt).
             if template.standard_price or template.uom_id in distances:
                 continue
+            # The name in every installed language: a category named in
+            # French is recognised as well as its English name. Only
+            # installed ones: reading a name in another language fails.
             labels = [template.default_code, template.name]
-            labels += [template.with_context(lang=lang).name
-                       for lang in ('fr_FR', 'en_US')]
+            labels += [template.with_context(lang=code).name for code in installed]
             family = lexicon.family_of(*labels)
             if not family or family in taken:
                 continue

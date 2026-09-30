@@ -424,9 +424,13 @@ class HrExpense(models.Model):
     def _expense_scan_policy_lang(self):
         """Language of the rule findings: the employee's, else the company's."""
         employee = self.sudo().employee_id
-        return (employee.user_id.lang or employee.work_contact_id.lang
-                or (self.company_id or self.env.company).partner_id.lang
-                or self.env.lang)
+        installed = {code for code, _name in self.env['res.lang'].get_installed()}
+        # A contact may keep a language deactivated since.
+        for lang in (employee.user_id.lang, employee.work_contact_id.lang,
+                     (self.company_id or self.env.company).partner_id.lang):
+            if lang in installed:
+                return lang
+        return self.env.lang
 
     def _expense_scan_purchase_text(self):
         """Text read on the receipt, without its general conditions."""
