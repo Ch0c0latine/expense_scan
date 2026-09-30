@@ -35,6 +35,18 @@
   rate codes beyond D ("F 10%"), "Neto", "€x TOT" for "€* TOT", "C IVA
   4,00" read as a rate and not as the tax. On French receipts too, a rate
   column no longer lets a base or a total pass for the tax.
+- **Italian receipts** (new database in Italy, the Italian corpus and real
+  receipts of trips): the rate printed on the items when the tax line has
+  none ("di cui IVA 3,55" under items at "10,00%"; several rates give the
+  highest as a ceiling); a rate among three amounts ("17.93 22.00 3.94")
+  no longer passes for the tax, which was read as 20 or 22 on charging and
+  hotel invoices; an exempt line at 0 % carries no tax ("ESC.IVA ART.15");
+  "10.0000%" read as 10 %, not 0 %; "Total des taxes", "TVA totale" as the
+  sum; "Cena bez DPH", "sin IVA", "ohne MwSt" as bases without tax.
+- **Tax picked in the Italian chart**: at 4 % the only active purchase tax
+  is "4% INPS", a pension contribution. A tax of another kind than the
+  company's default purchase tax is no longer set; none is set rather than
+  a wrong one.
 - **Upside down, in every language**: the clues that tell a receipt right
   side up from upside down (an amount after its label, the merchant at the
   top, the payment at the bottom) were French words only. A Spanish receipt

@@ -42,7 +42,8 @@ AMOUNT_RE = re.compile(
     r"(?<![\d,])(?<!\d[.,])(\d{1,3}(?:[  .]\d{3})+|\d+)[.,](\d{2})(?![\d])(?![.,]\d)(?!\s*%)"
 )
 # A VAT rate: "20 %", "5,50%", "TVA 10.0"
-RATE_RE = re.compile(r"(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
+# Never from the middle of a number: "10.0000%" is 10 %, not "00%".
+RATE_RE = re.compile(r"(?<![\d.,])(\d{1,2}(?:[.,]\d{1,4})?)\s*%")
 # The time may follow the year without a space: "13/06/202616:30:16".
 TIME_RE = re.compile(r"(?:\b|(?<=[12]\d{3}))([01]?\d|2[0-3])\s*[:hH]\s*([0-5]\d)\b")
 VAT_NUMBER_RE = re.compile(r"\bFR\s?([0-9A-Z]{2})\s?(\d{3})\s?(\d{3})\s?(\d{3})\b")
@@ -811,14 +812,16 @@ TAX_BASE_RE = re.compile(
 TAX_NOT_A_TAX_RE = re.compile(
     r"\bHORS\s*(?:T\.?\s*V\.?\s*A|TAXES?)\b"
     r"|\bT\.?\s*V\.?\s*A\s*(?:INCLUSE|INCLUS|COMPRISE|INCL)\b"
-    r"|\b(?:EXCL|EXCLUDING|EXCLUSIVE|INCL|INCLUDING|INCLUSIVE)\.?\s*(?:OF\s*)?(?:VAT|TAX)\b")
+    r"|\b(?:EXCL|EXCLUDING|EXCLUSIVE|INCL|INCLUDING|INCLUSIVE)\.?\s*(?:OF\s*)?(?:VAT|TAX)\b"
+    # "Cena bez DPH", "sin IVA", "senza IVA", "ohne MwSt": without the tax.
+    r"|\b(?:BEZ|SIN|SENZA|OHNE|ZONDER|UTAN|UDEN|SEM)\s*(?:DPH|IVA|MWST|BTW|MOMS|MVA|VAT|PTU)\b")
 #: Line that sums the VAT, without giving a rate.
 TAX_SUM_RE = re.compile(
     r"\b(?:SUMA|TOTAL|TOTALE|SUMME|TOTAAL|RAZEM|GESAMT)\s*(?:DE\s*LA\s*|DI\s*)?"
     r"(?:T\.?\s*V\.?\s*A|PTU|IVA|VAT|MWST|UST|BTW|PODATEK)\b"
     r"|\bTOTAL\s*TAX(?:ES)?\b|\bPODATEK\s*PTU\b|\bSTEUERSUMME\b"
     # "Taxe totale 2,57 €": the sum of an online shop invoice.
-    r"|\bTAXES?\s*TOTALES?\b"
+    r"|\bTAXES?\s*TOTALES?\b|\bTOTAL\s*DES\s*TAXES\b|\bT\.?\s*V\.?\s*A\s*TOTALE\b"
     # "Montant TVA 10,00 €": the total of a table laid out in columns.
     r"|\bMONTANT\s*(?:DE\s*LA\s*|DE\s*)?T\.?\s*V\.?\s*A\b")
 # VAT rates in force in the European Union, Switzerland and the United
@@ -1251,16 +1254,20 @@ def _extract_taxes_by_line(lines):
         #
         # Always taking the last amount would keep the gross on three
         # columns, and add up the receipt's totals instead of its taxes.
-        if rate is None and len(amounts) >= 4:
-            # "E TVA 10.00 13.59 1.36 14.95": the rate, without "%", is read
-            # as an amount. It is kept if it is a known rate and the rest
-            # forms a net + VAT = gross triplet at that rate.
-            for position, value in enumerate(amounts):
-                if _closest_known_rate(value) == value and value > 0:
-                    rest = amounts[:position] + amounts[position + 1:]
-                    if _consistent_tax(rest, value) is not None:
-                        rate, amounts = value, rest
-                        break
+        if rate is None and len(amounts) >= 3:
+            # "E TVA 10.00 13.59 1.36 14.95", "ITSR 17.93 22.00 3.94": the
+            # rate, without "%", is read as an amount. It is kept if it is a
+            # known rate and the other amounts hold at it.
+            inside = _rate_inside_row(amounts)
+            if inside:
+                rate, tax = inside
+                entries.append((rate, tax, line.text, line.score))
+                continue
+        if rate == 0:
+            # "0 %" (exempt, "ESC.IVA ART.15"): whatever the amount printed,
+            # the tax is nil.
+            entries.append((0.0, 0.0, line.text, line.score))
+            continue
         named = TAX_NAME_RATE_RE.search(text) if rate is None else None
         if named:
             # "C IVA 4,00 96 ,04": the rate, without "%", right after the tax
@@ -1834,7 +1841,41 @@ def parse(words, today=None, max_age_days=730, default_currency="EUR", buyers=()
         "nights": extract_nights(lines, today=today, order="mdy" if month_first else "dmy"),
     }
     _swap_total_and_tax(fields)
+    _rate_from_items(fields, lines)
     return ScanResult(lines=lines, fields=fields)
+
+
+#: Item line with its own rate: "FOCACCIA FORMAGGIO 10,00% 13,00".
+ITEM_RATE_RE = re.compile(r"(\d{1,2}[.,]\d{2})\s*%")
+
+
+def _rate_from_items(fields, lines):
+    """The rate printed on the items, when the tax line gives none.
+
+    Italian receipts print the rate of each item and the tax without one
+    ("di cui IVA 3,55"). One rate on every item is the rate of the receipt;
+    several give the highest, as a ceiling.
+    """
+    if fields["tax_rate"].value is not None or fields["tax_rate_max"].value is not None:
+        return
+    rates, source = set(), []
+    for line in lines:
+        text = normalize(line.text)
+        if TVA_LINE_RE.search(text) or re.search(r"\bTOT", text) or not find_amounts(line.text):
+            continue
+        if re.search(r"\b(?:SCONTO|REMISE|RABATT|DESCUENTO|DISCOUNT|PROMO|OFF)\b", text):
+            continue  # "SCONTO 20,00% -0,60": a discount, not a rate
+        for match in ITEM_RATE_RE.finditer(text):
+            rate = _closest_known_rate(float(match.group(1).replace(",", ".")))
+            if rate:
+                rates.add(rate)
+                source.append(line.text)
+    if not rates:
+        return
+    joined = " | ".join(source[:3])
+    if len(rates) == 1:
+        fields["tax_rate"] = ExtractedField(value=next(iter(rates)), confidence=0.7, source=joined)
+    fields["tax_rate_max"] = ExtractedField(value=max(rates), confidence=0.7, source=joined)
 
 
 def _swap_total_and_tax(fields):

@@ -666,6 +666,30 @@ ADRIA SANT ALCAMPO
             self.assertEqual(result.value('tax_amount'), tax, text.split("\n")[0])
         self.assertIsNone(self.parse("PREFACTURA\nMesa 6\nTOTAL FACTURA 63,92").value('merchant'))
 
+    def test_italian_rates_on_the_items(self):
+        """"di cui IVA 3,55" without a rate: the rate printed on the items."""
+        single = self.parse("TRATTORIA\nCOPERTO 10,00% 2,00\nFOCACCIA 10,00% 13,00\n"
+                            "TOTALE COMPLESSIVO 15,00\ndi cui IVA 1,36")
+        self.assertEqual(single.value('tax_rate'), 10.0)
+        mixed = self.parse("DECO\nCARTA 22,00% 3,89\nRICOTTA 4,00% 4,30\nSCONTO 50,00% 0,60\n"
+                           "TOTALE COMPLESSIVO 8,19\ndi cui IVA 0,87")
+        self.assertIsNone(mixed.value('tax_rate'))
+        self.assertEqual(mixed.value('tax_rate_max'), 22.0)
+
+    def test_rate_among_three_amounts_and_exempt_lines(self):
+        tesla = self.parse("TESLA\nTVA totale 4.19\nMontant total (EUR) 26.25\n"
+                           "DESR 22.06 19.00 4.19 Taux de TVA locale standard")
+        self.assertEqual(tesla.value('tax_amount'), 4.19)
+        czech = self.parse("TESLA\nCena bez DPH 299.63\nCZSR 299.63 21.00 62.92 VAT standard\n"
+                           "Celkova cena (CZK) 362.55")
+        self.assertEqual(czech.value('tax_amount'), 62.92)
+        exempt = self.parse("EUROPCAR\nPenalita 95,00\nESC.IVA ART.15 0% 95,00\nTOTALE 95,00")
+        self.assertEqual(exempt.value('tax_amount'), 0.0)
+        # "10.0000%" is ten per cent, not "00%".
+        incl = self.parse("RESTAURANT\n2 T 18.45 Incl 10.0000% TVA = 1.68\nTotal 18.45")
+        self.assertEqual(incl.value('tax_rate'), 10.0)
+        self.assertEqual(incl.value('tax_amount'), 1.68)
+
     def test_a_spanish_document_type_is_not_the_merchant(self):
         result = self.parse("FACTURMPSIMPLIFICADA\nTURRON COCO 2,52 B\n€* TOT 6,42\n"
                             "W CAMBIO ,00\nImp. % Base Cuota\nIVA 10,00 5,83 ,59")
