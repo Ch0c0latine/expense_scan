@@ -6,7 +6,8 @@
   Runtime, pdf2image, openpyxl, and the `pdftoppm` program of Poppler): Odoo
   names a missing one when the module is installed. Tesseract stays optional.
 - README and store page: exchange rates, rule signs and justification,
-  languages, domestic and foreign VAT.
+  languages, domestic and foreign VAT; banner and screenshots, taken on a
+  German test database with fictitious receipts.
 - The module is published by T.T.C. SAS (author and copyright notices).
 - **Merchant with a street word** ("Brasserie du Quai", "Café de la Place")
   was taken for an address and left out.
