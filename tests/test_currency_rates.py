@@ -89,3 +89,31 @@ class TestEcbRates(common.TransactionCase):
         rate = self.env['res.currency.rate'].search([
             ('currency_id', '=', self.xtz.id), ('company_id', '=', self.company.id)])
         self.assertAlmostEqual(rate.rate, 2.0)
+
+    def test_an_old_expense_gets_the_rate_of_its_day(self):
+        """A receipt of 2024: converted at its day's rate, not at the oldest rate known."""
+        import io
+        import zipfile
+        base = self.company.currency_id.name
+        unit = {'EUR': 1.0, 'USD': 1.05, 'SEK': 11.5}.get(base)
+        if not unit:
+            self.skipTest("company currency not in the sample")
+        self.company.expense_scan_ecb_rates = True
+        expense = self.env['hr.expense'].create({
+            'name': "Gammal", 'employee_id': self.employee.id, 'product_id': self.product.id,
+            'currency_id': self.xtz.id, 'total_amount_currency': 10.0,
+            'date': date(2024, 11, 28)})
+        history = io.BytesIO()
+        with zipfile.ZipFile(history, 'w') as archive:
+            archive.writestr('eurofxref-hist.csv', (
+                "Date,USD,SEK,XTZ,\n"
+                # XTZ worth half the company currency on 2024-11-28.
+                "2024-11-28,1.05,11.5,%s,\n" % (2 * unit)
+                + "2024-11-27,1.04,11.4,N/A,\n"))
+        daily = ECB_XML % {'xtz': {'EUR': '3.0', 'USD': '3.3', 'SEK': '33.0'}[base]}
+        Model = type(self.Currency)
+        with patch.object(Model, '_expense_scan_ecb_download', autospec=True, return_value=daily), \
+                patch.object(Model, '_expense_scan_ecb_history_download', autospec=True,
+                             return_value=history.getvalue()):
+            self.Currency._cron_expense_scan_ecb_rates()
+        self.assertAlmostEqual(expense.total_amount, 5.0)
