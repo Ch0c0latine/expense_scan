@@ -1875,15 +1875,18 @@ class HrExpense(models.Model):
         keep = self._expense_scan_kept_fields()
         items = self._expense_scan_kept_differences(result, keep) + [
             item for item in items if self.TODO_FIELDS.get(item[1]) not in keep]
+        # Stored texts, words and numbers alike, in the employee's language:
+        # a scan also runs from a scheduled task or another user's session.
+        speaker = self.with_context(lang=self._expense_scan_policy_lang())
         values.update({
             'scan_state': 'partial' if items else 'done',
             'scan_engine': result.engine,
             'scan_duration': result.duration,
             'scan_score': round(result.mean_score * 100.0, 1),
             'scan_raw_text': result.raw_text,
-            **self._expense_scan_todo_values(items),
-            'scan_message': self._expense_scan_summary(result),
-            'scan_detected_tax': self._expense_scan_tax_label(result),
+            **speaker._expense_scan_todo_values(items),
+            'scan_message': speaker._expense_scan_summary(result),
+            'scan_detected_tax': speaker._expense_scan_tax_label(result),
             'expense_scan_mixed_rates': result.value('tax_rate') is None
                                         and result.value('tax_rate_max') is not None,
         })
