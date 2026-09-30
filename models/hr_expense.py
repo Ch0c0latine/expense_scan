@@ -40,6 +40,19 @@ TRIP_DAYS = 3
 #: Tax printed above the exact ceiling of its rate, still accepted: tills
 #: round the tax line by line.
 TAX_ROUNDING_MARGIN = 0.02
+#: Names of the domestic VAT on receipts, per country of the company, as
+#: the parser reads them. A receipt printing another name comes from abroad:
+#: "MWST" for a French company, "TVA" for a German one. "VAT", the English
+#: word, belongs to every country.
+DOMESTIC_TAX_LABELS = {
+    'FR': {'TVA'}, 'MC': {'TVA'}, 'LU': {'TVA'}, 'BE': {'TVA', 'BTW'},
+    'DE': {'MWST', 'UST', 'STEUERSUMME'}, 'AT': {'MWST', 'UST', 'STEUERSUMME'},
+    'CH': {'MWST', 'TVA', 'IVA'}, 'LI': {'MWST'},
+    'NL': {'BTW'}, 'ES': {'IVA'}, 'IT': {'IVA'}, 'PT': {'IVA'},
+    'PL': {'PTU', 'PODATEK'}, 'CZ': {'DPH'}, 'SK': {'DPH'},
+    'SE': {'MOMS'}, 'DK': {'MOMS'}, 'NO': {'MVA'},
+    'GB': set(), 'IE': set(), 'US': {'Sales tax'},
+}
 
 
 class Stopwatch:
@@ -1969,7 +1982,10 @@ class HrExpense(models.Model):
         label = result.value('tax_label')
         if not (label or result.value('tax_amount') or result.value('tax_rate_max')):
             return False
-        if label and label not in ('TVA', 'VAT'):  # "VAT": the English word, not a country
+        country = (company.account_fiscal_country_id or company.country_id).code
+        domestic = DOMESTIC_TAX_LABELS.get(country)
+        # Unknown country: the name proves nothing, the other clues decide.
+        if label and domestic is not None and label not in domestic | {'VAT'}:
             return label
         code = result.value('currency')
         if code and company.currency_id and code != company.currency_id.name \

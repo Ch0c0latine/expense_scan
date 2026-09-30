@@ -351,6 +351,16 @@ class TestCategoryRecognition(common.TransactionCase):
         values = expense._expense_scan_field_values(italian, self.company)
         self.assertEqual(values['scan_tax_amount'], 0.0)
 
+    def test_the_domestic_tax_follows_the_company_country(self):
+        """MWST: domestic for a German company, foreign for a French one."""
+        expense = self.expense()
+        german = reading("NETTO MARKEN-DISCOUNT\nMWST 19% 1,00\nSUMME 6,26")
+        Country = self.env['res.country']
+        self.company.account_fiscal_country_id = Country.search([('code', '=', 'DE')])
+        self.assertFalse(expense._expense_scan_foreign_tax(german, self.company))
+        self.company.account_fiscal_country_id = Country.search([('code', '=', 'FR')])
+        self.assertEqual(expense._expense_scan_foreign_tax(german, self.company), "MWST")
+
     def test_french_receipt_is_not_foreign(self):
         expense = self.expense()
         french = reading("BRASSERIE\nTVA 10 % 1,00\nTOTAL 11,00 EUR")
