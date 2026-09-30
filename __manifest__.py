@@ -40,6 +40,7 @@ https://github.com/sponsors/Ch0c0latine
     'website': "https://github.com/Ch0c0latine/expense_scan",
     'category': 'Human Resources/Expenses',
     'license': 'LGPL-3',
+    'images': ['static/description/banner.png'],
     'depends': ['hr_expense', 'project'],
     # Tesseract, the fallback engine, stays optional.
     'external_dependencies': {
