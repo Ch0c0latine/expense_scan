@@ -1,4 +1,4 @@
-// Copyright 2026 Yves Vallée
+// Copyright 2026 T.T.C. SAS
 // License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 /**
  * Receipt retouch: rotation and crop.

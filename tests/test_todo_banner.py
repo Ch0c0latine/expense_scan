@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2026 Yves Vallée
+# Copyright 2026 T.T.C. SAS
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """The review banner goes away as the corrections are made, without a new scan."""
 from odoo.tests import common, tagged

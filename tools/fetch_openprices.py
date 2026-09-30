@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2026 Yves Vallée
+# Copyright 2026 T.T.C. SAS
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Build a corpus of receipts per country from Open Prices (Open Food Facts).
 

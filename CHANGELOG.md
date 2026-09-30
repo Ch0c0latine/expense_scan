@@ -7,6 +7,7 @@
   names a missing one when the module is installed. Tesseract stays optional.
 - README and store page: exchange rates, rule signs and justification,
   languages, domestic and foreign VAT.
+- The module is published by T.T.C. SAS (author and copyright notices).
 
 ## 19.0.2.8.6
 

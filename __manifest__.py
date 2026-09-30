@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2026 Yves Vallée
+# Copyright 2026 T.T.C. SAS
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 {
     'name': "Receipt Scanner for Expenses",
@@ -36,7 +36,7 @@ No document leaves the server.
 Free module (LGPL-3). If it helps you, you can buy its author a coffee:
 https://github.com/sponsors/Ch0c0latine
 """,
-    'author': "Yves Vallée",
+    'author': "T.T.C. SAS",
     'website': "https://github.com/Ch0c0latine/expense_scan",
     'category': 'Human Resources/Expenses',
     'license': 'LGPL-3',
