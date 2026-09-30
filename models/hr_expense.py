@@ -2209,6 +2209,13 @@ class HrExpense(models.Model):
                 values.setdefault('_expense_scan_notes', []).append(_(
                     "Currency %s activated in Odoo: the receipt is in this currency.",
                     currency.name))
+                if company.expense_scan_ecb_rates:
+                    # Its rates come with the next run of the task, started
+                    # now; the scan itself makes no network request.
+                    cron = self.env.ref('expense_scan.ir_cron_expense_scan_ecb_rates',
+                                        raise_if_not_found=False)
+                    if cron:
+                        cron.sudo()._trigger()
             values['currency_id'] = currency.id
 
         total = result.value('total')

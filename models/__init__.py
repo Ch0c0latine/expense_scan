@@ -18,3 +18,4 @@ from . import hr_expense_batch
 from . import expense_sheet
 from . import expense_policy
 from . import product_product
+from . import currency_rates

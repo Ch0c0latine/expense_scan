@@ -88,6 +88,9 @@
                         <div><field name="expense_scan_set_vendor"/>
                             <label for="expense_scan_set_vendor"/>
                             <div class="text-muted small ps-4">Links the contact named like the merchant, when exactly one matches.</div></div>
+                        <div><field name="expense_scan_ecb_rates"/>
+                            <label for="expense_scan_ecb_rates"/>
+                            <div class="text-muted small ps-4">Daily reference rates for the active currencies: a foreign receipt is converted at the rate of its day.</div></div>
                         <div><field name="expense_scan_reinvoice"/>
                             <label for="expense_scan_reinvoice"/>
                             <div class="text-muted small ps-4">Suggests the employee's project running on the receipt date.</div></div>

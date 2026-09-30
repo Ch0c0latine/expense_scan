@@ -90,6 +90,15 @@ class ResCompany(models.Model):
              "with several rates keeps its exact tax. The rate stays the one "
              "of the expense category.",
     )
+    expense_scan_ecb_rates = fields.Boolean(
+        string="Exchange rates from the European Central Bank",
+        default=True,
+        help="Every day, the reference rates of the European Central Bank "
+             "(free, no account) are added for the active currencies, over "
+             "the last ninety days. Without them, Odoo Community converts a "
+             "foreign receipt one for one. Only this public file is "
+             "downloaded; nothing leaves the server.",
+    )
     expense_scan_reinvoice = fields.Boolean(
         # The label mentions re-invoicing so that the settings search finds it.
         string="Re-invoice expenses to a project",

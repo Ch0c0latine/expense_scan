@@ -500,6 +500,9 @@ class ResCurrencyRate(models.Model):
 
     def _expense_scan_recheck_expenses(self, currencies=None):
         currencies = currencies if currencies is not None else self.currency_id
-        self.env['hr.expense'].sudo().search([
+        expenses = self.env['hr.expense'].sudo().search([
             ('currency_id', 'in', currencies.ids), ('state', '=', 'draft'),
-        ])._expense_scan_recompute_policy()
+        ])
+        expenses._expense_scan_recompute_policy()
+        # "Currency without an exchange rate": resolved by the rate.
+        self.env.add_to_compute(expenses._fields['expense_scan_todo_pending'], expenses)
