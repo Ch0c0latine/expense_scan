@@ -459,6 +459,35 @@ ASF Lieu-dit Les Pins BP 10017
 """)
         self.assertEqual(parser.reading_direction(result.lines), -1)
 
+    def test_reading_direction_of_a_spanish_receipt(self):
+        """Spanish words decide too; "V sa Credit" of the card slip at the
+        bottom is no company header, "NUM. TOTAL ART." near the top no footer.
+        """
+        upright = self.parse("""
+ALCAMPO SANT ADRIA
+CIF: A28090108
+HARINA DE TRIGO 1,00
+NUM. TOTAL ART. VENDIDOS 1
+TOT 1,00
+TARJETA 1,00
+CAMBIO 0,00
+V sa Credit
+GRACIAS POR SU VISITA
+""")
+        self.assertEqual(parser.reading_direction(upright.lines), 1)
+        upside_down = self.parse("""
+VISITA SU POR GRACIAS
+Credit sa V
+0,00 CAMBIO
+1,00 TARJETA
+1,00 TOT
+1 VENDIDOS ART. TOTAL NUM.
+1,00 TRIGO DE HARINA
+A28090108 CIF:
+ADRIA SANT ALCAMPO
+""")
+        self.assertEqual(parser.reading_direction(upside_down.lines), -1)
+
     def test_reading_direction_stays_neutral_without_evidence(self):
         """A receipt without an amount label cannot decide."""
         result = self.parse("CREDIT AGRICOLE\nCB CONTACT\n45,00 EUR")

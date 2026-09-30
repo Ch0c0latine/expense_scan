@@ -35,6 +35,15 @@
   rate codes beyond D ("F 10%"), "Neto", "€x TOT" for "€* TOT", "C IVA
   4,00" read as a rate and not as the tax. On French receipts too, a rate
   column no longer lets a base or a total pass for the tax.
+- **Upside down, in every language**: the clues that tell a receipt right
+  side up from upside down (an amount after its label, the merchant at the
+  top, the payment at the bottom) were French words only. A Spanish receipt
+  held upright was turned over on a stray "TOTAL" and the "SA" of "V sa
+  Credit". Measured on the corpus, a photo as taken and turned over: 68 %
+  of consistent decisions instead of 51 %, none that turns a receipt both
+  ways.
+- **Spanish restaurant words** for the meal category: "mesa", "camarero",
+  "comensal" (added to existing categories on update).
 - **Receipt cut by the crop**: a fold was taken for the edge of the paper
   and the crop went through the receipt. When the text runs off the side of
   the cropped image, the photo as taken is read too, and the reading that

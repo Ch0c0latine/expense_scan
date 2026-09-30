@@ -245,6 +245,11 @@ ADDED_KEYWORDS = {
     },
     # German airport restaurant: "Aichinger Gastro GmbH ... Tisch 1122".
     # Italian filling station whose company name contains "risto" (restaurant).
+    # Spanish restaurant receipts: the table and the waiter, not the word
+    # "restaurante" (LosComensales.es receipts, Madrid).
+    '19.0.2.8.7': {
+        'meal': ["mesa", "camarero", "camarera", "comensal"],
+    },
     '19.0.2.4.2': {
         'meal': ["gastro", "tisch"],
         'fuel': ["senza piombo", "pompa", "stazione di servizio", "erogatore"],

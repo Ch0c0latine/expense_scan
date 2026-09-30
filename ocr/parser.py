@@ -508,7 +508,7 @@ MERCHANT_STOP_RE = re.compile(
     r"\bDOCUMENTO\b|\bCOMMERCIALE\b|\bPARTITA\b|\bP\.?\s*IVA\b|\bRECHNUNG\b|"
     r"\bKASSENBON\b|\bBELEG\b|\bQUITTUNG\b|\bSTEUER|\bFACTURA\b|\bFATURA\b|\bRECIBO\b|"
     # "FACTURMPSIMPLIFICADA": the document type, misread and glued.
-    r"SIMPLIFICADA\b|\bCUOTA\b|\bCAMBIO\b|\bENTREGA\b|\bPREFACTURA\b|\bATENDIO\b|"
+    r"SIMPLIFICADA\b|\bCUOTA\b|\bCAMBIO\b|\bENTREGA\b|\bPREFACTURA\b|\bATENDIO\b|\bFIRMA\b|"
     # Spanish table number and column headers.
     r"\bMESA\b|\bARTICULOS?\b|\bDESCRIPCION\b|\bUNID\b|"
     r"\bCIF\b|\bNIF\b|\bRECEIPT\b|\bINVOICE\b|\bTHANK\b|\bWELCOME\b|"
@@ -1328,17 +1328,29 @@ def _extract_taxes_by_line(lines):
 # ---------------------------------------------------------------------------
 
 #: Labels that always precede their amount on a receipt.
+#: In every language met: French words alone left a foreign receipt without
+#: an opinion, or turned it on a stray "TOTAL" or "SA". Measured on the
+#: corpus (a photo as taken and turned over): 68 % of consistent decisions
+#: instead of 51 %, none that turns a receipt both ways.
 READING_LABEL_RE = re.compile(
     r"\b(TOTAL|PRIX|MONTANT|TVA|PAIEMENT|REGLEMENT|NET A PAYER|ESPECES|RENDU"
-    r"|SOUS-TOTAL|A PAYER|DONT TVA)\b")
+    r"|SOUS-TOTAL|A PAYER|DONT TVA"
+    r"|TOT|SUBTOTAL|SUMME|SUMA|SUMMA|SUM|TOTALE|TOTAAL|TOTALT|GESAMT|BETRAG|BEDRAG|IMPORTE|IMPORTO"
+    r"|TARJETA|EFECTIVO|CAMBIO|ENTREGA|CONTANTI|RESTO|BARGELD|RUCKGELD|GEGEBEN|KARTE"
+    r"|IVA|MWST|BTW|MOMS|MVA|PTU|VAT|TAX|A PAGAR|ZU ZAHLEN|TE BETALEN|ATT BETALA|DO ZAPLATY|RAZEM)\b")
 #: Mentions that close a receipt: they are at the bottom.
 READING_FOOTER_RE = re.compile(
     r"\b(TOTAL|NET A PAYER|A PAYER|PAIEMENT|REGLEMENT|CARTE BANCAIRE|MERCI"
-    r"|AU REVOIR|RENDU|ESPECES)\b")
-#: Mentions that open a receipt: they are at the top.
+    r"|AU REVOIR|RENDU|ESPECES"
+    r"|GRACIAS|GRAZIE|DANKE|OBRIGADO|THANK YOU|BEDANKT|TACK|TAKK|DZIEKUJEMY"
+    r"|EFECTIVO|CAMBIO|TARJETA|CONTANTI|RESTO|BARGELD|RUCKGELD|CHANGE|CASH)\b")
+#: Mentions that open a receipt: they are at the top. Not "SA" alone: "V sa
+#: Credit" on a card slip at the bottom.
 READING_HEADER_RE = re.compile(
-    r"\b(SARL|SAS|SASU|EURL|SA|SIRET|SIREN|RCS|TEL|TELEPHONE|RUE|AVENUE"
-    r"|BOULEVARD|ROUTE|PLACE|CEDEX|BP)\b")
+    r"\b(SARL|SAS|SASU|EURL|SIRET|SIREN|RCS|TEL|TELEPHONE|RUE|AVENUE"
+    r"|BOULEVARD|ROUTE|PLACE|CEDEX|BP"
+    r"|S\.A\.|S\.L\.|S\.R\.L\.|GMBH|SPA|CIF|NIF|P\.? ?IVA|PARTITA|NIP|TELF|TELEFONO|TELEFON"
+    r"|CALLE|AVDA|STRASSE|STR|VIA|PIAZZA|ULICA|UL)\b")
 #: Number of agreeing lines required before concluding.
 READING_MIN_VOTES = 2
 
