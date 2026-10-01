@@ -65,6 +65,12 @@ msgstr "%(count)d recibos con otro total u otra fecha se han movido a sus propio
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%(count)s expense(s) wait for the manager or for a decision. The expense line of this order does not move until they are settled."
+msgstr "%(count)s gasto(s) esperan al responsable o una decisión. La línea de gastos de este pedido no se mueve hasta que se resuelvan."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "%(count)s expense(s), %(employees)s employee(s), %(amount)s incl. tax"
 msgstr "%(count)s gasto(s), %(employees)s empleado(s), %(amount)s IVA incl."
@@ -217,6 +223,11 @@ msgid "<span class=\"d-none d-md-inline ms-1\">Delete</span>"
 msgstr "<span class=\"d-none d-md-inline ms-1\">Eliminar</span>"
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.project_project_view_form_expense_budget
+msgid "<span class=\"o_stat_text\">Expenses</span>"
+msgstr "<span class=\"o_stat_text\">Gastos</span>"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
 msgid "<span>to</span>"
 msgstr "<span>a</span>"
@@ -302,13 +313,13 @@ msgstr "Añadir un recibo"
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_reinvoice
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_reinvoice
 msgid ""
-"Adds a \"Re-invoice\" field to expenses and suggests the employee's project running on the receipt date. The expense is then booked on the project's analytic account and added to its sales order, to appear on the next project invoice.\n"
+"Adds a \"Re-invoice\" field to expenses and suggests the employee's project running on the receipt date. The expense is then booked on the project's analytic account. Once approved, it is added up with the project's other expenses on the expense line of its sales order, for the next invoice, and posted when that invoice is.\n"
 "\n"
 "Off by default: not every organisation works by project."
 msgstr ""
-"Añade un campo \"Refacturar\" a los gastos y sugiere el proyecto del empleado en curso en la fecha del recibo. El gasto se imputa entonces a la cuenta analítica del proyecto y se añade a su pedido de venta, para aparecer en la próxima factura del proyecto.\n"
+"Añade un campo «Refacturar» a los gastos y propone el proyecto del empleado vigente en la fecha del justificante. El gasto se imputa entonces a la cuenta analítica del proyecto. Una vez aprobado, se suma a los demás gastos del proyecto en la línea de gastos de su pedido de venta, para la próxima factura, y se contabiliza con esa factura.\n"
 "\n"
-"Desactivado por defecto: no todas las organizaciones trabajan por proyectos."
+"Desactivado por defecto: no todas las organizaciones trabajan por proyecto."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__apply_to_all
@@ -350,6 +361,16 @@ msgstr "Se ignora una fecha más antigua: suele ser la de una garantía o una ta
 #: code:addons/expense_scan/static/src/js/retouch_dialog.xml:0
 msgid "Apply"
 msgstr "Aplicar"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_spent
+msgid "Approved expenses"
+msgstr "Gastos aprobados"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_project_project__expense_scan_progress
+msgid "Approved expenses and expenses to approve, as a percentage of the budget."
+msgstr "Gastos aprobados y gastos por aprobar, como porcentaje del presupuesto."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_export_template_view_form
@@ -411,6 +432,21 @@ msgstr "Libro en blanco"
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_policy_rule__meal_period__breakfast
 msgid "Breakfast"
 msgstr "Desayuno"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_left
+msgid "Budget left"
+msgstr "Presupuesto restante"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_project_project__expense_scan_left
+msgid "Budget minus approved expenses and expenses to approve."
+msgstr "Presupuesto menos los gastos aprobados y los gastos por aprobar."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_progress
+msgid "Budget used"
+msgstr "Presupuesto utilizado"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_merchant
@@ -623,6 +659,11 @@ msgid "Current month"
 msgstr "Mes en curso"
 
 #. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_invoice_id
+msgid "Customer invoice that carries this expense. Set when the invoice is posted; cleared if the invoice goes back to draft."
+msgstr "Factura de cliente que incluye este gasto. Se rellena al contabilizar la factura; se borra si la factura vuelve a borrador."
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__partner_ids
 msgid "Customers"
 msgstr "Clientes"
@@ -680,6 +721,16 @@ msgid "Dates"
 msgstr "Fechas"
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid ""
+"Decide whether to re-invoice these expenses before approving them:\n"
+"%s"
+msgstr ""
+"Decida si estos gastos se refacturan antes de aprobarlos:\n"
+"%s"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_product_id
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_product_id
 msgid "Default category"
@@ -723,6 +774,7 @@ msgid "Dinner"
 msgstr "Cena"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_account_move__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__display_name
@@ -737,6 +789,7 @@ msgstr "Cena"
 #: model:ir.model.fields,field_description:expense_scan.field_ir_http__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_product_product__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_product_template__display_name
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__display_name
@@ -962,6 +1015,11 @@ msgid "Expense Sheets"
 msgstr "Hojas de gastos"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_budget
+msgid "Expense budget"
+msgstr "Presupuesto de gastos"
+
+#. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_product_product__expense_scan_no_vat
 #: model:ir.model.fields,help:expense_scan.field_product_template__expense_scan_no_vat
 msgid ""
@@ -972,6 +1030,11 @@ msgstr ""
 "Categoría de gasto sin IVA recuperable: tarifas fijas y baremos oficiales, pero también alojamiento o transporte de personas cuando el IVA no es deducible. Los gastos de esta categoría ocultan los campos de IVA y no llevan IVA.\n"
 "\n"
 "No hace falta marcarla para el kilometraje: una categoría contada en kilómetros o millas se trata así automáticamente."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_currency_id
+msgid "Expense currency"
+msgstr "Moneda de los gastos"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__family
@@ -1041,8 +1104,10 @@ msgstr "Hojas de gastos y reglas"
 #. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__scope
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_count
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__kind__line
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
+#: model_terms:ir.ui.view,arch_db:expense_scan.project_project_view_form_expense_budget
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Expenses"
 msgstr "Gastos"
@@ -1053,10 +1118,43 @@ msgid "Expenses checked"
 msgstr "Gastos controlados"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_held_back
+msgid "Expenses holding back the invoice"
+msgstr "Gastos que retienen la factura"
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_team.py:0
+#: code:addons/expense_scan/models/project_project.py:0
 msgid "Expenses of %s"
 msgstr "Gastos de %s"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_project_project__expense_scan_spent
+msgid "Expenses of the project approved by the manager, excl. tax."
+msgstr "Gastos del proyecto aprobados por el responsable, sin impuestos."
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_project_project__expense_scan_waiting
+msgid "Expenses of the project waiting for the manager, excl. tax."
+msgstr "Gastos del proyecto en espera del responsable, sin impuestos."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_waiting
+msgid "Expenses to approve"
+msgstr "Gastos por aprobar"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+#: model:mail.activity.type,name:expense_scan.mail_activity_type_waiting
+msgid "Expenses to settle before invoicing"
+msgstr "Gastos por resolver antes de facturar"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_project_project__expense_scan_held_back
+msgid "Expenses waiting for the manager, or whose re-invoicing is still to decide. While there are any, the expense line of the sales order does not move."
+msgstr "Gastos en espera del responsable, o cuya refacturación está por decidir. Mientras haya alguno, la línea de gastos del pedido no se mueve."
 
 #. module: expense_scan
 #: model:ir.actions.act_window,name:expense_scan.expense_scan_export_template_action
@@ -1226,6 +1324,7 @@ msgid "History"
 msgstr "Historial"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_account_move__id
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__id
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__id
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__id
@@ -1240,6 +1339,7 @@ msgstr "Historial"
 #: model:ir.model.fields,field_description:expense_scan.field_ir_http__id
 #: model:ir.model.fields,field_description:expense_scan.field_product_product__id
 #: model:ir.model.fields,field_description:expense_scan.field_product_template__id
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__id
 #: model:ir.model.fields,field_description:expense_scan.field_report_expense_scan_report_expense_sheet__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__id
@@ -1270,6 +1370,16 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Incl. tax"
 msgstr "Impuestos incl."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
+msgid "Invoiced"
+msgstr "Facturados"
+
+#. module: expense_scan
+#: model:ir.model,name:expense_scan.model_account_move
+msgid "Journal Entry"
+msgstr "Asiento contable"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_policy_justification
@@ -1499,6 +1609,8 @@ msgid "Nights required"
 msgstr "Noches obligatorias"
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
 #: model:ir.model.fields.selection,name:expense_scan.selection__hr_expense__reinvoice_mode__none
 msgid "No"
 msgstr "No"
@@ -1525,6 +1637,12 @@ msgstr "Ningún gasto para este empleado"
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "No expense matches the filters."
 msgstr "Ningún gasto coincide con los filtros."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "No project found for %s: open the expense and choose one."
+msgstr "No se ha encontrado ningún proyecto para %s: abra el gasto y elija uno."
 
 #. module: expense_scan
 #. odoo-python
@@ -1572,6 +1690,12 @@ msgstr "N.º"
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "No. %s"
 msgstr "N.º %s"
+
+#. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
+msgid "Not re-invoiced"
+msgstr "No refacturado"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__hr_expense__scan_state__none
@@ -1689,6 +1813,16 @@ msgid "Outside the rules"
 msgstr "Fuera de las reglas"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_over_budget
+msgid "Over budget"
+msgstr "Presupuesto superado"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.project_project_view_search_expense_budget
+msgid "Over expense budget"
+msgstr "Presupuesto de gastos superado"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_own
 msgid "Own expense"
 msgstr "Gasto propio"
@@ -1729,6 +1863,11 @@ msgstr "Periodo (texto)"
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Photo processing"
 msgstr "Tratamiento de la foto"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_project_project__expense_scan_budget
+msgid "Planned expenses of the project, excl. tax. Leave empty for no budget."
+msgstr "Gastos previstos del proyecto, sin impuestos. Déjelo vacío si no hay presupuesto."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_todo_codes
@@ -1777,6 +1916,7 @@ msgid "Product Variant"
 msgstr "Variante de producto"
 
 #. module: expense_scan
+#: model:ir.model,name:expense_scan.model_project_project
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__project_id
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__mission
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
@@ -1835,6 +1975,11 @@ msgid "Rate"
 msgstr "Tipo"
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_list_invoicing
+msgid "Re-invoicable"
+msgstr "Refacturable"
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__reinvoice_mode
@@ -1848,10 +1993,33 @@ msgid "Re-invoice expenses to a project"
 msgstr "Refacturar los gastos a un proyecto"
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
+msgid "Re-invoice toggle"
+msgstr "Interruptor de refacturación"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_account_bank_statement_line__expense_scan_expense_ids
+#: model:ir.model.fields,field_description:expense_scan.field_account_move__expense_scan_expense_ids
+msgid "Re-invoiced expenses"
+msgstr "Gastos refacturados"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__reinvoice_only
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__scope__reinvoice
 msgid "Re-invoiced expenses only"
 msgstr "Solo gastos refacturables"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_invoice_id
+msgid "Re-invoiced on"
+msgstr "Refacturado en"
+
+#. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
+msgid "Re-invoiced to the customer"
+msgstr "Refacturado al cliente"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_scan
@@ -1890,6 +2058,11 @@ msgstr "Vuelve a leer tras un cuarto de vuelta cuando el texto va en vertical. M
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_auto_rotate
 msgid "Reads the receipt again after rotating it when the text seems to run vertically. Makes that scan slower."
 msgstr "Vuelve a leer el recibo tras girarlo cuando el texto parece ir en vertical. Hace ese escaneo más lento."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
+msgid "Ready to invoice"
+msgstr "Listos para facturar"
 
 #. module: expense_scan
 #. odoo-python
@@ -1961,6 +2134,11 @@ msgstr "Escaneo de recibos: aprender las palabras de cada categoría"
 #: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_pending_ir_actions_server
 msgid "Receipt scan: pick up pending scans"
 msgstr "Escaneo de recibos: retomar los escaneos pendientes"
+
+#. module: expense_scan
+#: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_order_lines_ir_actions_server
+msgid "Receipt scan: update the expense line of the sales orders"
+msgstr "Escaneo de recibos: actualizar la línea de gastos de los pedidos"
 
 #. module: expense_scan
 #. odoo-javascript
@@ -2491,6 +2669,12 @@ msgid "The form cannot be saved as it is: correct it, then try again."
 msgstr "El formulario no se puede guardar tal cual: corríjalo y vuelva a intentarlo."
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "The invoice %(invoice)s carries this expense, but it could not be posted: %(error)s"
+msgstr "La factura %(invoice)s incluye este gasto, pero no se ha podido contabilizar: %(error)s"
+
+#. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night
 msgid "The limit is for one night: the amount is divided by the number of nights."
 msgstr "El límite es por noche: el importe se divide por el número de noches."
@@ -2505,6 +2689,12 @@ msgstr "El comercio tal como lo leyó el OCR, antes de cualquier corrección. Un
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "The openpyxl library is missing on the server."
 msgstr "Falta la biblioteca openpyxl en el servidor."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "The re-invoicing of %s can no longer change."
+msgstr "La refacturación de %s ya no puede cambiar."
 
 #. module: expense_scan
 #. odoo-javascript
@@ -2683,9 +2873,17 @@ msgid "To check"
 msgstr "A comprobar"
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
 #: model:ir.model.fields.selection,name:expense_scan.selection__hr_expense__reinvoice_mode__todo
 msgid "To decide"
 msgstr "Por decidir"
+
+#. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
+msgid "To decide: click to re-invoice"
+msgstr "Por decidir: haga clic para refacturar"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_scan
@@ -2760,6 +2958,12 @@ msgstr "Importe unitario sin impuestos"
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__ttc_unitaire
 msgid "Unit amount incl. tax"
 msgstr "Importe unitario impuestos incl."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "Unknown choice."
+msgstr "Opción desconocida."
 
 #. module: expense_scan
 #. odoo-python
@@ -2877,9 +3081,17 @@ msgid "Workbook"
 msgstr "Libro"
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
 #: model:ir.model.fields.selection,name:expense_scan.selection__hr_expense__reinvoice_mode__project
 msgid "Yes"
 msgstr "Sí"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "You cannot edit this expense."
+msgstr "No puede modificar este gasto."
 
 #. module: expense_scan
 #. odoo-python
