@@ -679,6 +679,11 @@ def brand_index():
                     index[key] = (family, _nicer(name, shown))
                 continue
             index[key] = (family, name)
+    # A name only found in lower case ("billa", "spar") or upper case is
+    # shown capitalised.
+    for key, (family, name) in index.items():
+        if name == name.lower() or name == name.upper():
+            index[key] = (family, re.sub(r"'S\b", "'s", name.title()))
     _BRAND_INDEX = index
     return index
 

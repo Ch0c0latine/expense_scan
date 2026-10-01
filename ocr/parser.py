@@ -2024,6 +2024,10 @@ def _rate_from_items(fields, lines):
     """
     if fields["tax_rate"].value is not None or fields["tax_rate_max"].value is not None:
         return
+    if fields["tax_amount"].value is None:
+        # Without a tax line, a "25%" on an item is a discount ("App-Joker
+        # 25%") or a fat content ("Topfen 20%"), as likely as a rate.
+        return
     rates, source = set(), []
     for line in lines:
         text = normalize(line.text)
