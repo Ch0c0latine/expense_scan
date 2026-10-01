@@ -40,6 +40,10 @@ TRIP_DAYS = 3
 #: Tax printed above the exact ceiling of its rate, still accepted: tills
 #: round the tax line by line.
 TAX_ROUNDING_MARGIN = 0.02
+#: Words that name a value-added tax in the name of a tax group ("IVA 21%",
+#: "VAT 8%", "22%"): the group of a pension contribution has none.
+VAT_GROUP_RE = re.compile(r"%|VAT|IVA|TVA|MWST|UST|BTW|MOMS|MVA|PTU|DPH|TAX|STEUER|TAXE|IGIC|IPSI",
+                          re.IGNORECASE)
 #: Names of the domestic VAT on receipts, per country of the company, as
 #: the parser reads them. A receipt printing another name comes from abroad:
 #: "MWST" for a French company, "TVA" for a German one. "VAT", the English
@@ -2426,8 +2430,12 @@ class HrExpense(models.Model):
                 return same[:1]
             # No such tax at this rate: another one of the same kind, never a
             # tax of another kind ("4% INPS", a pension contribution, is the
-            # only active purchase tax at 4 % of the Italian chart).
-            kind = plain.filtered(lambda tax: group(tax) == group(default))
+            # only active purchase tax at 4 % of the Italian chart). Same
+            # group as the default tax, or a group named like a VAT (a custom
+            # "7% IGIC" of a Spanish chart has a group of its own).
+            kind = plain.filtered(
+                lambda tax: group(tax) == group(default)
+                or VAT_GROUP_RE.search(tax.tax_group_id.name or ''))
             return (kind.filtered(lambda tax: not tax.fiscal_position_ids) or kind)[:1]
         return domestic[:1]
 
