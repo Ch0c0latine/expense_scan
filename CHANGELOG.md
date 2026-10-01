@@ -1,5 +1,35 @@
 # Changelog
 
+## 19.0.2.9.0 — 2026-10-02
+
+- **Re-invoicing on one order line**: the approved expenses of a project add
+  up on the expense line of its sales order (the line whose product can be
+  expensed; one is added if the order has none). Its quantity is the amount
+  excl. tax at a unit price of 1, so an invoice carries one line for the
+  month's expenses instead of one line per expense. Odoo's own mechanism
+  (one line per posted expense) is no longer triggered: re-invoiced expenses
+  no longer fill the standard "Customer to Reinvoice" field.
+  - The line only moves once nothing is left waiting for the manager or for
+    a decision on the project; an activity on the order says so, and the
+    line bills only what it already holds in the meantime.
+  - When the customer invoice is posted, the expenses it covers (oldest
+    first) are noted on it and posted, unless they were posted by hand
+    before. An expense that cannot be posted says why in its chatter; the
+    invoice is not held up. Back to draft or cancelled, the invoice lets its
+    expenses go.
+  - A daily task is the safety net. Without Sales, a project or the company
+    setting, nothing changes.
+- **Re-invoicable column** in the expense lists: a ticked box, an empty box
+  or a question mark (to decide), changed with one click. "Yes" looks for
+  the project of the receipt date, as the scan does.
+- **Approval settles the re-invoicing**: an expense left "to decide" cannot
+  be approved.
+- **Expense budget** on the project: planned amount, approved expenses,
+  expenses to approve, budget left and a progress bar; a button lists the
+  expenses and a filter finds the projects over budget.
+- Expenses carry the invoice that re-invoiced them (filters "Ready to
+  invoice" and "Invoiced").
+
 ## 19.0.2.8.7 — 2026-10-01
 
 - **Polish, Swiss, Austrian and Italian receipts, from the corpus**:

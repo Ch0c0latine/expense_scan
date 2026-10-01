@@ -105,8 +105,10 @@ class ResCompany(models.Model):
         default=False,
         help="Adds a \"Re-invoice\" field to expenses and suggests the "
              "employee's project running on the receipt date. The expense is "
-             "then booked on the project's analytic account and added to its "
-             "sales order, to appear on the next project invoice.\n\n"
+             "then booked on the project's analytic account. Once approved, it "
+             "is added up with the project's other expenses on the expense "
+             "line of its sales order, for the next invoice, and posted when "
+             "that invoice is.\n\n"
              "Off by default: not every organisation works by project.",
     )
     expense_scan_product_id = fields.Many2one(

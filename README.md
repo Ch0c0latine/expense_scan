@@ -56,7 +56,9 @@ what is missing:
 - **Trip purpose**: an expense on the same day or at the same place as a
   neighbouring expense takes up its description ("Sales visit Acme").
 - **Projects**: re-invoice an expense to a project, or charge it to the
-  project budget only; the analytic account follows the project.
+  project budget only; the analytic account follows the project. The approved
+  expenses of a project add up on one line of its sales order, and an
+  expense budget can be followed on the project.
 - **Expense sheets**: PDF summary with tax by rate and numbered receipts,
   Excel export on your own template.
 - **Expense rules**: meal, daily and hotel ceilings, words to watch; a
@@ -175,8 +177,22 @@ and its own requirements.
 
 ## Projects, expense sheets and expense rules
 
+- **Re-invoicing**: the *Re-invoicable* column of the expense lists shows
+  whether an expense is re-invoiced (a ticked box), not (an empty box) or
+  still to decide (a question mark); a click switches it. The manager cannot
+  approve an expense whose re-invoicing is still to decide. Once approved, the
+  expense is added up with the others of its project on the **expense line**
+  of the project's sales order (the line whose product can be expensed): its
+  quantity is the amount excl. tax, at a unit price of 1, so one invoice line
+  carries the month's expenses. The line only moves when no expense of the
+  project is left waiting for the manager or for a decision (an activity
+  on the order says so). When the invoice is posted, the expenses it covers
+  are posted too, unless they were posted by hand before, to repay the
+  employee without waiting. Without Sales, nothing changes.
+- **Expense budget**: the project form holds a planned amount, the approved
+  expenses, those still to approve and the budget left.
 - **Project and task**: "Re-invoice: Yes" puts the expense on the project's
-  sales order; "No" can keep the project, for tracking only. The expense is
+  sales order line (see above); "No" can keep the project, for tracking only. The expense is
   charged to the project's analytic account (created if needed): it shows
   under the project's **Expenses** button, and in its profitability once
   posted. The **Task** field only shows if the project has open tasks; the
