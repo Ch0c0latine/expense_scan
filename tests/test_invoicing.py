@@ -86,6 +86,14 @@ class TestInvoicing(common.TransactionCase):
         self.expense(30.0)
         self.assertEqual(self.line.product_uom_qty, 0.0)
 
+    def test_an_activity_flags_the_order_while_expenses_wait(self):
+        activity_type = self.env.ref('expense_scan.mail_activity_type_waiting')
+        waiting = self.expense(30.0)
+        flagged = self.order.activity_ids.filtered(lambda a: a.activity_type_id == activity_type)
+        self.assertEqual(len(flagged), 1)
+        self.approve(waiting)
+        self.assertFalse(self.order.activity_ids.filtered(lambda a: a.activity_type_id == activity_type))
+
     def test_not_re_invoiced_and_other_projects_are_left_out(self):
         other = self.env['project.project'].create({'name': "Autre mission"})
         kept = self.expense(40.0, mode='none')

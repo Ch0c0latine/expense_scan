@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 T.T.C. SAS
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<odoo noupdate="1">
+
+    <!-- Shown on a sales order whose expense line is held back by expenses
+         that still wait for the manager or for a decision. -->
+    <record id="mail_activity_type_waiting" model="mail.activity.type">
+        <field name="name">Expenses to settle before invoicing</field>
+        <field name="icon">fa-money</field>
+        <field name="delay_count">0</field>
+    </record>
+
+</odoo>

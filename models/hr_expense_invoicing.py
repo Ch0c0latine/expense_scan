@@ -169,6 +169,26 @@ class HrExpense(models.Model):
         return self.env['product.product'].sudo().search(domain, order='id', limit=1)
 
     @api.model
+    def _expense_scan_flag_waiting(self, order, waiting):
+        """An activity on the order while expenses hold its line back."""
+        activity_type = self.env.ref('expense_scan.mail_activity_type_waiting', raise_if_not_found=False)
+        if not activity_type or 'activity_ids' not in order._fields:
+            return
+        existing = order.activity_ids.filtered(lambda a: a.activity_type_id == activity_type)
+        if not waiting:
+            existing.unlink()
+            return
+        note = _("%(count)s expense(s) wait for the manager or for a decision. The expense line "
+                 "of this order does not move until they are settled.", count=len(waiting))
+        if existing:
+            existing.write({'note': note})
+        else:
+            order.activity_schedule(
+                'expense_scan.mail_activity_type_waiting',
+                summary=_("Expenses to settle before invoicing"), note=note,
+                user_id=(order.user_id or self.env.user).id)
+
+    @api.model
     def _expense_scan_hold_line(self, order):
         """While expenses wait, the line bills what it already holds, no more.
 
@@ -188,7 +208,9 @@ class HrExpense(models.Model):
         projects = self._expense_scan_projects_of(order)
         if not projects:
             return
-        if self._expense_scan_waiting(projects, company):
+        waiting = self._expense_scan_waiting(projects, company)
+        self._expense_scan_flag_waiting(order, waiting)
+        if waiting:
             self._expense_scan_hold_line(order)
             return
         counted = self._expense_scan_counted(projects, company)

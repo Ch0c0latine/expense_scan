@@ -53,6 +53,7 @@ https://github.com/sponsors/Ch0c0latine
         'data/export_templates.xml',
         'data/expense_policies.xml',
         'data/expense_scan_cron.xml',
+        'data/mail_activity_types.xml',
         'data/menu_icon.xml',
         'views/hr_expense_views.xml',
         'views/hr_employee_views.xml',
