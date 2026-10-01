@@ -759,6 +759,12 @@ ADRIA SANT ALCAMPO
         self.assertEqual(lidl_new.value('total'), 18.28)
         self.assertEqual(lidl_new.value('tax_amount'), 0.87)
 
+    def test_the_slogan_of_a_swiss_chain_is_not_part_of_its_name(self):
+        self.assertEqual(self.parse("Pour moi et pour toi. coop\nNeuchâtel Maladière\n"
+                                    "SOMME CHF 86.75").value('merchant'), "Coop")
+        self.assertEqual(self.parse("Pour moi et pour toi.\nNeuchâtel Gare\nSOMME CHF 7.25")
+                         .value('merchant'), "Coop")
+
     def test_a_street_written_in_one_word_is_not_the_merchant(self):
         self.assertIsNone(self.parse("Hauptstrasse 45\n2340 Mödling\nTOTAL 3,50").value('merchant'))
         self.assertEqual(self.parse("EUR\nKaufland - Gutschmidtstraße 19\nSUMME 3,50").value('merchant'),

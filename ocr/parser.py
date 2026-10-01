@@ -665,6 +665,9 @@ LEGAL_FORM_RE = re.compile(
     r"\bS\.?\s?P\.?\s?A\b|\bS\.?\s?R\.?\s?L\b|\bGMBH\b|\bLTD\b|\bLLC\b"
     r"|\bSARL\b|\bSASU?\b|\bEURL\b|\bSNC\b|\bB\.?V\b", re.IGNORECASE)
 LEGAL_FORM_BONUS = 1.15
+#: Coop's slogan, printed on its receipts: "Pour moi et pour toi. coop".
+SLOGAN_RE = re.compile(
+    r"^\W*(?:pour moi et pour toi|f[uü]r mich und f[uü]r dich|per me e per te)\W*", re.IGNORECASE)
 #: The Polish form after the name, to leave out: "Rossmann SDP Sp. z o.o. Sk".
 POLISH_FORM_TAIL_RE = re.compile(
     r"\s+sp\.?\s*z\s*[o0]\.?\s*[o0]\.?(?:\s+(?:sp\.?\s*)?[kj]\.?|\s+s\.?k\.?a?\.?)?\s*$",
@@ -798,6 +801,13 @@ def extract_merchant(lines, max_lines=10, buyers=()):
     best = None
     for position, line in enumerate(lines[:max_lines]):
         raw = line.text.strip()
+        # The slogan of a Swiss chain, printed before its name or on its own
+        # line: the logo is then the merchant (Coop).
+        slogan = SLOGAN_RE.match(raw)
+        if slogan:
+            raw = raw[slogan.end():].strip().title()
+            if sum(char.isalpha() for char in raw) < 3:
+                raw = "Coop"
         # "ASFLieu-dit 47901 AGEN Cedex": name glued to the locality, followed
         # by the address. Only what precedes the locality is a candidate.
         before_place = re.split(r"(?i)\s*lieu[- ]?dit", raw)[0].strip()
@@ -850,6 +860,8 @@ def extract_merchant(lines, max_lines=10, buyers=()):
         weight = (0.85 - 0.08 * position) * min(1.0, 0.4 + letters / 18.0)
         if LEGAL_FORM_RE.search(raw):
             weight *= LEGAL_FORM_BONUS
+        if slogan:
+            weight *= 2.0  # the logo under the slogan: nothing else competes
         confidence = weight * max(line.score, 0.4)
         if best is None or confidence > best[0]:
             best = (confidence, raw)
