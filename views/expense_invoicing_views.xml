@@ -62,10 +62,7 @@
                             <field name="expense_scan_spent" widget="monetary"
                                    decoration-danger="expense_scan_over_budget"/>
                         </span>
-                        <span class="o_stat_text" invisible="expense_scan_budget">Expenses</span>
-                        <span class="o_stat_text" invisible="not expense_scan_budget">
-                            of <field name="expense_scan_budget" widget="monetary" class="oe_inline"/>
-                        </span>
+                        <span class="o_stat_text">Expenses</span>
                     </div>
                 </button>
             </xpath>
