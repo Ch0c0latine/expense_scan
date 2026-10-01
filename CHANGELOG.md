@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 19.0.2.8.7 — 2026-10-01
 
 - **Polish, Swiss, Austrian and Italian receipts, from the corpus**:
   - Polish "SUMA PLN SUMA PTU 141,83 16,65" (total and tax on one line,
@@ -32,6 +32,13 @@
     when the receipt has no tax line: Austrian receipts were marked as
     carrying a foreign tax.
   - The keyword "b&b" no longer matches the "B-B" of a chewing gum.
+  - Two column labels merged on the total line ("TOTALE COMPLESSIVO
+    SUBTOTALE 42,48 2,15", Lidl Italia): the total and the tax were lost.
+  - A custom tax at the rate of the receipt (a 7 % "IGIC") is taken when its
+    tax group is named like a VAT; a pension contribution still is not.
+- **Tested on eight charts of accounts**: the module's tests (399) pass on charts of
+  accounts of France, Germany, Austria, Switzerland, Spain, Italy, Poland
+  and Sweden, each with some twenty real receipts uploaded by an employee.
 - **Dependencies declared** in the manifest (OpenCV, NumPy, RapidOCR, ONNX
   Runtime, pdf2image, openpyxl, and the `pdftoppm` program of Poppler): Odoo
   names a missing one when the module is installed. Tesseract stays optional.
