@@ -299,7 +299,7 @@ class HrExpense(models.Model):
         # The standard "Customer to Reinvoice" stays empty: Odoo would add one
         # order line per expense. The expense reaches the order through its
         # project instead (see hr_expense_invoicing.py).
-        if 'sale_order_id' in self._fields:
+        if reinvoice and 'sale_order_id' in self._fields:
             values['sale_order_id'] = False
         return values
 

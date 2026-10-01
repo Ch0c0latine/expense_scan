@@ -28,7 +28,8 @@ class TestInvoicing(common.TransactionCase):
             'expense_manager_id': cls.env.ref('base.user_admin').id,
         })
         cls.category = cls.env['product.product'].create(
-            {'name': "Hotel facturable", 'can_be_expensed': True, 'standard_price': 0.0})
+            {'name': "Hotel facturable", 'can_be_expensed': True, 'standard_price': 0.0,
+             'supplier_taxes_id': [Command.clear()]})
         cls.service = cls.env['product.product'].create({
             'name': "Assistance facturable", 'type': 'service', 'list_price': 500.0,
             'invoice_policy': 'delivery'})

@@ -184,6 +184,9 @@ class HrExpense(models.Model):
         amount = order.currency_id.round(amount)
 
         line = self._expense_scan_order_line(order)
+        if line and not amount and not line.qty_delivered and not line.qty_invoiced:
+            # Nothing to say yet: the quotation keeps its own figures.
+            return
         if not line:
             if not amount or order.locked:
                 return
