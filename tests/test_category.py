@@ -534,12 +534,11 @@ class TestCategoryRecognition(common.TransactionCase):
         self.fiscal_country('ES')
         # A rate the company's taxes do not know (10 % on a Polish chart)
         # would make the receipt foreign by itself.
-        if not self.env['account.tax'].search_count([
-                ('company_id', '=', self.company.id), ('type_tax_use', '=', 'purchase'),
-                ('amount_type', '=', 'percent'), ('amount', '=', 10.0)]):
-            self.env['account.tax'].create({
-                'name': "10% test", 'amount': 10.0, 'type_tax_use': 'purchase',
-                'company_id': self.company.id})
+        purchase_taxes = self.env['account.tax'].search([
+            ('company_id', '=', self.company.id), ('type_tax_use', '=', 'purchase'),
+            ('amount_type', '=', 'percent')])
+        if purchase_taxes and not purchase_taxes.filtered(lambda tax: tax.amount == 10.0):
+            purchase_taxes[0].copy({'name': "10% test", 'amount': 10.0})
         italian = reading("AUTOGRILL SPA\nP.IVA 00000000000\nTOTALE COMPLESSIVO 8,00\n"
                           "DI CUI IVA 10% 0,73")
         self.assertEqual(expense._expense_scan_foreign_tax(italian, self.company), "IVA")
