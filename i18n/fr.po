@@ -1954,7 +1954,7 @@ msgstr "Scan de tickets : effacer le texte lu des anciennes dépenses"
 #. module: expense_scan
 #: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_ecb_rates_ir_actions_server
 msgid "Receipt scan: exchange rates of the European Central Bank"
-msgstr "Analyse des tickets : taux de change de la Banque centrale européenne"
+msgstr "Scan de tickets : taux de change de la Banque centrale européenne"
 
 #. module: expense_scan
 #: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_learn_words_ir_actions_server
