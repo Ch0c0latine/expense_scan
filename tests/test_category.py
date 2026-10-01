@@ -25,16 +25,18 @@ class TestLexicon(common.TransactionCase):
 
     def test_learnt_words(self):
         from ..ocr import categorize
-        # (category, text, merchant, category chosen by a person)
-        receipts = ([('toll', "ASF peage autoroute A62 sortie classe 1 Agen", 'asf', True)] * 2
-                    + [('toll', "APRR peage autoroute A6 sortie classe 1 Agen", 'aprr', True)] * 2
+        chosen, kept = categorize.CHOSEN, categorize.KEPT
+        # (category, text, merchant, how the category was set)
+        receipts = ([('toll', "ASF peage autoroute A62 sortie classe 1 Agen", 'asf', chosen)] * 2
+                    + [('toll', "APRR peage autoroute A6 sortie classe 1 Agen", 'aprr', chosen)] * 2
                     + [('meal', "Brasserie du Quai couverts plat du jour parking TOTAL",
-                        'quai', True)] * 2
-                    + [('meal', "Bistrot Zorg couverts plat du jour parking TOTAL", 'zorg', True)] * 2
-                    + [('meal', "Pizzeria Roma coperto margherita", 'roma', True)] * 3
-                    + [('meal', "Snack kebab frites", None, True)] * 3
-                    + [('toll', "Parking Zentrum ticket horaire", 'zentrum', False)] * 3
-                    + [('toll', "Parking Gare ticket horaire", 'gare', False)] * 3)
+                        'quai', chosen)] * 2
+                    + [('meal', "Bistrot Zorg couverts plat du jour parking TOTAL",
+                        'zorg', chosen)] * 2
+                    + [('meal', "Pizzeria Roma coperto margherita", 'roma', chosen)] * 3
+                    + [('meal', "Snack kebab frites", None, chosen)] * 3
+                    + [('toll', "Parking Zentrum ticket horaire", 'zentrum', kept)] * 3
+                    + [('toll', "Parking Gare ticket horaire", 'gare', kept)] * 3)
         learnt = categorize.learn_words(
             receipts, excluded={'agen'}, known={'toll': ['peage'], 'lunch': ['plat']})
         self.assertIn('autoroute', learnt['toll'])
@@ -48,6 +50,13 @@ class TestLexicon(common.TransactionCase):
         self.assertNotIn('parking', learnt['meal'])    # also on the receipts of tolls
         self.assertNotIn('horaire', learnt['toll'])    # only suggestions kept as is
         self.assertEqual(categorize.learn_words(receipts[:5]), {})  # too few receipts
+        # "jour" led a hotel receipt to the meals; corrected once, it is
+        # no longer a word of the meals.
+        corrected = receipts + [('hotel', "Hotel Zorn nuit petit jour", 'zorn',
+                                 categorize.CORRECTED)]
+        learnt = categorize.learn_words(corrected, known={'toll': ['peage']})
+        self.assertNotIn('jour', learnt['meal'])
+        self.assertIn('couverts', learnt['meal'])
 
     def test_families_follow_category_names(self):
         self.assertEqual(lexicon.family_of("HEBERGEMENT", "Hebergement Hotel/Bnb"), 'lodging')
@@ -431,6 +440,19 @@ class TestCategoryRecognition(common.TransactionCase):
         values = self.expense()._expense_scan_category_values(
             reading("KWOBBLE\nLicencezz annualizz\nTOTAL 49,00"), self.company)
         self.assertEqual(values['product_id'], software.id)
+
+    def test_a_corrected_suggestion_relearns_at_once(self):
+        """Correcting a suggested category checks the learnt words again."""
+        self.lodging.expense_scan_learned_keywords = "quimbozz"
+        cron = self.env.ref('expense_scan.ir_cron_expense_scan_learn_words')
+        triggers = self.env['ir.cron.trigger'].sudo()
+        before = triggers.search_count([('cron_id', '=', cron.id)])
+        self.expense(product_id=self.food.id).product_id = self.lodging
+        self.assertEqual(triggers.search_count([('cron_id', '=', cron.id)]), before)
+        expense = self.expense(product_id=self.lodging.id,
+                               expense_scan_guessed_product_id=self.lodging.id)
+        expense.product_id = self.food
+        self.assertEqual(triggers.search_count([('cron_id', '=', cron.id)]), before + 1)
 
     def test_drafts_teach_nothing(self):
         past = self.expense(product_id=self.food.id)

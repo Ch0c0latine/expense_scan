@@ -47,7 +47,10 @@
   A word must also come from at least two merchants (the words of a single
   merchant, its name or its street, are already known from the merchant
   history), and a word entered on a category by hand is never learnt for
-  another one.
+  another one. Correcting a suggested category (even on a draft) checks
+  the learnt words again within minutes: the correction weighs as three
+  receipts against the words that led to the wrong category. The log tells
+  how many words were learnt, from how many receipts.
 - **Italian receipts** (new database in Italy, the Italian corpus and real
   receipts of trips): the rate printed on the items when the tax line has
   none ("di cui IVA 3,55" under items at "10,00%"; several rates give the

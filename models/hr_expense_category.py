@@ -368,25 +368,34 @@ class HrExpense(models.Model):
     def _cron_expense_scan_learn_words(self):
         """Learn the words of each category from the receipts filed by the team.
 
-        Only submitted expenses (or later) count, and only their text still
-        kept (see the retention delay). Among them, only those whose category
-        a person chose teach: a suggestion kept as is would teach back its
-        own words, mistakes included. The names of the employees and
+        Submitted expenses (or later) count, and drafts whose suggested
+        category was corrected; only their text still kept (see the
+        retention delay). Among them, only those whose category a person
+        chose or corrected teach: a suggestion kept as is would teach back
+        its own words, mistakes included. The names of the employees and
         companies are never learnt: they are on the receipts (hotel bills)
         without saying anything about the category.
         """
         Expense = self.sudo()
         expenses = Expense.search([
-            ('state', 'in', CONFIRMED_STATES),
             ('product_id', '!=', False),
             ('scan_raw_text', '!=', False),
+            '|', ('state', 'in', CONFIRMED_STATES),
+                 '&', ('state', '=', 'draft'), ('expense_scan_guessed_product_id', '!=', False),
         ], order='id desc', limit=LEARN_LIMIT)
         defaults = {company._expense_scan_default_product().id
                     for company in self.env['res.company'].sudo().search([])}
-        receipts = [(expense.product_id.product_tmpl_id.id, expense.scan_raw_text,
-                     expense.expense_scan_merchant_key or expense.expense_scan_merchant_read or None,
-                     expense.product_id != expense.expense_scan_guessed_product_id)
-                    for expense in expenses if expense.product_id.id not in defaults]
+        receipts = []
+        for expense in expenses:
+            guessed = expense.expense_scan_guessed_product_id
+            if expense.product_id.id in defaults or (expense.state == 'draft'
+                                                     and expense.product_id == guessed):
+                continue
+            how = (categorize.KEPT if expense.product_id == guessed
+                   else categorize.CORRECTED if guessed else categorize.CHOSEN)
+            receipts.append((expense.product_id.product_tmpl_id.id, expense.scan_raw_text,
+                             expense.expense_scan_merchant_key
+                             or expense.expense_scan_merchant_read or None, how))
         names = (self.env['hr.employee'].sudo().with_context(active_test=False).search([]).mapped('name')
                  + self.env['res.company'].sudo().search([]).mapped('name')
                  + self.env['res.users'].sudo().with_context(active_test=False).search([]).mapped('name'))
@@ -400,7 +409,29 @@ class HrExpense(models.Model):
             words = "\n".join(learnt.get(template.id, [])) or False
             if (template.expense_scan_learned_keywords or False) != words:
                 template.expense_scan_learned_keywords = words
+        # Counts only: the words come from the receipts of the employees.
+        _logger.info(
+            "expense_scan: %d words learnt for %d categories, from %d receipts "
+            "(%d filed by a person)", sum(map(len, learnt.values())), len(learnt),
+            len(receipts), sum(1 for receipt in receipts if receipt[3] != categorize.KEPT))
         return len(learnt)
+
+    def write(self, vals):
+        # A suggested category corrected by a person: the words that led to
+        # it are checked again at once, without waiting for the next day.
+        corrected = self.browse()
+        if 'product_id' in vals and 'expense_scan_guessed_product_id' not in vals:
+            corrected = self.filtered(
+                lambda expense: expense.expense_scan_guessed_product_id
+                and expense.product_id == expense.expense_scan_guessed_product_id
+                and expense.product_id.id != vals['product_id'])
+        result = super().write(vals)
+        if corrected.expense_scan_guessed_product_id.filtered('expense_scan_learned_keywords'):
+            cron = self.env.ref('expense_scan.ir_cron_expense_scan_learn_words',
+                                raise_if_not_found=False)
+            if cron:
+                cron.sudo()._trigger()
+        return result
 
     def _expense_scan_reason(self, reason, number=None):
         """Sentence explaining the category clue that was kept.

@@ -86,6 +86,13 @@ LEARN_MIN_PRECISION = 0.85
 #: merchant (its name, its street) are already known from the merchant
 #: history, and say nothing about the next merchant.
 LEARN_MIN_MERCHANTS = 2
+#: How the category of a receipt was set: suggested by the scan and kept,
+#: chosen by a person, or suggested and corrected by a person.
+KEPT, CHOSEN, CORRECTED = 'kept', 'chosen', 'corrected'
+#: A correction weighs as much as this many receipts against the words of
+#: the other categories: a word that led to a wrong suggestion loses its
+#: place at once, unless many receipts confirm it.
+LEARN_CORRECTION_WEIGHT = 3
 #: Below this many receipts in all, the words say nothing: with a single
 #: category in use, every word of its receipts would look specific.
 LEARN_MIN_CORPUS = 10
@@ -131,24 +138,27 @@ def receipt_words(text, excluded=()):
 def learn_words(receipts, excluded=(), known=None):
     """``{category: [words]}`` learnt from receipts already filed.
 
-    ``receipts``: ``[(category, text, merchant, chosen)]``. Only the
-    receipts whose category a person chose (``chosen``) teach: a category
-    suggested by the scan and kept as is would teach back the words that
-    suggested it, mistakes included. All of them count to tell whether a
-    word belongs to a single category. ``merchant``: key of the merchant,
-    ``None`` when unknown (the unknown ones count as one merchant).
-    ``excluded``: words never to learn (names of the employees and of the
-    company). ``known``: ``{category: [words]}`` declared by hand; such a
-    word is not learnt again, nor for another category.
+    ``receipts``: ``[(category, text, merchant, how)]``, ``how`` being
+    ``KEPT``, ``CHOSEN`` or ``CORRECTED``. Only the receipts whose category
+    a person chose or corrected teach: a category suggested by the scan and
+    kept as is would teach back the words that suggested it, mistakes
+    included. All of them count to tell whether a word belongs to a single
+    category, a correction more than the others. ``merchant``: key of the
+    merchant, ``None`` when unknown (the unknown ones count as one
+    merchant). ``excluded``: words never to learn (names of the employees
+    and of the company). ``known``: ``{category: [words]}`` declared by
+    hand; such a word is not learnt again, nor for another category.
     """
     declared = {word for words in (known or {}).values() for word in words}
     everywhere, in_category = Counter(), Counter()
     taught, sizes, merchants = {}, Counter(), {}
-    for category, text, merchant, chosen in receipts:
+    for category, text, merchant, how in receipts:
         words = receipt_words(text, excluded)
-        everywhere.update(words)
-        in_category.update((category, word) for word in words)
-        if not chosen:
+        weight = LEARN_CORRECTION_WEIGHT if how == CORRECTED else 1
+        for word in words:
+            everywhere[word] += weight
+            in_category[category, word] += weight
+        if how == KEPT:
             continue
         sizes[category] += 1
         taught.setdefault(category, Counter()).update(words)
