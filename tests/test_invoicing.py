@@ -111,7 +111,7 @@ class TestInvoicing(common.TransactionCase):
         self.assertEqual((first | second).expense_scan_invoice_id, invoice)
         self.assertEqual(self.line.qty_invoiced, 150.0)
         for expense in first | second:
-            self.assertIn(expense.state, ('posted', 'in_payment', 'paid', 'approved'))
+            self.assertEqual(expense.state, 'posted', "the invoice posts the expenses it covers")
 
     def test_next_invoice_only_takes_what_is_new(self):
         first = self.expense(100.0)
