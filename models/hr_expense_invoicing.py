@@ -169,12 +169,27 @@ class HrExpense(models.Model):
         return self.env['product.product'].sudo().search(domain, order='id', limit=1)
 
     @api.model
+    def _expense_scan_hold_line(self, order):
+        """While expenses wait, the line bills what it already holds, no more.
+
+        A product invoiced on the ordered quantity would otherwise bill the
+        figure typed in the quotation.
+        """
+        line = self._expense_scan_order_line(order)
+        if not line or order.locked or line.product_id.invoice_policy != 'order':
+            return
+        held = max(line.qty_delivered, line.qty_invoiced)
+        if float_compare(line.product_uom_qty, held, precision_digits=2):
+            line.sudo().write({'product_uom_qty': held})
+
+    @api.model
     def _expense_scan_sync_order(self, order):
         company = order.company_id
         projects = self._expense_scan_projects_of(order)
         if not projects:
             return
         if self._expense_scan_waiting(projects, company):
+            self._expense_scan_hold_line(order)
             return
         counted = self._expense_scan_counted(projects, company)
         amount = sum(counted.mapped('untaxed_amount'))

@@ -81,6 +81,11 @@ class TestInvoicing(common.TransactionCase):
         self.approve(waiting)
         self.assertEqual(self.line.qty_delivered, 130.0)
 
+    def test_while_expenses_wait_the_line_bills_nothing_more(self):
+        self.line.product_uom_qty = 59.0
+        self.expense(30.0)
+        self.assertEqual(self.line.product_uom_qty, 0.0)
+
     def test_not_re_invoiced_and_other_projects_are_left_out(self):
         other = self.env['project.project'].create({'name': "Autre mission"})
         kept = self.expense(40.0, mode='none')
