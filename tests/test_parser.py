@@ -739,6 +739,35 @@ ADRIA SANT ALCAMPO
         self.assertEqual(returned.value('total'), 294.66)
         self.assertNotEqual(returned.value('tax_amount'), 297.16)
 
+    def test_polish_tax_rows_and_merchants(self):
+        carrefour = self.parse(
+            "Nr rej. GIOS: E0002419WZBW\n03-734 Warszawa ul. Targowa 72 CARREFOUR Polska Sp. z o. o.\n"
+            "NIP 937-00-08-168\nPARAGON FISKALNY\nSprzed. opod. PTU A 17,24\nKwota A 23,00% 3,22\n"
+            "Sprzed. opod. PTU B 30,12\nKwota B 08,00% 2,23\n"
+            "Kwota C 05,00% Sprzed. opod. PTU C 43,85 2,09\nSUMA PLN Podatek PTU 91,21 7,54")
+        self.assertEqual(carrefour.value('merchant'), "CARREFOUR Polska")
+        self.assertEqual(carrefour.value('tax_amount'), 7.54)
+        self.assertEqual(carrefour.value('tax_rate_max'), 23.0)
+        # The company stands before its form, on a line made of a registry number.
+        lidl = self.parse("Podgórne nr rej: BDO 000002265 Lidl sp. z o.o. sp.k.\n"
+                          "ul. ks. Kojzara 3, 43-450 Ustroń\nNIP 7811897358 nr:872927\nPARAGON FISKALNY")
+        self.assertEqual(lidl.value('merchant'), "Lidl")
+        self.assertEqual(self.parse("Rossmann SDP Sp. z 0.0. Sk\nul. Złota 59\nPARAGON FISKALNY")
+                         .value('merchant'), "Rossmann SDP")
+        # "PTU C 18,28" is the base of C; "Suma 0,87" the sum of the tax rows.
+        lidl_new = self.parse("LIDL\nPTU C 18,28\nKwota C 5,00% 0,87\nSuma 0,87\nRazem 18,28\nRAZEM PLN 18,28")
+        self.assertEqual(lidl_new.value('total'), 18.28)
+        self.assertEqual(lidl_new.value('tax_amount'), 0.87)
+
+    def test_a_street_written_in_one_word_is_not_the_merchant(self):
+        self.assertIsNone(self.parse("Hauptstrasse 45\n2340 Mödling\nTOTAL 3,50").value('merchant'))
+        self.assertEqual(self.parse("EUR\nKaufland - Gutschmidtstraße 19\nSUMME 3,50").value('merchant'),
+                         "Kaufland")
+        # A street named after a person is a street.
+        self.assertEqual(self.parse("SPAR\nFriedrich-Schillerstrasse 74\nSUMME 3,50").value('merchant'),
+                         "Spar")
+        self.assertIsNone(self.parse("EUR\nTOTAL 3,50").value('merchant'))
+
     def test_columns_of_the_german_and_swedish_tax_tables(self):
         # "ENDSUMME" is the total of the Austrian chains.
         self.assertEqual(self.parse("BILLA\nMILCH 1,99 B\nENDSUMME 16,07 €").value('total'), 16.07)

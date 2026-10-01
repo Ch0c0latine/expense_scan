@@ -307,6 +307,9 @@ def extract_total(lines, currency=None):
             continue
         if TOTAL_EXCLUDE_RE.search(text):
             continue
+        if index and re.match(r"\s*SUMA\b", text) \
+                and re.match(r"\s*KWOTA\s+[A-G]\b", normalize(lines[index - 1].text)):
+            continue  # "Kwota C 5,00% 0,87" then "Suma 0,87": the sum of the tax rows
         shift = 0.2 if _other_currency(text, currency) else 0.0
         for pattern, weight in TOTAL_KEYWORDS:
             weight -= shift
@@ -579,11 +582,13 @@ MERCHANT_STOP_RE = re.compile(
     # Foreign header mentions: fiscal receipt, tax identifier, greetings.
     r"\bPARAGON\b|\bFISKALNY\b|\bNIP\b|\bREGON\b|\bSCONTRINO\b|\bFISCALE\b|"
     r"\bDOCUMENTO\b|\bCOMMERCIALE\b|\bPARTITA\b|\bP\.?\s*IVA\b|\bRECHNUNG\b|"
-    r"\bKASSENBON\b|\bBELEG\b|\bQUITTUNG\b|\bSTEUER|\bFACTURA\b|\bFATURA\b|\bRECIBO\b|"
+    r"\bKASSENBON\b|\w*BELEG\b|\bQUITTUNG\b|\bSTEUER|\bFACTURA\b|\bFATURA\b|\bRECIBO\b|"
     # "FACTURMPSIMPLIFICADA": the document type, misread and glued.
     r"SIMPLIFICADA\b|\bCUOTA\b|\bCAMBIO\b|\bENTREGA\b|\bPREFACTURA\b|\bATENDIO\b|\bFIRMA\b|"
     # Spanish table number and column headers.
     r"\bMESA\b|\bARTICULOS?\b|\bDESCRIPCION\b|\bUNID\b|"
+    # German column headers ("Stk Artikel Preis Rabatt Summe").
+    r"\bARTIKEL\b|\bPREIS\b|\bMENGE\b|\bANZAHL\b|\bSTK\b|"
     r"\bCIF\b|\bNIF\b|\bRECEIPT\b|\bINVOICE\b|\bTHANK\b|\bWELCOME\b|"
     r"\bGRAZIE\b|\bDANKE\b|\bDZIEKUJEMY\b|\bGRACIAS\b|\bKASA\b|\bKASSE\b|"
     r"\bCASSA\b|\bCAJA\b|\bVAT\b|\bIVA\b|\bMWST\b|\bUST\b|"
@@ -609,6 +614,8 @@ ADDRESS_RE = re.compile(
     # Platz (de), calle, plaza (es), rua (pt), street, road (en).
     r"UL|ULICA|ALEJA|VIA|VIALE|PIAZZA|CORSO|STRASSE|STR|PLATZ|WEG|"
     r"CALLE|AVENIDA|PLAZA|RUA|STREET|ROAD|STRAAT)\b"
+    # Street names written in one word: "Hermannstr 158", "Hauptstrasse".
+    r"|\b\w{3,}(?:STR|STRASSE|GASSE|PLATZ|ALLEE|STRAAT|GATAN|GADE|VEIEN|VEJ)\b"
 )
 #: Street word inside a name, after an article and without any number:
 #: "Brasserie du Quai", "Café de la Place", "Pizzeria della Piazza".
@@ -658,10 +665,26 @@ LEGAL_FORM_RE = re.compile(
     r"\bS\.?\s?P\.?\s?A\b|\bS\.?\s?R\.?\s?L\b|\bGMBH\b|\bLTD\b|\bLLC\b"
     r"|\bSARL\b|\bSASU?\b|\bEURL\b|\bSNC\b|\bB\.?V\b", re.IGNORECASE)
 LEGAL_FORM_BONUS = 1.15
+#: The Polish form after the name, to leave out: "Rossmann SDP Sp. z o.o. Sk".
+POLISH_FORM_TAIL_RE = re.compile(
+    r"\s+sp\.?\s*z\s*[o0]\.?\s*[o0]\.?(?:\s+(?:sp\.?\s*)?[kj]\.?|\s+s\.?k\.?a?\.?)?\s*$",
+    re.IGNORECASE)
+#: A line made of a currency code only is a heading, not a merchant.
+CURRENCY_ONLY_RE = re.compile(r"^(?:EUR|CHF|PLN|GBP|USD|SEK|NOK|DKK|CZK|HUF|RON|HRK)$")
+#: Company name before the Polish form "sp. z o.o." (the OCR reads the o's as
+#: zeros): at most two words, none starting with a digit.
+POLISH_COMPANY_RE = re.compile(
+    r"((?<![\w])[^\W\d_][\w&'’\-]{2,}(?:\s+[^\W\d_][\w&'’\-]+)?)\s+sp\.?\s*z\s*[o0]\.?\s*[o0]\b",
+    re.IGNORECASE)
 #: Name followed, on the same line, by a number and a street type.
 NAME_BEFORE_STREET_RE = re.compile(
     r"^(.+?)\s+\d{1,5}\s*,?\s*(?:BIS|TER)?\s*,?\s*"
     r"(?:RUE|AVENUE|AV|BD|BOULEVARD|PLACE|PL|CHEMIN|ROUTE|RTE|ALL[EÉ]E|QUAI|IMPASSE|COURS)\b",
+    re.IGNORECASE)
+#: Name followed by a street written in one word: "Kaufland - Gutschmidtstraße
+#: 19", "Hans im Glück Kloten Bahnhofstrasse 5".
+GLUED_STREET_RE = re.compile(
+    r"^(.+?)([\s,\-]+)\w{3,}(?:str|strasse|straße|gasse|platz|allee|straat|gatan|gade|veien|vej)\.?\b",
     re.IGNORECASE)
 #: Document type at the start or end of the line, next to the merchant name.
 DOCUMENT_KIND_RE = re.compile(
@@ -788,6 +811,12 @@ def extract_merchant(lines, max_lines=10, buyers=()):
         # "Les 3 Brasseurs 9003, rue Chanzy": the OCR merged the name and the
         # address into one line. What precedes the street number is the name.
         street = NAME_BEFORE_STREET_RE.match(raw)
+        if not street:
+            # Not "Gablenberger Hauptstraße": a single word before the street
+            # word, no separator, is part of the street's name.
+            glued = GLUED_STREET_RE.match(raw)
+            if glued and (len(glued.group(1).split()) >= 2 or re.search(r",|\s-\s", glued.group(2))):
+                street = glued
         if street and sum(char.isalpha() for char in street.group(1)) >= 3:
             raw = street.group(1).strip(" ,-")
         text = normalize(raw)
@@ -795,7 +824,7 @@ def extract_merchant(lines, max_lines=10, buyers=()):
         digits = sum(1 for char in text if char.isdigit())
         if letters < 3 or len(raw) < 3:
             continue
-        if MERCHANT_STOP_RE.search(text) or _is_address(text):
+        if MERCHANT_STOP_RE.search(text) or _is_address(text) or CURRENCY_ONLY_RE.match(text.strip()):
             continue
         if _has_date(text):
             continue  # "← 18 novembre": a date, not a merchant
@@ -835,6 +864,12 @@ def extract_merchant(lines, max_lines=10, buyers=()):
             name = title_case(name)
         return ExtractedField(value=name, confidence=0.75, source=source)
     if best is None:
+        # "Podgórne nr rej: BDO 000002265 Lidl sp. z o.o. sp.k.": the line is
+        # mostly a registry number, but the company stands before its form.
+        for line in lines[:max_lines]:
+            match = POLISH_COMPANY_RE.search(line.text)
+            if match and not _is_buyer(match.group(1), buyers):
+                return ExtractedField(value=match.group(1).strip(), confidence=0.6, source=line.text)
         return ExtractedField(value=None, confidence=0.0)
     confidence, raw = best
     name = re.sub(r"\s{2,}", " ", raw).strip(" -*:.")
@@ -844,6 +879,7 @@ def extract_merchant(lines, max_lines=10, buyers=()):
     # merchant on a card slip is not part of it.
     name = MERCHANT_PREFIX_RE.sub("", name).strip(" -*:.") or name
     name = re.sub(r"^[^\w]+", "", name) or name  # "←", "*" of a logo
+    name = POLISH_FORM_TAIL_RE.sub("", name) or name
     name = _without_buyer(name, buyers)
     if raw.endswith(".") and LEGAL_FORM_RE.search(name):
         name += "."  # "S.p.A.": the last dot is part of the legal form
@@ -868,7 +904,9 @@ def title_case(name):
 TVA_LINE_RE = re.compile(
     r"\bT\.?\s*V\.?\s*A\b|\bV\.?A\.?T\b|\bI\.?V\.?A\b|\bMWST\b|\bUST\b|\bPTU\b"
     r"|\bB\.?T\.?W\b|\bDPH\b|\bMOMS\b|\bMVA\b|\bPODATEK\b|\bSTEUERSUMME\b|\bTAXES?\s*TOTALES?\b"
-    r"|\bSALES\s*TAX\b")
+    r"|\bSALES\s*TAX\b"
+    # Carrefour Polska: "Kwota A 23,00% 3,22", the tax of rate A.
+    r"|\bKWOTA\s+[A-G]\b")
 #: "TVA:D", "(c° tva: 2)": rate code referring to the table, without a tax
 #: amount. A single digit only counts if it does not start an amount
 #: ("TVA: 5,50").
@@ -1289,9 +1327,17 @@ def _extract_taxes_by_line(lines):
     """Fallback: receipts that print their VAT on a labelled line."""
     entries = []
     stated_total = None
+    # "Kwota C 5,00% 0,87" gives the tax of letter C: a "PTU C 18,28" without
+    # rate, on the same receipt, is its taxable base.
+    kwota_letters = {match.group(1) for match in
+                     (re.match(r"\s*KWOTA\s+([A-G])\b", normalize(line.text)) for line in lines)
+                     if match}
     for line in lines:
         text = normalize(line.text)
         if not TVA_LINE_RE.search(text):
+            continue
+        base_of = re.match(r"\s*PTU\s+([A-G])\b", text)
+        if base_of and base_of.group(1) in kwota_letters and not RATE_RE.search(text):
             continue
         if TAX_TABLE_ALL_LABELS_RE.search(text):
             # "... TOTAL EN EUROS : 15,80 HT TVA TTC ...": the three column
