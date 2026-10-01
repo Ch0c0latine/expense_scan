@@ -698,6 +698,78 @@ ADRIA SANT ALCAMPO
         self.assertEqual(incl.value('tax_rate'), 10.0)
         self.assertEqual(incl.value('tax_amount'), 1.68)
 
+    def test_columns_mixed_on_the_total_line_of_several_rates(self):
+        """Total and tax joined to the other's label, with several rates."""
+        result = self.parse(
+            "DECO'SHOPPERS\n249110683 38X65 22,00% 0,20\nBARILLA 4,00% 1,29\n"
+            "SUBTOTALE 37,09\nSconto -0.30\n"
+            "di cui IVA TOTALE COMPLESSIVO 37,09\n"
+            "Pagamento elettronico Importo pagato 37,09 2,83")
+        self.assertEqual(result.value('total'), 37.09)
+        self.assertEqual(result.value('tax_amount'), 2.83)
+        # Two unrelated lines are not a mix-up: the total labelled as such stays.
+        kept = self.parse("HOTEL\n205 Double room 12% 89,00\nTotal price incl. tax 104,02 C\n"
+                          "Supplier is VAT payer, deposit 733,69")
+        self.assertEqual(kept.value('total'), 104.02)
+
+    def test_a_receipt_cut_before_its_total_ends_on_a_subtotal(self):
+        cut = self.parse("SUPERMARKET\nMILK 1,89\nCHEESE 4,55\nHAM 4,79\nSUBTOTAAL 11,23")
+        self.assertEqual(cut.value('total'), 11.23)
+        # After the subtotal, savings and the payment: the total is among them.
+        paid = self.parse("SUPERMARKET\nBREAD 2,75\nWRAPS 3,80\nSubtotal: £61,25\n"
+                          "Savings: -£11,70\nCard £49,55")
+        self.assertNotEqual(paid.value('total'), 61.25)
+        # A discount under the subtotal does not hide it.
+        discount = self.parse("FONTE\nACQUA 22,00% 2,98\nSUBTOTALE 75,23\nScont* Val\n-0,60")
+        self.assertEqual(discount.value('total'), 75.23)
+
+    def test_polish_total_lines_and_deposits(self):
+        # Total and tax on one line, each behind its own label.
+        both = self.parse("DEALZ\nPTU A 23,00 % 13,28\nSPRZEDAZ OPODATKOWANA C 70,80\n"
+                          "PTU C 5,00 % 3,37\nSUMA PLN SUMA PTU 141,83 16,65")
+        self.assertEqual(both.value('total'), 141.83)
+        self.assertEqual(both.value('tax_amount'), 16.65)
+        # The deposit comes after the amount to pay, or is a reduction.
+        deposit = self.parse("LIDL\nPTU C 5% 2,36\nSUMA PTU 2,36\nSUMA PLN 49,57\n"
+                             "KAUCJA ZA BUT. PLASTIKOWA 2 x0.50 1.00\n"
+                             "DO ZAPLATY OPAKOWANIA ZWROTNE SUMA 50,57 PLN 1,00")
+        self.assertEqual(deposit.value('total'), 50.57)
+        returned = self.parse("LIDL\nPTU B 8% 13,96\nSUMA PLN SUMA PTU 297,16\n"
+                              "DO ZAPLATY OPAKOWANIA ZWROTNE SUMA 294,66 PLN -2,50")
+        self.assertEqual(returned.value('total'), 294.66)
+        self.assertNotEqual(returned.value('tax_amount'), 297.16)
+
+    def test_columns_of_the_german_and_swedish_tax_tables(self):
+        # "ENDSUMME" is the total of the Austrian chains.
+        self.assertEqual(self.parse("BILLA\nMILCH 1,99 B\nENDSUMME 16,07 €").value('total'), 16.07)
+        # A space left after the separator, and "(ink. moms)" is no tax line.
+        swedish = self.parse("MCDONALD'S\nTa med Totalt (ink. moms) 17.00\nMOMS % BELOPP MOMS\n"
+                             "inkl. moms 12.00% 17.00 1.82")
+        self.assertEqual(swedish.value('tax_amount'), 1.82)
+        self.assertEqual(self.parse("ICA\nTotalt 15 varor\nTotalt 403, 00 SEK").value('total'), 403.0)
+        # Base and gross, the tax column mangled: the tax is their difference.
+        mangled = self.parse("ALDI\nSUMME Posten:2 € 1,87\nMwSt NETTO MwSt UMSATZ\nB 19% 1,57 0,3) 1,87")
+        self.assertEqual(mangled.value('tax_amount'), 0.30)
+
+    def test_italian_tax_beside_the_total(self):
+        # The tax cannot be the total: it is the other amount of the line.
+        same = self.parse("CONAD\nPASTA 4% 0,99\nTOTALE COMPLESSIVO 5,67\nDI CUI IVA 0,35 5,67")
+        self.assertEqual(same.value('tax_amount'), 0.35)
+        # Both values on the total line, the next line holds the payment.
+        beside = self.parse("CONAD\nSHAMPOO 22,00% 4,49\nMUFFIN 10,00% 1,99\nTOTALE COMPLESSIVO 35,90 4,26\n"
+                            "di cui IVA 20,00\nPagamento contante Ticket 20,00 4,10")
+        self.assertEqual(beside.value('tax_amount'), 4.26)
+        # The rate of the column title is the items', its price is not a tax.
+        title = self.parse("BAR\nDESCRIZIONE Brioch IVA 10% Prezzo(€) 1,50\nTOTALE COMPLESSIVO 1,50\n"
+                           "di cui IVA Pagamento contante 0,14 1,50")
+        self.assertEqual(title.value('tax_amount'), 0.14)
+
+    def test_the_item_column_title_is_not_a_tax_line(self):
+        result = self.parse("ATREIU S.R.L.\nDESCRIZIONE TAGLIATELLE FUNGHI IVA 13.00 A\n"
+                            "PANE & COPERTO 2.00 A\nTOTALE COMPLESSIVO DI CUI IVA 48.00 4.36\n"
+                            "A:IVA 10.00%")
+        self.assertEqual(result.value('tax_amount'), 4.36)
+
     def test_a_spanish_document_type_is_not_the_merchant(self):
         result = self.parse("FACTURMPSIMPLIFICADA\nTURRON COCO 2,52 B\n€* TOT 6,42\n"
                             "W CAMBIO ,00\nImp. % Base Cuota\nIVA 10,00 5,83 ,59")

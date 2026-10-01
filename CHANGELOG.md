@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Polish, Swiss, Austrian and Italian receipts, from the corpus**:
+  - Polish "SUMA PLN SUMA PTU 141,83 16,65" (total and tax on one line,
+    behind their own labels), the deposit lines of the new scheme ("DO
+    ZAPLATY OPAKOWANIA ZWROTNE SUMA 50,57 PLN 1,00": the amount to pay is
+    the first one) and reductions ("-2,50"), which were read as the total
+    on a dozen supermarket receipts.
+  - "ENDSUMME", "Zahlbetrag", "Rechnungsbetrag" (Austria), "Slutsumma",
+    "Bar CHF 1,65" (Swiss rounding), a total whose first letter the OCR
+    lost ("otal CHF 32.50"), a space left in "403, 00".
+  - A receipt that prints a currency and its conversion ("Total CHF" then
+    "Total en EUR") keeps the first; "(ink. moms)" is not a tax line.
+  - Italian layouts: the total and the tax side by side above "di cui
+    IVA", a tax equal to the total, the title of the item column ("DESCRIZIONE
+    ... IVA 13.00") taken for a tax line, a receipt cut before its total
+    (the subtotal is taken).
+  - Total and tax read the wrong way round, now also with several rates.
+  - A receipt printed at 0 % (exempt) no longer asks for the tax.
 - **Dependencies declared** in the manifest (OpenCV, NumPy, RapidOCR, ONNX
   Runtime, pdf2image, openpyxl, and the `pdftoppm` program of Poppler): Odoo
   names a missing one when the module is installed. Tesseract stays optional.

@@ -186,6 +186,24 @@ class TestReceiptLifecycle(common.TransactionCase):
         self.assertIn("Receipt?", expense.scan_todo)
         self.assertNotIn("%", expense.scan_message)
 
+    def test_an_exempt_receipt_has_no_tax_to_check(self):
+        """A receipt printed at 0 % does not ask for a tax, unlike one without any."""
+        from ..ocr import parser
+        from .test_parser import words_from_text
+        todo = {}
+        for name, text in (("exempt", "LOUEUR SARL\nPenalita 95,00\nESC.IVA ART.15 0% 95,00\nTOTALE 95,00"),
+                           ("none", "LOUEUR SARL\nPenalita 95,00\nTOTALE 95,00")):
+            expense = self.Expense.create({'name': name, 'employee_id': self.employee.id})
+            with patch.object(type(expense), '_expense_scan_store_image', autospec=True,
+                              return_value={}), \
+                    patch.object(type(expense), '_expense_scan_foreign_tax', autospec=True,
+                                 return_value=False):
+                expense.with_context(lang='en_US')._expense_scan_apply(
+                    parser.parse(words_from_text(text)), self.Attachment)
+            todo[name] = expense.scan_todo or ""
+        self.assertNotIn("none on the receipt", todo['exempt'])
+        self.assertIn("none on the receipt", todo['none'])
+
     def test_a_new_receipt_is_cropped_again(self):
         """After a deleted manual retouch, the scan crops the new receipt."""
         expense, _original = self.scanned()

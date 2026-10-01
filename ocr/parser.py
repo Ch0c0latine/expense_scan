@@ -147,6 +147,10 @@ TOTAL_KEYWORDS = [
     (re.compile(r"\bMONTANT\s*FINAL\b|\bTVA\s*INCLUSE\b"), 0.91),
     (re.compile(r"\bTOTALE\s*(?:COMPLESSIVO|DOCUMENTO)\b"), 0.93),  # it
     (re.compile(r"\bZU\s*ZAHLEN\b"), 0.93),                         # de
+    # Billa, Spar, Hofer: "ENDSUMME 16,07 €", "Zahlbetrag", "Rechnungsbetrag".
+    (re.compile(r"\bENDSUMME\b|\bENDBETRAG\b|\bZAHLBETRAG\b|\bRECHNUNGS(?:BETRAG|SUMME)\b"
+                r"|\bGESAMT(?:SUMME|PREIS)\b"), 0.92),               # de, at, ch
+    (re.compile(r"\bNALEZNOSC\b|\bAT\s*BETALE\b|\bSLUTSUMMA\b|\bSLUTSUM\b"), 0.90),  # pl, da, sv
     (re.compile(r"\bTOTAL\s*A\s*PAGAR\b"), 0.93),                   # es, pt
     # "PRIX TTC" is the label of toll, fuel and many vending machine
     # receipts. It amounts to a "TOTAL TTC".
@@ -173,6 +177,8 @@ TOTAL_KEYWORDS = [
     (re.compile(r"\bSUM\b(?!\.)"), 0.82),                           # no, da
     (re.compile(r"\bGESAMT(?:BETRAG)?\b"), 0.82),                   # de
     (re.compile(r"\bTOTAL\b|\bTOTALE\b|\bTOTAAL\b"), 0.80),
+    # The first letter lost by the OCR: "otal CHF 32.50".
+    (re.compile(r"^\s*OTAL\s*(?:CHF|EUR|FR\b|\d)"), 0.76),
     # "€* TOT 6,42" (Alcampo): the abbreviation opens the line.
     (re.compile(r"^\s*(?:X\s+)?TOT\b"), 0.78),                     # es; "€x" for "€*"
     (re.compile(r"\bRAZEM\b"), 0.75),                               # pl
@@ -183,7 +189,7 @@ TOTAL_KEYWORDS = [
                 r"|\bKARTENZAHLUNG\b|\bPAYMENT\b|\bKORT\b"), 0.65),
     (re.compile(r"\bCARTE\s*BANCAIRE\b|\bCB\b|\bSANS\s*CONTACT\b|\bKARTA\b"), 0.60),
     (re.compile(r"\bESPECES\b|\bCHEQUE\b|\bCONTANT[EI]\b|\bEFECTIVO\b|\bGOTOWKA\b"
-                r"|\bCASH\b|\bKONTANT\b"), 0.55),
+                r"|\bCASH\b|\bKONTANT\b|\bBAR\s+(?:CHF|EUR|\d)"), 0.55),
 ]
 # A line containing one of these terms is not kept as the total. Foreign VAT
 # mentions are ruled out like "TVA", unless the total says they are included:
@@ -197,7 +203,7 @@ TOTAL_EXCLUDE_RE = re.compile(
     # MVA (no), moms (sv, da): the tax, except "inkl. moms".
     r"(?<!INKL\s)(?<!INKL\.\s)\b(?:MVA|MOMS)\b|"
     r"\bIMPONIBILE\b|\bBASE\s*IMPONIBLE\b|\bDI\s*CUI\b|"
-    r"\bRENDU\b|\bMONNAIE\b|\bRECU\b|\bREMISE\b|\bECONOMIE\b|\bAVANTAGE\b|"
+    r"\bRENDU\b|\bMONNAIE\b|\bRECU\b|\bREMISE\b|\bECONOMIE\b|\bECONO\w{0,3}ISEZ\b|\bAVANTAGE\b|"
     # "Points de retrait" (Colissimo) is not a loyalty points balance.
     r"\bCAGNOTTE\b|\bFIDELITE\b|\bPOINTS?\b(?!\s+(?:DE\s+)?RETRAIT)|\bSOLDE\b|\bDONT\b|"
     r"\bACOMPTE\b|"
@@ -252,6 +258,29 @@ def _other_currency(text, currency):
     return bool(cited) and currency not in cited
 
 
+#: "-0,60", "-£11.80": a reduction, not an amount to pay.
+NEGATIVE_AMOUNT_RE = re.compile(r"(?<![\w.,])-[£$€]?\d+[.,]\d{2}\b")
+
+
+#: "403, 00": a separator followed by a space and two digits.
+SPLIT_DECIMALS_RE = re.compile(r"(\d[.,])\s(\d{2})(?!\d)")
+
+
+def find_positive_amounts(text):
+    """The amounts of a line, without the reductions ("OPUST ... -2,50")."""
+    return [(value, position) for value, position in find_amounts(text)
+            if not re.search(r"(?<![\w.,])-[£$€]?$", text[:position])]
+
+
+#: Where a total line goes on with the tax: "SUMA PLN SUMA PTU 141,83 16,65",
+#: "TOTALE COMPLESSIVO DI CUI IVA 48.00 4.36". What precedes is the total.
+TOTAL_THEN_TAX_RE = re.compile(
+    r"\b(?:SUMA\s+PTU|PODATEK\s+PTU|DI\s+CUI\s+IVA|DAVON\s+(?:MWST|UST)|DONT\s+TVA)\b")
+SUBTOTAL_RE = re.compile(
+    r"\bSOUS\s*[- ]?\s*TOTAL\b|\bSUB\s*[- ]?\s*TOTAL\b|\bSUBTOTALE?\b|\bSUBTOTAAL\b|"
+    r"\bZWISCHENSUMME\b")
+
+
 def extract_total(lines, currency=None):
     """Return the total amount paid and its confidence.
 
@@ -261,6 +290,21 @@ def extract_total(lines, currency=None):
     best = None
     for index, line in enumerate(lines):
         text = normalize(line.text)
+        split = TOTAL_THEN_TAX_RE.search(text)
+        if split:
+            # The total label comes first, the tax label after it: the total
+            # is the first amount, larger than the tax that follows.
+            amounts = find_positive_amounts(line.text)
+            if len(amounts) >= 2 and amounts[0][0] > amounts[-1][0]:
+                for pattern, weight in TOTAL_KEYWORDS:
+                    if pattern.search(text[:split.start()]):
+                        candidate = (weight, amounts[0][0], weight * max(line.score, 0.4), line.text)
+                        if best is None or candidate[0] > best[0] or (
+                            candidate[0] == best[0] and candidate[1:3] > best[1:3]
+                        ):
+                            best = candidate
+                        break
+            continue
         if TOTAL_EXCLUDE_RE.search(text):
             continue
         shift = 0.2 if _other_currency(text, currency) else 0.0
@@ -268,7 +312,10 @@ def extract_total(lines, currency=None):
             weight -= shift
             if not pattern.search(text):
                 continue
-            amounts = find_amounts(line.text)
+            amounts = find_positive_amounts(line.text)
+            if not amounts:
+                # "Totalt 403, 00 SEK": the OCR left a space after the separator.
+                amounts = find_positive_amounts(SPLIT_DECIMALS_RE.sub(r"\1\2", line.text))
             confidence_penalty = 1.0
             if not amounts and index + 1 < len(lines):
                 # The label and the amount are often on two lines when the
@@ -276,7 +323,7 @@ def extract_total(lines, currency=None):
                 # another excluded amount: the total was just misread.
                 following = normalize(lines[index + 1].text)
                 if not (TOTAL_EXCLUDE_RE.search(following) or TVA_LINE_RE.search(following)):
-                    amounts = find_amounts(lines[index + 1].text)
+                    amounts = find_positive_amounts(lines[index + 1].text)
                 confidence_penalty = 0.85
             if not amounts:
                 continue
@@ -285,13 +332,20 @@ def extract_total(lines, currency=None):
                 # without tax of the previous rate, repeated under each rate.
                 break
             # The useful amount is the last of the line: a quantity or a unit
-            # price is often printed to its left.
-            value = amounts[-1][0]
+            # price is often printed to its left. Not on the Polish "DO
+            # ZAPLATY OPAKOWANIA ZWROTNE SUMA 50,57 PLN 1,00": the deposit
+            # comes after the amount to pay.
+            value = amounts[0][0] if "ZAPLATY" in pattern.pattern else amounts[-1][0]
             # "68,60 € 11,43 € 57,17 € Total": gross, VAT and net columns read
             # out of order. A valid triplet points to its gross amount.
             gross = _triplet_gross([amount for amount, _position in amounts])
             if gross is not None:
                 value = gross
+            if (len(amounts) == 2 and amounts[0][0] > amounts[1][0] and index + 1 < len(lines)
+                    and re.search(r"\bDI CUI IVA\b", normalize(lines[index + 1].text))):
+                # "TOTALE COMPLESSIVO 35,90 4,26" above "di cui IVA": the
+                # tax shares the line, after the total.
+                value = amounts[0][0]
             confidence = weight * confidence_penalty * max(line.score, 0.4)
             candidate = (weight, value, confidence, line.text)
             # On equal weight, the largest amount wins; on equal amount, the
@@ -304,6 +358,24 @@ def extract_total(lines, currency=None):
 
     if best is not None:
         return ExtractedField(value=best[1], confidence=min(best[2], 0.99), source=best[3])
+
+    # A receipt cut before its total ends on a subtotal: the sum of all the
+    # items, hence better than any one of them. Not when amounts follow
+    # ("Savings", the card payment): the total is among them.
+    def discount(line):
+        text = normalize(line.text)
+        return bool(NEGATIVE_AMOUNT_RE.search(line.text)
+                    or re.search(r"\b(?:SCONT|SAVING|PROMO|RABATT|REMISE|DISCOUNT|DESCUENTO)", text))
+
+    for index in range(len(lines) - 1, -1, -1):
+        text = normalize(lines[index].text)
+        if not SUBTOTAL_RE.search(text) or TVA_LINE_RE.search(text) or discount(lines[index]):
+            continue
+        amounts = find_amounts(lines[index].text)
+        if amounts and not any(find_amounts(line.text) and not discount(line)
+                               for line in lines[index + 1:]):
+            return ExtractedField(value=amounts[-1][0], confidence=0.4, source=lines[index].text)
+        break
 
     # Last resort: the largest amount at the bottom of the receipt. This
     # reading is unreliable, but better than an empty field the user has to
@@ -813,6 +885,8 @@ TAX_NOT_A_TAX_RE = re.compile(
     r"\bHORS\s*(?:T\.?\s*V\.?\s*A|TAXES?)\b"
     r"|\bT\.?\s*V\.?\s*A\s*(?:INCLUSE|INCLUS|COMPRISE|INCL)\b"
     r"|\b(?:EXCL|EXCLUDING|EXCLUSIVE|INCL|INCLUDING|INCLUSIVE)\.?\s*(?:OF\s*)?(?:VAT|TAX)\b"
+    # "Totalt (ink. moms) 17.00": the total with tax, as on a Swedish receipt.
+    r"|\bINKL?\.?\s*(?:MOMS|MVA|MWST)\s+\d+[.,]\d{2}\s*$"
     # "Cena bez DPH", "sin IVA", "senza IVA", "ohne MwSt": without the tax.
     r"|\b(?:BEZ|SIN|SENZA|OHNE|ZONDER|UTAN|UDEN|SEM)\s*(?:DPH|IVA|MWST|BTW|MOMS|MVA|VAT|PTU)\b")
 #: Line that sums the VAT, without giving a rate.
@@ -1006,6 +1080,10 @@ def _consistent_row(amounts, rate):
         if 0 < tax < other and (abs(other * rate / 100.0 - tax) <= 0.03
                                 or abs(other * rate / (100.0 + rate) - tax) <= 0.03):
             return round(tax, 2)
+    # Net and gross, the VAT column lost ("1,57 1,87" at 19 %).
+    first, second = amounts
+    if 0 < first < second and abs(first * (100.0 + rate) / 100.0 - second) <= 0.03:
+        return round(second - first, 2)
     return None
 
 
@@ -1100,6 +1178,8 @@ def extract_tax_table(lines):
             amount = round(amounts[1], 2)
             if len(amounts) >= 3:
                 amount = _consistent_tax(amounts, rate) or amount
+            elif len(amounts) == 2:
+                amount = _consistent_row(amounts, rate) or amount
             if amount > 0:
                 entries.append((rate, amount, row.text))
         if entries:
@@ -1160,6 +1240,9 @@ def _consistent_rates(lines):
     return found
 
 
+#: A line opening on the title of the item column: a table header.
+ITEM_HEADER_START_RE = re.compile(
+    r"^\s*(?:DESCRIZIONE|DESCRIPCION|DESIGNATION|BESCHREIBUNG|OMSCHRIJVING|DESCRICAO|ARTIKEL|OPIS)\b")
 #: Line of the total with tax: it is not a tax line, even if "TVA" is in it.
 TOTAL_TTC_RE = re.compile(r"\bTOT(?:AL)?\.?\s*T\.?\s*T\.?\s*C\b")
 
@@ -1176,6 +1259,9 @@ def _tax_of_pair(amounts, rate):
         if tax < other and (abs(other * rate / 100.0 - tax) <= 0.02
                             or abs(other * rate / (100.0 + rate) - tax) <= 0.02):
             return tax
+    # "B 19% 1,57 0,3) 1,87": base and gross, the tax column mangled.
+    if abs(first * (100.0 + rate) / 100.0 - second) <= 0.02:
+        return round(second - first, 2)
     return second
 
 
@@ -1226,6 +1312,8 @@ def _extract_taxes_by_line(lines):
             # already printed. Adding it to the lines it sums up would count
             # the VAT twice; it prevails in their place.
             amounts = [value for value, _position in find_amounts(line.text)]
+            if re.search(r"\bSUMA\s+PLN\b", text) and len(amounts) == 1:
+                continue  # "SUMA PLN SUMA PTU 297,16": the total only, the tax was lost
             if amounts:
                 stated_total = (amounts[-1], line.text, line.score)
             continue
@@ -1242,6 +1330,11 @@ def _extract_taxes_by_line(lines):
         if rate_match:
             rate = _closest_known_rate(float(rate_match.group(1).replace(",", ".")))
         amounts = [value for value, _position in find_amounts(line.text)]
+        if ITEM_HEADER_START_RE.search(text):
+            # "DESCRIZIONE TAGLIATELLE FUNGHI IVA 13.00", "DESCRIZIONE Brioch
+            # IVA 10% Prezzo 1,50": the column title "IVA" and the price of the
+            # first item, merged by the OCR. Its rate stands, its amount does not.
+            amounts = []
         if not amounts and ZERO_AMOUNT_RE.search(line.text):
             # "TVA 5.50%: 0.00 0.00 0.00": a rate provided for but unused
             # does not make this a receipt with several rates.
@@ -1436,11 +1529,22 @@ def extract_currency(lines, default="EUR"):
     raw = " ".join(line.text for line in lines)
     # The most cited currency wins: a Polish receipt that converts its total
     # into euros cites the zloty on every line and the euro only once.
+    # On a tie, the currency of the first total line wins ("Total CHF 32.50"
+    # comes before the conversion "Total en EUR"), then the one cited first.
+    total_lines = [normalize(line.text) for line in lines
+                   if any(weight >= 0.8 and pattern.search(normalize(line.text))
+                          for pattern, weight in TOTAL_KEYWORDS)]
     best = None
     for pattern, code in CURRENCIES:
         count = max(len(pattern.findall(joined)), len(pattern.findall(raw)))
-        if count and (best is None or count > best[0]):
-            best = (count, code)
+        if not count:
+            continue
+        found = pattern.search(joined)
+        on_total = next((i for i, text in enumerate(total_lines) if pattern.search(text)), None)
+        rank = (count, on_total is not None, -(on_total if on_total is not None else 0),
+                -(found.start() if found else len(joined)))
+        if best is None or rank > best[2]:
+            best = (count, code, rank)
     if best and best[1] == "KR":
         code = _krone(joined, default)
         if code:
@@ -1840,9 +1944,11 @@ def parse(words, today=None, max_age_days=730, default_currency="EUR", buyers=()
                                         confidence=0.0),
         "nights": extract_nights(lines, today=today, order="mdy" if month_first else "dmy"),
     }
-    _swap_total_and_tax(fields)
     _rate_from_items(fields, lines)
+    _swap_total_and_tax(fields)
     _total_from_tax(fields)
+    _tax_from_total_line(fields, lines)
+    _tax_not_total(fields)
     return ScanResult(lines=lines, fields=fields)
 
 
@@ -1908,18 +2014,79 @@ def _swap_total_and_tax(fields):
     On a crumpled or slanted receipt, the OCR can join the amount of each
     line to the label of the other ("inkl. 19% MwSt 12,00 EUR", "Betrag
     1,92"). A tax larger than the total is impossible; when the total is the
-    tax of that larger amount at the rate read, the two are exchanged.
+    tax of that larger amount at the rate read, the two are exchanged. With
+    several rates ("di cui IVA TOTALE COMPLESSIVO 37,09 / ... 37,09 2,83"),
+    only the highest is known: the total must then be a possible tax of the
+    larger amount, at most at that rate, and the larger amount must be on the
+    line the total was read from: a column mix-up, not two unrelated lines.
     """
     total, tax = fields["total"], fields["tax_amount"]
-    rate = fields["tax_rate"].value or fields["tax_rate_max"].value
-    if not (total.value and tax.value and rate) or tax.value <= total.value:
+    rate, rate_max = fields["tax_rate"].value, fields["tax_rate_max"].value
+    if not (total.value and tax.value and (rate or rate_max)) or tax.value <= total.value:
         return
-    if abs(tax.value * rate / (100.0 + rate) - total.value) > 0.02:
+
+    def fits(rate):
+        return abs(tax.value * rate / (100.0 + rate) - total.value) <= 0.02
+
+    same_line = any(abs(value - tax.value) < 0.005 for value, _position in find_amounts(total.source or ""))
+    if not (fits(rate or rate_max)
+            or (not rate and same_line
+                and total.value <= tax.value * rate_max / (100.0 + rate_max) + 0.02)):
         return
     fields["total"] = ExtractedField(value=tax.value, confidence=min(total.confidence, 0.6),
                                      source=tax.source)
     fields["tax_amount"] = ExtractedField(value=total.value, confidence=min(tax.confidence, 0.6),
                                           source=total.source)
+
+
+def _tax_from_total_line(fields, lines):
+    """The tax printed beside the total, under the label "di cui IVA" of the next line.
+
+    "TOTALE COMPLESSIVO 35,90 4,26" then "di cui IVA 20,00 ...": the two
+    columns share their lines, and the next line holds the payment amount.
+    The second amount of the total line is the tax when it is smaller.
+    """
+    total, tax = fields["total"], fields["tax_amount"]
+    if not total.value or not total.source:
+        return
+    rate, rate_max = fields["tax_rate"].value, fields["tax_rate_max"].value
+
+    def possible(amount):
+        """Whether this amount can be the tax of the total, at the rates read."""
+        if rate:
+            return abs(total.value * rate / (100.0 + rate) - amount) <= 0.02
+        if rate_max:
+            return amount <= total.value * rate_max / (100.0 + rate_max) + 0.02
+        return amount < total.value * 0.3
+
+    if tax.value is not None and possible(tax.value):
+        return
+    for index, line in enumerate(lines[:-1]):
+        if line.text != total.source:
+            continue
+        if not re.search(r"\bDI CUI IVA\b", normalize(lines[index + 1].text)):
+            return
+        amounts = [value for value, _position in find_positive_amounts(line.text)]
+        if len(amounts) >= 2 and amounts[0] == total.value and possible(amounts[-1]):
+            fields["tax_amount"] = ExtractedField(
+                value=amounts[-1], confidence=min(total.confidence, 0.7), source=line.text)
+        return
+
+
+def _tax_not_total(fields):
+    """A tax equal to the total is the total read in the tax's place.
+
+    "DI CUI IVA 0,35 5,67" under a total of 5,67: the other amount of the
+    line is the tax.
+    """
+    total, tax = fields["total"], fields["tax_amount"]
+    if not (total.value and tax.value) or abs(total.value - tax.value) > 0.005:
+        return
+    others = {value for value, _position in find_amounts(tax.source or "")
+              if 0 < value < total.value - 0.005}
+    if len(others) == 1:
+        fields["tax_amount"] = ExtractedField(
+            value=others.pop(), confidence=min(tax.confidence, 0.6), source=tax.source)
 
 
 def fields_to_check(result, names=("date", "total")):

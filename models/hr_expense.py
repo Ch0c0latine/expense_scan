@@ -1873,6 +1873,8 @@ class HrExpense(models.Model):
                 items.append((_("Foreign tax (%s), not deducted", foreign), 'tax_amount',
                               _("Foreign tax (%s): it cannot be deducted on your "
                                 "tax return, leave it at zero.", foreign)))
+            elif result.value('tax_amount') == 0 and result.value('tax_rate') == 0:
+                pass  # printed as exempt (0 %): nothing to check
             elif not result.value('tax_amount'):
                 items.append((_("Tax (none on the receipt)"), 'tax_amount',
                               _("No tax read on the receipt: enter it if it is printed.")))
