@@ -42,6 +42,12 @@ what is missing:
 - **Category**: recognised from the receipt words declared on each category,
   the activity code printed on the receipt, the price per litre or kWh, a
   known brand at the top, and the history of merchants already classified.
+  The module creates no category of its own: yours get suggested words when
+  their name evokes a family (fuel, tolls, meals...), and every day it
+  learns the words found on the receipts your team filed in each category
+  (a "Subscriptions" category ends up recognised without anyone typing a
+  word). Only categories chosen by a person teach, a correction counts for
+  more than a confirmation, and a word entered by hand is never overridden.
 - **Several receipts for one purchase** (till receipt + card slip): the
   pieces are compared and merged into one expense, or split when they
   clearly describe two purchases.
@@ -193,7 +199,9 @@ and its own requirements.
 ## Country specifics
 
 Nothing in the module is tied to one country; a few things are there for the
-receipts of some countries:
+receipts of some countries. It was tried on databases set up in France,
+Germany, Austria, Switzerland, Spain, Italy, Poland and Sweden, with real
+receipts of these countries and of their neighbours:
 
 - **Domestic and foreign VAT**: the name printed on the receipt is compared
   with those of the company's country (TVA in France, MwSt/USt in Germany

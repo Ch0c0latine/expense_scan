@@ -19,6 +19,19 @@
     (the subtotal is taken).
   - Total and tax read the wrong way round, now also with several rates.
   - A receipt printed at 0 % (exempt) no longer asks for the tax.
+  - Norwegian VAT tables ("Mva% Grunnlag Mva Totalt", "MVA-grunnlag MVA-%
+    MVA Sum"): the tax was not read on any of the supermarket receipts.
+  - Croatian "Za platiti", and a total or subtotal whose first letters the
+    OCR lost ("OTAL", "OUS-TOTAL").
+  - Merchants: "Lidl sp. z o.o." on a line of registry numbers, without the
+    Polish form or the store number ("Rossmann SDP"), a street written in
+    one word ("Hauptstrasse 45", "Kaufland - Gutschmidtstraße 19"), a
+    currency code or a column title ("Stk Artikel Preis"), the slogan of
+    Coop, brand names shown capitalised ("Billa", not "billa").
+  - A percentage on an item ("App-Joker 25%", "Topfen 20%") is no tax rate
+    when the receipt has no tax line: Austrian receipts were marked as
+    carrying a foreign tax.
+  - The keyword "b&b" no longer matches the "B-B" of a chewing gum.
 - **Dependencies declared** in the manifest (OpenCV, NumPy, RapidOCR, ONNX
   Runtime, pdf2image, openpyxl, and the `pdftoppm` program of Poppler): Odoo
   names a missing one when the module is installed. Tesseract stays optional.

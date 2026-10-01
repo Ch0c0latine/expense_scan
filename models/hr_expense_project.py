@@ -9,7 +9,7 @@ company asks for it.
 """
 import logging
 
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 

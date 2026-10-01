@@ -373,16 +373,6 @@ def _same_start(candidate, keyword):
     return len(keyword) >= 8 or candidate[:1] == keyword[:1]
 
 
-def _same_start(candidate, keyword):
-    """A reading mistake rarely changes the first letter of a short word.
-
-    "Selecta" is 86% similar to "electra": without this check, a coffee
-    vending machine is taken for a charger. From eight letters on, the
-    similarity alone is enough.
-    """
-    return len(keyword) >= 8 or candidate[:1] == keyword[:1]
-
-
 def _find(keyword, line_words):
     """Is the declared word in the line? Tolerates a reading mistake."""
     parts = keyword.split()

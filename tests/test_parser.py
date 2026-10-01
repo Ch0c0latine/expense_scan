@@ -759,6 +759,29 @@ ADRIA SANT ALCAMPO
         self.assertEqual(lidl_new.value('total'), 18.28)
         self.assertEqual(lidl_new.value('tax_amount'), 0.87)
 
+    def test_croatian_and_lost_letter_totals(self):
+        self.assertEqual(self.parse("KONZUM\nUkupno 20,02\nPDV 2,03\nZa platitj EUR 22,05")
+                         .value('total'), 22.05)
+        # The total on the line of the next article: the first amount.
+        self.assertEqual(self.parse("SPAR\nRadenska gaz. 1,51\nZa platiti Pecivo pšen.sir 6,32 0,69 c\n"
+                                    "Euro EUR 10,00").value('total'), 6.32)
+        # "OUS-TOTAL" and "OTAL": the first letters lost by the OCR.
+        lost = self.parse("LIQUEURS\nCHARTREUSE 70CL 47,95 €\nOUS-TOTAL 39,96 €\nOTAL TVA 7,99 €\n"
+                          "OTAL [1] Article 47,95 €")
+        self.assertEqual(lost.value('total'), 47.95)
+
+    def test_norwegian_tax_tables(self):
+        # Rate first, then base, tax, total.
+        first = self.parse("REMA 1000\nSJOKOMELK 1L TINE 15% 26,90\nSum 1 varer 26,90\n"
+                           "Mva% Grunnlag Mva Totalt\n15,00 23,39 3,51 26,90")
+        self.assertEqual(first.value('tax_amount'), 3.51)
+        self.assertEqual(first.value('tax_rate'), 15.0)
+        # Base, rate, tax, total; a zero rate is skipped and the rates add up.
+        second = self.parse("EXTRA\nVARER 371,10\nMVA-grunnlag MVA-% MVA Sum\n"
+                            "6.00 0% 0.00 6.00\n317.48 15% 47.62 365.10\nSummer 323.48 47.62 371.10")
+        self.assertEqual(second.value('tax_amount'), 47.62)
+        self.assertEqual(second.value('tax_rate'), 15.0)
+
     def test_the_slogan_of_a_swiss_chain_is_not_part_of_its_name(self):
         self.assertEqual(self.parse("Pour moi et pour toi. coop\nNeuchâtel Maladière\n"
                                     "SOMME CHF 86.75").value('merchant'), "Coop")

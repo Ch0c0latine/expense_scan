@@ -65,7 +65,6 @@ class TestReceiptLifecycle(common.TransactionCase):
 
     def prepare_options(self, expense, attachment):
         """Image preparation options chosen by the scan."""
-        from ..ocr.types import PreprocessInfo
         options = {}
 
         def prepare(data, **kwargs):

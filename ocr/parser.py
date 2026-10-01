@@ -162,7 +162,7 @@ TOTAL_KEYWORDS = [
     (re.compile(r"\bSUM\s*\d+\s*VARER\b"), 0.88),                    # no
     (re.compile(r"\bTE\s*BETALEN\b"), 0.90),                        # nl
     (re.compile(r"\bA\s*BETALE\b|\bATT\s*BETALA\b"), 0.90),          # no, sv
-    (re.compile(r"\bZA\s*PLATITI\b"), 0.90),                        # hr
+    (re.compile(r"\bZA\s*PLATIT\w{0,2}\b"), 0.90),                  # hr ("platitj")
     (re.compile(r"\bRESTE\s*A\s*PAYER\b"), 0.88),
     (re.compile(r"\bIMPORTO\s*PAGATO\b"), 0.88),                    # it
     (re.compile(r"\bA\s*PAYER\b"), 0.86),
@@ -178,7 +178,7 @@ TOTAL_KEYWORDS = [
     (re.compile(r"\bGESAMT(?:BETRAG)?\b"), 0.82),                   # de
     (re.compile(r"\bTOTAL\b|\bTOTALE\b|\bTOTAAL\b"), 0.80),
     # The first letter lost by the OCR: "otal CHF 32.50".
-    (re.compile(r"^\s*OTAL\s*(?:CHF|EUR|FR\b|\d)"), 0.76),
+    (re.compile(r"^\s*OTAL\b"), 0.76),
     # "€* TOT 6,42" (Alcampo): the abbreviation opens the line.
     (re.compile(r"^\s*(?:X\s+)?TOT\b"), 0.78),                     # es; "€x" for "€*"
     (re.compile(r"\bRAZEM\b"), 0.75),                               # pl
@@ -195,7 +195,7 @@ TOTAL_KEYWORDS = [
 # mentions are ruled out like "TVA", unless the total says they are included:
 # "TOTALE IVA INCLUSA", "SUMME INKL. MWST".
 TOTAL_EXCLUDE_RE = re.compile(
-    r"\bSOUS\s*[- ]?\s*TOTAL\b|\bSUB\s*[- ]?\s*TOTAL\b|\bSUBTOTALE?\b|\bSUBTOTAAL\b|"
+    r"\bS?OUS\s*[- ]?\s*TOTAL\b|\bSUB\s*[- ]?\s*TOTAL\b|\bSUBTOTALE?\b|\bSUBTOTAAL\b|"
     r"\bZWISCHENSUMME\b|\bTOTAL\s*H\.?\s*T\b|\bPRIX\s*H\.?\s*T\b|"
     r"\bMONTANT\s*H\.?\s*T\b|\bTVA\b(?!\s*(?:INCLUSE|INCLUS|COMPRISE|INCL))|\bT\.V\.A\b|"
     r"\bIVA\b(?!\s*INCL)|(?<!INKL\s)(?<!INKL\.\s)\b(?:MWST|UST)\b|"
@@ -338,7 +338,8 @@ def extract_total(lines, currency=None):
             # price is often printed to its left. Not on the Polish "DO
             # ZAPLATY OPAKOWANIA ZWROTNE SUMA 50,57 PLN 1,00": the deposit
             # comes after the amount to pay.
-            value = amounts[0][0] if "ZAPLATY" in pattern.pattern else amounts[-1][0]
+            value = amounts[0][0] if "ZAPLATY" in pattern.pattern or "PLATIT" in pattern.pattern \
+                else amounts[-1][0]
             # "68,60 € 11,43 € 57,17 € Total": gross, VAT and net columns read
             # out of order. A valid triplet points to its gross amount.
             gross = _triplet_gross([amount for amount, _position in amounts])
@@ -1022,7 +1023,9 @@ TAX_TABLE_HEADER_RE = re.compile(
     # Spanish tables: "TIPO BASE CUOTA", "Imp. % Base Cuota", "IVA% IVA + PN =
     # PVP" (Lidl: net price, retail price), "Tasa Sin IVA Total IVA IVA Inc.".
     r"|\bTIPO\b.{0,24}\bBASE\b|\bBASE\b.{0,24}\bCUOTA\b"
-    r"|\bI\.?V\.?A\s*%.{0,30}\bP\.?\s*V\.?\s*P\b|\bSIN\s*IVA\b.{0,30}\bIVA\s*INC")
+    r"|\bI\.?V\.?A\s*%.{0,30}\bP\.?\s*V\.?\s*P\b|\bSIN\s*IVA\b.{0,30}\bIVA\s*INC"
+    # Norwegian and Danish: "MVA-grunnlag MVA-% MVA Sum", "Mva% Grunnlag Mva Totalt".
+    r"|\bMVA\b.{0,20}\bGRUNNLAG\b|\bGRUNNLAG\b.{0,20}\bMVA\b|\bMOMS\b.{0,20}\bGRUNDLAG\b")
 #: The three column labels net, VAT and gross, one after the other with no
 #: amount between them. This signal is stricter than ``TAX_TABLE_HEADER_RE``,
 #: which only cites two labels. It does not match a toll receipt that writes
@@ -1068,6 +1071,9 @@ TAX_TABLE_ROW_RE = re.compile(
     r"^\s*(?:[A-H]\s+|\d{1,2}\s+)?"
     r"(?:(?:T\.?\s*V\.?\s*A|MWST|UST|VAT|IVA|BTW)\.?\s*)?"
     r"(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
+#: Table line that opens on its base and goes on with the rate: "317.48 15%
+#: 47.62 365.10" (Norwegian "MVA-grunnlag MVA-% MVA Sum").
+TAX_TABLE_MIDDLE_ROW_RE = re.compile(r"^\s*\d+[.,]\d{2}\s+(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
 #: Table line whose rate has no "%": "10,00 14,36 1,44 15,80", or, when a
 #: "Code" column precedes it, "2 10,00 4 36,18 3,62 39,80".
 TAX_TABLE_BARE_ROW_RE = re.compile(
@@ -1078,7 +1084,7 @@ TAX_TABLE_BARE_ROW_RE = re.compile(
 #: software).
 TAX_COLUMNS_RE = re.compile(
     r"\bHT\b|\bTTC\b|\bTAUX\b|\bNETTO\b|\bBRUTTO\b|\bIMPONIBILE\b|\bNET\b|\bBRUT\b"
-    r"|\bHTVA\b|\bTVAC\b")
+    r"|\bHTVA\b|\bTVAC\b|\bGRUNNLAG\b|\bGRUNDLAG\b")
 # A number followed by "%" is a rate ("10.00%"), not an amount.
 TAX_TABLE_AMOUNT_RE = re.compile(r"(?<![\d,])(?<!\d[.,])(\d+)[.,](\d{2,4})(?![\d])(?![.,]\d)(?!\s*%)")
 TAX_TABLE_CENTS_RE = re.compile(r"(?<![\w.,])[.,](\d{2})(?![\d.,])(?!\s*%)")
@@ -1187,6 +1193,15 @@ def extract_tax_table(lines):
         for row in lines[index + 1:index + 1 + TAX_TABLE_DEPTH]:
             text = normalize(row.text)
             match = TAX_TABLE_ROW_RE.match(text)
+            middle = None if match else TAX_TABLE_MIDDLE_ROW_RE.match(text)
+            if middle:
+                rate = _closest_known_rate(float(middle.group(1).replace(",", ".")))
+                amounts = _table_amounts(row.text)
+                if rate and len(amounts) >= 2:
+                    amount = _consistent_row(amounts, rate)
+                    if amount:
+                        entries.append((rate, amount, row.text))
+                continue
             if not match and has_rate_column and not re.search(r"[A-Z]{2}", text):
                 inside = _rate_inside_row(_table_amounts(row.text))
                 if inside:
