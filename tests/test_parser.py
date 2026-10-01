@@ -827,6 +827,12 @@ ADRIA SANT ALCAMPO
         beside = self.parse("CONAD\nSHAMPOO 22,00% 4,49\nMUFFIN 10,00% 1,99\nTOTALE COMPLESSIVO 35,90 4,26\n"
                             "di cui IVA 20,00\nPagamento contante Ticket 20,00 4,10")
         self.assertEqual(beside.value('tax_amount'), 4.26)
+        # Two column labels merged by the OCR on the line of the total.
+        merged = self.parse("LIDL ITALIA\nUOVA BIO 10% 1,29\nSPINACI 4% 2,58\n"
+                            "TOTALE COMPLESSIVO SUBTOTALE 42,48 2,15\n"
+                            "Pagamento elettronico DI CUI IVA 42,48 42,48")
+        self.assertEqual(merged.value('total'), 42.48)
+        self.assertEqual(merged.value('tax_amount'), 2.15)
         # The rate of the column title is the items', its price is not a tax.
         title = self.parse("BAR\nDESCRIZIONE Brioch IVA 10% Prezzo(€) 1,50\nTOTALE COMPLESSIVO 1,50\n"
                            "di cui IVA Pagamento contante 0,14 1,50")

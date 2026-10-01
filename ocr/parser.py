@@ -305,7 +305,10 @@ def extract_total(lines, currency=None):
                             best = candidate
                         break
             continue
-        if TOTAL_EXCLUDE_RE.search(text):
+        # "TOTALE COMPLESSIVO SUBTOTALE 42,48 2,15" (Lidl Italia): two labels
+        # of two columns merged by the OCR; the total one decides.
+        if TOTAL_EXCLUDE_RE.search(re.sub(r"\bSUBTOTALE\b", " ", text)
+                                   if "TOTALE COMPLESSIVO" in text else text):
             continue
         if index and re.match(r"\s*SUMA\b", text) \
                 and re.match(r"\s*KWOTA\s+[A-G]\b", normalize(lines[index - 1].text)):
