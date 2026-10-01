@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 T.T.C. SAS
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<odoo>
+
+    <!-- "Re-invoicable" column: yes / no / to decide, set with one click.
+         Removed from the list when the company does not re-invoice (see
+         _get_view in hr_expense_project.py). -->
+    <record id="hr_expense_view_list_invoicing" model="ir.ui.view">
+        <field name="name">hr.expense.list.invoicing</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_expenses_analysis_tree"/>
+        <field name="arch" type="xml">
+            <field name="state" position="before">
+                <field name="reinvoice_mode" string="Re-invoicable" widget="expense_scan_reinvoice"
+                       optional="show" class="text-center"/>
+                <field name="expense_scan_invoice_id" column_invisible="True"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="hr_expense_view_search_invoicing" model="ir.ui.view">
+        <field name="name">hr.expense.view.search.invoicing</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='reinvoice_todo']" position="after">
+                <filter string="Ready to invoice" name="ready_to_invoice"
+                        domain="[('reinvoice_mode', '=', 'project'), ('approval_state', '=', 'approved'),
+                                 ('expense_scan_invoice_id', '=', False)]"/>
+                <filter string="Invoiced" name="invoiced"
+                        domain="[('expense_scan_invoice_id', '!=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Invoice carrying the expense, under the project. -->
+    <record id="hr_expense_view_form_invoicing" model="ir.ui.view">
+        <field name="name">hr.expense.view.form.invoicing</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='project_id']" position="after">
+                <field name="expense_scan_invoice_id" readonly="1"
+                       invisible="not expense_scan_invoice_id"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Project: expense budget, and the expenses at a glance. -->
+    <record id="project_project_view_form_expense_budget" model="ir.ui.view">
+        <field name="name">project.project.form.expense.budget</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" type="object" name="action_expense_scan_open_expenses"
+                        icon="fa-money" groups="hr_expense.group_hr_expense_user"
+                        invisible="not expense_scan_count and not expense_scan_budget">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value">
+                            <field name="expense_scan_spent" widget="monetary"
+                                   decoration-danger="expense_scan_over_budget"/>
+                        </span>
+                        <span class="o_stat_text" invisible="expense_scan_budget">Expenses</span>
+                        <span class="o_stat_text" invisible="not expense_scan_budget">
+                            of <field name="expense_scan_budget" widget="monetary" class="oe_inline"/>
+                        </span>
+                    </div>
+                </button>
+            </xpath>
+            <xpath expr="//page[@name='settings']/group" position="inside">
+                <group name="expense_budget" string="Expenses"
+                       groups="hr_expense.group_hr_expense_user">
+                    <field name="expense_scan_currency_id" invisible="1"/>
+                    <field name="expense_scan_over_budget" invisible="1"/>
+                    <field name="expense_scan_budget"/>
+                    <field name="expense_scan_progress" widget="progressbar"
+                           invisible="not expense_scan_budget"
+                           decoration-danger="expense_scan_over_budget"/>
+                    <field name="expense_scan_spent"/>
+                    <field name="expense_scan_waiting"/>
+                    <field name="expense_scan_left" invisible="not expense_scan_budget"
+                           decoration-danger="expense_scan_left &lt; 0"/>
+                    <field name="expense_scan_held_back"
+                           invisible="not expense_scan_held_back"
+                           decoration-warning="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="project_project_view_search_expense_budget" model="ir.ui.view">
+        <field name="name">project.project.select.expense.budget</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_project_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='unassigned_projects']" position="after">
+                <filter string="Over expense budget" name="expense_over_budget"
+                        domain="[('expense_scan_over_budget', '=', True)]"
+                        groups="hr_expense.group_hr_expense_user"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

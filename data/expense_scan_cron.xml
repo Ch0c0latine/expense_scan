@@ -37,6 +37,18 @@
         <field name="active" eval="True"/>
     </record>
 
+    <!-- Safety net: the expense line of each sales order follows the approved
+         expenses of its projects. It normally moves at each approval. -->
+    <record id="ir_cron_expense_scan_order_lines" model="ir.cron">
+        <field name="name">Receipt scan: update the expense line of the sales orders</field>
+        <field name="model_id" ref="hr_expense.model_hr_expense"/>
+        <field name="state">code</field>
+        <field name="code">model._expense_scan_sync_all()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+
     <!-- Erase the text read (personal data) after the configured delay. -->
     <record id="ir_cron_expense_scan_purge_texts" model="ir.cron">
         <field name="name">Receipt scan: erase the text read on old expenses</field>

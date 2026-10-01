@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 T.T.C. SAS
+     License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
+<templates xml:space="preserve">
+
+    <t t-name="expense_scan.ReinvoiceToggle">
+        <button type="button" class="btn btn-link p-0 border-0 o_expense_scan_reinvoice"
+                t-att-class="{
+                    'text-success': mode === 'project',
+                    'text-warning': mode === 'todo',
+                    'text-muted': mode === 'none',
+                    'o_expense_scan_reinvoice_locked': locked,
+                }"
+                t-att-title="title"
+                t-on-click.stop.prevent="onClick">
+            <i t-if="mode === 'project'" class="fa fa-check-square-o fa-lg" role="img" aria-label="Yes"/>
+            <i t-elif="mode === 'todo'" class="fa fa-question-circle fa-lg" role="img" aria-label="To decide"/>
+            <i t-else="" class="fa fa-square-o fa-lg" role="img" aria-label="No"/>
+        </button>
+    </t>
+
+</templates>

@@ -218,9 +218,15 @@ class HrExpense(models.Model):
         works in every case and adds no dependency.
         """
         arch, view = super()._get_view(view_id, view_type, **options)
-        if view_type == 'form' and self.env.company.expense_scan_reinvoice:
+        reinvoice = self.env.company.expense_scan_reinvoice
+        if view_type == 'form' and reinvoice:
             for node in arch.xpath("//field[@name='sale_order_id']"):
                 node.set('invisible', '1')
+        elif view_type == 'list' and not reinvoice:
+            # The "Re-invoicable" column means nothing to a company that does
+            # not re-invoice.
+            for node in arch.xpath("//field[@name='reinvoice_mode']"):
+                node.getparent().remove(node)
         return arch, view
 
     @api.onchange('reinvoice_mode')
@@ -260,10 +266,9 @@ class HrExpense(models.Model):
     def _expense_scan_project_values(self, project, reinvoice=True):
         """What linking to a project implies.
 
-        Two consequences, when the matching modules are installed: the
-        analytic distribution (the cost goes into the project's
-        profitability) and, for a re-invoiced expense only, the sales order
-        to re-invoice (the line appears on the next invoice).
+        The analytic distribution (the cost goes into the project's
+        profitability) when the matching module is installed. A re-invoiced
+        expense reaches the project's sales order by itself once approved.
         """
         self.ensure_one()
         if not project:
@@ -291,16 +296,11 @@ class HrExpense(models.Model):
             task = self._expense_scan_open_tasks(project)[:1]
             values['expense_scan_task_id'] = task.id or False
 
-        # The sales order to re-invoice only exists with Sales: without it,
-        # neither the model nor these fields are present.
-        if reinvoice and 'sale.order' in self.env:
-            order = self.env['sale.order']
-            if 'reinvoiced_sale_order_id' in project._fields:
-                order = project.reinvoiced_sale_order_id
-            if not order and 'sale_order_id' in project._fields:
-                order = project.sale_order_id
-            if order and 'sale_order_id' in self._fields:
-                values['sale_order_id'] = order.id
+        # The standard "Customer to Reinvoice" stays empty: Odoo would add one
+        # order line per expense. The expense reaches the order through its
+        # project instead (see hr_expense_invoicing.py).
+        if 'sale_order_id' in self._fields:
+            values['sale_order_id'] = False
         return values
 
     def _expense_scan_find_project(self, scan_date):

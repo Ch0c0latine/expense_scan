@@ -8,6 +8,9 @@ from . import ir_attachment
 from . import hr_employee
 from . import hr_expense
 from . import hr_expense_project
+from . import hr_expense_invoicing
+from . import account_move
+from . import project_project
 from . import hr_expense_multi
 from . import hr_expense_mileage
 from . import hr_expense_team
