@@ -11,6 +11,8 @@ the module's behaviour.
 Categories are designated by any key: the product id in Odoo, its code in
 the benchmark.
 """
+from collections import Counter
+
 from . import lexicon
 
 #: Weight of an activity code (APE, MCC, or SIRET found in Sirene): 4.
@@ -80,6 +82,10 @@ def score(lines, keyword_categories, family_keys, activity=None, naf_of=None):
 LEARN_MIN_RECEIPTS = 3
 LEARN_MIN_SHARE = 0.3
 LEARN_MIN_PRECISION = 0.85
+#: ...and on the receipts of this many merchants: the words of a single
+#: merchant (its name, its street) are already known from the merchant
+#: history, and say nothing about the next merchant.
+LEARN_MIN_MERCHANTS = 2
 #: Below this many receipts in all, the words say nothing: with a single
 #: category in use, every word of its receipts would look specific.
 LEARN_MIN_CORPUS = 10
@@ -125,29 +131,38 @@ def receipt_words(text, excluded=()):
 def learn_words(receipts, excluded=(), known=None):
     """``{category: [words]}`` learnt from receipts already filed.
 
-    ``receipts``: ``[(category, text)]``, the category confirmed by a
-    person. ``excluded``: words never to learn (names of the employees and
-    of the company). ``known``: ``{category: [words]}`` already declared,
-    not learnt twice.
+    ``receipts``: ``[(category, text, merchant, chosen)]``. Only the
+    receipts whose category a person chose (``chosen``) teach: a category
+    suggested by the scan and kept as is would teach back the words that
+    suggested it, mistakes included. All of them count to tell whether a
+    word belongs to a single category. ``merchant``: key of the merchant,
+    ``None`` when unknown (the unknown ones count as one merchant).
+    ``excluded``: words never to learn (names of the employees and of the
+    company). ``known``: ``{category: [words]}`` declared by hand; such a
+    word is not learnt again, nor for another category.
     """
-    known = known or {}
-    per_category, everywhere, sizes = {}, {}, {}
-    for category, text in receipts:
+    declared = {word for words in (known or {}).values() for word in words}
+    everywhere, in_category = Counter(), Counter()
+    taught, sizes, merchants = {}, Counter(), {}
+    for category, text, merchant, chosen in receipts:
         words = receipt_words(text, excluded)
-        sizes[category] = sizes.get(category, 0) + 1
-        counts = per_category.setdefault(category, {})
+        everywhere.update(words)
+        in_category.update((category, word) for word in words)
+        if not chosen:
+            continue
+        sizes[category] += 1
+        taught.setdefault(category, Counter()).update(words)
         for word in words:
-            counts[word] = counts.get(word, 0) + 1
-            everywhere[word] = everywhere.get(word, 0) + 1
-    if sum(sizes.values()) < LEARN_MIN_CORPUS:
+            merchants.setdefault((category, word), set()).add(merchant)
+    if len(receipts) < LEARN_MIN_CORPUS:
         return {}
     learnt = {}
-    for category, counts in per_category.items():
-        declared = set(known.get(category, ()))
+    for category, counts in taught.items():
         words = [word for word, count in counts.items()
                  if count >= LEARN_MIN_RECEIPTS
                  and count >= LEARN_MIN_SHARE * sizes[category]
-                 and count >= LEARN_MIN_PRECISION * everywhere[word]
+                 and in_category[category, word] >= LEARN_MIN_PRECISION * everywhere[word]
+                 and len(merchants[category, word]) >= LEARN_MIN_MERCHANTS
                  and word not in declared]
         words.sort(key=lambda word: (-counts[word], word))
         if words:

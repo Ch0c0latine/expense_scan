@@ -41,7 +41,13 @@
   A category named like no known family ("Subscriptions", "Training")
   is thus recognised without anyone entering words. Words common to all
   receipts and the names of the employees and companies are never learnt.
-  Shown read-only on the category, next to the declared words.
+  Shown read-only on the category, next to the declared words. Only the
+  categories chosen by a person teach: a suggestion of the scan kept as is
+  would teach back its own words, mistakes included, and drift over time.
+  A word must also come from at least two merchants (the words of a single
+  merchant, its name or its street, are already known from the merchant
+  history), and a word entered on a category by hand is never learnt for
+  another one.
 - **Italian receipts** (new database in Italy, the Italian corpus and real
   receipts of trips): the rate printed on the items when the tax line has
   none ("di cui IVA 3,55" under items at "10,00%"; several rates give the

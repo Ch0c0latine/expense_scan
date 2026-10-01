@@ -25,14 +25,28 @@ class TestLexicon(common.TransactionCase):
 
     def test_learnt_words(self):
         from ..ocr import categorize
-        receipts = ([('toll', "ASF peage autoroute A62 sortie Agen classe 1")] * 4
-                    + [('meal', "Brasserie du Quai couverts plat du jour TOTAL")] * 4
-                    + [('meal', "Pizzeria Roma coperto margherita")] * 2)
-        learnt = categorize.learn_words(receipts, excluded={'agen'}, known={'toll': ['peage']})
+        # (category, text, merchant, category chosen by a person)
+        receipts = ([('toll', "ASF peage autoroute A62 sortie classe 1 Agen", 'asf', True)] * 2
+                    + [('toll', "APRR peage autoroute A6 sortie classe 1 Agen", 'aprr', True)] * 2
+                    + [('meal', "Brasserie du Quai couverts plat du jour parking TOTAL",
+                        'quai', True)] * 2
+                    + [('meal', "Bistrot Zorg couverts plat du jour parking TOTAL", 'zorg', True)] * 2
+                    + [('meal', "Pizzeria Roma coperto margherita", 'roma', True)] * 3
+                    + [('meal', "Snack kebab frites", None, True)] * 3
+                    + [('toll', "Parking Zentrum ticket horaire", 'zentrum', False)] * 3
+                    + [('toll', "Parking Gare ticket horaire", 'gare', False)] * 3)
+        learnt = categorize.learn_words(
+            receipts, excluded={'agen'}, known={'toll': ['peage'], 'lunch': ['plat']})
         self.assertIn('autoroute', learnt['toll'])
-        self.assertNotIn('peage', learnt['toll'])     # already declared
-        self.assertNotIn('agen', learnt['toll'])      # a name, excluded
-        self.assertNotIn('total', learnt['meal'])     # on every receipt
+        self.assertIn('couverts', learnt['meal'])
+        self.assertNotIn('peage', learnt['toll'])      # already declared
+        self.assertNotIn('plat', learnt['meal'])       # declared on another category
+        self.assertNotIn('agen', learnt['toll'])       # a name, excluded
+        self.assertNotIn('total', learnt['meal'])      # on every receipt
+        self.assertNotIn('pizzeria', learnt['meal'])   # a single merchant
+        self.assertNotIn('kebab', learnt['meal'])      # merchants unknown: one at most
+        self.assertNotIn('parking', learnt['meal'])    # also on the receipts of tolls
+        self.assertNotIn('horaire', learnt['toll'])    # only suggestions kept as is
         self.assertEqual(categorize.learn_words(receipts[:5]), {})  # too few receipts
 
     def test_families_follow_category_names(self):
@@ -387,24 +401,35 @@ class TestCategoryRecognition(common.TransactionCase):
         """A category named like no family learns the words of its receipts."""
         software = self.env['product.product'].create({
             'name': "Abonnements test", 'can_be_expensed': True})
-        texts = [(software, "GLORPSOFT CLOUD\nLicence annuelle Glorpsoft\nFacture Mme Zelinska"),
-                 (self.food, "BRASSERIE FROMZAK\nPlat du jour\nMme Zelinska")]
         self.employee.name = "Zelinska"
-        for index in range(6):
-            product, text = texts[index % 2]
+        filed = [(software, "Glorpsoft"), (self.food, "Fromzak"),
+                 (software, "Zundaq"), (self.food, "Quimbar"),
+                 (software, "Vrellix"), (self.food, "Fromzak")]
+        for index, (product, merchant) in enumerate(filed):
+            text = ("Licencezz annualizz %s\nFacture Mme Zelinska" % merchant
+                    if product == software else "Plat du jour\nMme Zelinska")
             self.expense(product_id=product.id, total_amount_currency=10.0 + index,
-                         scan_raw_text=text + "\nTOTAL %d,00" % (10 + index)
+                         expense_scan_merchant=merchant,
+                         scan_raw_text="%s\n%s\nTOTAL %d,00" % (merchant.upper(), text, 10 + index)
                          ).approval_state = 'submitted'
         for index in range(6):
             self.expense(product_id=self.lodging.id, total_amount_currency=80.0,
                          scan_raw_text="HOTEL %d\nNuit" % index).approval_state = 'submitted'
+        # Suggested by the scan and kept as is: teaches nothing.
+        for index in range(3):
+            self.expense(product_id=software.id, expense_scan_guessed_product_id=software.id,
+                         expense_scan_merchant="Plonkware %d" % index, total_amount_currency=20.0,
+                         scan_raw_text="PLONKWARE\nMaintenancezz trimestrizz\nTOTAL 20,00",
+                         ).approval_state = 'submitted'
         self.env['hr.expense']._cron_expense_scan_learn_words()
         learnt = (software.expense_scan_learned_keywords or "").split("\n")
-        self.assertIn("glorpsoft", learnt)
+        self.assertIn("licencezz", learnt)
+        self.assertNotIn("glorpsoft", learnt)  # a single merchant
         self.assertNotIn("zelinska", learnt)  # the employee's name
         self.assertNotIn("total", learnt)
+        self.assertNotIn("trimestrizz", learnt)
         values = self.expense()._expense_scan_category_values(
-            reading("GLORPSOFT\nRenouvellement\nTOTAL 49,00"), self.company)
+            reading("KWOBBLE\nLicencezz annualizz\nTOTAL 49,00"), self.company)
         self.assertEqual(values['product_id'], software.id)
 
     def test_drafts_teach_nothing(self):

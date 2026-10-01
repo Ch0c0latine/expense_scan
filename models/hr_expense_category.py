@@ -70,9 +70,11 @@ class ProductTemplate(models.Model):
     expense_scan_learned_keywords = fields.Text(
         string="Words learnt from receipts",
         readonly=True,
-        help="Words found on the receipts of this category once submitted, "
-             "and almost never on the others. Updated every day; they point "
-             "to this category like the receipt words above.",
+        help="Words found on the receipts filed in this category by a person, "
+             "at several merchants, and almost never on the others. Updated "
+             "every day; they point to this category like the receipt words "
+             "above. A word entered above, here or on another category, is "
+             "never learnt.",
     )
 
     @api.model_create_multi
@@ -366,10 +368,12 @@ class HrExpense(models.Model):
     def _cron_expense_scan_learn_words(self):
         """Learn the words of each category from the receipts filed by the team.
 
-        Only expenses confirmed by a person (submitted or later) teach, and
-        only their text still kept (see the retention delay). The names of
-        the employees and companies are never learnt: they are on the
-        receipts (hotel bills) without saying anything about the category.
+        Only submitted expenses (or later) count, and only their text still
+        kept (see the retention delay). Among them, only those whose category
+        a person chose teach: a suggestion kept as is would teach back its
+        own words, mistakes included. The names of the employees and
+        companies are never learnt: they are on the receipts (hotel bills)
+        without saying anything about the category.
         """
         Expense = self.sudo()
         expenses = Expense.search([
@@ -379,7 +383,9 @@ class HrExpense(models.Model):
         ], order='id desc', limit=LEARN_LIMIT)
         defaults = {company._expense_scan_default_product().id
                     for company in self.env['res.company'].sudo().search([])}
-        receipts = [(expense.product_id.product_tmpl_id.id, expense.scan_raw_text)
+        receipts = [(expense.product_id.product_tmpl_id.id, expense.scan_raw_text,
+                     expense.expense_scan_merchant_key or expense.expense_scan_merchant_read or None,
+                     expense.product_id != expense.expense_scan_guessed_product_id)
                     for expense in expenses if expense.product_id.id not in defaults]
         names = (self.env['hr.employee'].sudo().with_context(active_test=False).search([]).mapped('name')
                  + self.env['res.company'].sudo().search([]).mapped('name')
