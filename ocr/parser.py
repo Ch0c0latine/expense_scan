@@ -590,6 +590,9 @@ MERCHANT_STOP_RE = re.compile(
     r"\bMESA\b|\bARTICULOS?\b|\bDESCRIPCION\b|\bUNID\b|"
     # German column headers ("Stk Artikel Preis Rabatt Summe").
     r"\bARTIKEL\b|\bPREIS\b|\bMENGE\b|\bANZAHL\b|\bSTK\b|"
+    # Scandinavian: receipt ("Kvittokopia", "Salgskvittering"), the tagline of
+    # Willys ("Vår affärsidé: ...").
+    r"\w*KVITT\w*|\bAFFARSIDE\b|\bORDRENUMMER\b|"
     r"\bCIF\b|\bNIF\b|\bRECEIPT\b|\bINVOICE\b|\bTHANK\b|\bWELCOME\b|"
     r"\bGRAZIE\b|\bDANKE\b|\bDZIEKUJEMY\b|\bGRACIAS\b|\bKASA\b|\bKASSE\b|"
     r"\bCASSA\b|\bCAJA\b|\bVAT\b|\bIVA\b|\bMWST\b|\bUST\b|"
@@ -616,7 +619,7 @@ ADDRESS_RE = re.compile(
     r"UL|ULICA|ALEJA|VIA|VIALE|PIAZZA|CORSO|STRASSE|STR|PLATZ|WEG|"
     r"CALLE|AVENIDA|PLAZA|RUA|STREET|ROAD|STRAAT)\b"
     # Street names written in one word: "Hermannstr 158", "Hauptstrasse".
-    r"|\b\w{3,}(?:STR|STRASSE|GASSE|PLATZ|ALLEE|STRAAT|GATAN|GADE|VEIEN|VEJ)\b"
+    r"|\b\w{3,}(?:STR|STRASSE|GASSE|PLATZ|ALLEE|STRAAT|GATAN|GADE|VEIEN|VEGEN|GATEN|VEJ)\b"
 )
 #: Street word inside a name, after an article and without any number:
 #: "Brasserie du Quai", "Café de la Place", "Pizzeria della Piazza".
@@ -669,6 +672,8 @@ LEGAL_FORM_BONUS = 1.15
 #: Coop's slogan, printed on its receipts: "Pour moi et pour toi. coop".
 SLOGAN_RE = re.compile(
     r"^\W*(?:pour moi et pour toi|f[uü]r mich und f[uü]r dich|per me e per te)\W*", re.IGNORECASE)
+#: The tagline of Willys, which names the chain in the place of the logo.
+WILLYS_TAGLINE_RE = re.compile(r"\bAFFARSIDE\b.*\bBILLIG\w*\s+MATKASS\w*\s+WI\w{1,4}Y?")
 #: The Polish form after the name, to leave out: "Rossmann SDP Sp. z o.o. Sk".
 POLISH_FORM_TAIL_RE = re.compile(
     r"\s+sp\.?\s*z\s*[o0]\.?\s*[o0]\.?(?:\s+(?:sp\.?\s*)?[kj]\.?|\s+s\.?k\.?a?\.?)?\s*$",
@@ -809,6 +814,8 @@ def extract_merchant(lines, max_lines=10, buyers=()):
             raw = raw[slogan.end():].strip().title()
             if sum(char.isalpha() for char in raw) < 3:
                 raw = "Coop"
+        elif WILLYS_TAGLINE_RE.search(normalize(raw)):
+            raw, slogan = "Willys", True  # "Vår affärsidé: Sveriges billigaste matkasse WiLLY:S"
         # "ASFLieu-dit 47901 AGEN Cedex": name glued to the locality, followed
         # by the address. Only what precedes the locality is a candidate.
         before_place = re.split(r"(?i)\s*lieu[- ]?dit", raw)[0].strip()

@@ -770,6 +770,16 @@ ADRIA SANT ALCAMPO
                           "OTAL [1] Article 47,95 €")
         self.assertEqual(lost.value('total'), 47.95)
 
+    def test_scandinavian_headers_name_the_chain_not_the_receipt(self):
+        self.assertEqual(self.parse("Salgskvittering\nKIWI 818 Bøhmergaten\nOrg.nr: 933 735 346\n"
+                                    "Sum 3 varer 47,00").value('merchant'), "KIWI 818 Bøhmergaten")
+        self.assertEqual(self.parse("ICA Kvittokopia - gäller ej för retur\nMaxi ICA Stormarknad Landskrona\n"
+                                    "Totalt 15 varor\nTotalt 403,00 SEK").value('merchant'),
+                         "Maxi ICA Stormarknad Landskrona")
+        willys = self.parse("Vår affärsidé: Sveriges billigaste matkasse WiLLY:S\nLandskrona\n"
+                            "Tele: 0418-46 62 40\nTotalt 403,00 SEK")
+        self.assertEqual(willys.value('merchant'), "Willys")
+
     def test_norwegian_tax_tables(self):
         # Rate first, then base, tax, total.
         first = self.parse("REMA 1000\nSJOKOMELK 1L TINE 15% 26,90\nSum 1 varer 26,90\n"
