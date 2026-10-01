@@ -96,6 +96,13 @@ class TestLexicon(common.TransactionCase):
         lines = ["SUPERMARCHE"] + ["ARTICLE"] * 10 + ["DESSERT 2,00"]
         self.assertIsNone(lexicon.pick_category(lexicon.score_categories(lines, categories)))
 
+    def test_a_keyword_of_two_letters_matches_nothing(self):
+        """"b&b" folds to "b b": the gum "WRIGLEY'S B-B" is no bed and breakfast."""
+        scores = lexicon.score_categories(
+            ["Sklep Zabka", "GUMA DO ZUCIA WRIGLEY'S B-B 1szt. x3,99"],
+            {'hotel': lexicon.split_keywords("b&b\nhotel")})
+        self.assertEqual(scores, {})
+
     def test_misread_keyword_is_tolerated(self):
         categories = {'lodging': ["pernottamento"], 'meal': ["ristorante"]}
         self.assertEqual(lexicon.pick_category(

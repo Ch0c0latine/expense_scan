@@ -161,7 +161,7 @@ class ProductTemplate(models.Model):
             if not words or not current.strip():
                 continue
             known = set(lexicon.split_keywords(current))
-            missing = [word for word in words if lexicon.fold(word) not in known]
+            missing = [word for word in words if lexicon.fold_words(word) not in known]
             if missing:
                 template.expense_scan_keywords = current.rstrip('\n') + '\n' + '\n'.join(missing)
 
@@ -172,12 +172,12 @@ class ProductTemplate(models.Model):
         their order.
         """
         for template, family in self._expense_scan_family_templates().items():
-            words = {lexicon.fold(word) for word in removals.get(family, ())}
+            words = {lexicon.fold_words(word) for word in removals.get(family, ())}
             current = template.expense_scan_keywords or ''
             if not words or not current.strip():
                 continue
             chunks = [chunk.strip() for chunk in re.split(r"[\n,;]+", current) if chunk.strip()]
-            kept = [chunk for chunk in chunks if lexicon.fold(chunk) not in words]
+            kept = [chunk for chunk in chunks if lexicon.fold_words(chunk) not in words]
             if len(kept) != len(chunks):
                 template.expense_scan_keywords = '\n'.join(kept)
 

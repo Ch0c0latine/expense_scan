@@ -879,6 +879,7 @@ def extract_merchant(lines, max_lines=10, buyers=()):
     # merchant on a card slip is not part of it.
     name = MERCHANT_PREFIX_RE.sub("", name).strip(" -*:.") or name
     name = re.sub(r"^[^\w]+", "", name) or name  # "←", "*" of a logo
+    name = re.sub(r"(?i)\s+sklep(?:\s+nr\.?)?\s*\d*\s*$", "", name) or name  # "Sklep nr 1025"
     name = POLISH_FORM_TAIL_RE.sub("", name) or name
     name = _without_buyer(name, buyers)
     if raw.endswith(".") and LEGAL_FORM_RE.search(name):

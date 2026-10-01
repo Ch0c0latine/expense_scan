@@ -45,11 +45,21 @@ def fold(text):
     return text.strip()
 
 
+def fold_words(text):
+    """``fold`` for the words declared on a category and the lines they are sought in.
+
+    "B&B" and "H&M" stay one word: "b b" would also be the "B-B" of a
+    chewing gum. Merchant keys keep using ``fold``: they are stored.
+    """
+    text = (text or "").lower()
+    return fold(re.sub(r"(?<![a-z0-9])([a-z])\s*&\s*([a-z])(?![a-z0-9])", r"\1n\2", text))
+
+
 def split_keywords(raw):
     """The words declared on a category: one per line, or separated by commas."""
     keywords = []
     for chunk in re.split(r"[\n,;]+", raw or ""):
-        folded = fold(chunk)
+        folded = fold_words(chunk)
         if folded and folded not in keywords:
             keywords.append(folded)
     return keywords
@@ -399,7 +409,7 @@ def score_categories(lines, categories):
     counts once per category, at its best position: a "PARKING" repeated ten
     times at the bottom of the receipt is worth no more than once.
     """
-    folded = [fold(line).split() for line in lines]
+    folded = [fold_words(line).split() for line in lines]
     scores = {}
     for category, keywords in categories.items():
         score = 0.0
