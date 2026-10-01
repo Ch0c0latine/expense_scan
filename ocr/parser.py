@@ -693,7 +693,8 @@ NAME_BEFORE_STREET_RE = re.compile(
 #: Name followed by a street written in one word: "Kaufland - Gutschmidtstraße
 #: 19", "Hans im Glück Kloten Bahnhofstrasse 5".
 GLUED_STREET_RE = re.compile(
-    r"^(.+?)([\s,\-]+)\w{3,}(?:str|strasse|straße|gasse|platz|allee|straat|gatan|gade|veien|vej)\.?\b",
+    r"^(.+?)([\s,\-]+)\w{3,}(?:str|strasse|straße|gasse|platz|allee|straat|gatan|gade|veien|vegen|gaten|vej)"
+    r"\.?\b",
     re.IGNORECASE)
 #: Document type at the start or end of the line, next to the merchant name.
 DOCUMENT_KIND_RE = re.compile(
@@ -861,7 +862,11 @@ def extract_merchant(lines, max_lines=10, buyers=()):
             # name holds a digit ("Distribo Tower 3 CS00000"), when the name
             # opens the line and letters remain a clear majority.
             starts_with_name = text[:1].isalpha() and text.split()[0].isalpha()
-            if not (starts_with_name and letters >= 10 and digits <= 6 and digits <= letters / 2):
+            # Or a short name with its store number, cut off its street:
+            # "KIWI 818 Bøhmergaten".
+            store_number = bool(street) and starts_with_name and digits <= 4
+            if not (store_number
+                    or (starts_with_name and letters >= 10 and digits <= 6 and digits <= letters / 2)):
                 continue
         # The score rises with how high the line is on the receipt and with
         # how many letters it holds.

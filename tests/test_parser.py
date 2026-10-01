@@ -772,7 +772,7 @@ ADRIA SANT ALCAMPO
 
     def test_scandinavian_headers_name_the_chain_not_the_receipt(self):
         self.assertEqual(self.parse("Salgskvittering\nKIWI 818 Bøhmergaten\nOrg.nr: 933 735 346\n"
-                                    "Sum 3 varer 47,00").value('merchant'), "KIWI 818 Bøhmergaten")
+                                    "Sum 3 varer 47,00").value('merchant'), "Kiwi 818")
         self.assertEqual(self.parse("ICA Kvittokopia - gäller ej för retur\nMaxi ICA Stormarknad Landskrona\n"
                                     "Totalt 15 varor\nTotalt 403,00 SEK").value('merchant'),
                          "Maxi ICA Stormarknad Landskrona")
