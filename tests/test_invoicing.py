@@ -66,7 +66,7 @@ class TestInvoicing(common.TransactionCase):
 
     def test_approved_expenses_add_up_on_one_line(self):
         first, second = self.expense(100.0), self.expense(50.0)
-        self.assertEqual(self.line.product_uom_qty, 1.0, "waiting for the manager: nothing moves")
+        self.assertEqual(self.line.qty_delivered, 0.0, "waiting for the manager: nothing moves")
         self.approve(first | second)
         self.assertEqual(self.line.product_uom_qty, 150.0)
         self.assertEqual(self.line.qty_delivered, 150.0)
