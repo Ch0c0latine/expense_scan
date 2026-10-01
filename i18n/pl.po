@@ -113,13 +113,13 @@ msgstr "%(first)s do %(last)s"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "%(label)s %(rate)s %%"
-msgstr ""
+msgstr "%(label)s %(rate)s %%"
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "%(rate)s — %(amount)s"
-msgstr ""
+msgstr "%(rate)s — %(amount)s"
 
 #. module: expense_scan
 #. odoo-python
@@ -143,7 +143,7 @@ msgstr "%(rule)s - paragon wymienia \"%(words)s\"."
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "%s %%"
-msgstr ""
+msgstr "%s %%"
 
 #. module: expense_scan
 #. odoo-python
@@ -179,7 +179,7 @@ msgstr "%s nie należy do Twojego zespołu."
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "%s s"
-msgstr ""
+msgstr "%s s"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -384,7 +384,7 @@ msgstr "Automatyczna poprawka (do zmiany przed zastosowaniem)"
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__available_project_ids
 msgid "Available Project"
-msgstr ""
+msgstr "Dostępne projekty"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__scan_score
@@ -893,57 +893,57 @@ msgstr "Zasady wydatków"
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hint_category
 msgid "Expense Scan Hint Category"
-msgstr ""
+msgstr "Wskazówka: kategoria"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hint_date
 msgid "Expense Scan Hint Date"
-msgstr ""
+msgstr "Wskazówka: data"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hint_reinvoice
 msgid "Expense Scan Hint Reinvoice"
-msgstr ""
+msgstr "Wskazówka: refakturowanie"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hint_tax
 msgid "Expense Scan Hint Tax"
-msgstr ""
+msgstr "Wskazówka: podatek"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hint_total
 msgid "Expense Scan Hint Total"
-msgstr ""
+msgstr "Wskazówka: suma"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hints
 msgid "Expense Scan Hints"
-msgstr ""
+msgstr "Wskazówki"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_main_checksum
 msgid "Expense Scan Main Checksum"
-msgstr ""
+msgstr "Suma kontrolna dowodu"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_main_mimetype
 msgid "Expense Scan Main Mimetype"
-msgstr ""
+msgstr "Typ dowodu"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_read_values
 msgid "Expense Scan Read Values"
-msgstr ""
+msgstr "Odczytane wartości"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_retouch_params
 msgid "Expense Scan Retouch Params"
-msgstr ""
+msgstr "Ustawienia retuszu"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_todo_unplaced
 msgid "Expense Scan Todo Unplaced"
-msgstr ""
+msgstr "Punkty do sprawdzenia poza polami"
 
 #. module: expense_scan
 #. odoo-javascript
@@ -1246,7 +1246,7 @@ msgstr "Historia"
 #: model:ir.model.fields,field_description:expense_scan.field_res_currency__id
 #: model:ir.model.fields,field_description:expense_scan.field_res_currency_rate__id
 msgid "ID"
-msgstr ""
+msgstr "ID"
 
 #. module: expense_scan
 #. odoo-python
@@ -1707,7 +1707,7 @@ msgstr "Zapłacone przez"
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
 msgid "Paris, Lyon, Marseille"
-msgstr ""
+msgstr "Warszawa, Kraków, Wrocław"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__per_night
@@ -1953,6 +1953,11 @@ msgid "Receipt scan: exchange rates of the European Central Bank"
 msgstr "Skanowanie paragonów: kursy walut Europejskiego Banku Centralnego"
 
 #. module: expense_scan
+#: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_learn_words_ir_actions_server
+msgid "Receipt scan: learn the words of each category"
+msgstr "Skanowanie paragonów: uczenie się słów każdej kategorii"
+
+#. module: expense_scan
 #: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_pending_ir_actions_server
 msgid "Receipt scan: pick up pending scans"
 msgstr "Skanowanie paragonów: wznawianie oczekujących skanów"
@@ -2069,12 +2074,12 @@ msgstr "Reset: przesłany obraz, bez poprawek"
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__result_file
 msgid "Result File"
-msgstr ""
+msgstr "Utworzony plik"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__result_name
 msgid "Result Name"
-msgstr ""
+msgstr "Nazwa utworzonego pliku"
 
 #. module: expense_scan
 #. odoo-javascript
@@ -2126,7 +2131,7 @@ msgstr "Uruchamia OCR dla każdego paragonu przesłanego z listy wydatków."
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sirene__siret
 msgid "SIRET"
-msgstr ""
+msgstr "SIRET"
 
 #. module: expense_scan
 #. odoo-javascript
@@ -2179,12 +2184,12 @@ msgstr "Skanowanie paragonu — możesz już wpisać opis."
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__selected_count
 msgid "Selected Count"
-msgstr ""
+msgstr "Liczba wybranych"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__selected_summary
 msgid "Selected Summary"
-msgstr ""
+msgstr "Podsumowanie wyboru"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__expense_ids
@@ -2399,7 +2404,7 @@ msgstr "Szablon \"%s\" nie ma pliku Excel."
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__res_company__expense_scan_engine__tesseract
 msgid "Tesseract"
-msgstr ""
+msgstr "Tesseract"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_tesseract_lang
@@ -2841,6 +2846,18 @@ msgstr "Bez VAT"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__words
 msgid "Words"
 msgstr "Słowa"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_product_product__expense_scan_learned_keywords
+#: model:ir.model.fields,help:expense_scan.field_product_template__expense_scan_learned_keywords
+msgid "Words found on the receipts filed in this category by a person, at several merchants, and almost never on the others. Updated every day; they point to this category like the receipt words above. A word entered above, here or on another category, is never learnt."
+msgstr "Słowa znalezione na paragonach przypisanych do tej kategorii przez osobę, u kilku sprzedawców, i prawie nigdy na pozostałych. Aktualizowane codziennie; wskazują tę kategorię tak jak słowa z paragonu powyżej. Słowo wpisane powyżej, tutaj lub w innej kategorii, nigdy nie jest uczone."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_product_product__expense_scan_learned_keywords
+#: model:ir.model.fields,field_description:expense_scan.field_product_template__expense_scan_learned_keywords
+msgid "Words learnt from receipts"
+msgstr "Słowa poznane z paragonów"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_product_product__expense_scan_keywords
