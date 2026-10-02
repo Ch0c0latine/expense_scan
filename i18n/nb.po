@@ -64,6 +64,12 @@ msgid "%(count)d receipts with a different total or date were moved to their own
 msgstr "%(count)d kvitteringer med annen sum eller dato er flyttet til egne utlegg."
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
+msgid "%(count)s expense(s) left as they were"
+msgstr "%(count)s utlegg latt være som de var"
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "%(count)s expense(s) of this order's missions wait for the manager or for a decision. The expense line does not include them yet."
@@ -376,6 +382,11 @@ msgid "Amount hard to read on the receipt: check it."
 msgstr "Beløpet er vanskelig å lese på kvitteringen: kontroller det."
 
 #. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_reinvoiced_amount
+msgid "Amount incl. tax of a re-invoiced expense; zero otherwise. Its total at the bottom of the list is what goes to the customers."
+msgstr "Beløp inkl. mva for et viderefakturert utlegg, ellers null. Summen nederst i listen er det som går til kundene."
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Amount not found on the receipt: enter it."
@@ -491,6 +502,7 @@ msgstr "Kamera"
 
 #. module: expense_scan
 #. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
 #: code:addons/expense_scan/static/src/js/retouch_dialog.xml:0
 #: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
@@ -910,6 +922,12 @@ msgstr "Motorstatus"
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Enter a whole number of days of at least 2 in the quantity."
+msgstr "Oppgi i antallet et helt antall dager, minst 2."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/hr_expense_team.py:0
 msgid "Entered by %(author)s for %(employee)s."
 msgstr "Registrert av %(author)s for %(employee)s."
@@ -1084,6 +1102,19 @@ msgid "Expense manager"
 msgstr "Utleggsansvarlig"
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_sheet.py:0
+msgid "Expense receipts"
+msgstr "Kvitteringer_utlegg"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_sheet.py:0
+#: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
+msgid "Expense report"
+msgstr "Utleggsrapport"
+
+#. module: expense_scan
 #: model:ir.model,name:expense_scan.model_expense_scan_policy_rule
 msgid "Expense rule"
 msgstr "Utleggsregel"
@@ -1114,11 +1145,6 @@ msgstr "Utskrift av utleggsrapport"
 #: model:ir.model,name:expense_scan.model_expense_scan_sheet
 msgid "Expense sheet production"
 msgstr "Produksjon av utleggsrapport"
-
-#. module: expense_scan
-#: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
-msgid "Expense sheet —"
-msgstr "Utleggsrapport —"
 
 #. module: expense_scan
 #. odoo-javascript
@@ -1825,6 +1851,34 @@ msgid "One word per line: hotel, nocleg, Ibis..."
 msgstr "Ett ord per linje: hotell, nocleg, Ibis..."
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Only %(found)s free day(s) found from %(date)s for %(count)s: lower the quantity or move the date."
+msgstr "Fant bare %(found)s ledige dager fra %(date)s for %(count)s: reduser antallet eller flytt datoen."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Only a draft expense can be spread over days."
+msgstr "Bare et utlegg i kladd kan fordeles på dager."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Only an expense of a flat-rate category can be spread over days."
+msgstr "Bare et utlegg i en satskategori kan fordeles på dager."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid ""
+"Only approved or posted expenses can be paid:\n"
+"%s"
+msgstr ""
+"Bare godkjente eller bokførte utlegg kan betales:\n"
+"%s"
+
+#. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/receipt_preview_widget.xml:0
 msgid "Open full screen"
@@ -1885,6 +1939,11 @@ msgstr "Betalt av"
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
 msgid "Paris, Lyon, Marseille"
 msgstr "Oslo, Bergen, Trondheim"
+
+#. module: expense_scan
+#: model:ir.actions.server,name:expense_scan.action_expense_scan_pay
+msgid "Pay the employee"
+msgstr "Betal den ansatte"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__per_night
@@ -2037,9 +2096,20 @@ msgstr "Viderefakturer utlegg til et prosjekt"
 
 #. module: expense_scan
 #. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
+msgid "Re-invoice the selection"
+msgstr "Viderefakturer utvalget"
+
+#. module: expense_scan
+#. odoo-javascript
 #: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
 msgid "Re-invoice toggle"
 msgstr "Bryter for viderefakturering"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_reinvoiced_amount
+msgid "Re-invoiced amount"
+msgstr "Viderefakturert beløp"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_account_bank_statement_line__expense_scan_expense_ids
@@ -2403,6 +2473,12 @@ msgid "Scanning the receipt — you can already type the description."
 msgstr "Skanner kvitteringen — du kan allerede skrive beskrivelsen."
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "Select expenses paid by the employee."
+msgstr "Velg utlegg som den ansatte har betalt."
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__selected_count
 msgid "Selected Count"
 msgstr "Antall valgte"
@@ -2454,6 +2530,17 @@ msgstr "Eneste betalingsmåte"
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_wide_split
 msgid "Split view from 768 px"
 msgstr "Delt visning fra 768 px"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Spread expenses"
+msgstr "Fordelte utlegg"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_invoicing
+msgid "Spread over days"
+msgstr "Fordel på dager"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__date_debut
@@ -2828,6 +2915,12 @@ msgid "The scan of this receipt did not finish. Enter the expense by hand."
 msgstr "Skanningen av denne kvitteringen ble ikke fullført. Før utlegget inn for hånd."
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
+msgid "The selected expenses do not all have the same answer. Which one should they all take?"
+msgstr "De valgte utleggene har ikke samme svar. Hvilket skal alle få?"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "The tax printed on the receipt goes to the journal entry, rather than the one the rate gives."
 msgstr "Avgiften som står på kvitteringen går til bilaget, i stedet for den satsen gir."
@@ -2869,6 +2962,12 @@ msgstr "Arbeidsboken slik den fylles ut for hånd, data medregnet: utleggslinjen
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Then the text read is erased; the receipt image stays. 0: never."
 msgstr "Deretter slettes den leste teksten; kvitteringsbildet blir liggende. 0: aldri."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "These expenses are already paid."
+msgstr "Disse utleggene er allerede betalt."
 
 #. module: expense_scan
 #: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_current_month
@@ -2944,6 +3043,11 @@ msgstr "Bompenger og parkering"
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Total"
 msgstr "Totalt"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_list_invoicing
+msgid "Total re-invoiced"
+msgstr "Totalt viderefakturert"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_column__value

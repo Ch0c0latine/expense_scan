@@ -64,6 +64,12 @@ msgid "%(count)d receipts with a different total or date were moved to their own
 msgstr "%(count)d recibos con otro total u otra fecha se han movido a sus propios gastos."
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
+msgid "%(count)s expense(s) left as they were"
+msgstr "%(count)s gasto(s) sin cambios"
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "%(count)s expense(s) of this order's missions wait for the manager or for a decision. The expense line does not include them yet."
@@ -376,6 +382,11 @@ msgid "Amount hard to read on the receipt: check it."
 msgstr "Importe difícil de leer en el recibo: compruébelo."
 
 #. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_reinvoiced_amount
+msgid "Amount incl. tax of a re-invoiced expense; zero otherwise. Its total at the bottom of the list is what goes to the customers."
+msgstr "Importe con impuestos de un gasto refacturado; cero en otro caso. Su total al pie de la lista es lo que va a los clientes."
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Amount not found on the receipt: enter it."
@@ -491,6 +502,7 @@ msgstr "Cámara"
 
 #. module: expense_scan
 #. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
 #: code:addons/expense_scan/static/src/js/retouch_dialog.xml:0
 #: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
@@ -910,6 +922,12 @@ msgstr "Estado del motor"
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Enter a whole number of days of at least 2 in the quantity."
+msgstr "Indique en la cantidad un número entero de días, al menos 2."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/hr_expense_team.py:0
 msgid "Entered by %(author)s for %(employee)s."
 msgstr "Introducido por %(author)s para %(employee)s."
@@ -1084,6 +1102,19 @@ msgid "Expense manager"
 msgstr "Responsable de gastos"
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_sheet.py:0
+msgid "Expense receipts"
+msgstr "Justificantes_gastos"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_sheet.py:0
+#: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
+msgid "Expense report"
+msgstr "Nota de gastos"
+
+#. module: expense_scan
 #: model:ir.model,name:expense_scan.model_expense_scan_policy_rule
 msgid "Expense rule"
 msgstr "Regla de gastos"
@@ -1114,11 +1145,6 @@ msgstr "Impresión de la hoja de gastos"
 #: model:ir.model,name:expense_scan.model_expense_scan_sheet
 msgid "Expense sheet production"
 msgstr "Generación de la hoja de gastos"
-
-#. module: expense_scan
-#: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
-msgid "Expense sheet —"
-msgstr "Hoja de gastos —"
 
 #. module: expense_scan
 #. odoo-javascript
@@ -1825,6 +1851,34 @@ msgid "One word per line: hotel, nocleg, Ibis..."
 msgstr "Una palabra por línea: hotel, nocleg, Ibis..."
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Only %(found)s free day(s) found from %(date)s for %(count)s: lower the quantity or move the date."
+msgstr "Solo se han encontrado %(found)s día(s) libre(s) desde el %(date)s para %(count)s: reduzca la cantidad o cambie la fecha."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Only a draft expense can be spread over days."
+msgstr "Solo un gasto en borrador puede repartirse en días."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Only an expense of a flat-rate category can be spread over days."
+msgstr "Solo un gasto de una categoría a tanto alzado puede repartirse en días."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid ""
+"Only approved or posted expenses can be paid:\n"
+"%s"
+msgstr ""
+"Solo se pueden pagar gastos aprobados o contabilizados:\n"
+"%s"
+
+#. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/receipt_preview_widget.xml:0
 msgid "Open full screen"
@@ -1885,6 +1939,11 @@ msgstr "Pagado por"
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
 msgid "Paris, Lyon, Marseille"
 msgstr "Madrid, Barcelona, Valencia"
+
+#. module: expense_scan
+#: model:ir.actions.server,name:expense_scan.action_expense_scan_pay
+msgid "Pay the employee"
+msgstr "Pagar al empleado"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__per_night
@@ -2037,9 +2096,20 @@ msgstr "Refacturar los gastos a un proyecto"
 
 #. module: expense_scan
 #. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
+msgid "Re-invoice the selection"
+msgstr "Refacturar la selección"
+
+#. module: expense_scan
+#. odoo-javascript
 #: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
 msgid "Re-invoice toggle"
 msgstr "Interruptor de refacturación"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_reinvoiced_amount
+msgid "Re-invoiced amount"
+msgstr "Importe refacturado"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_account_bank_statement_line__expense_scan_expense_ids
@@ -2403,6 +2473,12 @@ msgid "Scanning the receipt — you can already type the description."
 msgstr "Escaneando el recibo — ya puede escribir la descripción."
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "Select expenses paid by the employee."
+msgstr "Seleccione gastos pagados por el empleado."
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__selected_count
 msgid "Selected Count"
 msgstr "Número seleccionado"
@@ -2454,6 +2530,17 @@ msgstr "Método de pago único"
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_wide_split
 msgid "Split view from 768 px"
 msgstr "Vista dividida desde 768 px"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Spread expenses"
+msgstr "Gastos repartidos"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_invoicing
+msgid "Spread over days"
+msgstr "Repartir en días"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__date_debut
@@ -2828,6 +2915,12 @@ msgid "The scan of this receipt did not finish. Enter the expense by hand."
 msgstr "El escaneo de este recibo no terminó. Introduzca el gasto a mano."
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
+msgid "The selected expenses do not all have the same answer. Which one should they all take?"
+msgstr "Los gastos seleccionados no tienen todos la misma respuesta. ¿Cuál deben tomar todos?"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "The tax printed on the receipt goes to the journal entry, rather than the one the rate gives."
 msgstr "El impuesto impreso en el recibo pasa al asiento contable, en lugar del que da el tipo."
@@ -2869,6 +2962,12 @@ msgstr "El libro tal como se rellena a mano, datos incluidos: las líneas de gas
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Then the text read is erased; the receipt image stays. 0: never."
 msgstr "Después se borra el texto leído; la imagen del recibo se conserva. 0: nunca."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "These expenses are already paid."
+msgstr "Estos gastos ya están pagados."
 
 #. module: expense_scan
 #: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_current_month
@@ -2944,6 +3043,11 @@ msgstr "Peajes y aparcamiento"
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Total"
 msgstr "Total"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_list_invoicing
+msgid "Total re-invoiced"
+msgstr "Total refacturado"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_column__value

@@ -1,5 +1,25 @@
 # Changelog
 
+## 19.0.2.9.1 — 2026-10-02
+
+- **Re-invoicable column on a selection**: a click on a selected row applies
+  the next answer to every selected expense when they share it, otherwise a
+  dialog asks which one; expenses that cannot take it (no project at their
+  date, already invoiced, approved and set to "to decide") are left and
+  listed.
+- **Re-invoiced amount** column, with its total at the bottom of the lists.
+- **Pay the employee** (list action): approved expenses are posted, then one
+  payment per employee settles them together with the expenses already
+  posted, for instance by an invoice.
+- **Spread over days**: a flat-rate expense entered for several days (a
+  daily allowance, quantity 11) becomes one line per day of presence: the
+  employee's missions when recorded, otherwise their working days, without
+  public holidays, time off or days already holding that category.
+- **Expense sheets**: the last row of an Excel template keeps the look of the
+  others; files named `<kind>_<employee>_<MM-YYYY>`; the internal PDF is
+  titled with the employee and the month, and only lists what the employee
+  paid (what the company paid, a company car for instance, is left out).
+
 ## 19.0.2.9.0 — 2026-10-02
 
 - **Re-invoicing on one order line**: the approved expenses of a project add

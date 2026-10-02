@@ -64,6 +64,12 @@ msgid "%(count)d receipts with a different total or date were moved to their own
 msgstr "%(count)d bonnen met een ander totaal of een andere datum zijn naar eigen declaraties verplaatst."
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
+msgid "%(count)s expense(s) left as they were"
+msgstr "%(count)s declaratie(s) ongewijzigd gelaten"
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "%(count)s expense(s) of this order's missions wait for the manager or for a decision. The expense line does not include them yet."
@@ -376,6 +382,11 @@ msgid "Amount hard to read on the receipt: check it."
 msgstr "Bedrag slecht leesbaar op de bon: controleer het."
 
 #. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_reinvoiced_amount
+msgid "Amount incl. tax of a re-invoiced expense; zero otherwise. Its total at the bottom of the list is what goes to the customers."
+msgstr "Bedrag incl. btw van een doorbelaste declaratie; anders nul. Het totaal onderaan de lijst gaat naar de klanten."
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Amount not found on the receipt: enter it."
@@ -491,6 +502,7 @@ msgstr "Camera"
 
 #. module: expense_scan
 #. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
 #: code:addons/expense_scan/static/src/js/retouch_dialog.xml:0
 #: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
@@ -910,6 +922,12 @@ msgstr "Status van de engine"
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Enter a whole number of days of at least 2 in the quantity."
+msgstr "Vul als hoeveelheid een geheel aantal dagen in, minstens 2."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/hr_expense_team.py:0
 msgid "Entered by %(author)s for %(employee)s."
 msgstr "Ingevoerd door %(author)s voor %(employee)s."
@@ -1084,6 +1102,19 @@ msgid "Expense manager"
 msgstr "Declaratiebeheerder"
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_sheet.py:0
+msgid "Expense receipts"
+msgstr "Bewijsstukken_declaraties"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_sheet.py:0
+#: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
+msgid "Expense report"
+msgstr "Onkostennota"
+
+#. module: expense_scan
 #: model:ir.model,name:expense_scan.model_expense_scan_policy_rule
 msgid "Expense rule"
 msgstr "Declaratieregel"
@@ -1114,11 +1145,6 @@ msgstr "Afdruk van het declaratieoverzicht"
 #: model:ir.model,name:expense_scan.model_expense_scan_sheet
 msgid "Expense sheet production"
 msgstr "Aanmaak van het declaratieoverzicht"
-
-#. module: expense_scan
-#: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
-msgid "Expense sheet —"
-msgstr "Declaratieoverzicht —"
 
 #. module: expense_scan
 #. odoo-javascript
@@ -1825,6 +1851,34 @@ msgid "One word per line: hotel, nocleg, Ibis..."
 msgstr "Eén woord per regel: hotel, nocleg, Ibis..."
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Only %(found)s free day(s) found from %(date)s for %(count)s: lower the quantity or move the date."
+msgstr "Slechts %(found)s vrije dag(en) gevonden vanaf %(date)s voor %(count)s: verlaag de hoeveelheid of verschuif de datum."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Only a draft expense can be spread over days."
+msgstr "Alleen een conceptdeclaratie kan over dagen worden verdeeld."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Only an expense of a flat-rate category can be spread over days."
+msgstr "Alleen een declaratie van een forfaitaire categorie kan over dagen worden verdeeld."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid ""
+"Only approved or posted expenses can be paid:\n"
+"%s"
+msgstr ""
+"Alleen goedgekeurde of geboekte declaraties kunnen worden betaald:\n"
+"%s"
+
+#. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/receipt_preview_widget.xml:0
 msgid "Open full screen"
@@ -1885,6 +1939,11 @@ msgstr "Betaald door"
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
 msgid "Paris, Lyon, Marseille"
 msgstr "Amsterdam, Rotterdam, Utrecht"
+
+#. module: expense_scan
+#: model:ir.actions.server,name:expense_scan.action_expense_scan_pay
+msgid "Pay the employee"
+msgstr "Medewerker betalen"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__per_night
@@ -2037,9 +2096,20 @@ msgstr "Declaraties doorbelasten aan een project"
 
 #. module: expense_scan
 #. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
+msgid "Re-invoice the selection"
+msgstr "Selectie doorbelasten"
+
+#. module: expense_scan
+#. odoo-javascript
 #: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
 msgid "Re-invoice toggle"
 msgstr "Schakelaar doorbelasting"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_reinvoiced_amount
+msgid "Re-invoiced amount"
+msgstr "Doorbelast bedrag"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_account_bank_statement_line__expense_scan_expense_ids
@@ -2403,6 +2473,12 @@ msgid "Scanning the receipt — you can already type the description."
 msgstr "Bon wordt gescand — u kunt de omschrijving al invullen."
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "Select expenses paid by the employee."
+msgstr "Selecteer declaraties die de medewerker heeft betaald."
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__selected_count
 msgid "Selected Count"
 msgstr "Aantal geselecteerd"
@@ -2454,6 +2530,17 @@ msgstr "Enige betaalmethode"
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_wide_split
 msgid "Split view from 768 px"
 msgstr "Gesplitste weergave vanaf 768 px"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_spread.py:0
+msgid "Spread expenses"
+msgstr "Verdeelde declaraties"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_invoicing
+msgid "Spread over days"
+msgstr "Over dagen verdelen"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__date_debut
@@ -2828,6 +2915,12 @@ msgid "The scan of this receipt did not finish. Enter the expense by hand."
 msgstr "De scan van deze bon is niet afgerond. Voer de declaratie met de hand in."
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
+msgid "The selected expenses do not all have the same answer. Which one should they all take?"
+msgstr "De geselecteerde declaraties hebben niet allemaal hetzelfde antwoord. Welk moeten ze allemaal krijgen?"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "The tax printed on the receipt goes to the journal entry, rather than the one the rate gives."
 msgstr "De belasting op de bon gaat naar de boeking, in plaats van die volgens het tarief."
@@ -2869,6 +2962,12 @@ msgstr "De werkmap zoals ze met de hand wordt ingevuld, gegevens inbegrepen: de 
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Then the text read is erased; the receipt image stays. 0: never."
 msgstr "Daarna wordt de gelezen tekst gewist; de afbeelding van de bon blijft. 0: nooit."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "These expenses are already paid."
+msgstr "Deze declaraties zijn al betaald."
 
 #. module: expense_scan
 #: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_current_month
@@ -2944,6 +3043,11 @@ msgstr "Tol en parkeren"
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Total"
 msgstr "Totaal"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_list_invoicing
+msgid "Total re-invoiced"
+msgstr "Totaal doorbelast"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_column__value
