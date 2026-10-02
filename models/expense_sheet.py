@@ -359,6 +359,8 @@ class ExpenseScanSheet(models.AbstractModel):
                            else _("Statement of selected expenses")),
             'vat_rows': self._vat_summary(lines),
             'mois': start.replace(day=1) if start else False,
+            'mois_texte': (format_date(self.env, start, date_format='MMMM yyyy')
+                           if start and start.replace(day=1) == end.replace(day=1) else ''),
             'periode': (_("from %(start)s to %(end)s",
                           start=format_date(self.env, start), end=format_date(self.env, end))
                         if start else ''),
@@ -453,7 +455,7 @@ class ExpenseScanSheet(models.AbstractModel):
         # style of the table body, the last one the style of its bottom (end
         # border) and the formulas of an empty row.
         body = {c.column: copy(c._style) for c in sheet[first] if c.has_style}
-        bottom = {c.column: copy(c._style) for c in sheet[last] if c.has_style}
+        bottom = {c.column: copy(c.border) for c in sheet[last] if c.has_style}
         formulas = {c.column: c.value for c in sheet[last]
                     if isinstance(c.value, str) and c.value.startswith('=')}
         height = sheet.row_dimensions[first].height
@@ -480,8 +482,13 @@ class ExpenseScanSheet(models.AbstractModel):
                     ).translate_formula(sheet.cell(row=row, column=column).coordinate)
             for column, value in columns.items():
                 sheet.cell(row=row, column=column).value = line[value] if line[value] != '' else None
-        for column, style in bottom.items():
-            sheet.cell(row=new_last, column=column)._style = copy(style)
+        # The last row keeps the look of the others (alignment, font, number
+        # format) and only takes the bottom border of the template.
+        for column, border in bottom.items():
+            cell = sheet.cell(row=new_last, column=column)
+            if column in body:
+                cell._style = copy(body[column])
+            cell.border = copy(border)
 
         for column in template.column_ids.filtered(lambda c: c.kind == 'header' and c.value):
             sheet[column.cell.strip().upper()].value = header[column.value] or None
@@ -681,26 +688,34 @@ class ExpenseScanSheet(models.AbstractModel):
         lines = self._lines(expenses)
         header = self._header(expenses, lines)
         start = header['date_debut']
-        period = start.strftime('%Y-%m') if start else ''
-        stem = " - ".join(part for part in (prefix, header['salarie'], period) if part)
+        period = start.strftime('%m-%Y') if start else ''
+        stem = "_".join(part for part in (prefix, header['salarie'], period) if part)
         return re.sub(r'[\\/:*?"<>|]+', '-', stem)
 
     @api.model
-    def _build(self, expenses, summary=False, excel_template=False, receipts=False):
-        """``[(file name, content)]`` for each employee and each output."""
+    def _build(self, expenses, summary=False, excel_template=False, receipts=False,
+               reimbursable_only=False):
+        """``[(file name, content)]`` for each employee and each output.
+
+        ``reimbursable_only`` keeps in the PDF summary the expenses paid by
+        the employee: those the company owes them.
+        """
         files = []
         for employee in expenses.employee_id:
             own = expenses.filtered(lambda e: e.employee_id == employee)
             if summary:
-                files.append(("%s.pdf" % self._file_stem(own, _("Expense sheet")),
-                              self._summary_pdf(own)))
+                shown = own.filtered(lambda e: e.payment_mode == 'own_account') \
+                    if reimbursable_only else own
+                if shown:
+                    files.append(("%s.pdf" % self._file_stem(shown, _("Expense report")),
+                                  self._summary_pdf(shown)))
             if excel_template:
-                files.append(("%s.xlsx" % self._file_stem(own, excel_template.name),
+                files.append(("%s.xlsx" % self._file_stem(own, _("Expense report")),
                               self._excel(excel_template, own)))
             if receipts:
                 content = self._receipts_pdf(self._lines(own))
                 if content:
-                    files.append(("%s.pdf" % self._file_stem(own, _("Receipts")), content))
+                    files.append(("%s.pdf" % self._file_stem(own, _("Expense receipts")), content))
         return files
 
     @api.model
@@ -882,7 +897,10 @@ class ExpenseScanSheetWizard(models.TransientModel):
         files = Sheet._build(
             expenses, summary=self.summary,
             excel_template=self.excel and self.template_id,
-            receipts=self.receipts)
+            receipts=self.receipts,
+            # The internal sheet repays the employee: what the company paid
+            # (a company car, a company card) has no place on it.
+            reimbursable_only=self.scope == 'all')
         if not files:
             raise UserError(_("Nothing to produce: none of these expenses has a receipt."))
         if len(files) == 1:

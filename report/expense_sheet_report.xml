@@ -30,7 +30,7 @@
             <!-- Internal header without a footer (the table uses the whole height). -->
             <t t-call="web.internal_layout">
                 <div class="page o_expense_sheet">
-                    <h5 class="mb-1">Expense sheet — <t t-out="header['salarie']"/></h5>
+                    <h5 class="mb-1">Expense report <t t-out="header['salarie']"/> <t t-out="header['mois_texte']"/></h5>
                     <p class="mb-1" style="font-size: 9pt;">
                         <t t-out="header['prestation']"/>
                         <t t-if="header['periode']"> · Period <t t-out="header['periode']"/></t>
