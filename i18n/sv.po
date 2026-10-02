@@ -66,6 +66,12 @@ msgstr "%(count)d kvitton med annan summa eller annat datum har flyttats till eg
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%(count)s expense(s) of this order's missions wait for the manager or for a decision. The expense line does not include them yet."
+msgstr "%(count)s utlägg i dessa projekt väntar på ansvarig eller på ett beslut. Utläggsraden innehåller dem ännu inte."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "%(count)s expense(s) wait for the manager or for a decision. The expense line of this order does not move until they are settled."
 msgstr "%(count)s utlägg väntar på ansvarig eller på ett beslut. Utläggsraden i denna order rör sig inte förrän de är klara."
 
@@ -108,6 +114,18 @@ msgid ""
 msgstr ""
 "%(engine)s - laddad och testad på %(duration)s s.\n"
 "Läst text: \"%(text)s\""
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%(expense)s is on the draft invoice %(invoice)s. Delete the draft first."
+msgstr "%(expense)s finns på fakturautkastet %(invoice)s. Ta först bort utkastet."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%(expense)s is on the invoice %(invoice)s. Delete or cancel the invoice first, change the expenses, then invoice again."
+msgstr "%(expense)s finns på fakturan %(invoice)s. Ta först bort eller annullera fakturan, ändra utläggen och fakturera sedan igen."
 
 #. module: expense_scan
 #. odoo-python
@@ -174,6 +192,18 @@ msgstr "%s (exkl. skatt)"
 #: code:addons/expense_scan/models/hr_expense_batch.py:0
 msgid "%s expense(s) reset to draft."
 msgstr "%s utlägg återställda till utkast."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%s is approved: its re-invoicing has to stay decided."
+msgstr "%s är godkänt: dess vidarefakturering måste förbli avgjord."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%s is not approved: only an approval can be taken back."
+msgstr "%s är inte godkänt: bara ett godkännande kan tas tillbaka."
 
 #. module: expense_scan
 #. odoo-python
@@ -462,6 +492,7 @@ msgstr "Kamera"
 #. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/retouch_dialog.xml:0
+#: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
 msgid "Cancel"
 msgstr "Avbryt"
@@ -597,6 +628,12 @@ msgid "Corrects the remaining tilt of the text lines."
 msgstr "Rättar den kvarvarande lutningen hos textraderna."
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
+msgid "Create the invoice anyway"
+msgstr "Skapa fakturan ändå"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__create_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__create_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__create_uid
@@ -660,8 +697,8 @@ msgstr "Innevarande månad"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_invoice_id
-msgid "Customer invoice that carries this expense. Set when the invoice is posted; cleared if the invoice goes back to draft."
-msgstr "Kundfaktura som innehåller detta utlägg. Sätts när fakturan bokförs; rensas om fakturan går tillbaka till utkast."
+msgid "Customer invoice that carries this expense, draft or posted. Cleared if the invoice is deleted, cancelled or goes back to draft."
+msgstr "Kundfaktura som innehåller detta utlägg, som utkast eller bokförd. Rensas om fakturan tas bort, annulleras eller går tillbaka till utkast."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__partner_ids
@@ -1143,6 +1180,12 @@ msgstr "Projektets utlägg som väntar på ansvarig, exkl. moms."
 #: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_waiting
 msgid "Expenses to approve"
 msgstr "Utlägg att godkänna"
+
+#. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
+msgid "Expenses to settle"
+msgstr "Utlägg att reda ut"
 
 #. module: expense_scan
 #. odoo-python
@@ -2882,8 +2925,8 @@ msgstr "Att avgöra"
 #. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
-msgid "To decide: click to re-invoice"
-msgstr "Att avgöra: klicka för att vidarefakturera"
+msgid "To decide: click to change"
+msgstr "Att avgöra: klicka för att ändra"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_scan
@@ -2943,6 +2986,12 @@ msgstr "Sant när användaren som visar utlägget hanterar utlägg. Kontot och d
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__kind
 msgid "Type"
 msgstr "Typ"
+
+#. module: expense_scan
+#: model:ir.actions.server,name:expense_scan.action_expense_scan_unapprove
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_invoicing
+msgid "Unapprove"
+msgstr "Ta tillbaka godkännandet"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__tva_unitaire

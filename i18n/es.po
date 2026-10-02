@@ -66,6 +66,12 @@ msgstr "%(count)d recibos con otro total u otra fecha se han movido a sus propio
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%(count)s expense(s) of this order's missions wait for the manager or for a decision. The expense line does not include them yet."
+msgstr "%(count)s gasto(s) de estos proyectos esperan al responsable o una decisión. La línea de gastos aún no los incluye."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "%(count)s expense(s) wait for the manager or for a decision. The expense line of this order does not move until they are settled."
 msgstr "%(count)s gasto(s) esperan al responsable o una decisión. La línea de gastos de este pedido no se mueve hasta que se resuelvan."
 
@@ -108,6 +114,18 @@ msgid ""
 msgstr ""
 "%(engine)s - cargado y probado en %(duration)s s.\n"
 "Texto leído: \"%(text)s\""
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%(expense)s is on the draft invoice %(invoice)s. Delete the draft first."
+msgstr "%(expense)s está en la factura borrador %(invoice)s. Elimine primero el borrador."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%(expense)s is on the invoice %(invoice)s. Delete or cancel the invoice first, change the expenses, then invoice again."
+msgstr "%(expense)s está en la factura %(invoice)s. Elimine o cancele primero la factura, modifique los gastos y vuelva a facturar."
 
 #. module: expense_scan
 #. odoo-python
@@ -174,6 +192,18 @@ msgstr "%s (sin impuestos)"
 #: code:addons/expense_scan/models/hr_expense_batch.py:0
 msgid "%s expense(s) reset to draft."
 msgstr "%s gasto(s) devuelto(s) a borrador."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%s is approved: its re-invoicing has to stay decided."
+msgstr "%s está aprobado: su refacturación debe seguir decidida."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%s is not approved: only an approval can be taken back."
+msgstr "%s no está aprobado: solo se puede retirar una aprobación."
 
 #. module: expense_scan
 #. odoo-python
@@ -462,6 +492,7 @@ msgstr "Cámara"
 #. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/retouch_dialog.xml:0
+#: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
 msgid "Cancel"
 msgstr "Cancelar"
@@ -597,6 +628,12 @@ msgid "Corrects the remaining tilt of the text lines."
 msgstr "Corrige la inclinación restante de las líneas de texto."
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
+msgid "Create the invoice anyway"
+msgstr "Crear la factura de todos modos"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__create_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__create_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__create_uid
@@ -660,8 +697,8 @@ msgstr "Mes en curso"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_invoice_id
-msgid "Customer invoice that carries this expense. Set when the invoice is posted; cleared if the invoice goes back to draft."
-msgstr "Factura de cliente que incluye este gasto. Se rellena al contabilizar la factura; se borra si la factura vuelve a borrador."
+msgid "Customer invoice that carries this expense, draft or posted. Cleared if the invoice is deleted, cancelled or goes back to draft."
+msgstr "Factura de cliente que incluye este gasto, en borrador o contabilizada. Se borra si la factura se elimina, se cancela o vuelve a borrador."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__partner_ids
@@ -1143,6 +1180,12 @@ msgstr "Gastos del proyecto en espera del responsable, sin impuestos."
 #: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_waiting
 msgid "Expenses to approve"
 msgstr "Gastos por aprobar"
+
+#. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
+msgid "Expenses to settle"
+msgstr "Gastos por resolver"
 
 #. module: expense_scan
 #. odoo-python
@@ -2882,8 +2925,8 @@ msgstr "Por decidir"
 #. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
-msgid "To decide: click to re-invoice"
-msgstr "Por decidir: haga clic para refacturar"
+msgid "To decide: click to change"
+msgstr "Por decidir: haga clic para cambiar"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_scan
@@ -2943,6 +2986,12 @@ msgstr "Verdadero cuando el usuario que consulta el gasto gestiona los gastos. L
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__kind
 msgid "Type"
 msgstr "Tipo"
+
+#. module: expense_scan
+#: model:ir.actions.server,name:expense_scan.action_expense_scan_unapprove
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_invoicing
+msgid "Unapprove"
+msgstr "Retirar la aprobación"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__tva_unitaire

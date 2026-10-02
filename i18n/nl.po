@@ -66,6 +66,12 @@ msgstr "%(count)d bonnen met een ander totaal of een andere datum zijn naar eige
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%(count)s expense(s) of this order's missions wait for the manager or for a decision. The expense line does not include them yet."
+msgstr "%(count)s declaratie(s) van deze projecten wachten op de verantwoordelijke of op een beslissing. De declaratieregel bevat ze nog niet."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "%(count)s expense(s) wait for the manager or for a decision. The expense line of this order does not move until they are settled."
 msgstr "%(count)s declaratie(s) wachten op de verantwoordelijke of op een beslissing. De declaratieregel van deze order beweegt niet totdat ze geregeld zijn."
 
@@ -108,6 +114,18 @@ msgid ""
 msgstr ""
 "%(engine)s - geladen en getest in %(duration)s s.\n"
 "Gelezen tekst: \"%(text)s\""
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%(expense)s is on the draft invoice %(invoice)s. Delete the draft first."
+msgstr "%(expense)s staat op de conceptfactuur %(invoice)s. Verwijder eerst het concept."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%(expense)s is on the invoice %(invoice)s. Delete or cancel the invoice first, change the expenses, then invoice again."
+msgstr "%(expense)s staat op de factuur %(invoice)s. Verwijder of annuleer eerst de factuur, wijzig de declaraties en factureer dan opnieuw."
 
 #. module: expense_scan
 #. odoo-python
@@ -174,6 +192,18 @@ msgstr "%s (excl. belasting)"
 #: code:addons/expense_scan/models/hr_expense_batch.py:0
 msgid "%s expense(s) reset to draft."
 msgstr "%s declaratie(s) terug naar concept gezet."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%s is approved: its re-invoicing has to stay decided."
+msgstr "%s is goedgekeurd: de doorbelasting moet bepaald blijven."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%s is not approved: only an approval can be taken back."
+msgstr "%s is niet goedgekeurd: alleen een goedkeuring kan worden ingetrokken."
 
 #. module: expense_scan
 #. odoo-python
@@ -462,6 +492,7 @@ msgstr "Camera"
 #. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/retouch_dialog.xml:0
+#: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
 msgid "Cancel"
 msgstr "Annuleren"
@@ -597,6 +628,12 @@ msgid "Corrects the remaining tilt of the text lines."
 msgstr "Corrigeert de resterende scheefstand van de tekstregels."
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
+msgid "Create the invoice anyway"
+msgstr "Toch de factuur aanmaken"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__create_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__create_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__create_uid
@@ -660,8 +697,8 @@ msgstr "Huidige maand"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_invoice_id
-msgid "Customer invoice that carries this expense. Set when the invoice is posted; cleared if the invoice goes back to draft."
-msgstr "Verkoopfactuur die deze declaratie bevat. Ingevuld bij het boeken van de factuur; gewist als de factuur terug naar concept gaat."
+msgid "Customer invoice that carries this expense, draft or posted. Cleared if the invoice is deleted, cancelled or goes back to draft."
+msgstr "Verkoopfactuur die deze declaratie bevat, concept of geboekt. Gewist als de factuur wordt verwijderd, geannuleerd of terug naar concept gaat."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__partner_ids
@@ -1143,6 +1180,12 @@ msgstr "Declaraties van het project die op de verantwoordelijke wachten, excl. b
 #: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_waiting
 msgid "Expenses to approve"
 msgstr "Goed te keuren declaraties"
+
+#. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
+msgid "Expenses to settle"
+msgstr "Te regelen declaraties"
 
 #. module: expense_scan
 #. odoo-python
@@ -2882,8 +2925,8 @@ msgstr "Te bepalen"
 #. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
-msgid "To decide: click to re-invoice"
-msgstr "Te bepalen: klik om door te belasten"
+msgid "To decide: click to change"
+msgstr "Te bepalen: klik om te wijzigen"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_scan
@@ -2943,6 +2986,12 @@ msgstr "Waar wanneer de gebruiker die de declaratie bekijkt declaraties beheert.
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__kind
 msgid "Type"
 msgstr "Soort"
+
+#. module: expense_scan
+#: model:ir.actions.server,name:expense_scan.action_expense_scan_unapprove
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_invoicing
+msgid "Unapprove"
+msgstr "Goedkeuring intrekken"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__tva_unitaire
