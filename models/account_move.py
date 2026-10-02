@@ -85,7 +85,7 @@ class AccountMove(models.Model):
         projects = Expense._expense_scan_projects_of(sale_line.order_id)
         if not projects:
             return Expense
-        candidates = Expense._expense_scan_counted(projects, self.company_id).filtered(
+        candidates = Expense._expense_scan_counted(projects, self.company_id, sale_line.order_id).filtered(
             lambda e: not e.expense_scan_invoice_id or e.expense_scan_invoice_id == self
         ).sorted(lambda e: (e.date or fields.Date.today(), e.id))
         left = line.price_subtotal

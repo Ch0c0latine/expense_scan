@@ -174,8 +174,13 @@ class HrExpense(models.Model):
         self._expense_scan_sync_orders(order_ids)
 
     @api.model
-    def _expense_scan_counted(self, projects, company):
-        """Approved expenses to re-invoice on these projects."""
+    def _expense_scan_in_period(self, expenses, order):
+        """Expenses that belong to the period of the order (all, unless a module narrows it)."""
+        return expenses
+
+    @api.model
+    def _expense_scan_counted(self, projects, company, order=None):
+        """Approved expenses to re-invoice on these projects, within the period of the order."""
         expenses = self.sudo().search([
             ('company_id', '=', company.id),
             ('project_id', 'in', projects.ids),
@@ -185,7 +190,7 @@ class HrExpense(models.Model):
         if 'sale_order_line_id' in self._fields:
             # Already carried by an order line of Odoo's own mechanism.
             expenses = expenses.filtered(lambda e: not e.sale_order_line_id)
-        return expenses
+        return self._expense_scan_in_period(expenses, order) if order else expenses
 
     @api.model
     def _expense_scan_waiting(self, projects, company):
@@ -263,7 +268,7 @@ class HrExpense(models.Model):
             return
         waiting = self._expense_scan_waiting(projects, company)
         self._expense_scan_flag_waiting(order, waiting)
-        counted = self._expense_scan_counted(projects, company)
+        counted = self._expense_scan_counted(projects, company, order)
         amount = sum(counted.mapped('total_amount'))
         if order.currency_id != company.currency_id:
             amount = company.currency_id._convert(
