@@ -4,8 +4,9 @@
  * "Re-invoicable" column of the expense lists.
  *
  * A box checked for "yes", empty for "no", a question mark for "to decide".
- * A click switches between yes and no (a question mark becomes yes) and saves
- * at once, so a manager settles a whole list without opening the expenses.
+ * A click moves to the next answer (to decide, yes, no, to decide...) and
+ * saves at once, so a manager settles a whole list without opening the
+ * expenses.
  */
 import { Component } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
@@ -44,17 +45,16 @@ export class ExpenseScanReinvoice extends Component {
         if (this.mode === "none") {
             return _t("Not re-invoiced");
         }
-        return _t("To decide: click to re-invoice");
+        return _t("To decide: click to change");
     }
 
     async onClick() {
         if (this.locked) {
             return;
         }
-        const next = this.mode === "project" ? "none" : "project";
+        // The server knows the next answer: to decide, yes, no, to decide...
         await this.orm.call("hr.expense", "action_expense_scan_set_reinvoice", [
             [this.props.record.resId],
-            next,
         ]);
         await this.props.record.load();
     }

@@ -34,8 +34,9 @@ class HrExpense(models.Model):
         copy=False,
         index='btree_not_null',
         ondelete='set null',
-        help="Customer invoice that carries this expense. Set when the "
-             "invoice is posted; cleared if the invoice goes back to draft.",
+        help="Customer invoice that carries this expense, draft or posted. "
+             "Cleared if the invoice is deleted, cancelled or goes back to "
+             "draft.",
     )
 
     #: Fields whose change can move an expense onto or off the order line.
@@ -43,6 +44,12 @@ class HrExpense(models.Model):
         'reinvoice_mode', 'project_id', 'approval_state', 'total_amount',
         'total_amount_currency', 'tax_ids', 'quantity', 'price_unit',
         'currency_id', 'company_id',
+    })
+
+    #: Fields that cannot change while an invoice carries the expense.
+    LOCKED_FIELDS = frozenset({
+        'reinvoice_mode', 'project_id', 'total_amount', 'total_amount_currency',
+        'tax_ids', 'quantity', 'price_unit', 'currency_id',
     })
 
     # ------------------------------------------------------------------
@@ -56,12 +63,36 @@ class HrExpense(models.Model):
         return expenses
 
     def write(self, vals):
+        self._expense_scan_check_not_invoiced(vals)
         watch = bool(self.SYNC_FIELDS & set(vals)) and not self.env.context.get('expense_scan_no_sync')
         before = self._expense_scan_order_ids() if watch else set()
         result = super().write(vals)
         if watch:
             self.env['hr.expense']._expense_scan_sync_orders(before | self._expense_scan_order_ids())
         return result
+
+    def _expense_scan_check_not_invoiced(self, vals):
+        """An expense on an invoice stays as it is.
+
+        The invoice bills it as approved and re-invoiced: taking it back or
+        changing it would leave the invoice and the expenses disagreeing. The
+        way out is to delete (or cancel) the invoice, change the expenses,
+        then invoice again.
+        """
+        if self.env.context.get('expense_scan_free'):
+            return
+        touches = bool(self.LOCKED_FIELDS & set(vals)) or (
+            'approval_state' in vals and vals['approval_state'] != 'approved')
+        if not touches:
+            return
+        invoiced = self.sudo().filtered('expense_scan_invoice_id')
+        if invoiced:
+            expense = invoiced[:1]
+            raise UserError(_(
+                "%(expense)s is on the invoice %(invoice)s. Delete or cancel the invoice first, "
+                "change the expenses, then invoice again.",
+                expense=expense.name or expense.display_name,
+                invoice=expense.expense_scan_invoice_id.display_name))
 
     def _expense_scan_sync_after(self):
         order_ids = self._expense_scan_order_ids()
@@ -277,6 +308,69 @@ class HrExpense(models.Model):
                     "posted: %(error)s", invoice=move.name, error=error))
 
     # ------------------------------------------------------------------
+    # Taking an expense back
+    # ------------------------------------------------------------------
+
+    def _do_reset_approval(self):
+        """Back to draft: only an expense off any draft invoice.
+
+        On a posted invoice, the expense leaves it with its accounting
+        entries (the accountant reversed them); the invoice itself stays as
+        it was.
+        """
+        linked = self.sudo().filtered('expense_scan_invoice_id')
+        on_draft = linked.filtered(lambda e: e.expense_scan_invoice_id.state == 'draft')
+        if on_draft:
+            raise UserError(_(
+                "%(expense)s is on the draft invoice %(invoice)s. Delete the draft first.",
+                expense=on_draft[0].name or on_draft[0].display_name,
+                invoice=on_draft[0].expense_scan_invoice_id.display_name))
+        linked.with_context(expense_scan_free=True, expense_scan_no_sync=True).write(
+            {'expense_scan_invoice_id': False})
+        return super()._do_reset_approval()
+
+    def action_expense_scan_unapprove(self):
+        """Take back an approval made by mistake.
+
+        The expense waits for the manager again: neither refused nor back to
+        draft. Not possible once it is posted or on an invoice.
+        """
+        self._check_can_approve()
+        for expense in self:
+            if expense.state != 'approved':
+                raise UserError(_("%s is not approved: only an approval can be taken back.",
+                                  expense.name or expense.display_name))
+        self._expense_scan_check_not_invoiced({'approval_state': 'submitted'})
+        self.sudo().write({'approval_state': 'submitted', 'approval_date': False})
+        self.sudo().update_activities_and_mails()
+        return True
+
+    @api.model
+    def expense_scan_order_warning(self, order_id, button_name=None):
+        """Text to confirm before invoicing an order, or False.
+
+        Asked by the "Create Invoice" button of the sales order: expenses of
+        its missions still wait for the manager or for a decision, and the
+        expense line will not carry them.
+        """
+        if 'sale.order' not in self.env:
+            return False
+        action = self.env.ref('sale.action_view_sale_advance_payment_inv', raise_if_not_found=False)
+        if not action or str(action.id) != str(button_name):
+            return False
+        order = self.env['sale.order'].browse(order_id).exists()
+        if not order or not order.company_id.expense_scan_reinvoice:
+            return False
+        projects = self._expense_scan_projects_of(order)
+        waiting = self._expense_scan_waiting(projects, order.company_id) if projects else False
+        if not waiting:
+            return False
+        return _(
+            "%(count)s expense(s) of this order's missions wait for the manager or for a "
+            "decision. The expense line does not include them yet.",
+            count=len(waiting))
+
+    # ------------------------------------------------------------------
     # Deciding at approval
     # ------------------------------------------------------------------
 
@@ -297,27 +391,41 @@ class HrExpense(models.Model):
     # Toggle in the list
     # ------------------------------------------------------------------
 
-    def action_expense_scan_set_reinvoice(self, mode):
+    def action_expense_scan_set_reinvoice(self, mode=None):
         """Set the re-invoicing of the expenses from the list.
 
+        Without ``mode``, the next answer in the loop "to decide, yes, no".
         "Yes" looks for the project of the receipt date, as the scan does;
-        without a project found, the expense has to be opened.
+        without a project found, the expense has to be opened. An approved
+        expense stays decided, so the loop skips "to decide" for it.
         """
-        if mode not in ('project', 'none', 'todo'):
+        if mode not in (None, 'project', 'none', 'todo'):
             raise UserError(_("Unknown choice."))
         for expense in self:
             if not expense.is_editable and not self.env.su:
                 raise AccessError(_("You cannot edit this expense."))
             if expense.state in ('posted', 'in_payment', 'paid', 'refused') or expense.expense_scan_invoice_id:
                 raise UserError(_("The re-invoicing of %s can no longer change.", expense.name))
-            values = {'reinvoice_mode': mode}
-            if mode == 'project':
+            choice = mode or expense._expense_scan_next_reinvoice()
+            if choice == 'todo' and expense.state == 'approved':
+                raise UserError(_("%s is approved: its re-invoicing has to stay decided.", expense.name))
+            values = {'reinvoice_mode': choice}
+            if choice == 'project':
                 project = expense.project_id or expense._expense_scan_find_project(expense.date)
                 if not project:
                     raise UserError(_(
                         "No project found for %s: open the expense and choose one.", expense.name))
                 values = expense._expense_scan_project_values(project, reinvoice=True)
-            elif mode == 'todo':
+            elif choice == 'todo':
                 values.update(project_id=False, expense_scan_task_id=False)
             expense.write(values)
         return True
+
+    def _expense_scan_next_reinvoice(self):
+        """To decide, then yes, then no, then to decide again."""
+        self.ensure_one()
+        order = {'todo': 'project', 'project': 'none', 'none': 'todo'}
+        choice = order.get(self.reinvoice_mode, 'project')
+        if choice == 'todo' and self.state == 'approved':
+            choice = 'project'
+        return choice

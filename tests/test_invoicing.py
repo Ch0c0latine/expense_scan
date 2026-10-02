@@ -120,6 +120,9 @@ class TestInvoicing(common.TransactionCase):
         self.approve(first | second)
         self.order.order_line.filtered(lambda l: l.product_id == self.service).qty_delivered = 10.0
         invoice = self.order._create_invoices()
+        self.assertEqual((first | second).expense_scan_invoice_id, invoice,
+                         "the draft invoice already reserves the expenses")
+        self.assertEqual((first | second).mapped('state'), ['approved', 'approved'])
         invoice.action_post()
         self.assertEqual((first | second).expense_scan_invoice_id, invoice)
         self.assertEqual(self.line.qty_invoiced, 150.0)
@@ -196,6 +199,93 @@ class TestInvoicing(common.TransactionCase):
         self.assertEqual(expense.reinvoice_mode, 'none')
         expense.action_expense_scan_set_reinvoice('todo')
         self.assertFalse(expense.project_id)
+
+    def test_list_toggle_loops_through_the_three_answers(self):
+        """To decide, yes, no, to decide... A click without a choice moves on."""
+        expense = self.expense(25.0, mode='todo', submit=False)
+        seen = []
+        for _click in range(4):
+            expense.action_expense_scan_set_reinvoice()
+            seen.append(expense.reinvoice_mode)
+        # The project of the receipt date is found for "yes", then kept.
+        self.assertEqual(seen, ['project', 'none', 'todo', 'project'])
+
+    def test_an_approved_expense_stays_decided_in_the_loop(self):
+        expense = self.expense(25.0)
+        self.approve(expense)
+        seen = []
+        for _click in range(3):
+            expense.action_expense_scan_set_reinvoice()
+            seen.append(expense.reinvoice_mode)
+        self.assertEqual(seen, ['none', 'project', 'none'])
+        with self.assertRaises(UserError):
+            expense.action_expense_scan_set_reinvoice('todo')
+
+    def test_unapprove_takes_an_approval_back(self):
+        first, second = self.expense(100.0), self.expense(40.0)
+        self.approve(first | second)
+        self.assertEqual(self.line.qty_delivered, 140.0)
+        second.sudo().action_expense_scan_unapprove()
+        self.assertEqual(second.state, 'submitted')
+        self.assertEqual(second.approval_state, 'submitted')
+        self.assertEqual(self.line.qty_delivered, 0.0,
+                         "an expense waits again: the line is held back")
+        self.approve(second)
+        self.assertEqual(self.line.qty_delivered, 140.0)
+
+    def test_only_an_approval_can_be_taken_back(self):
+        waiting = self.expense(10.0)
+        with self.assertRaises(UserError):
+            waiting.sudo().action_expense_scan_unapprove()
+
+    def test_an_expense_on_a_draft_invoice_cannot_change(self):
+        first = self.expense(100.0)
+        self.approve(first)
+        invoice = self.order._create_invoices()
+        self.assertEqual(first.expense_scan_invoice_id, invoice)
+        with self.assertRaises(UserError):
+            first.action_expense_scan_set_reinvoice('none')
+        with self.assertRaises(UserError):
+            first.write({'reinvoice_mode': 'none'})
+        with self.assertRaises(UserError):
+            first.sudo().action_expense_scan_unapprove()
+        with self.assertRaises(UserError):
+            first.sudo().write({'total_amount_currency': 5.0})
+        with self.assertRaises(UserError):
+            first.sudo().action_reset()
+        # The way out: delete the draft, change the expense, invoice again.
+        invoice.unlink()
+        self.assertFalse(first.expense_scan_invoice_id)
+        first.action_expense_scan_set_reinvoice('none')
+        self.assertEqual(first.reinvoice_mode, 'none')
+        self.assertEqual(self.line.qty_delivered, 0.0)
+
+    def test_a_reset_expense_is_free_again(self):
+        """Posted by the invoice, then put back to draft: the column works again."""
+        first = self.expense(100.0)
+        self.approve(first)
+        invoice = self.order._create_invoices()
+        invoice.action_post()
+        self.assertTrue(first.expense_scan_invoice_id)
+        first.sudo().account_move_id.button_draft()
+        first.sudo().account_move_id.button_cancel()
+        first.sudo().action_reset()
+        self.assertFalse(first.expense_scan_invoice_id)
+        self.assertEqual(first.state, 'draft')
+        first.action_expense_scan_set_reinvoice('none')
+        self.assertEqual(first.reinvoice_mode, 'none')
+
+    def test_the_create_invoice_button_warns_about_waiting_expenses(self):
+        action = self.env.ref('sale.action_view_sale_advance_payment_inv')
+        Expense = self.env['hr.expense']
+        self.assertFalse(Expense.expense_scan_order_warning(self.order.id, action.id))
+        waiting = self.expense(30.0)
+        warning = Expense.expense_scan_order_warning(self.order.id, action.id)
+        self.assertIn('1 expense', warning)
+        self.assertFalse(Expense.expense_scan_order_warning(self.order.id, action.id + 1),
+                         "only the button that creates invoices")
+        self.approve(waiting)
+        self.assertFalse(Expense.expense_scan_order_warning(self.order.id, action.id))
 
     def test_list_toggle_needs_a_project(self):
         expense = self.expense(25.0, mode='todo', submit=False)
