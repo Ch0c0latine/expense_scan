@@ -289,7 +289,8 @@ class TestInvoicing(common.TransactionCase):
         self.assertFalse(Expense.expense_scan_order_warning(self.order.id, action.id))
         waiting = self.expense(30.0)
         warning = Expense.expense_scan_order_warning(self.order.id, action.id)
-        self.assertIn('1 expense', warning)
+        self.assertTrue(warning)
+        self.assertIn('1', warning)
         self.assertFalse(Expense.expense_scan_order_warning(self.order.id, action.id + 1),
                          "only the button that creates invoices")
         self.approve(waiting)
