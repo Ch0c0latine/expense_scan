@@ -15,6 +15,7 @@ from . import hr_expense_multi
 from . import hr_expense_mileage
 from . import hr_expense_team
 from . import hr_expense_nights
+from . import hr_expense_spread
 from . import expense_scan_sirene
 from . import hr_expense_category
 from . import hr_expense_batch

@@ -43,6 +43,11 @@
         <field name="model">hr.expense</field>
         <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
         <field name="arch" type="xml">
+            <!-- A flat-rate expense entered for several days becomes one line per day. -->
+            <xpath expr="//header" position="inside">
+                <button name="action_expense_scan_spread_days" string="Spread over days" type="object"
+                        invisible="state != 'draft' or not product_has_cost or quantity &lt; 2"/>
+            </xpath>
             <xpath expr="//header/button[@name='action_refuse']" position="before">
                 <button name="action_expense_scan_unapprove" string="Unapprove" type="object"
                         invisible="state != 'approved' or not can_approve or expense_scan_invoice_id"
