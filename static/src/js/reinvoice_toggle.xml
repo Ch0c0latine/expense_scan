@@ -21,8 +21,7 @@
 
     <t t-name="expense_scan.ReinvoiceChoice">
         <Dialog title.translate="Re-invoice the selection" size="'md'">
-            <p>The selected expenses do not all have the same answer. Which one should
-               the <t t-out="props.count"/> expenses take?</p>
+            <p>The selected expenses do not all have the same answer. Which one should they all take?</p>
             <t t-set-slot="footer">
                 <button class="btn btn-primary" t-on-click="() => this.pick('project')">Yes</button>
                 <button class="btn btn-secondary" t-on-click="() => this.pick('none')">No</button>
