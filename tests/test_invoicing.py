@@ -206,7 +206,8 @@ class TestInvoicing(common.TransactionCase):
         expense.action_expense_scan_set_reinvoice('none')
         self.assertEqual(expense.reinvoice_mode, 'none')
         expense.action_expense_scan_set_reinvoice('todo')
-        self.assertFalse(expense.project_id)
+        self.assertEqual(expense.reinvoice_mode, 'todo')
+        self.assertEqual(expense.project_id, self.project, "the loop can come back to yes")
 
     def test_list_toggle_loops_through_the_three_answers(self):
         """To decide, yes, no, to decide... A click without a choice moves on."""

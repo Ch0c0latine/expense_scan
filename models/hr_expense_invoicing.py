@@ -423,8 +423,7 @@ class HrExpense(models.Model):
                     raise UserError(_(
                         "No project found for %s: open the expense and choose one.", expense.name))
                 values = expense._expense_scan_project_values(project, reinvoice=True)
-            elif choice == 'todo':
-                values.update(project_id=False, expense_scan_task_id=False)
+            # "To decide" keeps the project: the loop must be able to come back to "yes".
             expense.write(values)
         return True
 
