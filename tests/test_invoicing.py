@@ -86,6 +86,14 @@ class TestInvoicing(common.TransactionCase):
         self.expense(30.0)
         self.assertEqual(self.line.product_uom_qty, 0.0)
 
+    def test_an_expense_taken_back_leaves_the_line_even_while_others_wait(self):
+        first, second = self.expense(100.0), self.expense(50.0)
+        self.approve(first | second)
+        self.assertEqual(self.line.qty_delivered, 150.0)
+        self.expense(10.0)  # waits for the manager
+        second.sudo().action_expense_scan_unapprove()
+        self.assertEqual(self.line.qty_delivered, 100.0)
+
     def test_an_activity_flags_the_order_while_expenses_wait(self):
         activity_type = self.env.ref('expense_scan.mail_activity_type_waiting')
         waiting = self.expense(30.0)
@@ -202,13 +210,12 @@ class TestInvoicing(common.TransactionCase):
 
     def test_list_toggle_loops_through_the_three_answers(self):
         """To decide, yes, no, to decide... A click without a choice moves on."""
-        expense = self.expense(25.0, mode='todo', submit=False)
+        expense = self.expense(25.0, mode='none', submit=False)
         seen = []
         for _click in range(4):
             expense.action_expense_scan_set_reinvoice()
             seen.append(expense.reinvoice_mode)
-        # The project of the receipt date is found for "yes", then kept.
-        self.assertEqual(seen, ['project', 'none', 'todo', 'project'])
+        self.assertEqual(seen, ['todo', 'project', 'none', 'todo'])
 
     def test_an_approved_expense_stays_decided_in_the_loop(self):
         expense = self.expense(25.0)
@@ -228,8 +235,8 @@ class TestInvoicing(common.TransactionCase):
         second.sudo().action_expense_scan_unapprove()
         self.assertEqual(second.state, 'submitted')
         self.assertEqual(second.approval_state, 'submitted')
-        self.assertEqual(self.line.qty_delivered, 0.0,
-                         "an expense waits again: the line is held back")
+        self.assertEqual(self.line.qty_delivered, 100.0,
+                         "the unapproved expense leaves the line; the line does not grow back until all are settled")
         self.approve(second)
         self.assertEqual(self.line.qty_delivered, 140.0)
 

@@ -220,18 +220,25 @@ class HrExpense(models.Model):
                 user_id=(order.user_id or self.env.user).id)
 
     @api.model
-    def _expense_scan_hold_line(self, order):
-        """While expenses wait, the line bills what it already holds, no more.
+    def _expense_scan_hold_line(self, order, line, amount):
+        """While expenses wait, the line goes down but never up.
 
+        Nothing new reaches the invoice before every expense is settled; an
+        expense taken back (unapproved, switched to "no") leaves it at once.
         A product invoiced on the ordered quantity would otherwise bill the
         figure typed in the quotation.
         """
-        line = self._expense_scan_order_line(order)
-        if not line or order.locked or line.product_id.invoice_policy != 'order':
+        if not line or order.locked:
             return
-        held = max(line.qty_delivered, line.qty_invoiced)
-        if float_compare(line.product_uom_qty, held, precision_digits=2):
-            line.sudo().write({'product_uom_qty': held})
+        unit = line.price_unit if line.price_unit > 0 else 1.0
+        held = max(min(line.qty_delivered, amount / unit), line.qty_invoiced)
+        values = {}
+        if line.qty_delivered_method == 'manual' and float_compare(line.qty_delivered, held, precision_digits=2):
+            values['qty_delivered'] = held
+        if line.product_id.invoice_policy == 'order' and float_compare(line.product_uom_qty, held, precision_digits=2):
+            values['product_uom_qty'] = held
+        if values:
+            line.sudo().write(values)
 
     @api.model
     def _expense_scan_sync_order(self, order):
@@ -241,9 +248,6 @@ class HrExpense(models.Model):
             return
         waiting = self._expense_scan_waiting(projects, company)
         self._expense_scan_flag_waiting(order, waiting)
-        if waiting:
-            self._expense_scan_hold_line(order)
-            return
         counted = self._expense_scan_counted(projects, company)
         amount = sum(counted.mapped('untaxed_amount'))
         if order.currency_id != company.currency_id:
@@ -252,6 +256,9 @@ class HrExpense(models.Model):
         amount = order.currency_id.round(amount)
 
         line = self._expense_scan_order_line(order)
+        if waiting:
+            self._expense_scan_hold_line(order, line, amount)
+            return
         if line and not amount and not line.qty_delivered and not line.qty_invoiced:
             # Nothing to say yet: the quotation keeps its own figures.
             return
