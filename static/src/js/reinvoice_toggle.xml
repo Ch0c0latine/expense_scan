@@ -9,7 +9,7 @@
                     'text-success': mode === 'project',
                     'text-warning': mode === 'todo',
                     'text-muted': mode === 'none',
-                    'o_expense_scan_reinvoice_locked': locked,
+                    'o_expense_scan_reinvoice_locked': locked and !selection.length,
                 }"
                 t-att-title="title"
                 t-on-click.stop.prevent="onClick">
@@ -17,6 +17,19 @@
             <i t-elif="mode === 'todo'" class="fa fa-question-circle fa-lg" role="img" aria-label="To decide"/>
             <i t-else="" class="fa fa-square-o fa-lg" role="img" aria-label="No"/>
         </button>
+    </t>
+
+    <t t-name="expense_scan.ReinvoiceChoice">
+        <Dialog title.translate="Re-invoice the selection" size="'md'">
+            <p>The selected expenses do not all have the same answer. Which one should
+               the <t t-out="props.count"/> expenses take?</p>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary" t-on-click="() => this.pick('project')">Yes</button>
+                <button class="btn btn-secondary" t-on-click="() => this.pick('none')">No</button>
+                <button class="btn btn-secondary" t-on-click="() => this.pick('todo')">To decide</button>
+                <button class="btn btn-link" t-on-click="props.close">Cancel</button>
+            </t>
+        </Dialog>
     </t>
 
 </templates>

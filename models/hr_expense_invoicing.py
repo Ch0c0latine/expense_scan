@@ -39,6 +39,21 @@ class HrExpense(models.Model):
              "draft.",
     )
 
+    expense_scan_reinvoiced_amount = fields.Monetary(
+        string="Re-invoiced amount",
+        currency_field='company_currency_id',
+        compute='_compute_expense_scan_reinvoiced_amount',
+        store=True,
+        help="Amount incl. tax of a re-invoiced expense; zero otherwise. Its "
+             "total at the bottom of the list is what goes to the customers.",
+    )
+
+    @api.depends('reinvoice_mode', 'total_amount')
+    def _compute_expense_scan_reinvoiced_amount(self):
+        for expense in self:
+            expense.expense_scan_reinvoiced_amount = (
+                expense.total_amount if expense.reinvoice_mode == 'project' else 0.0)
+
     #: Fields whose change can move an expense onto or off the order line.
     SYNC_FIELDS = frozenset({
         'reinvoice_mode', 'project_id', 'approval_state', 'total_amount',
@@ -409,23 +424,73 @@ class HrExpense(models.Model):
         if mode not in (None, 'project', 'none', 'todo'):
             raise UserError(_("Unknown choice."))
         for expense in self:
-            if not expense.is_editable and not self.env.su:
-                raise AccessError(_("You cannot edit this expense."))
-            if expense.state in ('posted', 'in_payment', 'paid', 'refused') or expense.expense_scan_invoice_id:
-                raise UserError(_("The re-invoicing of %s can no longer change.", expense.name))
-            choice = mode or expense._expense_scan_next_reinvoice()
-            if choice == 'todo' and expense.state == 'approved':
-                raise UserError(_("%s is approved: its re-invoicing has to stay decided.", expense.name))
-            values = {'reinvoice_mode': choice}
-            if choice == 'project':
-                project = expense.project_id or expense._expense_scan_find_project(expense.date)
-                if not project:
-                    raise UserError(_(
-                        "No project found for %s: open the expense and choose one.", expense.name))
-                values = expense._expense_scan_project_values(project, reinvoice=True)
-            # "To decide" keeps the project: the loop must be able to come back to "yes".
-            expense.write(values)
+            expense._expense_scan_apply_reinvoice(mode or expense._expense_scan_next_reinvoice())
         return True
+
+    def action_expense_scan_set_reinvoice_many(self, mode):
+        """The same answer for a selection; those that cannot take it are left.
+
+        Returns the names of the expenses left aside, with the reason, so
+        that the list can say which ones to open.
+        """
+        if mode not in ('project', 'none', 'todo'):
+            raise UserError(_("Unknown choice."))
+        left = []
+        for expense in self:
+            try:
+                with self.env.cr.savepoint():
+                    expense._expense_scan_apply_reinvoice(mode)
+            except (UserError, AccessError) as error:
+                left.append(str(error.args[0] if error.args else error))
+        return {'done': len(self) - len(left), 'left': left}
+
+    def _expense_scan_apply_reinvoice(self, choice):
+        self.ensure_one()
+        if not self.is_editable and not self.env.su:
+            raise AccessError(_("You cannot edit this expense."))
+        if self.state in ('posted', 'in_payment', 'paid', 'refused') or self.expense_scan_invoice_id:
+            raise UserError(_("The re-invoicing of %s can no longer change.", self.name))
+        if choice == 'todo' and self.state == 'approved':
+            raise UserError(_("%s is approved: its re-invoicing has to stay decided.", self.name))
+        values = {'reinvoice_mode': choice}
+        if choice == 'project':
+            project = self.project_id or self._expense_scan_find_project(self.date)
+            if not project:
+                raise UserError(_(
+                    "No project found for %s: open the expense and choose one.", self.name))
+            values = self._expense_scan_project_values(project, reinvoice=True)
+        # "To decide" keeps the project: the loop must be able to come back to "yes".
+        self.write(values)
+
+    # ------------------------------------------------------------------
+    # Paying the employee
+    # ------------------------------------------------------------------
+
+    def action_expense_scan_pay(self):
+        """Pay the employee for a selection in one go.
+
+        Approved expenses are posted first; then one payment per employee
+        settles them together with the expenses already posted (those an
+        invoice posted, for instance).
+        """
+        expenses = self.filtered(lambda e: e.payment_mode == 'own_account')
+        if not expenses:
+            raise UserError(_("Select expenses paid by the employee."))
+        wrong = expenses.filtered(lambda e: e.state not in ('approved', 'posted'))
+        if wrong:
+            raise UserError(_(
+                "Only approved or posted expenses can be paid:\n%s",
+                "\n".join("- %s" % (e.name or e.display_name) for e in wrong[:20])))
+        to_post = expenses.filtered(lambda e: e.state == 'approved')
+        if to_post:
+            to_post._post_without_wizard()
+        moves = expenses.account_move_id.filtered(
+            lambda m: m.state == 'posted' and m.payment_state in ('not_paid', 'partial'))
+        if not moves:
+            raise UserError(_("These expenses are already paid."))
+        action = moves.action_register_payment()
+        action['context'] = dict(action.get('context') or {}, default_group_payment=True)
+        return action
 
     def _expense_scan_next_reinvoice(self):
         """To decide, then yes, then no, then to decide again."""

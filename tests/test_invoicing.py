@@ -239,6 +239,35 @@ class TestInvoicing(common.TransactionCase):
         with self.assertRaises(UserError):
             expense.action_expense_scan_set_reinvoice('todo')
 
+    def test_a_selection_takes_one_answer_and_leaves_the_ones_that_cannot(self):
+        with_project = self.expense(20.0, mode='none', submit=False)
+        lost = self.expense(30.0, mode='todo', submit=False)  # no mission at its date
+        result = (with_project | lost).action_expense_scan_set_reinvoice_many('project')
+        self.assertEqual(result['done'], 1)
+        self.assertEqual(len(result['left']), 1)
+        self.assertEqual(with_project.reinvoice_mode, 'project')
+        self.assertEqual(lost.reinvoice_mode, 'todo')
+        result = (with_project | lost).action_expense_scan_set_reinvoice_many('none')
+        self.assertEqual(result['done'], 2)
+
+    def test_re_invoiced_amount_for_the_list_total(self):
+        kept = self.expense(40.0, mode='none', submit=False)
+        billed = self.expense(60.0, submit=False)
+        self.assertEqual(kept.expense_scan_reinvoiced_amount, 0.0)
+        self.assertEqual(billed.expense_scan_reinvoiced_amount, 60.0)
+
+    def test_pay_the_employee_in_one_go(self):
+        approved = self.expense(40.0, mode='none')
+        invoiced = self.expense(60.0)
+        self.approve(approved | invoiced)
+        self.order._create_invoices().action_post()
+        self.assertEqual(invoiced.state, 'posted')
+        self.assertEqual(approved.state, 'approved')
+        action = (approved | invoiced).sudo().action_expense_scan_pay()
+        self.assertEqual(approved.state, 'posted', "the approved one is posted on the way")
+        self.assertEqual(action['res_model'], 'account.payment.register')
+        self.assertTrue(action['context'].get('default_group_payment'))
+
     def test_unapprove_takes_an_approval_back(self):
         first, second = self.expense(100.0), self.expense(40.0)
         self.approve(first | second)
