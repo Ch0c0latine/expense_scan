@@ -463,11 +463,11 @@ class HrExpense(models.Model):
         self.write(values)
 
     # ------------------------------------------------------------------
-    # Paying the employee
+    # Reimbursing the employee
     # ------------------------------------------------------------------
 
     def action_expense_scan_pay(self):
-        """Pay the employee for a selection in one go.
+        """Reimburse the employee for a selection in one go.
 
         Approved expenses are posted first; then one payment per employee
         settles them together with the expenses already posted (those an

@@ -12,11 +12,13 @@
         <field name="inherit_id" ref="hr_expense.hr_expense_view_expenses_analysis_tree"/>
         <field name="arch" type="xml">
             <field name="state" position="before">
-                <field name="reinvoice_mode" string="Re-invoicable" widget="expense_scan_reinvoice"
-                       optional="show" class="text-center"/>
+                <!-- The cell shows the answer; the total at the bottom is the amount that
+                     goes to the customers. -->
+                <field name="reinvoice_mode" column_invisible="True"/>
                 <field name="expense_scan_invoice_id" column_invisible="True"/>
-                <field name="expense_scan_reinvoiced_amount" optional="show" sum="Total re-invoiced"
-                       widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
+                <field name="expense_scan_reinvoiced_amount" string="Re-invoicable"
+                       widget="expense_scan_reinvoice" optional="show" class="text-center"
+                       sum="Total re-invoiced"/>
             </field>
         </field>
     </record>
@@ -27,11 +29,27 @@
         <field name="inherit_id" ref="hr_expense.hr_expense_view_search"/>
         <field name="arch" type="xml">
             <xpath expr="//filter[@name='reinvoice_todo']" position="after">
-                <filter string="Ready to invoice" name="ready_to_invoice"
-                        domain="[('reinvoice_mode', '=', 'project'), ('approval_state', '=', 'approved'),
-                                 ('expense_scan_invoice_id', '=', False)]"/>
+                <filter string="Not re-invoiced" name="not_reinvoiced"
+                        domain="[('reinvoice_mode', '=', 'none')]"/>
                 <filter string="Invoiced" name="invoiced"
                         domain="[('expense_scan_invoice_id', '!=', False)]"/>
+            </xpath>
+            <!-- Shortcuts that served no purpose. -->
+            <xpath expr="//filter[@name='my_team_expenses']" position="replace"/>
+            <xpath expr="//filter[@name='by_company']" position="replace"/>
+            <xpath expr="//filter[@name='by_employee']" position="replace"/>
+            <xpath expr="//filter[@name='to_pay']" position="after">
+                <filter string="Reimbursed" name="reimbursed"
+                        domain="[('state', 'in', ['in_payment', 'paid']), ('payment_mode', '=', 'own_account')]"/>
+            </xpath>
+            <!-- Toggled by the two buttons beside the search bar, not from the menu. -->
+            <xpath expr="//filter[@name='all_approved']" position="before">
+                <filter name="current_month" invisible="1" string="Current month"
+                        domain="[('date', '&gt;=', context_today().strftime('%Y-%m-01')),
+                                 ('date', '&lt;', (context_today() + relativedelta(months=1)).strftime('%Y-%m-01'))]"/>
+                <filter name="previous_month" invisible="1" string="Previous month"
+                        domain="[('date', '&gt;=', (context_today() - relativedelta(months=1)).strftime('%Y-%m-01')),
+                                 ('date', '&lt;', context_today().strftime('%Y-%m-01'))]"/>
             </xpath>
         </field>
     </record>
@@ -71,10 +89,10 @@
         <field name="code">records.action_expense_scan_unapprove()</field>
     </record>
 
-    <!-- Pay the employee for a selection: approved expenses are posted, then
-         one payment per employee settles them with those already posted. -->
+    <!-- Reimburse the employee for a selection: approved expenses are posted,
+         then one payment per employee settles them with those already posted. -->
     <record id="action_expense_scan_pay" model="ir.actions.server">
-        <field name="name">Pay the employee</field>
+        <field name="name">Reimburse the employee</field>
         <field name="model_id" ref="hr_expense.model_hr_expense"/>
         <field name="binding_model_id" ref="hr_expense.model_hr_expense"/>
         <field name="binding_view_types">list</field>
@@ -136,4 +154,11 @@
         </field>
     </record>
 
+    <!-- The lists open on the current month. -->
+    <record id="hr_expense.hr_expense_actions_my_all" model="ir.actions.act_window">
+        <field name="context">{'search_default_my_open_expenses': 1, 'search_default_current_month': 1}</field>
+    </record>
+    <record id="hr_expense.hr_expense_actions_to_process" model="ir.actions.act_window">
+        <field name="context">{'searchpanel_default_state': ['submitted'], 'search_default_current_month': 1}</field>
+    </record>
 </odoo>

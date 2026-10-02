@@ -796,7 +796,11 @@ class ExpenseScanSheetWizard(models.TransientModel):
     def default_get(self, fields_list):
         values = super().default_get(fields_list)
         if self.env.context.get('active_model') == 'hr.expense':
-            values['expense_ids'] = [(6, 0, self.env.context.get('active_ids') or [])]
+            ids = self.env.context.get('active_ids') or []
+            values['expense_ids'] = [(6, 0, ids)]
+            projects = self.env['hr.expense'].browse(ids).project_id
+            if len(projects) == 1 and 'project_ids' in fields_list:
+                values['project_ids'] = [(6, 0, projects.ids)]
         elif values.get('period'):
             date_from, date_to = self._period_dates(values['period'])
             values.setdefault('date_from', fields.Date.to_string(date_from))

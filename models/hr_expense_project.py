@@ -225,7 +225,8 @@ class HrExpense(models.Model):
         elif view_type == 'list' and not reinvoice:
             # The "Re-invoicable" column means nothing to a company that does
             # not re-invoice.
-            for node in arch.xpath("//field[@name='reinvoice_mode']"):
+            for node in arch.xpath(
+                    "//field[@name='reinvoice_mode' or @name='expense_scan_reinvoiced_amount']"):
                 node.getparent().remove(node)
         return arch, view
 

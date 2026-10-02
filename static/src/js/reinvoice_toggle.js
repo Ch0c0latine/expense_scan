@@ -45,7 +45,7 @@ export class ExpenseScanReinvoice extends Component {
     }
 
     get mode() {
-        return this.props.record.data[this.props.name];
+        return this.props.record.data.reinvoice_mode;
     }
 
     /** A posted, refused or already invoiced expense no longer changes. */
@@ -91,7 +91,7 @@ export class ExpenseScanReinvoice extends Component {
     }
 
     async applyToSelection(selection) {
-        const modes = new Set(selection.map((record) => record.data[this.props.name]));
+        const modes = new Set(selection.map((record) => record.data.reinvoice_mode));
         const mode =
             modes.size === 1 ? NEXT[this.mode] || "project" : await this.askMode(selection.length);
         if (!mode) {
@@ -125,5 +125,5 @@ export class ExpenseScanReinvoice extends Component {
 registry.category("fields").add("expense_scan_reinvoice", {
     component: ExpenseScanReinvoice,
     displayName: _t("Re-invoice toggle"),
-    supportedTypes: ["selection"],
+    supportedTypes: ["monetary", "float"],
 });
