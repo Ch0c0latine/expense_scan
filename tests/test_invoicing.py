@@ -176,6 +176,16 @@ class TestInvoicing(common.TransactionCase):
         self.approve(expense)
         self.assertEqual(self.line.qty_delivered, 0.0)
 
+    def test_the_amount_re_invoiced_includes_tax(self):
+        tax = self.env['account.tax'].search([
+            ('type_tax_use', '=', 'purchase'), ('amount_type', '=', 'percent'), ('amount', '=', 20.0),
+            ('company_id', '=', self.company.id)], limit=1)
+        if not tax:
+            self.skipTest("no 20 % purchase tax")
+        expense = self.expense(120.0, tax_ids=[Command.set(tax.ids)])
+        self.approve(expense)
+        self.assertEqual(self.line.qty_delivered, 120.0)
+
     def test_existing_price_is_respected(self):
         self.line.price_unit = 2.0
         expense = self.expense(100.0)

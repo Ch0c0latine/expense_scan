@@ -6,7 +6,7 @@
 Odoo's own mechanism (``sale_expense``) adds one order line per expense, once
 the expense is posted. Here the approved expenses of a project are added up on
 the order's expense line (the line whose product can be expensed): its
-quantity is the amount excl. tax, at a unit price of 1. The next invoice takes
+quantity is the amount incl. tax, at a unit price of 1. The next invoice takes
 what has not been invoiced yet and posts the expenses it covers.
 
 Everything is optional. Without Sales, without a project or with the company
@@ -249,7 +249,7 @@ class HrExpense(models.Model):
         waiting = self._expense_scan_waiting(projects, company)
         self._expense_scan_flag_waiting(order, waiting)
         counted = self._expense_scan_counted(projects, company)
-        amount = sum(counted.mapped('untaxed_amount'))
+        amount = sum(counted.mapped('total_amount'))
         if order.currency_id != company.currency_id:
             amount = company.currency_id._convert(
                 amount, order.currency_id, company, order.date_order or fields.Date.context_today(self))

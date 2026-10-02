@@ -183,7 +183,7 @@ and its own requirements.
   approve an expense whose re-invoicing is still to decide. Once approved, the
   expense is added up with the others of its project on the **expense line**
   of the project's sales order (the line whose product can be expensed): its
-  quantity is the amount excl. tax, at a unit price of 1, so one invoice line
+  quantity is the amount incl. tax, at a unit price of 1, so one invoice line
   carries the month's expenses. The line only moves when no expense of the
   project is left waiting for the manager or for a decision (an activity
   on the order says so). When the invoice is posted, the expenses it covers

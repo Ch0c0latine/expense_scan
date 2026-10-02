@@ -95,7 +95,7 @@ class AccountMove(models.Model):
                 self.invoice_date or fields.Date.context_today(self))
         covered = Expense
         for expense in candidates:
-            if float_compare(expense.untaxed_amount, left + 0.005, precision_digits=2) <= 0:
+            if float_compare(expense.total_amount, left + 0.005, precision_digits=2) <= 0:
                 covered |= expense
-                left -= expense.untaxed_amount
+                left -= expense.total_amount
         return covered

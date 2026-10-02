@@ -5,7 +5,7 @@
 - **Re-invoicing on one order line**: the approved expenses of a project add
   up on the expense line of its sales order (the line whose product can be
   expensed; one is added if the order has none). Its quantity is the amount
-  excl. tax at a unit price of 1, so an invoice carries one line for the
+  incl. tax at a unit price of 1, so an invoice carries one line for the
   month's expenses instead of one line per expense. Odoo's own mechanism
   (one line per posted expense) is no longer triggered: re-invoiced expenses
   no longer fill the standard "Customer to Reinvoice" field.
