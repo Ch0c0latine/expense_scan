@@ -703,7 +703,10 @@ msgid "Currency Rate"
 msgstr "Valutakurs"
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/expense_month_buttons.js:0
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__current
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
 msgid "Current month"
 msgstr "Indeværende måned"
 
@@ -1763,6 +1766,7 @@ msgstr "Nr. %s"
 #. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
 msgid "Not re-invoiced"
 msgstr "Ikke viderefaktureret"
 
@@ -1941,11 +1945,6 @@ msgid "Paris, Lyon, Marseille"
 msgstr "København, Aarhus, Odense"
 
 #. module: expense_scan
-#: model:ir.actions.server,name:expense_scan.action_expense_scan_pay
-msgid "Pay the employee"
-msgstr "Betal medarbejderen"
-
-#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__per_night
 msgid "Per night"
 msgstr "Pr. nat"
@@ -1998,7 +1997,10 @@ msgid "Preparing the image"
 msgstr "Forbereder billedet"
 
 #. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/expense_month_buttons.js:0
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__previous
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
 msgid "Previous month"
 msgstr "Forrige måned"
 
@@ -2173,11 +2175,6 @@ msgid "Reads the receipt again after rotating it when the text seems to run vert
 msgstr "Læser kvitteringen igen efter at have roteret den, når teksten ser ud til at gå lodret. Gør scanningen langsommere."
 
 #. module: expense_scan
-#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
-msgid "Ready to invoice"
-msgstr "Klar til fakturering"
-
-#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Receipt"
@@ -2338,6 +2335,16 @@ msgstr "Afviser eksporten, hvis et udlæg ikke er markeret \"Viderefakturér: Ja
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_template__single_project
 msgid "Refuses the export if the expenses belong to several projects."
 msgstr "Afviser eksporten, hvis udlæggene hører til flere projekter."
+
+#. module: expense_scan
+#: model:ir.actions.server,name:expense_scan.action_expense_scan_pay
+msgid "Reimburse the employee"
+msgstr "Refundér medarbejderen"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
+msgid "Reimbursed"
+msgstr "Refunderet"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_export_template_view_form
