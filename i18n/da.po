@@ -703,8 +703,6 @@ msgid "Currency Rate"
 msgstr "Valutakurs"
 
 #. module: expense_scan
-#. odoo-javascript
-#: code:addons/expense_scan/static/src/js/expense_month_buttons.js:0
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__current
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
 msgid "Current month"
@@ -1764,9 +1762,13 @@ msgid "No. %s"
 msgstr "Nr. %s"
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
+msgid "Not re-invoicable"
+msgstr "Kan ikke viderefaktureres"
+
+#. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
-#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
 msgid "Not re-invoiced"
 msgstr "Ikke viderefaktureret"
 
@@ -1997,8 +1999,6 @@ msgid "Preparing the image"
 msgstr "Forbereder billedet"
 
 #. module: expense_scan
-#. odoo-javascript
-#: code:addons/expense_scan/static/src/js/expense_month_buttons.js:0
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__previous
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
 msgid "Previous month"
