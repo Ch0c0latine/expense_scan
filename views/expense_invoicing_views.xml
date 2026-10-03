@@ -131,6 +131,7 @@
                        groups="hr_expense.group_hr_expense_user">
                     <field name="expense_scan_currency_id" invisible="1"/>
                     <field name="expense_scan_over_budget" invisible="1"/>
+                    <field name="expense_scan_sheet_template_id" options="{'no_create': True}"/>
                     <field name="expense_scan_budget"/>
                     <field name="expense_scan_progress" widget="progressbar"
                            invisible="not expense_scan_budget"

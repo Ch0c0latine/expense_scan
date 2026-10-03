@@ -23,6 +23,13 @@ class ProjectProject(models.Model):
         compute='_compute_expense_scan_currency_id',
         string="Expense currency",
     )
+    expense_scan_sheet_template_id = fields.Many2one(
+        comodel_name='expense.scan.export.template',
+        string="Excel model of the expenses",
+        ondelete='set null',
+        help="Excel model of the table of the re-invoiced expenses that goes with the e-mail of "
+             "the customer invoices (for example the model the customer asks for). Empty: no Excel table.",
+    )
     expense_scan_budget = fields.Monetary(
         string="Expense budget",
         currency_field='expense_scan_currency_id',

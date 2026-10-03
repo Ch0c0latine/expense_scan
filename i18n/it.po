@@ -1181,6 +1181,16 @@ msgid "Expense Sheets"
 msgstr "Note spese"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_sheet_template_id
+msgid "Excel model of the expenses"
+msgstr "Modello Excel delle spese"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_project_project__expense_scan_sheet_template_id
+msgid "Excel model of the table of the re-invoiced expenses that goes with the e-mail of the customer invoices (for example the model the customer asks for). Empty: no Excel table."
+msgstr "Modello Excel della tabella delle spese riaddebitate che accompagna l'e-mail delle fatture cliente (ad esempio il modello richiesto dal cliente). Vuoto: nessuna tabella Excel."
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_budget
 msgid "Expense budget"
 msgstr "Budget delle spese"

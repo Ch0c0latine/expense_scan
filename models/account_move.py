@@ -14,6 +14,8 @@ from odoo.tools import float_compare
 
 from .hr_expense_invoicing import INTERNAL
 
+XLSX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
@@ -64,6 +66,26 @@ class AccountMove(models.Model):
             if self.currency_id.compare_amounts(refunded, line.price_subtotal) < 0:
                 return False
         return True
+
+    def expense_scan_sheet_files(self, expenses=None, projects=None):
+        """``[(file name, content, MIME type)]`` of the expenses this invoice bills.
+
+        The Excel table, on the model chosen on their project, and the receipts. For the
+        e-mail that sends the invoice. ``expenses`` and ``projects`` default to the expenses
+        reserved by the invoice and their projects; another module can give others (those of a
+        month, for instance).
+        """
+        self.ensure_one()
+        expenses = (self.expense_scan_expense_ids if expenses is None else expenses).sudo()
+        if not expenses:
+            return []
+        projects = (expenses.project_id if projects is None else projects).sudo()
+        template = projects.expense_scan_sheet_template_id[:1]
+        built = self.env['expense.scan.sheet'].sudo().with_context(
+            expense_scan_sheet_project_ids=projects.ids)._build(
+            expenses, excel_template=template or False, receipts=True)
+        return [(name, content, 'application/pdf' if name.endswith('.pdf') else XLSX_MIMETYPE)
+                for name, content in built]
 
     def button_draft(self):
         self._expense_scan_release_expenses()

@@ -1181,6 +1181,16 @@ msgid "Expense Sheets"
 msgstr "Utläggsrapporter"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_sheet_template_id
+msgid "Excel model of the expenses"
+msgstr "Excel-mall för utlägg"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_project_project__expense_scan_sheet_template_id
+msgid "Excel model of the table of the re-invoiced expenses that goes with the e-mail of the customer invoices (for example the model the customer asks for). Empty: no Excel table."
+msgstr "Excel-mall för tabellen över vidarefakturerade utlägg som bifogas e-postmeddelandet med kundfakturorna (till exempel den mall kunden ber om). Tomt: ingen Excel-tabell."
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_budget
 msgid "Expense budget"
 msgstr "Utläggsbudget"

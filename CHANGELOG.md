@@ -1,5 +1,14 @@
 # Changelog
 
+## 19.0.2.11.0 — 2026-10-03
+
+- **Excel model of the expenses on the project**: the project form (Expenses
+  group) gets the model of the table of re-invoiced expenses that goes with the
+  e-mail of the customer invoices. `account.move.expense_scan_sheet_files()`
+  returns the Excel table and the receipts of the expenses an invoice bills, for
+  whichever module sends the invoice. A value kept on the sales order by an
+  older companion module moves to its project at the update.
+
 ## 19.0.2.10.0 — 2026-10-03
 
 - **Correct VAT**: once an expense is posted, an accounting manager can say
