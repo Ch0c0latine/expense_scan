@@ -21,3 +21,4 @@ from . import test_accounting_fields
 from . import test_currency_rates
 from . import test_invoicing
 from . import test_spread
+from . import test_vat_correction
