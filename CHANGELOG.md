@@ -1,5 +1,28 @@
 # Changelog
 
+## 19.0.2.9.3 — 2026-10-03
+
+- **Expense lists** open on the current month. "Current month" and "Previous
+  month" are filters of the search menu, between the filters and the expense
+  date, which no longer lists the months. "Re-invoicable" filters became "Not
+  re-invoicable", "Invoiced" and "Reimbursed"; the shortcuts that served no
+  purpose (my team, paid by the employee or the company, ready to invoice) are
+  gone.
+- **"Expense follow-up"**: the menu that held "My Expenses" twice is renamed
+  after what it holds.
+- **Renamed records keep their translation**: the action "Reimburse the
+  employee" and the renamed menu are translated again after an update.
+- A hook (`_expense_scan_in_period`) lets another module give each order of a
+  project only the expenses dated in its period.
+
+## 19.0.2.9.2 — 2026-10-03
+
+- The **Re-invoicable column** shows the answer; the total at the bottom is
+  the amount that goes to the customers (the separate amount column is gone).
+- The expense sheet wizard fills the mission when all the expenses belong to
+  a single one.
+- "Pay the employee" reads "Reimburse the employee".
+
 ## 19.0.2.9.1 — 2026-10-02
 
 - **Re-invoicable column on a selection**: a click on a selected row applies
