@@ -275,3 +275,8 @@
     font-weight: normal;
     margin-top: 1rem;
 }
+
+// Settings fields whose value or placeholder is longer than Odoo's default width.
+.o_expense_scan_wide_field {
+    min-width: 18em;
+}

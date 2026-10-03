@@ -48,7 +48,7 @@
                             <div class="text-muted small ps-4">Daily reference rates for the active currencies: a foreign receipt is converted at the rate of its day.</div></div>
                         <div class="mt-2">
                             <label for="expense_scan_product_id" class="o_light_label"/>
-                            <field name="expense_scan_product_id"
+                            <field name="expense_scan_product_id" class="o_expense_scan_wide_field"
                                    options="{'no_create': True}"
                                    placeholder="default: Odoo's choice (reference EXP_GEN)"/>
                             <div class="text-muted small">Given to scanned expenses whose receipt names no category.</div>
@@ -92,7 +92,7 @@
                         <div class="content-group">
                             <div class="row mt16">
                                 <label for="expense_scan_engine" class="col-lg-4 o_light_label"/>
-                                <field name="expense_scan_engine"/>
+                                <field name="expense_scan_engine" class="o_expense_scan_wide_field"/>
                                 <div class="text-muted small">Automatic uses RapidOCR, and Tesseract when it is missing.</div>
                             </div>
                             <div class="row" invisible="expense_scan_engine == 'rapidocr'">
@@ -107,7 +107,7 @@
                             </div>
                             <div class="row" invisible="expense_scan_engine == 'tesseract'">
                                 <label for="expense_scan_model_dir" class="col-lg-4 o_light_label"/>
-                                <field name="expense_scan_model_dir"
+                                <field name="expense_scan_model_dir" class="o_expense_scan_wide_field"
                                        placeholder="default: Odoo's data directory"/>
                                 <div class="text-muted small">Where the recognition models are downloaded.</div>
                             </div>
