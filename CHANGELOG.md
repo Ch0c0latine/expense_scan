@@ -1,5 +1,11 @@
 # Changelog
 
+## 19.0.2.9.4 — 2026-10-03
+
+- **Expense Sheets** is a single menu entry instead of a group of three ("This
+  Month", "Last Month", "Other Period..."): the wizard already offers the
+  period.
+
 ## 19.0.2.9.3 — 2026-10-03
 
 - **Expense lists** open on the current month. "Current month" and "Previous

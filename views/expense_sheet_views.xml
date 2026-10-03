@@ -168,31 +168,9 @@
         <field name="target">new</field>
         <field name="context">{'default_period': 'current'}</field>
     </record>
-    <record id="expense_scan_sheet_previous_month_action" model="ir.actions.act_window">
-        <field name="name">Expense Sheet</field>
-        <field name="res_model">expense.scan.sheet.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-        <field name="context">{'default_period': 'previous'}</field>
-    </record>
-    <record id="expense_scan_sheet_custom_period_action" model="ir.actions.act_window">
-        <field name="name">Expense Sheet</field>
-        <field name="res_model">expense.scan.sheet.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-        <field name="context">{'default_period': 'custom'}</field>
-    </record>
-
+    <!-- One entry: the period (this month, last month, other) is picked in the wizard. -->
     <menuitem id="menu_expense_scan_sheets" name="Expense Sheets"
-              parent="hr_expense.menu_hr_expense_root" sequence="15"/>
-    <menuitem id="menu_expense_scan_sheet_current_month" name="This Month"
-              parent="menu_expense_scan_sheets" action="expense_scan_sheet_current_month_action"
-              sequence="10"/>
-    <menuitem id="menu_expense_scan_sheet_previous_month" name="Last Month"
-              parent="menu_expense_scan_sheets" action="expense_scan_sheet_previous_month_action"
-              sequence="20"/>
-    <menuitem id="menu_expense_scan_sheet_custom_period" name="Other Period..."
-              parent="menu_expense_scan_sheets" action="expense_scan_sheet_custom_period_action"
-              sequence="30"/>
+              parent="hr_expense.menu_hr_expense_root"
+              action="expense_scan_sheet_current_month_action" sequence="15"/>
 
 </odoo>
