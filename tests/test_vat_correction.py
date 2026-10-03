@@ -25,6 +25,8 @@ class TestVatCorrection(common.TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # The texts asserted below are the English ones, whatever the language of the user.
+        cls.env = cls.env(context=dict(cls.env.context, lang='en_US'))
         cls.company = cls.env.company
         if not cls.company.chart_template:
             raise unittest.SkipTest("no chart of accounts")
