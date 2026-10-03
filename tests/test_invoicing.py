@@ -410,8 +410,12 @@ class TestInvoicing(common.TransactionCase):
         self.approve(first)
         self.order._create_invoices()
         user = self._internal_user()
-        with self.assertRaises((UserError, AccessError)):
+        try:
             first.with_user(user).with_context(expense_scan_free=True).write({'total_amount_currency': 1.0})
+        except (UserError, AccessError):
+            pass
+        else:
+            self.fail("the lock must hold")
 
     def test_only_accountants_reimburse(self):
         first = self.expense(40.0, mode='none')
