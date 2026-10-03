@@ -1,5 +1,57 @@
 # Changelog
 
+## 19.0.2.10.0 — 2026-10-03
+
+- **Correct VAT**: once an expense is posted, an accounting manager can say
+  that its VAT is not recoverable, is recoverable, or is another amount
+  (button *Correct VAT* on the expense, or *Actions* on a selection).
+  - A miscellaneous entry moves only the difference between the VAT recovered
+    and the new one, through the tax engine, so that the tax return follows
+    (refund repartition of the tax when VAT stops being recoverable, invoice
+    repartition when it becomes recoverable). It is booked on the expense
+    account with the analytic distribution of the expense: the cost of the
+    project rises or falls by the difference. The expense, its entry, the
+    reimbursement of the employee and the re-invoicing do not change.
+  - The wizard shows the VAT recovered now (read from the accounting: the
+    purchase tax lines of the entry, plus the posted corrections), proposes the
+    tax of the expense, of its category, then of the company, and the date of
+    the entry (a locked period is said, Odoo moves the date). *Other amount*
+    needs an expense with a single tax and stays under the VAT the rate gives
+    on the total.
+  - A selection takes *Not recoverable* and *Recoverable*, with one entry per
+    expense: its own account, analytic distribution and tax, and a standard
+    reversal cancels one correction without touching the others.
+  - New *Recoverable VAT* field on the expense when it differs from the VAT of
+    its entry, a *VAT corrections* button, and a note in the chatter (old and
+    new amount, link to the entry). The entry is linked to its expense; a
+    reversal keeps the link, so it cancels the correction.
+  - When the expense is reimbursed and invoiced (or not re-invoiced) the
+    wizard warns that the VAT may already have been declared and requires a
+    box to be ticked.
+  - The entry of an expense cannot be reset, cancelled or reversed while a
+    correction rests on it: reverse the correction first.
+- **Expense line keeps the tax of the order**: the module no longer clears the
+  tax of the line it adds to a sales order. The customer is billed the amount
+  incl. tax of the expenses, and the VAT of the order is added to it as to any
+  other line.
+- **Projects limited to the assignments of the employee**: an employee only
+  links an expense to the projects they are assigned to (project managers and
+  administrators are not limited), and the check is made for the real user,
+  not for the superuser that runs the constraints. A task must belong to the
+  project of the expense.
+- **An invoiced expense never goes back to draft**: neither one by one nor
+  from the list; cancel the invoice (or issue a credit note) first.
+- **Internal context marker**: the flags the module puts in the context of its
+  own calls carry a random marker a client cannot guess.
+- **Credit note checked line by line**: expenses are given back only when
+  the credit notes take back every expense line of the invoice.
+- **Scan only before approval**: an approved or posted expense is not
+  rescanned, which would rewrite its figures.
+- **Public holidays of the schedule of the employee** are the ones left out
+  when an allowance is spread over days.
+- Translations: the texts added since 19.0.2.9.3 that had none, in the ten
+  languages.
+
 ## 19.0.2.9.4 — 2026-10-03
 
 - **Expense Sheets** is a single menu entry instead of a group of three ("This

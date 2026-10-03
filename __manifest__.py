@@ -3,7 +3,7 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 {
     'name': "Receipt Scanner for Expenses",
-    'version': '19.0.2.9.4',
+    'version': '19.0.2.10.0',
     'summary': "Create expenses by photographing receipts: automatic crop and "
                "straightening, fields filled in by a local OCR, side by side "
                "review. No IAP credits, no API key.",
@@ -62,6 +62,7 @@ https://github.com/sponsors/Ch0c0latine
         'views/expense_sheet_views.xml',
         'views/expense_policy_views.xml',
         'views/expense_invoicing_views.xml',
+        'views/expense_vat_views.xml',
         'views/product_views.xml',
         'views/res_config_settings_views.xml',
     ],

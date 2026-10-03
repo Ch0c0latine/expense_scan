@@ -63,6 +63,11 @@ what is missing:
   Excel export on your own template.
 - **Expense rules**: meal, daily and hotel ceilings, words to watch; a
   warning shows on the expense and a filter gathers them.
+- **VAT correction**: once an expense is posted, an accounting manager can
+  declare its VAT not recoverable, recoverable or another amount (*Correct
+  VAT*, on the expense or on a selection); a miscellaneous entry moves only the
+  difference, through the tax engine and on the analytic distribution of the
+  expense, and the reimbursement and the re-invoicing do not change.
 - **Team**: managers enter expenses for their team members.
 - **E-mail**: receipts sent from an employee's private address are
   recognised; the subject becomes the description.
