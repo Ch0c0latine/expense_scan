@@ -8,6 +8,10 @@ covers: from then on they cannot be taken back or changed, since the invoice
 bills them. Posting the invoice posts the expenses in turn, unless they were
 posted by hand before (to repay the employee without waiting for the
 invoice). Deleting, cancelling or resetting the invoice frees them.
+
+The expense lines of the orders are brought up to date first when a batch of
+expenses is in progress (``hr.expense._expense_scan_batch_sync``), as they would
+be outside one.
 """
 from odoo import api, fields, models
 from odoo.tools import float_compare
@@ -15,6 +19,9 @@ from odoo.tools import float_compare
 from .hr_expense_invoicing import INTERNAL
 
 XLSX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+#: Moves that bill or credit the expense line of a sales order.
+CUSTOMER_TYPES = ('out_invoice', 'out_refund')
 
 
 class AccountMove(models.Model):
@@ -29,11 +36,16 @@ class AccountMove(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        default_type = self.env.context.get('default_move_type')
+        if any(vals.get('move_type', default_type) in CUSTOMER_TYPES for vals in vals_list):
+            self.env['hr.expense']._expense_scan_sync_pending()
         moves = super().create(vals_list)
         moves.filtered(lambda m: m.move_type == 'out_invoice')._expense_scan_reserve_expenses()
         return moves
 
     def _post(self, soft=True):
+        if any(move.move_type in CUSTOMER_TYPES for move in self):
+            self.env['hr.expense']._expense_scan_sync_pending()
         posted = super()._post(soft=soft)
         for move in posted.filtered(lambda m: m.move_type == 'out_invoice'):
             # The lines may have changed since the draft was made.
@@ -97,6 +109,8 @@ class AccountMove(models.Model):
 
     def _expense_scan_release_expenses(self):
         """An invoice that is deleted, cancelled or back to draft lets its expenses go."""
+        if any(move.move_type in CUSTOMER_TYPES for move in self):
+            self.env['hr.expense']._expense_scan_sync_pending()
         expenses = self.env['hr.expense'].sudo().search([('expense_scan_invoice_id', 'in', self.ids)])
         if expenses:
             expenses.with_context(expense_scan_free=INTERNAL, expense_scan_no_sync=INTERNAL).write(

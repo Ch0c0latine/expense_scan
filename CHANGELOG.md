@@ -33,6 +33,24 @@
     that is not re-invoiced, or that the company paid.
 - **Translations**: Norwegian "et annet firma", "innrapportert"; Polish
   number of taxes; French "auprès de votre comptable"; Spanish "empresa".
+- **Expense line of the sales order updated once per batch**: approving
+  several expenses, re-invoicing a selection, spreading flat rates and creating
+  expenses from several receipts update the expense line of each order once,
+  at the end, instead of after each expense. Each update reads all the expenses
+  of the projects of the order and posts the change of quantity in its
+  chatter: a loop over 1,000 expenses did it up to 1,000 times. Outside these
+  actions the line still follows each change at once.
+  - Another module that creates or changes many expenses does the same with
+    `with env['hr.expense']._expense_scan_batch_sync():`. Inside the block the
+    line is behind; `_expense_scan_sync_pending()` brings it up to date (call it
+    before invoicing the order there). The customer invoices of the module
+    (creation, posting, reset, cancellation, credit note) do so by themselves.
+  - The line follows the state at the end of the batch: when expenses still
+    wait at its end, it stays held back, even if nothing waited for a moment
+    during the batch.
+  - An order whose line cannot be updated is logged and does not stop the
+    others nor the approval, as before.
+  - Benchmark out of the normal suite: `--test-tags expense_scan_bench`.
 
 ## 19.0.2.11.0 — 2026-10-03
 

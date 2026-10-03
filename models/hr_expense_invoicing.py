@@ -9,11 +9,18 @@ the order's expense line (the line whose product can be expensed): its
 quantity is the amount incl. tax, at a unit price of 1. The next invoice takes
 what has not been invoiced yet and posts the expenses it covers.
 
+The line is updated at each change of an expense, or once at the end of a
+batch (``_expense_scan_batch_sync``) for loops over many expenses.
+
 Everything is optional. Without Sales, without a project or with the company
 setting off, nothing happens.
 """
+import contextlib
 import logging
 import secrets
+import weakref
+
+import psycopg2
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
@@ -27,6 +34,11 @@ INTERNAL = secrets.token_hex(8)
 
 #: Rounding of the amounts moved between expenses and order lines.
 CENT = 0.005
+
+#: Orders whose expense line waits for the end of a batch, per cursor (see
+#: ``_expense_scan_batch_sync``). Not in the cursor's own caches: Odoo clears
+#: them when a savepoint rolls back, which would lose the orders noted before.
+_PENDING = weakref.WeakKeyDictionary()
 
 
 class HrExpense(models.Model):
@@ -96,7 +108,7 @@ class HrExpense(models.Model):
         before = self._expense_scan_order_ids() if watch else set()
         result = super().write(vals)
         if watch:
-            self.env['hr.expense']._expense_scan_sync_orders(before | self._expense_scan_order_ids())
+            self.env['hr.expense']._expense_scan_sync_soon(before | self._expense_scan_order_ids())
         return result
 
     def _expense_scan_check_not_invoiced(self, vals):
@@ -126,7 +138,7 @@ class HrExpense(models.Model):
     def _expense_scan_sync_after(self):
         order_ids = self._expense_scan_order_ids()
         if order_ids:
-            self.env['hr.expense']._expense_scan_sync_orders(order_ids)
+            self.env['hr.expense']._expense_scan_sync_soon(order_ids)
 
     def _expense_scan_order_ids(self):
         """Orders the expenses are re-invoiced on, through their project."""
@@ -161,8 +173,64 @@ class HrExpense(models.Model):
         return projects.filtered(lambda p: order in self._expense_scan_orders_of(p))
 
     @api.model
+    @contextlib.contextmanager
+    def _expense_scan_batch_sync(self):
+        """Update the expense line of each order once, at the end of a batch.
+
+        Every update reads all the expenses of the projects of the order: a
+        loop that changes expenses one by one would read them again for each
+        one. Inside the block, the changes only note their orders; leaving it
+        updates each order once, with the same result as one change of all
+        the expenses together. For a module that creates or changes many
+        expenses::
+
+            with self.env['hr.expense']._expense_scan_batch_sync():
+                for values in vals_list:
+                    self.env['hr.expense'].create(values)
+
+        Blocks nest: the outermost one updates the lines. Inside it, the line
+        is behind: code that reads it there (an invoice made from the order,
+        for instance) calls ``_expense_scan_sync_pending`` first. The
+        invoices of the module do so.
+        """
+        cr = self.env.cr
+        if cr in _PENDING:
+            yield
+            return
+        _PENDING[cr] = set()
+        try:
+            yield
+        except psycopg2.Error:
+            # The transaction is aborted: nothing can be written, the caller rolls back.
+            _PENDING.pop(cr, None)
+            raise
+        finally:
+            # Also after an error the caller may catch: its changes stay, the lines follow.
+            order_ids = _PENDING.pop(cr, None)
+            if order_ids:
+                self._expense_scan_sync_orders(order_ids)
+
+    @api.model
+    def _expense_scan_sync_soon(self, order_ids):
+        """Update the lines now, or at the end of the batch in progress."""
+        pending = _PENDING.get(self.env.cr)
+        if pending is None:
+            self._expense_scan_sync_orders(order_ids)
+        else:
+            pending.update(order_ids)
+
+    @api.model
+    def _expense_scan_sync_pending(self):
+        """Update now the lines a batch in progress has left behind; the batch goes on."""
+        pending = _PENDING.get(self.env.cr)
+        if pending:
+            order_ids = set(pending)
+            pending.clear()
+            self._expense_scan_sync_orders(order_ids)
+
+    @api.model
     def _expense_scan_sync_orders(self, order_ids):
-        """Bring the expense line of each order in line with the expenses."""
+        """Bring the expense line of each order in line with the expenses, now."""
         if 'sale.order' not in self.env or not order_ids:
             return
         for order in self.env['sale.order'].sudo().browse(sorted(order_ids)).exists():
@@ -434,7 +502,9 @@ class HrExpense(models.Model):
 
     def _do_approve(self, check=True):
         self._expense_scan_check_decided()
-        return super()._do_approve(check=check)
+        # Odoo approves the expenses one by one: the order lines are updated once, at the end.
+        with self._expense_scan_batch_sync():
+            return super()._do_approve(check=check)
 
     # ------------------------------------------------------------------
     # Toggle in the list
@@ -450,8 +520,9 @@ class HrExpense(models.Model):
         """
         if mode not in (None, 'project', 'none', 'todo'):
             raise UserError(_("Unknown choice."))
-        for expense in self:
-            expense._expense_scan_apply_reinvoice(mode or expense._expense_scan_next_reinvoice())
+        with self._expense_scan_batch_sync():
+            for expense in self:
+                expense._expense_scan_apply_reinvoice(mode or expense._expense_scan_next_reinvoice())
         return True
 
     def action_expense_scan_set_reinvoice_many(self, mode):
@@ -463,12 +534,13 @@ class HrExpense(models.Model):
         if mode not in ('project', 'none', 'todo'):
             raise UserError(_("Unknown choice."))
         left = []
-        for expense in self:
-            try:
-                with self.env.cr.savepoint():
-                    expense._expense_scan_apply_reinvoice(mode)
-            except (UserError, AccessError) as error:
-                left.append(str(error.args[0] if error.args else error))
+        with self._expense_scan_batch_sync():
+            for expense in self:
+                try:
+                    with self.env.cr.savepoint():
+                        expense._expense_scan_apply_reinvoice(mode)
+                except (UserError, AccessError) as error:
+                    left.append(str(error.args[0] if error.args else error))
         return {'done': len(self) - len(left), 'left': left}
 
     def _expense_scan_apply_reinvoice(self, choice):

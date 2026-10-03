@@ -11,8 +11,10 @@ Each scenario starts from a project re-invoiced on a confirmed order, runs in a
 savepoint rolled back afterwards, and gives a "SYNC-BENCH|" line in the log:
 scenario, number of expenses, time, SQL queries, then the quantity of the
 expense line, the activities and the messages on the order (to check that a
-change leaves the result as it was). ``EXPENSE_SCAN_BENCH_SIZES`` changes the
-sizes (``50,200,1000`` by default).
+change leaves the result as it was). The same scenario with the update of the
+line turned off gives the time of everything else: the difference is what the
+update costs. ``EXPENSE_SCAN_BENCH_SIZES`` changes the sizes (``50,200,1000``
+by default).
 """
 import logging
 import os
@@ -20,6 +22,7 @@ import time
 import unittest
 from contextlib import closing
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from odoo import Command
 from odoo.tests import common, tagged
@@ -139,15 +142,30 @@ class TestSyncBench(common.TransactionCase):
         for expense in expenses:
             expense.write({'total_amount_currency': expense.total_amount_currency + 1.0})
 
+    def batch(self, run):
+        """``run`` in a batch, as a module that changes many expenses does."""
+        def batched(*args):
+            with self.env['hr.expense']._expense_scan_batch_sync():
+                run(*args)
+        return batched
+
     def test_bench(self):
+        """Each scenario, then the same without any update of the line: what the update costs."""
+        Expense = type(self.env['hr.expense'])
         for size in self.sizes:
-            self.measure("create in a loop", size, self.prepare_empty,
-                         lambda project, staff: self.create_loop(project, staff, size, self.values))
-            self.measure("write in a loop", size, self.prepare_approved, self.write_loop)
-            self.measure("approve a lot", size, self.prepare_submitted,
-                         lambda expenses: expenses.sudo()._do_approve())
-            self.measure("re-invoice a selection", size,
-                         lambda count: self.prepare_approved(count, reinvoice_mode='none'),
-                         lambda expenses: expenses.sudo().action_expense_scan_set_reinvoice_many('project'))
-            self.measure("spread flat rates", size, self.prepare_spread,
-                         lambda drafts: drafts.action_expense_scan_spread_days())
+            scenarios = [
+                ("create in a loop", self.prepare_empty,
+                 lambda project, staff: self.create_loop(project, staff, size, self.values)),
+                ("write in a loop", self.prepare_approved, self.write_loop),
+                ("approve a lot", self.prepare_submitted, lambda expenses: expenses.sudo()._do_approve()),
+                ("re-invoice a selection", lambda count: self.prepare_approved(count, reinvoice_mode='none'),
+                 lambda expenses: expenses.sudo().action_expense_scan_set_reinvoice_many('project')),
+                ("spread flat rates", self.prepare_spread, lambda drafts: drafts.action_expense_scan_spread_days()),
+            ]
+            for name, prepare, run in scenarios:
+                self.measure(name, size, prepare, run)
+                if 'loop' in name:
+                    run = self.batch(run)
+                    self.measure(name + ", in a batch", size, prepare, run)
+                with patch.object(Expense, '_expense_scan_sync_order', lambda model, order: None):
+                    self.measure(name + ", line not updated", size, prepare, run)

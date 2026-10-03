@@ -31,8 +31,9 @@ class HrExpense(models.Model):
     def action_expense_scan_spread_days(self):
         """One line per day for a flat-rate expense entered for several days."""
         result = self.env['hr.expense']
-        for expense in self:
-            result |= expense._expense_scan_spread()
+        with self._expense_scan_batch_sync():
+            for expense in self:
+                result |= expense._expense_scan_spread()
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'hr.expense',

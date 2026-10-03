@@ -642,26 +642,28 @@ class HrExpense(models.Model):
         Odoo already creates an empty expense per attachment: the scan fills
         it, without rewriting that behaviour.
         """
-        expense_ids = super().create_expense_from_attachments(
-            attachment_ids=attachment_ids, view_type=view_type)
-        expenses = self.browse(expense_ids)
-        company = self.env.company
+        # Odoo creates the expenses one by one: the order lines are updated once, at the end.
+        with self._expense_scan_batch_sync():
+            expense_ids = super().create_expense_from_attachments(
+                attachment_ids=attachment_ids, view_type=view_type)
+            expenses = self.browse(expense_ids)
+            company = self.env.company
 
-        # Odoo picks the category by the internal reference "EXP_GEN",
-        # otherwise the first in alphabetical order ("Gift", for instance):
-        # renaming that reference redirects every receipt. The company
-        # setting does not depend on any reference.
-        if company.expense_scan_product_id:
-            expenses.product_id = company.expense_scan_product_id
+            # Odoo picks the category by the internal reference "EXP_GEN",
+            # otherwise the first in alphabetical order ("Gift", for instance):
+            # renaming that reference redirects every receipt. The company
+            # setting does not depend on any reference.
+            if company.expense_scan_product_id:
+                expenses.product_id = company.expense_scan_product_id
 
-        if company.expense_scan_enabled:
-            if self.env.context.get('expense_scan_async') and len(expenses) == 1:
-                # A single receipt, from the interface: the form opens at once
-                # and starts the scan while showing its progress
-                # (action_expense_scan_start).
-                expenses.write({'scan_state': 'running'})
-            else:
-                expenses._expense_scan_run()
+            if company.expense_scan_enabled:
+                if self.env.context.get('expense_scan_async') and len(expenses) == 1:
+                    # A single receipt, from the interface: the form opens at once
+                    # and starts the scan while showing its progress
+                    # (action_expense_scan_start).
+                    expenses.write({'scan_state': 'running'})
+                else:
+                    expenses._expense_scan_run()
         return expense_ids
 
     # ------------------------------------------------------------------
