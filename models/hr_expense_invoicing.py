@@ -308,7 +308,7 @@ class HrExpense(models.Model):
             if not product:
                 return
             last = max(order.order_line.mapped('sequence') or [0])
-            self.env['sale.order.line'].sudo().create({
+            line = self.env['sale.order.line'].sudo().create({
                 'order_id': order.id,
                 'product_id': product.id,
                 'product_uom_qty': amount,

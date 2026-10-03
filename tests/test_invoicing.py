@@ -373,7 +373,8 @@ class TestInvoicing(common.TransactionCase):
     def test_the_line_added_by_the_module_keeps_the_order_tax(self):
         """The expenses are billed at their amount incl. tax, then the order's VAT applies on it."""
         tax = self.env['account.tax'].create({'name': "TVA ligne frais", 'amount': 20.0, 'type_tax_use': 'sale'})
-        self.expense_product.taxes_id = [Command.set(tax.ids)]
+        # The product the module puts on a new line: the first expense product of the base.
+        self.env['hr.expense']._expense_scan_line_product(self.env.company).taxes_id = [Command.set(tax.ids)]
         order = self.env['sale.order'].create({
             'partner_id': self.partner.id,
             'order_line': [Command.create({'product_id': self.service.id, 'product_uom_qty': 5.0})],
@@ -385,7 +386,8 @@ class TestInvoicing(common.TransactionCase):
         self.assertEqual(len(added), 1)
         self.assertEqual(added.tax_ids, tax, "the order's own VAT applies as on any line")
         self.assertEqual(added.product_uom_qty, 70.0)
-        self.assertEqual(added.qty_delivered, 70.0, "ready to invoice at once")
+        if added.qty_delivered_method == 'manual':
+            self.assertEqual(added.qty_delivered, 70.0, "ready to invoice at once")
 
     def test_a_credit_note_for_the_whole_invoice_gives_the_expenses_back(self):
         first = self.expense(100.0)

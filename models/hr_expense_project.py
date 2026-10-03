@@ -9,7 +9,7 @@ company asks for it.
 """
 import logging
 
-from odoo import _, api, fields, models
+from odoo import SUPERUSER_ID, _, api, fields, models
 from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -179,9 +179,12 @@ class HrExpense(models.Model):
 
     @api.model
     def _expense_scan_project_unrestricted(self):
-        """Who may link any project: project managers and administrators, and the server itself."""
+        """Who may link any project: project managers and administrators, and the server itself.
+
+        Constraints run as superuser: the user behind the call is ``env.uid``, not ``env.su``.
+        """
         user = self.env.user
-        return (self.env.su or user.has_group('project.group_project_manager')
+        return (self.env.uid == SUPERUSER_ID or user.has_group('project.group_project_manager')
                 or user.has_group('base.group_system'))
 
     @api.constrains('project_id', 'employee_id')
