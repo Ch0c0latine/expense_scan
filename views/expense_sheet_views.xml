@@ -168,9 +168,10 @@
         <field name="target">new</field>
         <field name="context">{'default_period': 'current'}</field>
     </record>
-    <!-- One entry: the period (this month, last month, other) is picked in the wizard. -->
+    <!-- One entry: the period (this month, last month, other) is picked in the wizard.
+         It sits in the follow-up group, with the expenses themselves. -->
     <menuitem id="menu_expense_scan_sheets" name="Expense Sheets"
-              parent="hr_expense.menu_hr_expense_root"
+              parent="hr_expense.menu_hr_expense_my_expenses"
               action="expense_scan_sheet_current_month_action" sequence="15"/>
 
 </odoo>
