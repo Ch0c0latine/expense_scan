@@ -95,6 +95,8 @@ class HrExpense(models.Model):
         holidays = self.env['resource.calendar.leaves'].sudo().search([
             ('resource_id', '=', False),
             ('company_id', 'in', [False, employee.company_id.id]),
+            # The holidays of the employee's own schedule, or those valid for every schedule.
+            ('calendar_id', 'in', [False] + calendar.ids),
             ('date_from', '<=', end + timedelta(days=1)), ('date_to', '>=', start - timedelta(days=1)),
         ])
         # Stored in UTC: a holiday of Paris starts at 22:00 the day before.

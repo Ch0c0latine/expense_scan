@@ -22,8 +22,10 @@ class HrExpense(models.Model):
         posted = to_reset.filtered(lambda expense: any(
             state not in (False, 'draft')
             for state in expense.sudo().account_move_id.mapped('state')))
-        forbidden = (to_reset - posted).filtered(lambda expense: not expense.can_reset)
-        allowed = to_reset - posted - forbidden
+        # An invoice, draft or posted, bills the expense: it cannot go back to draft.
+        invoiced = (to_reset - posted).filtered(lambda expense: expense.sudo().expense_scan_invoice_id)
+        forbidden = (to_reset - posted - invoiced).filtered(lambda expense: not expense.can_reset)
+        allowed = to_reset - posted - invoiced - forbidden
         if allowed:
             allowed.action_reset()
 
@@ -33,6 +35,11 @@ class HrExpense(models.Model):
                 "%(count)s skipped: their journal entry is posted "
                 "(%(names)s). Cancel it in Accounting first.",
                 count=len(posted), names=", ".join(posted.mapped('name'))))
+        if invoiced:
+            lines.append(_(
+                "%(count)s skipped: they are on a customer invoice (%(names)s). "
+                "Cancel the invoice first.",
+                count=len(invoiced), names=", ".join(invoiced.mapped('name'))))
         if forbidden:
             lines.append(_(
                 "%(count)s skipped for lack of access rights (%(names)s).",
@@ -43,8 +50,8 @@ class HrExpense(models.Model):
             'params': {
                 'title': _("Reset to draft"),
                 'message': "\n".join(lines),
-                'type': 'warning' if (posted or forbidden) else 'success',
-                'sticky': bool(posted or forbidden),
+                'type': 'warning' if (posted or invoiced or forbidden) else 'success',
+                'sticky': bool(posted or invoiced or forbidden),
                 'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'},
             },
         }

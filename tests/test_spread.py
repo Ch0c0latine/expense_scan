@@ -67,3 +67,14 @@ class TestSpread(common.TransactionCase):
         spread = first.action_expense_scan_spread_days()
         days = sorted(self.env['hr.expense'].search(spread['domain']).mapped('date'))
         self.assertEqual(days, [date(2031, 4, 30), date(2031, 5, 2), date(2031, 5, 5)])
+
+    def test_the_holiday_of_another_schedule_is_ignored(self):
+        other = self.env['resource.calendar'].create({'name': "Autre horaire"})
+        self.env['resource.calendar.leaves'].create({
+            'name': "Fermeture autre horaire", 'company_id': self.employee.company_id.id,
+            'calendar_id': other.id, 'date_from': datetime(2031, 3, 3, 23, 0),
+            'date_to': datetime(2031, 3, 4, 22, 59, 59), 'time_type': 'leave'})
+        first = self.expense(date(2031, 3, 3), 5)
+        spread = first.action_expense_scan_spread_days()
+        days = sorted(self.env['hr.expense'].search(spread['domain']).mapped('date'))
+        self.assertEqual(days, [date(2031, 3, d) for d in (3, 4, 5, 6, 7)])

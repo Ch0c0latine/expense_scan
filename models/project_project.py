@@ -11,6 +11,10 @@ from odoo import api, fields, models
 from odoo.tools import float_compare
 
 
+#: The figures of the expenses of a project are for the people who approve expenses.
+EXPENSE_GROUP = 'hr_expense.group_hr_expense_user'
+
+
 class ProjectProject(models.Model):
     _inherit = 'project.project'
 
@@ -29,6 +33,7 @@ class ProjectProject(models.Model):
         currency_field='expense_scan_currency_id',
         compute='_compute_expense_scan_amounts',
         compute_sudo=True,
+        groups=EXPENSE_GROUP,
         help="Expenses of the project approved by the manager, excl. tax.",
     )
     expense_scan_waiting = fields.Monetary(
@@ -36,6 +41,7 @@ class ProjectProject(models.Model):
         currency_field='expense_scan_currency_id',
         compute='_compute_expense_scan_amounts',
         compute_sudo=True,
+        groups=EXPENSE_GROUP,
         help="Expenses of the project waiting for the manager, excl. tax.",
     )
     expense_scan_left = fields.Monetary(
@@ -43,29 +49,34 @@ class ProjectProject(models.Model):
         currency_field='expense_scan_currency_id',
         compute='_compute_expense_scan_amounts',
         compute_sudo=True,
+        groups=EXPENSE_GROUP,
         help="Budget minus approved expenses and expenses to approve.",
     )
     expense_scan_progress = fields.Float(
         string="Budget used",
         compute='_compute_expense_scan_amounts',
         compute_sudo=True,
+        groups=EXPENSE_GROUP,
         help="Approved expenses and expenses to approve, as a percentage of the budget.",
     )
     expense_scan_over_budget = fields.Boolean(
         string="Over budget",
         compute='_compute_expense_scan_amounts',
         compute_sudo=True,
+        groups=EXPENSE_GROUP,
         search='_search_expense_scan_over_budget',
     )
     expense_scan_count = fields.Integer(
         string="Expenses",
         compute='_compute_expense_scan_amounts',
         compute_sudo=True,
+        groups=EXPENSE_GROUP,
     )
     expense_scan_held_back = fields.Integer(
         string="Expenses holding back the invoice",
         compute='_compute_expense_scan_held_back',
         compute_sudo=True,
+        groups=EXPENSE_GROUP,
         help="Expenses waiting for the manager, or whose re-invoicing is "
              "still to decide. While there are any, the expense line of the "
              "sales order does not move.",

@@ -8,7 +8,7 @@ These scenarios need Sales and a chart of accounts: without them they skip.
 import unittest
 
 from odoo import Command
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import common, tagged
 
 
@@ -307,17 +307,22 @@ class TestInvoicing(common.TransactionCase):
         self.assertEqual(first.reinvoice_mode, 'none')
         self.assertEqual(self.line.qty_delivered, 0.0)
 
-    def test_a_reset_expense_is_free_again(self):
-        """Posted by the invoice, then put back to draft: the column works again."""
+    def test_an_expense_on_a_posted_invoice_cannot_go_back_to_draft(self):
         first = self.expense(100.0)
         self.approve(first)
         invoice = self.order._create_invoices()
         invoice.action_post()
         self.assertTrue(first.expense_scan_invoice_id)
+        with self.assertRaises(UserError):
+            first.sudo().action_reset()
+        with self.assertRaises(UserError):
+            first.sudo()._do_reset_approval()
+        # The way out: cancel the invoice, which gives the expense back.
+        invoice.button_draft()
+        self.assertFalse(first.expense_scan_invoice_id)
         first.sudo().account_move_id.button_draft()
         first.sudo().account_move_id.button_cancel()
         first.sudo().action_reset()
-        self.assertFalse(first.expense_scan_invoice_id)
         self.assertEqual(first.state, 'draft')
         first.action_expense_scan_set_reinvoice('none')
         self.assertEqual(first.reinvoice_mode, 'none')
@@ -365,7 +370,8 @@ class TestInvoicing(common.TransactionCase):
             'name': name, 'login': '%s@example.com' % name.lower(),
             'group_ids': [Command.set([self.env.ref('base.group_user').id])]})
 
-    def test_the_line_added_by_the_module_carries_no_tax(self):
+    def test_the_line_added_by_the_module_keeps_the_order_tax(self):
+        """The expenses are billed at their amount incl. tax, then the order's VAT applies on it."""
         tax = self.env['account.tax'].create({'name': "TVA ligne frais", 'amount': 20.0, 'type_tax_use': 'sale'})
         self.expense_product.taxes_id = [Command.set(tax.ids)]
         order = self.env['sale.order'].create({
@@ -373,11 +379,13 @@ class TestInvoicing(common.TransactionCase):
             'order_line': [Command.create({'product_id': self.service.id, 'product_uom_qty': 5.0})],
         })
         order.action_confirm()
-        project = self.env['project.project'].create({'name': "Sans taxe", 'reinvoiced_sale_order_id': order.id})
+        project = self.env['project.project'].create({'name': "Avec taxe", 'reinvoiced_sale_order_id': order.id})
         self.approve(self.expense(70.0, project_id=project.id))
         added = order.order_line.filtered(lambda l: l.product_id.can_be_expensed)
         self.assertEqual(len(added), 1)
-        self.assertFalse(added.tax_ids, "the amount already includes tax")
+        self.assertEqual(added.tax_ids, tax, "the order's own VAT applies as on any line")
+        self.assertEqual(added.product_uom_qty, 70.0)
+        self.assertEqual(added.qty_delivered, 70.0, "ready to invoice at once")
 
     def test_a_credit_note_for_the_whole_invoice_gives_the_expenses_back(self):
         first = self.expense(100.0)
@@ -429,3 +437,66 @@ class TestInvoicing(common.TransactionCase):
         self.order._create_invoices()
         with self.assertRaises(UserError):
             first.write({'date': '2031-01-01'})
+
+    def test_an_employee_links_only_the_projects_they_are_assigned_to(self):
+        user = self._internal_user("Lea")
+        employee = self.env['hr.employee'].create({'name': "Lea Affectee", 'user_id': user.id})
+        expense = self.env['hr.expense'].create({
+            'name': "Frais", 'employee_id': employee.id, 'product_id': self.category.id,
+            'total_amount_currency': 10.0})
+        with self.assertRaises(ValidationError):
+            expense.with_user(user).write({'project_id': self.project.id})
+        # A project manager assigns her to a task of the project: she can link it.
+        self.env['project.task'].create({
+            'name': "Tache", 'project_id': self.project.id, 'user_ids': [Command.set(user.ids)]})
+        expense.with_user(user).write({'project_id': self.project.id})
+        self.assertEqual(expense.project_id, self.project)
+
+    def test_the_default_invoice_of_the_context_is_refused_too(self):
+        first = self.expense(100.0)
+        self.approve(first)
+        invoice = self.order._create_invoices()
+        with self.assertRaises(AccessError):
+            self.env['hr.expense'].with_user(self._internal_user("Defaut")).with_context(
+                default_expense_scan_invoice_id=invoice.id).create({
+                    'name': "Frais", 'employee_id': self.employee.id, 'product_id': self.category.id,
+                    'total_amount_currency': 5.0})
+
+    def test_a_scan_does_not_rewrite_an_approved_expense(self):
+        first = self.expense(100.0)
+        self.approve(first)
+        with self.assertRaises(UserError):
+            first.with_user(self.env.ref('base.user_admin')).action_expense_scan_rescan()
+
+    def test_the_batch_reset_leaves_the_invoiced_expenses_alone(self):
+        invoiced, free = self.expense(100.0), self.expense(40.0, mode='none')
+        self.approve(invoiced | free)
+        self.order._create_invoices()
+        (invoiced | free).sudo().action_expense_scan_reset_batch()
+        self.assertEqual(invoiced.state, 'approved')
+        self.assertEqual(free.state, 'draft')
+
+    def _mixed_invoice(self):
+        first = self.expense(100.0)
+        self.approve(first)
+        self.order.order_line.filtered(lambda l: l.product_id == self.service).qty_delivered = 4.0
+        invoice = self.order._create_invoices()
+        invoice.action_post()
+        self.assertEqual(first.expense_scan_invoice_id, invoice)
+        self.env['account.move.reversal'].with_context(
+            active_model='account.move', active_ids=invoice.ids).create({
+                'journal_id': invoice.journal_id.id}).refund_moves()
+        return first, invoice, invoice.reversal_move_ids
+
+    def test_a_credit_note_of_the_expense_line_alone_gives_the_expenses_back(self):
+        first, invoice, refund = self._mixed_invoice()
+        refund.invoice_line_ids.filtered(lambda l: l.product_id == self.service).unlink()
+        refund.action_post()
+        self.assertFalse(first.expense_scan_invoice_id)
+        self.assertEqual(self.line.qty_to_invoice, 100.0, "the line is to invoice again")
+
+    def test_a_credit_note_of_the_service_alone_keeps_the_expenses_invoiced(self):
+        first, invoice, refund = self._mixed_invoice()
+        refund.invoice_line_ids.filtered(lambda l: l.product_id == self.expense_product).unlink()
+        refund.action_post()
+        self.assertEqual(first.expense_scan_invoice_id, invoice)

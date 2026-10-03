@@ -12,6 +12,8 @@ invoice). Deleting, cancelling or resetting the invoice frees them.
 from odoo import api, fields, models
 from odoo.tools import float_compare
 
+from .hr_expense_invoicing import INTERNAL
+
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
@@ -35,13 +37,33 @@ class AccountMove(models.Model):
             # The lines may have changed since the draft was made.
             covered = move._expense_scan_reserve_expenses()
             covered.filtered(lambda e: e.state == 'approved')._expense_scan_post_after_invoice(move)
-        # A credit note for the whole invoice gives the expenses back: they can be invoiced again.
+        # A credit note that takes back the expense lines of the invoice gives the expenses
+        # back: they can be invoiced again.
         for refund in posted.filtered(lambda m: m.move_type == 'out_refund' and m.reversed_entry_id):
             original = refund.reversed_entry_id
-            if original.expense_scan_expense_ids and refund.currency_id.compare_amounts(
-                    refund.amount_total, original.amount_total) >= 0:
+            if original.expense_scan_expense_ids and original._expense_scan_refunded_expense_lines():
+                order_ids = original.expense_scan_expense_ids.sudo()._expense_scan_order_ids()
                 original._expense_scan_release_expenses()
+                self.env['hr.expense']._expense_scan_sync_orders(order_ids)
         return posted
+
+    def _expense_scan_refunded_expense_lines(self):
+        """True when the posted credit notes take back every expense line of this invoice."""
+        self.ensure_one()
+        lines = self.invoice_line_ids.filtered(lambda l: l.display_type == 'product' and any(
+            sale.product_id.can_be_expensed and sale.product_id.type == 'service'
+            for sale in l.sale_line_ids))
+        if not lines:
+            return False
+        refunds = self.reversal_move_ids.filtered(
+            lambda m: m.state == 'posted' and m.move_type == 'out_refund')
+        for line in lines:
+            refunded = sum(
+                back.price_subtotal for back in refunds.invoice_line_ids
+                if back.sale_line_ids & line.sale_line_ids)
+            if self.currency_id.compare_amounts(refunded, line.price_subtotal) < 0:
+                return False
+        return True
 
     def button_draft(self):
         self._expense_scan_release_expenses()
@@ -55,7 +77,7 @@ class AccountMove(models.Model):
         """An invoice that is deleted, cancelled or back to draft lets its expenses go."""
         expenses = self.env['hr.expense'].sudo().search([('expense_scan_invoice_id', 'in', self.ids)])
         if expenses:
-            expenses.with_context(expense_scan_free=True, expense_scan_no_sync=True).write(
+            expenses.with_context(expense_scan_free=INTERNAL, expense_scan_no_sync=INTERNAL).write(
                 {'expense_scan_invoice_id': False})
 
     def _expense_scan_reserve_expenses(self):
@@ -76,7 +98,7 @@ class AccountMove(models.Model):
                     lambda l: l.product_id.can_be_expensed and l.product_id.type == 'service')[:1]
                 if sale_line:
                     covered |= move._expense_scan_expenses_of_line(line, sale_line)
-            free = {'expense_scan_free': True, 'expense_scan_no_sync': True}
+            free = {'expense_scan_free': INTERNAL, 'expense_scan_no_sync': INTERNAL}
             (move.expense_scan_expense_ids.sudo() - covered).with_context(**free).write(
                 {'expense_scan_invoice_id': False})
             (covered - move.expense_scan_expense_ids.sudo()).with_context(**free).write(
@@ -96,9 +118,10 @@ class AccountMove(models.Model):
         ).sorted(lambda e: (e.date or fields.Date.today(), e.id))
         left = line.price_subtotal
         if self.currency_id != self.company_id.currency_id:
+            # Same rate date as the order line, which was computed from the expenses at that date.
             left = self.currency_id._convert(
                 left, self.company_id.currency_id, self.company_id,
-                self.invoice_date or fields.Date.context_today(self))
+                sale_line.order_id.date_order or self.invoice_date or fields.Date.context_today(self))
         covered = Expense
         for expense in candidates:
             if float_compare(expense.total_amount, left + 0.005, precision_digits=2) <= 0:

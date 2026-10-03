@@ -9,7 +9,8 @@ company asks for it.
 """
 import logging
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -175,6 +176,40 @@ class HrExpense(models.Model):
                 '|', ('id', 'in', self._expense_scan_employee_project_ids(employee)),
                 ('user_id', '=', user.id or False),
             ])
+
+    @api.model
+    def _expense_scan_project_unrestricted(self):
+        """Who may link any project: project managers and administrators, and the server itself."""
+        user = self.env.user
+        return (self.env.su or user.has_group('project.group_project_manager')
+                or user.has_group('base.group_system'))
+
+    @api.constrains('project_id', 'employee_id')
+    def _check_expense_scan_project_allowed(self):
+        """An employee links an expense to the projects they are assigned to, no other.
+
+        A project manager assigns people to a project: whoever lacks the right asks for it.
+        """
+        if self._expense_scan_project_unrestricted():
+            return
+        for employee, expenses in self.filtered('project_id').grouped('employee_id').items():
+            allowed = set(self._expense_scan_employee_project_ids(employee))
+            forbidden = expenses.sudo().project_id.filtered(lambda p: p.id not in allowed)
+            if forbidden:
+                raise ValidationError(_(
+                    "%(employee)s is not assigned to: %(projects)s. Ask a project manager to "
+                    "assign them first.",
+                    employee=employee.sudo().name,
+                    projects=", ".join(forbidden.mapped('display_name'))))
+
+    @api.constrains('project_id', 'expense_scan_task_id')
+    def _check_expense_scan_task_project(self):
+        for expense in self.sudo().filtered('expense_scan_task_id'):
+            if expense.expense_scan_task_id.project_id != expense.project_id:
+                raise ValidationError(_(
+                    "The task %(task)s is not a task of the project %(project)s.",
+                    task=expense.expense_scan_task_id.display_name,
+                    project=expense.project_id.display_name or "-"))
 
     @api.model
     def _expense_scan_employee_project_ids(self, employee):

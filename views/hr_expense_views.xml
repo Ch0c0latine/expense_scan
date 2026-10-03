@@ -299,7 +299,7 @@
                         <button name="action_expense_scan_rescan" type="object"
                                 string="Scan again" icon="fa-refresh"
                                 class="btn btn-secondary btn-sm"
-                                invisible="not is_editable"/>
+                                invisible="not is_editable or state not in ('draft', 'submitted')"/>
                     </div>
                     <field name="scan_raw_text" readonly="1" colspan="2"
                            widget="text" invisible="not scan_raw_text"

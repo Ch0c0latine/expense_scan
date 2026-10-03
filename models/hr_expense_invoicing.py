@@ -13,12 +13,17 @@ Everything is optional. Without Sales, without a project or with the company
 setting off, nothing happens.
 """
 import logging
+import secrets
 
-from odoo import Command, _, api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 from odoo.tools import float_compare, float_round
 
 _logger = logging.getLogger(__name__)
+
+#: Marker the module puts in the context of its own calls (``expense_scan_free``,
+#: ``expense_scan_no_sync``). A client can send any context, but cannot guess this.
+INTERNAL = secrets.token_hex(8)
 
 #: Rounding of the amounts moved between expenses and order lines.
 CENT = 0.005
@@ -74,7 +79,9 @@ class HrExpense(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        if not self.env.su and any('expense_scan_invoice_id' in vals for vals in vals_list):
+        if not self.env.su and (
+                any('expense_scan_invoice_id' in vals for vals in vals_list)
+                or 'default_expense_scan_invoice_id' in self.env.context):
             raise AccessError(_("The invoice of an expense is set by the invoicing, not by hand."))
         expenses = super().create(vals_list)
         expenses._expense_scan_sync_after()
@@ -84,7 +91,8 @@ class HrExpense(models.Model):
         if 'expense_scan_invoice_id' in vals and not self.env.su:
             raise AccessError(_("The invoice of an expense is set by the invoicing, not by hand."))
         self._expense_scan_check_not_invoiced(vals)
-        watch = bool(self.SYNC_FIELDS & set(vals)) and not self.env.context.get('expense_scan_no_sync')
+        watch = bool(self.SYNC_FIELDS & set(vals)) \
+            and self.env.context.get('expense_scan_no_sync') != INTERNAL
         before = self._expense_scan_order_ids() if watch else set()
         result = super().write(vals)
         if watch:
@@ -99,9 +107,8 @@ class HrExpense(models.Model):
         way out is to delete (or cancel) the invoice, change the expenses,
         then invoice again.
         """
-        # The flag only counts for the server's own calls (they run as superuser): a
-        # client can send any context.
-        if self.env.context.get('expense_scan_free') and self.env.su:
+        # The flag only counts for the server's own calls: a client can send any context.
+        if self.env.context.get('expense_scan_free') == INTERNAL:
             return
         touches = bool(self.LOCKED_FIELDS & set(vals)) or (
             'approval_state' in vals and vals['approval_state'] != 'approved')
@@ -306,10 +313,12 @@ class HrExpense(models.Model):
                 'product_id': product.id,
                 'product_uom_qty': amount,
                 'price_unit': 1.0,
-                # The amount already includes tax: no tax on it a second time.
-                'tax_ids': [Command.clear()],
                 'sequence': last + 1,
             })
+            # The amount carries the tax of the expenses; the order's own tax is then added to
+            # it as to any line (the customer is billed the amount incl. tax, plus the order's VAT).
+            if line.qty_delivered_method == 'manual':
+                line.qty_delivered = amount
             return
         if order.locked:
             return
@@ -353,21 +362,20 @@ class HrExpense(models.Model):
     # ------------------------------------------------------------------
 
     def _do_reset_approval(self):
-        """Back to draft: only an expense off any draft invoice.
+        """Back to draft: only an expense that is on no invoice.
 
-        On a posted invoice, the expense leaves it with its accounting
-        entries (the accountant reversed them); the invoice itself stays as
-        it was.
+        An invoice, draft or posted, bills the expense: the way out is to
+        cancel the invoice or to issue a credit note, which give the expenses
+        back.
         """
         linked = self.sudo().filtered('expense_scan_invoice_id')
-        on_draft = linked.filtered(lambda e: e.expense_scan_invoice_id.state == 'draft')
-        if on_draft:
+        if linked:
+            expense = linked[0]
             raise UserError(_(
-                "%(expense)s is on the draft invoice %(invoice)s. Delete the draft first.",
-                expense=on_draft[0].name or on_draft[0].display_name,
-                invoice=on_draft[0].expense_scan_invoice_id.display_name))
-        linked.with_context(expense_scan_free=True, expense_scan_no_sync=True).write(
-            {'expense_scan_invoice_id': False})
+                "%(expense)s is on the invoice %(invoice)s. Cancel the invoice (or issue a "
+                "credit note) first.",
+                expense=expense.name or expense.display_name,
+                invoice=expense.expense_scan_invoice_id.display_name))
         return super()._do_reset_approval()
 
     def action_expense_scan_unapprove(self):

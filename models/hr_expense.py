@@ -182,6 +182,7 @@ class HrExpense(models.Model):
         readonly=True,
         copy=False,
         ondelete='set null',
+        index='btree_not_null',
     )
     expense_scan_own = fields.Boolean(
         string="Own expense",
@@ -210,6 +211,7 @@ class HrExpense(models.Model):
         readonly=True,
         copy=False,
         ondelete='set null',
+        index='btree_not_null',
     )
     #: The displayed receipt was retouched by hand (Retouch tool): the scan
     #: reads it as it is, without automatic cropping or straightening.
@@ -711,6 +713,7 @@ class HrExpense(models.Model):
         # Access rights first: the row lock is taken in SQL, without the
         # ORM's access control.
         self.check_access('write')
+        self._expense_scan_check_scannable()
         if self._expense_scan_expire():
             return {'started': False, 'values': self._expense_scan_web_values(specification)}
         try:
@@ -1159,6 +1162,7 @@ class HrExpense(models.Model):
         """
         self.ensure_one()
         self.check_access('write')
+        self._expense_scan_check_scannable()
         if self.scan_state != 'none' \
                 or not (self.company_id or self.env.company).expense_scan_enabled:
             return True
@@ -1222,6 +1226,7 @@ class HrExpense(models.Model):
         """
         self.ensure_one()
         self.check_access('write')
+        self._expense_scan_check_scannable()
         if not self.expense_scan_receipt_removed:
             return False
         if not self._expense_scan_image_attachments():
@@ -1240,6 +1245,16 @@ class HrExpense(models.Model):
         result = parser.parse(words)
         return sum(1 for name in ('total', 'date', 'tax_amount', 'merchant')
                    if result.value(name) is not None)
+
+    def _expense_scan_check_scannable(self):
+        """A scan rewrites the figures: not once the expense is approved."""
+        if self.env.su:
+            return
+        late = self.filtered(lambda e: e.state not in ('draft', 'submitted'))
+        if late:
+            raise UserError(_(
+                "%s is already approved or posted: a scan would rewrite its figures.",
+                late[0].name or late[0].display_name))
 
     def _expense_scan_lock(self):
         """Lock the expense for the time of a scan.
@@ -1273,6 +1288,7 @@ class HrExpense(models.Model):
         second photo, then scanning again, says that the two belong
         together.
         """
+        self._expense_scan_check_scannable()
         for expense in self:
             if not expense._expense_scan_image_attachments():
                 raise UserError(_("No receipt to scan: attach one first."))
