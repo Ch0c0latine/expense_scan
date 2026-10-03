@@ -2087,7 +2087,6 @@ msgstr "Só os contabilistas podem reembolsar os funcionários."
 
 msgstr "Apenas os contabilistas podem reembolsar os funcionários."
 
-
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_spread.py:0

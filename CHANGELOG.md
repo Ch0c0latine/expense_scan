@@ -1,7 +1,20 @@
 # Changelog
 
-## 19.0.2.11.1 — 2026-10-03
+## 19.0.2.12.0 — 2026-10-03
 
+- **Nothing of Odoo changes unasked.** The renamed menu group ("Expense
+  follow-up"), the lists opening on the current month and the trimmed search
+  filters are three options of the Expenses settings ("Odoo's menus and
+  filters"), off on a new installation. A database that already ran the module
+  keeps what it had.
+- **Uninstalling gives Odoo back** its menu name (in every language), the
+  Expenses icon and the actions' context, which stayed modified.
+- **"Limit the projects to the employee's own"** is a company setting (on, as
+  before), shown with re-invoicing.
+- **Scanning again** checks the right to edit the expense before anything else.
+- Translations: the entries of removed texts are gone, the new texts are
+  translated, and the French file uses the no-break space before `: ; ! ?` and
+  inside « ».
 - **Stands alone, tested**: new tests check that the module depends on Odoo apps
   only (Expenses, Project), that its data names no xmlid of Sales or of a
   companion module, that `account.move.expense_scan_sheet_files()` returns the
@@ -112,22 +125,6 @@
   when an allowance is spread over days.
 - Translations: the texts added since 19.0.2.9.3 that had none, in the ten
   languages.
-## 19.0.2.10.1 — 2026-10-03
-
-- **Nothing of Odoo changes unasked.** The renamed menu group ("Expense
-  follow-up"), the lists opening on the current month and the trimmed search
-  filters are three options of the Expenses settings ("Odoo's menus and
-  filters"), off on a new installation. A database that already ran the module
-  keeps what it had.
-- **Uninstalling gives Odoo back** its menu name (in every language), the
-  Expenses icon and the actions' context, which stayed modified.
-- **"Limit the projects to the employee's own"** is a company setting (on, as
-  before), shown with re-invoicing.
-- **Scanning again** checks the right to edit the expense before anything else.
-- Translations: the entries of removed texts are gone, the new texts are
-  translated, and the French file uses the no-break space before `: ; ! ?` and
-  inside « ».
-
 ## 19.0.2.9.4 — 2026-10-03
 
 - **Expense Sheets** is a single menu entry instead of a group of three ("This

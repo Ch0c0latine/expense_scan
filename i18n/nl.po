@@ -2087,7 +2087,6 @@ msgstr "Alleen boekhouders kunnen de werknemers terugbetalen."
 
 msgstr "Alleen boekhouders kunnen medewerkers terugbetalen."
 
-
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_spread.py:0
@@ -3094,7 +3093,6 @@ msgid "The invoice of an expense is set by the invoicing, not by hand."
 msgstr "De factuur van een declaratie wordt door de facturatie ingesteld, niet met de hand."
 
 msgstr "De factuur van een onkost wordt door de facturatie ingesteld, niet handmatig."
-
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night

@@ -2087,7 +2087,6 @@ msgstr "Bara bokförare kan ersätta de anställda."
 
 msgstr "Endast redovisningsansvariga kan ersätta de anställda."
 
-
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_spread.py:0
@@ -3094,7 +3093,6 @@ msgid "The invoice of an expense is set by the invoicing, not by hand."
 msgstr "Ett utläggs faktura anges av faktureringen, inte för hand."
 
 msgstr "Fakturan för ett utlägg sätts av faktureringen, inte för hand."
-
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night

@@ -3095,7 +3095,6 @@ msgstr "Fakturaen for et udlæg angives af faktureringen, ikke manuelt."
 
 msgstr "Fakturaen på et udlæg sættes af faktureringen, ikke i hånden."
 
-
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night
 msgid "The limit is for one night: the amount is divided by the number of nights."

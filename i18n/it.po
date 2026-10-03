@@ -3095,7 +3095,6 @@ msgstr "La fattura di una spesa viene impostata dalla fatturazione, non a mano."
 
 msgstr "La fattura di una spesa è impostata dalla fatturazione, non a mano."
 
-
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night
 msgid "The limit is for one night: the amount is divided by the number of nights."

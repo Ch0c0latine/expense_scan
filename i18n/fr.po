@@ -3106,12 +3106,6 @@ msgstr "La facture d'un frais est posée par la facturation, pas à la main."
 
 #. module: expense_scan
 #. odoo-python
-#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
-msgid "The invoice of an expense is set by the invoicing, not by hand."
-msgstr "La facture d'une dépense est renseignée par la facturation, pas à la main."
-
-#. module: expense_scan
-#. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
 msgid "The journal entry of %s is not posted."
 msgstr "L'écriture comptable de %s n'est pas validée."
