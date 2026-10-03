@@ -899,7 +899,7 @@ msgstr "Datum, Betrag und Steuer"
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
 msgid "Dates"
-msgstr "Zeitraum"
+msgstr "Datum"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
