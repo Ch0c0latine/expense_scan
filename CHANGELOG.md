@@ -1,5 +1,52 @@
 # Changelog
 
+## 19.0.2.13.0 — 2026-10-03
+
+Each function is found where it is looked for, in plain words.
+
+- **Settings, in order**: *Receipt scanning*, *Re-invoicing* (with *Limit the
+  projects to the employee's own*, which used to sit among the accounting
+  fields), *Fields filled in by the scan*, *Expense rules and sheets*. What an
+  ordinary user never touches (reading engine, Tesseract language, threads,
+  model folder, photo processing, dates and kept text, Odoo's menus and
+  filters) is under *Receipt scanner: advanced options*, each with its sentence
+  of explanation. No setting is removed and no value changes with the update.
+  Two labels say what they do: *Turn sideways receipts upright* and *Receipt
+  beside the form on narrower screens*.
+- **Project budget**: the expense budget, the figures and the Excel model are
+  on an **Expenses** tab of the project form, no longer at the bottom of
+  *Settings* between the e-mail alias and the visibility. When re-invoicing is
+  off, the tab says where to turn it on (and opens the settings for an
+  administrator).
+- **Reimburse the employee** is a button of a posted expense and of the
+  expense list (select, then the button) for accountants; it was only in
+  *Actions*.
+- **Expense rules**: each set has a switch in the list and stays there, greyed,
+  when suspended: no need to archive a set to suspend it.
+- **Expense form**: "Done" is *Save and close* and no longer competes with
+  *Submit* as a second main button. An employee whose scan failed reads
+  "enter the expense by hand"; the technical reason (a missing model, a
+  download address) is shown to expense managers.
+- **Expense sheet**: opened from the menu or the list, the dialog starts on all
+  the expenses, not on the re-invoiced ones, which gave "0 expense(s)" to
+  anyone who had none. The menu is *Expense Sheet*, like its dialog.
+- **Names**: *Excel Export Templates*; the team page carries the title of its
+  menu (*My Team's Expenses*); the list column is *Re-invoice*, like the form
+  field, and no longer cut off.
+- **First launch**: an empty expense list says how to add a receipt (*Scan* on
+  a phone, *Upload* on a computer) and how to enter an expense by hand.
+- **Approval refused for a re-invoicing still to decide** tells where to
+  decide: the *Re-invoice* column of the list, or the expense.
+- **Translations**: seven of the ten catalogues did not load (a stray line
+  left by the last update of the files): Odoo ignored the whole file and the
+  module showed English. They load again, three lost entries are back, and
+  `tools/check_po.py` reports a *msgstr* without its *msgid*. The new texts are
+  translated in the ten languages.
+- **Tests**: rights by role (`with_user`), views by role and by language,
+  settings by block, catalogues loaded and complete, rule switch. The tests
+  that create a tax no longer depend on the country of the company of the
+  database (a database without a chart of accounts made them fail).
+
 ## 19.0.2.12.0 — 2026-10-03
 
 - **Nothing of Odoo changes unasked.** The renamed menu group ("Expense

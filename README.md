@@ -132,27 +132,38 @@ Environment=MALLOC_ARENA_MAX=2
 
 ## Settings
 
-**Expenses → Configuration → Settings → Receipt scanning**
+**Expenses → Configuration → Settings → Expenses**. Everyday settings come
+first, each with a sentence of explanation; the ones nobody needs to touch
+are gathered under *Receipt scanner: advanced options*.
 
-- **OCR engine**: `Automatic` uses RapidOCR if available, otherwise
-  Tesseract.
-- **Threads per worker**: 4 by default. Odoo already runs several workers;
-  letting ONNX open one thread per core in each of them lowers the throughput
-  instead of raising it.
-- **Photo processing**: crop, straighten, fix quarter turns, keep the
-  original photo.
-- **Accounting fields**: *Use the tax read on the receipt* is on by default:
-  the tax printed on the receipt goes to the journal entry, and the tax of
-  its rate is set on the expense. *Look up the vendor* is off by default.
-- **Exchange rates from the European Central Bank**: on by default. A daily
-  task adds the reference rates of the last ninety days for the active
-  currencies, and the rate of its day for an older receipt. It is the only
-  network request of the module: a public file, never during a scan, and
-  nothing leaves the server.
-- **Split view from 768 px**: shows the receipt next to the form on laptop
-  screens, which Odoo otherwise leaves without a preview.
-- **Limit the projects to the employee's own** (with re-invoicing): on by
-  default; a project manager or an administrator always sees every project.
+- **Receipt scanning**: on by default.
+- **Re-invoicing**: *Re-invoice expenses to a project*, off by default (not
+  every organisation works by project), and *Limit the projects to the
+  employee's own* once it is on (on by default; a project manager or an
+  administrator always sees every project).
+- **Fields filled in by the scan**: *Use the tax read on the receipt* is on
+  by default: the tax printed on the receipt goes to the journal entry, and
+  the tax of its rate is set on the expense. *Look up the vendor* is off by
+  default. *Exchange rates from the European Central Bank* is on by default:
+  a daily task adds the reference rates of the last ninety days for the
+  active currencies, and the rate of its day for an older receipt. It is the
+  only network request of the module: a public file, never during a scan, and
+  nothing leaves the server. The default category is the one given to a
+  receipt that names none.
+- **Expense rules and sheets**: links to the rules and to the Excel
+  templates.
+
+Under *Receipt scanner: advanced options*:
+
+- **Reading engine**: `Automatic` uses RapidOCR if available, otherwise
+  Tesseract. *Threads per worker* is 4 by default: Odoo already runs several
+  workers; letting ONNX open one thread per core in each of them lowers the
+  throughput instead of raising it.
+- **Photo processing**: crop, straighten, turn sideways receipts upright, keep
+  the original photo, and *Receipt beside the form on narrower screens*
+  (from 768 px wide, which Odoo otherwise leaves without a preview).
+- **Dates and kept text**: the age beyond which a date is ignored, and how
+  long the text read on a receipt is kept.
 - **Odoo's menus and filters**: three options, off by default, for every
   company: rename the "My Expenses" menu group "Expense follow-up", open the
   expense lists on the current month, and remove the "My Team", "Company" and
@@ -173,11 +184,11 @@ real scan does not pay for the loading.
    *Upload* on a computer).
 3. **Expense rules**: the delivered "Good practice" set already watches
    fines, hotel extras, alcohol and travel class on every expense. Add your
-   own ceilings, duplicate it for a customer, or archive it
-   (*Configuration → Expense Rules*).
+   own ceilings, duplicate it for a customer, or switch it off with its
+   switch in the list (*Configuration → Expense Rules*).
 4. **Expense sheet**: select expenses, then the *Expense Sheet* button. The
    delivered Excel template, "Expense sheet (basic template)", can be
-   downloaded, adapted and uploaded again (*Configuration → Export
+   downloaded, adapted and uploaded again (*Configuration → Excel Export
    Templates*).
 5. **Projects** (optional): tick *Re-invoice expenses to a project* in the
    settings.
@@ -189,7 +200,7 @@ and its own requirements.
 
 ## Projects, expense sheets and expense rules
 
-- **Re-invoicing**: the *Re-invoicable* column of the expense lists shows
+- **Re-invoicing**: the *Re-invoice* column of the expense lists shows
   whether an expense is re-invoiced (a ticked box), not (an empty box) or
   still to decide (a question mark); a click switches it. The manager cannot
   approve an expense whose re-invoicing is still to decide. Once approved, the
@@ -201,8 +212,9 @@ and its own requirements.
   on the order says so). When the invoice is posted, the expenses it covers
   are posted too, unless they were posted by hand before, to repay the
   employee without waiting. Without Sales, nothing changes.
-- **Expense budget**: the project form holds a planned amount, the approved
-  expenses, those still to approve and the budget left.
+- **Expense budget**: the **Expenses** tab of the project form holds a
+  planned amount, the approved expenses, those still to approve and the budget
+  left (and tells where to turn re-invoicing on when it is off).
 - **Project and task**: "Re-invoice: Yes" puts the expense on the project's
   sales order line (see above); "No" can keep the project, for tracking only. The expense is
   charged to the project's analytic account (created if needed): it shows
@@ -211,16 +223,18 @@ and its own requirements.
   first one, in the project's order, is suggested.
 - **Expense sheet** (button in place of "Print" on the list): PDF summary
   with tax by rate and numbered receipts, Excel export on a template
-  (*Configuration → Export Templates*), one sheet per employee, gathered in
+  (*Configuration → Excel Export Templates*), one sheet per employee, gathered in
   an archive when there are several.
 - **Expense rules** (*Configuration → Expense Rules*): ceilings per meal, per
   day or per night, words to watch. The warning shows at the top of the
-  expense, with a sign in the list (⚠ breach, ℹ︎ point to check) that "Done"
+  expense, with a sign in the list (⚠ breach, ℹ︎ point to check) that "Save and close"
   or a justification puts out; breaches can be filtered ("Rule breaches"). A
   set of rules applies to all expenses, to the projects of some customers,
   or to chosen projects.
 - **Team and batches**: *My Team's Expenses* to enter expenses in a team
-  member's name, and *Actions → Back to draft* on a selection.
+  member's name, and *Actions → Back to draft* on a selection. An accountant
+  reimburses with the *Reimburse the employee* button of a posted expense, or
+  of a selection in the list.
 
 ---
 
