@@ -23,3 +23,4 @@ from . import test_invoicing
 from . import test_spread
 from . import test_vat_correction
 from . import test_independence
+from . import test_vat_audit

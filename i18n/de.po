@@ -250,8 +250,8 @@ msgstr "%s ist genehmigt: Die Weiterberechnung muss entschieden bleiben."
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "%s is due on payment: its VAT cannot be corrected here."
-msgstr "Die Steuer %s ist bei Zahlung fällig: ihre Vorsteuer kann hier nicht korrigiert werden."
+msgid "%s is due on payment: correct the VAT once the expense is paid."
+msgstr "Die Steuer %s ist bei Zahlung fällig: korrigieren Sie die Vorsteuer, sobald die Ausgabe bezahlt ist."
 
 #. module: expense_scan
 #. odoo-python
@@ -3251,10 +3251,10 @@ msgstr "Diese Ausgaben sind bereits bezahlt."
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
 msgid ""
-"These expenses have been invoiced and reimbursed: their VAT may already have been declared. Check with your accountant before correcting them.\n"
+"These expenses are paid, and invoiced when they are re-invoiced: their VAT may already have been declared. Check with your accountant before correcting them.\n"
 "%(names)s"
 msgstr ""
-"Diese Ausgaben wurden in Rechnung gestellt und erstattet: ihre Vorsteuer wurde möglicherweise bereits erklärt. Klären Sie das mit Ihrer Buchhaltung, bevor Sie sie korrigieren.\n"
+"Diese Ausgaben sind bezahlt und, sofern sie weiterberechnet werden, in Rechnung gestellt: ihre Vorsteuer wurde möglicherweise bereits erklärt. Klären Sie das mit Ihrer Buchhaltung, bevor Sie sie korrigieren.\n"
 "%(names)s"
 
 #. module: expense_scan
@@ -3283,8 +3283,14 @@ msgstr "Diese Kategorie hat keine Steuer: wählen Sie den Satz, damit die gelese
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
-msgid "This expense has been invoiced and reimbursed: its VAT may already have been declared. Check with your accountant before correcting it."
-msgstr "Diese Ausgabe wurde in Rechnung gestellt und erstattet: ihre Vorsteuer wurde möglicherweise bereits erklärt. Klären Sie das mit Ihrer Buchhaltung, bevor Sie sie korrigieren."
+msgid "This expense is paid and invoiced: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Diese Ausgabe ist bezahlt und in Rechnung gestellt: ihre Vorsteuer wurde möglicherweise bereits erklärt. Klären Sie das mit Ihrer Buchhaltung, bevor Sie sie korrigieren."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_vat_wizard.py:0
+msgid "This expense is paid: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Diese Ausgabe ist bezahlt: ihre Vorsteuer wurde möglicherweise bereits erklärt. Klären Sie das mit Ihrer Buchhaltung, bevor Sie sie korrigieren."
 
 #. module: expense_scan
 #. odoo-python

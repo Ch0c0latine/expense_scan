@@ -250,8 +250,8 @@ msgstr "%s è approvata: la sua rifatturazione deve restare decisa."
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "%s is due on payment: its VAT cannot be corrected here."
-msgstr "L'imposta %s è esigibile al pagamento: la sua IVA non può essere corretta qui."
+msgid "%s is due on payment: correct the VAT once the expense is paid."
+msgstr "L'imposta %s è esigibile al pagamento: correggete l'IVA una volta pagata la spesa."
 
 #. module: expense_scan
 #. odoo-python
@@ -3251,10 +3251,10 @@ msgstr "Queste spese sono già pagate."
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
 msgid ""
-"These expenses have been invoiced and reimbursed: their VAT may already have been declared. Check with your accountant before correcting them.\n"
+"These expenses are paid, and invoiced when they are re-invoiced: their VAT may already have been declared. Check with your accountant before correcting them.\n"
 "%(names)s"
 msgstr ""
-"Queste spese sono state fatturate e rimborsate: la loro IVA potrebbe essere già stata dichiarata. Verificate con il vostro commercialista prima di correggerle.\n"
+"Queste spese sono pagate, e fatturate quando sono rifatturate: la loro IVA potrebbe essere già stata dichiarata. Verificate con il vostro commercialista prima di correggerle.\n"
 "%(names)s"
 
 #. module: expense_scan
@@ -3283,8 +3283,14 @@ msgstr "Questa categoria non ha imposta: scegliete l'aliquota perché l'imposta 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
-msgid "This expense has been invoiced and reimbursed: its VAT may already have been declared. Check with your accountant before correcting it."
-msgstr "Questa spesa è stata fatturata e rimborsata: la sua IVA potrebbe essere già stata dichiarata. Verificate con il vostro commercialista prima di correggerla."
+msgid "This expense is paid and invoiced: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Questa spesa è pagata e fatturata: la sua IVA potrebbe essere già stata dichiarata. Verificate con il vostro commercialista prima di correggerla."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_vat_wizard.py:0
+msgid "This expense is paid: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Questa spesa è pagata: la sua IVA potrebbe essere già stata dichiarata. Verificate con il vostro commercialista prima di correggerla."
 
 #. module: expense_scan
 #. odoo-python

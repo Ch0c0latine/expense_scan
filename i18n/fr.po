@@ -250,8 +250,8 @@ msgstr "%s est approuvé : sa refacturation doit rester décidée."
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "%s is due on payment: its VAT cannot be corrected here."
-msgstr "%s est exigible au paiement : sa TVA ne peut pas être corrigée ici."
+msgid "%s is due on payment: correct the VAT once the expense is paid."
+msgstr "%s est exigible à l'encaissement : corrigez la TVA une fois la dépense payée."
 
 #. module: expense_scan
 #. odoo-python
@@ -1529,7 +1529,7 @@ msgstr "Historique"
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__confirmed
 msgid "I checked with my accountant"
-msgstr "J'ai vérifié avec mon comptable"
+msgstr "J'ai vérifié auprès de mon comptable"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_account_move__id
@@ -3264,10 +3264,10 @@ msgstr "Ces dépenses sont déjà payées."
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
 msgid ""
-"These expenses have been invoiced and reimbursed: their VAT may already have been declared. Check with your accountant before correcting them.\n"
+"These expenses are paid, and invoiced when they are re-invoiced: their VAT may already have been declared. Check with your accountant before correcting them.\n"
 "%(names)s"
 msgstr ""
-"Ces dépenses ont été facturées et remboursées : leur TVA a peut-être déjà été déclarée. Vérifiez avec votre comptable avant de les corriger.\n"
+"Ces dépenses sont payées, et facturées quand elles sont refacturées : leur TVA a peut-être déjà été déclarée. Vérifiez auprès de votre comptable avant de les corriger.\n"
 "%(names)s"
 
 #. module: expense_scan
@@ -3296,8 +3296,14 @@ msgstr "Cette catégorie n'a pas de taxe : choisissez le taux pour que la TVA lu
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
-msgid "This expense has been invoiced and reimbursed: its VAT may already have been declared. Check with your accountant before correcting it."
-msgstr "Cette dépense a été facturée et remboursée : sa TVA a peut-être déjà été déclarée. Vérifiez avec votre comptable avant de la corriger."
+msgid "This expense is paid and invoiced: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Cette dépense est payée et facturée : sa TVA a peut-être déjà été déclarée. Vérifiez auprès de votre comptable avant de la corriger."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_vat_wizard.py:0
+msgid "This expense is paid: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Cette dépense est payée : sa TVA a peut-être déjà été déclarée. Vérifiez auprès de votre comptable avant de la corriger."
 
 #. module: expense_scan
 #. odoo-python
@@ -3315,7 +3321,7 @@ msgstr "Threads par worker"
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
 msgid "Tick the box to confirm that you checked with your accountant."
-msgstr "Cochez la case pour confirmer que vous avez vérifié avec votre comptable."
+msgstr "Cochez la case pour confirmer que vous avez vérifié auprès de votre comptable."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__date_to

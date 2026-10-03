@@ -250,8 +250,8 @@ msgstr "%s is goedgekeurd: de doorbelasting moet bepaald blijven."
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "%s is due on payment: its VAT cannot be corrected here."
-msgstr "%s is verschuldigd bij betaling: de btw ervan kan hier niet worden gecorrigeerd."
+msgid "%s is due on payment: correct the VAT once the expense is paid."
+msgstr "%s is verschuldigd bij betaling: corrigeer de btw zodra de declaratie betaald is."
 
 #. module: expense_scan
 #. odoo-python
@@ -3251,10 +3251,10 @@ msgstr "Deze declaraties zijn al betaald."
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
 msgid ""
-"These expenses have been invoiced and reimbursed: their VAT may already have been declared. Check with your accountant before correcting them.\n"
+"These expenses are paid, and invoiced when they are re-invoiced: their VAT may already have been declared. Check with your accountant before correcting them.\n"
 "%(names)s"
 msgstr ""
-"Deze declaraties zijn gefactureerd en terugbetaald: hun btw is mogelijk al aangegeven. Overleg met uw boekhouder voordat u ze corrigeert.\n"
+"Deze declaraties zijn betaald, en gefactureerd wanneer ze worden doorbelast: hun btw is mogelijk al aangegeven. Overleg met uw boekhouder voordat u ze corrigeert.\n"
 "%(names)s"
 
 #. module: expense_scan
@@ -3283,8 +3283,14 @@ msgstr "Deze categorie heeft geen belasting: kies het tarief zodat de gelezen be
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
-msgid "This expense has been invoiced and reimbursed: its VAT may already have been declared. Check with your accountant before correcting it."
-msgstr "Deze declaratie is gefactureerd en terugbetaald: de btw ervan is mogelijk al aangegeven. Overleg met uw boekhouder voordat u ze corrigeert."
+msgid "This expense is paid and invoiced: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Deze declaratie is betaald en gefactureerd: de btw ervan is mogelijk al aangegeven. Overleg met uw boekhouder voordat u ze corrigeert."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_vat_wizard.py:0
+msgid "This expense is paid: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Deze declaratie is betaald: de btw ervan is mogelijk al aangegeven. Overleg met uw boekhouder voordat u ze corrigeert."
 
 #. module: expense_scan
 #. odoo-python

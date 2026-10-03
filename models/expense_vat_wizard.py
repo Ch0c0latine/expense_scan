@@ -156,17 +156,22 @@ class ExpenseScanVatWizard(models.TransientModel):
         for wizard in self:
             closed = wizard.expense_ids.filtered(lambda expense: expense._expense_scan_vat_cycle_closed())
             wizard.needs_confirmation = bool(closed)
+            # Paid: reimbursed to the employee, or paid by the company; invoiced only when re-invoiced.
             if not closed:
                 wizard.cycle_warning = False
-            elif wizard.expense_count == 1:
+            elif wizard.expense_count > 1:
                 wizard.cycle_warning = _(
-                    "This expense has been invoiced and reimbursed: its VAT may already have been "
-                    "declared. Check with your accountant before correcting it.")
+                    "These expenses are paid, and invoiced when they are re-invoiced: their VAT may already "
+                    "have been declared. Check with your accountant before correcting them.\n%(names)s",
+                    names=", ".join(closed.mapped('display_name')))
+            elif closed.reinvoice_mode == 'project':
+                wizard.cycle_warning = _(
+                    "This expense is paid and invoiced: its VAT may already have been declared. "
+                    "Check with your accountant before correcting it.")
             else:
                 wizard.cycle_warning = _(
-                    "These expenses have been invoiced and reimbursed: their VAT may already have been "
-                    "declared. Check with your accountant before correcting them.\n%(names)s",
-                    names=", ".join(closed.mapped('display_name')))
+                    "This expense is paid: its VAT may already have been declared. "
+                    "Check with your accountant before correcting it.")
 
     def _effective_mode(self):
         self.ensure_one()

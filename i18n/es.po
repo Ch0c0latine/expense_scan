@@ -227,7 +227,7 @@ msgstr "%s (sin impuestos)"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
 msgid "%s belongs to another company."
-msgstr "%s pertenece a otra compañía."
+msgstr "%s pertenece a otra empresa."
 
 #. module: expense_scan
 #. odoo-python
@@ -250,8 +250,8 @@ msgstr "%s está aprobado: su refacturación debe seguir decidida."
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "%s is due on payment: its VAT cannot be corrected here."
-msgstr "%s es exigible en el pago: su IVA no se puede corregir aquí."
+msgid "%s is due on payment: correct the VAT once the expense is paid."
+msgstr "%s es exigible en el pago: corrija el IVA una vez pagado el gasto."
 
 #. module: expense_scan
 #. odoo-python
@@ -712,7 +712,7 @@ msgstr "Corregir el IVA"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
 msgid "Correct the VAT of the expenses of one company at a time."
-msgstr "Corrija el IVA de los gastos de una sola compañía cada vez."
+msgstr "Corrija el IVA de los gastos de una sola empresa cada vez."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__mode
@@ -3251,10 +3251,10 @@ msgstr "Estos gastos ya están pagados."
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
 msgid ""
-"These expenses have been invoiced and reimbursed: their VAT may already have been declared. Check with your accountant before correcting them.\n"
+"These expenses are paid, and invoiced when they are re-invoiced: their VAT may already have been declared. Check with your accountant before correcting them.\n"
 "%(names)s"
 msgstr ""
-"Estos gastos se han facturado y reembolsado: su IVA puede haberse declarado ya. Consulte con su contable antes de corregirlos.\n"
+"Estos gastos están pagados, y facturados cuando se refacturan: su IVA puede haberse declarado ya. Consulte con su contable antes de corregirlos.\n"
 "%(names)s"
 
 #. module: expense_scan
@@ -3283,8 +3283,14 @@ msgstr "Esta categoría no tiene impuesto: elija el tipo para que se deduzca el 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
-msgid "This expense has been invoiced and reimbursed: its VAT may already have been declared. Check with your accountant before correcting it."
-msgstr "Este gasto se ha facturado y reembolsado: su IVA puede haberse declarado ya. Consulte con su contable antes de corregirlo."
+msgid "This expense is paid and invoiced: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Este gasto está pagado y facturado: su IVA puede haberse declarado ya. Consulte con su contable antes de corregirlo."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_vat_wizard.py:0
+msgid "This expense is paid: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Este gasto está pagado: su IVA puede haberse declarado ya. Consulte con su contable antes de corregirlo."
 
 #. module: expense_scan
 #. odoo-python

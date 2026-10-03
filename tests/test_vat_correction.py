@@ -15,8 +15,10 @@ from odoo import Command, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import Form, common, tagged
 
-CLOSED_CYCLE = ("This expense has been invoiced and reimbursed: its VAT may already have been "
-                "declared. Check with your accountant before correcting it.")
+PAID = ("This expense is paid: its VAT may already have been declared. "
+        "Check with your accountant before correcting it.")
+PAID_INVOICED = ("This expense is paid and invoiced: its VAT may already have been declared. "
+                 "Check with your accountant before correcting it.")
 
 
 @tagged('post_install', '-at_install')
@@ -226,6 +228,20 @@ class TestVatCorrection(common.TransactionCase):
         self.assertFalse(expense.with_user(self.manager)._expense_scan_correct_vat('none'))
         self.assertEqual(len(expense.expense_scan_vat_move_ids), 1)
 
+    def entry_vat(self, tax, base):
+        """The VAT an entry line of ``base`` carries, rounded as the entry rounds it.
+
+        Not ``compute_all``: it works on unrounded amounts (2.1 % of 25.00 gives
+        0.52 there, 0.53 in the entry).
+        """
+        AccountTax = self.env['account.tax']
+        line = AccountTax._prepare_base_line_for_taxes_computation(
+            None, tax_ids=tax, price_unit=base, quantity=1.0, currency_id=self.currency,
+            special_mode='total_excluded')
+        AccountTax._add_tax_details_in_base_lines([line], self.company)
+        AccountTax._round_base_lines_tax_details([line], self.company)
+        return sum(data['tax_amount'] for data in line['tax_details']['taxes_data'])
+
     def test_the_vat_generated_is_exactly_the_one_asked(self):
         """Whatever the rate and the cents, the base is found so that the VAT line is the delta."""
         expense = self.expense()
@@ -234,10 +250,7 @@ class TestVatCorrection(common.TransactionCase):
             for cents in range(1, 600, 13):
                 vat = cents / 100.0
                 base = expense._expense_scan_vat_base(tax, vat)
-                taxes = tax.compute_all(base, currency=self.currency, quantity=1.0,
-                                        handle_price_include=False)['taxes']
-                self.assertMoney(sum(t['amount'] for t in taxes), vat,
-                                 "%s %% on %s gives %s, not %s" % (rate, base, taxes, vat))
+                self.assertMoney(self.entry_vat(tax, base), vat, "%s %% on %s, not %s" % (rate, base, vat))
 
     def test_odd_amounts_keep_the_entry_balanced(self):
         expense = self.expense(33.33)
@@ -430,7 +443,7 @@ class TestVatCorrection(common.TransactionCase):
         self.pay(expense)
         wizard = self.wizard(expense)
         self.assertTrue(wizard.needs_confirmation)
-        self.assertEqual(wizard.cycle_warning, CLOSED_CYCLE)
+        self.assertEqual(wizard.cycle_warning, PAID)
 
     def test_the_box_is_required_to_correct_after_the_cycle(self):
         expense = self.expense()
@@ -448,7 +461,7 @@ class TestVatCorrection(common.TransactionCase):
         expense = self.expense()
         self.pay(expense)
         self.invoice(expense)
-        self.assertEqual(self.wizard(expense).cycle_warning, CLOSED_CYCLE)
+        self.assertEqual(self.wizard(expense).cycle_warning, PAID_INVOICED)
 
     def test_a_draft_invoice_or_none_leaves_the_cycle_open(self):
         expense = self.expense()
@@ -473,7 +486,7 @@ class TestVatCorrection(common.TransactionCase):
         expense.action_submit()
         expense._do_approve()
         expense.action_post()
-        self.assertEqual(self.wizard(expense).cycle_warning, CLOSED_CYCLE)
+        self.assertEqual(self.wizard(expense).cycle_warning, PAID)
 
     # -- Wizard on screen, several expenses ----------------------------------------------------------------
 

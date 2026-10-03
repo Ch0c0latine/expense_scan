@@ -137,7 +137,7 @@ msgstr ""
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
 msgid "%(expense)s carries %(count)s taxes. Another amount needs exactly one: use \"Recoverable\" or \"Not recoverable\" instead."
-msgstr "%(expense)s ma %(count)s podatków. Inna kwota wymaga dokładnie jednego: użyj zamiast tego „Odliczalny” lub „Nieodliczalny”."
+msgstr "Liczba podatków wydatku %(expense)s: %(count)s. Inna kwota wymaga dokładnie jednego podatku: użyj zamiast tego „Odliczalny” lub „Nieodliczalny”."
 
 #. module: expense_scan
 #. odoo-python
@@ -250,8 +250,8 @@ msgstr "%s jest zatwierdzony: jego refakturowanie musi pozostać rozstrzygnięte
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "%s is due on payment: its VAT cannot be corrected here."
-msgstr "%s jest wymagalny przy płatności: jego VAT nie może być tutaj skorygowany."
+msgid "%s is due on payment: correct the VAT once the expense is paid."
+msgstr "%s jest wymagalny przy płatności: skoryguj VAT, gdy wydatek zostanie zapłacony."
 
 #. module: expense_scan
 #. odoo-python
@@ -3251,10 +3251,10 @@ msgstr "Te wydatki są już opłacone."
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
 msgid ""
-"These expenses have been invoiced and reimbursed: their VAT may already have been declared. Check with your accountant before correcting them.\n"
+"These expenses are paid, and invoiced when they are re-invoiced: their VAT may already have been declared. Check with your accountant before correcting them.\n"
 "%(names)s"
 msgstr ""
-"Te wydatki zostały zafakturowane i zwrócone: ich VAT mógł już zostać zadeklarowany. Skonsultuj się z księgowym, zanim je skorygujesz.\n"
+"Te wydatki są zapłacone, a jeśli są refakturowane, także zafakturowane: ich VAT mógł już zostać zadeklarowany. Skonsultuj się z księgowym, zanim je skorygujesz.\n"
 "%(names)s"
 
 #. module: expense_scan
@@ -3283,8 +3283,14 @@ msgstr "Ta kategoria nie ma podatku: wybierz stawkę, aby odczytany podatek zost
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
-msgid "This expense has been invoiced and reimbursed: its VAT may already have been declared. Check with your accountant before correcting it."
-msgstr "Ten wydatek został zafakturowany i zwrócony: jego VAT mógł już zostać zadeklarowany. Skonsultuj się z księgowym, zanim go skorygujesz."
+msgid "This expense is paid and invoiced: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Ten wydatek jest zapłacony i zafakturowany: jego VAT mógł już zostać zadeklarowany. Skonsultuj się z księgowym, zanim go skorygujesz."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_vat_wizard.py:0
+msgid "This expense is paid: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Ten wydatek jest zapłacony: jego VAT mógł już zostać zadeklarowany. Skonsultuj się z księgowym, zanim go skorygujesz."
 
 #. module: expense_scan
 #. odoo-python

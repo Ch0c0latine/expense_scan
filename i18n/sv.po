@@ -250,8 +250,8 @@ msgstr "%s är godkänt: dess vidarefakturering måste förbli avgjord."
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "%s is due on payment: its VAT cannot be corrected here."
-msgstr "%s redovisas först vid betalning: momsen kan inte korrigeras här."
+msgid "%s is due on payment: correct the VAT once the expense is paid."
+msgstr "%s redovisas först vid betalning: korrigera momsen när utlägget är betalt."
 
 #. module: expense_scan
 #. odoo-python
@@ -3251,10 +3251,10 @@ msgstr "Dessa utlägg är redan betalda."
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
 msgid ""
-"These expenses have been invoiced and reimbursed: their VAT may already have been declared. Check with your accountant before correcting them.\n"
+"These expenses are paid, and invoiced when they are re-invoiced: their VAT may already have been declared. Check with your accountant before correcting them.\n"
 "%(names)s"
 msgstr ""
-"De här utläggen har fakturerats och ersatts: momsen kan redan ha deklarerats. Kontrollera med din redovisningskonsult innan du korrigerar dem.\n"
+"De här utläggen är betalda, och fakturerade när de vidarefaktureras: momsen kan redan ha deklarerats. Kontrollera med din redovisningskonsult innan du korrigerar dem.\n"
 "%(names)s"
 
 #. module: expense_scan
@@ -3283,8 +3283,14 @@ msgstr "Denna kategori har ingen skatt: välj satsen så att den lästa skatten 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_vat_wizard.py:0
-msgid "This expense has been invoiced and reimbursed: its VAT may already have been declared. Check with your accountant before correcting it."
-msgstr "Det här utlägget har fakturerats och ersatts: momsen kan redan ha deklarerats. Kontrollera med din redovisningskonsult innan du korrigerar det."
+msgid "This expense is paid and invoiced: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Det här utlägget är betalt och fakturerat: momsen kan redan ha deklarerats. Kontrollera med din redovisningskonsult innan du korrigerar det."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_vat_wizard.py:0
+msgid "This expense is paid: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Det här utlägget är betalt: momsen kan redan ha deklarerats. Kontrollera med din redovisningskonsult innan du korrigerar det."
 
 #. module: expense_scan
 #. odoo-python

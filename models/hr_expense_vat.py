@@ -152,15 +152,33 @@ class HrExpense(models.Model):
         entry = expense.account_move_id
         if entry.state == 'posted':
             lines |= entry.line_ids.filtered(
-                lambda line: line.tax_line_id and (len(entry.expense_ids) < 2 or line.expense_id == expense))
+                lambda line: len(entry.expense_ids) < 2 or line.expense_id == expense)
         if corrections:
-            lines |= expense.expense_scan_vat_move_ids.filtered(
-                lambda move: move.state == 'posted').line_ids.filtered('tax_line_id')
+            lines |= expense.expense_scan_vat_move_ids.filtered(lambda move: move.state == 'posted').line_ids
         balances = defaultdict(float)
-        for line in lines.filtered(lambda line: line.tax_line_id.type_tax_use == 'purchase'):
+        for line in self._expense_scan_vat_lines(lines):
             balances[line.tax_line_id] += line.balance
         currency = expense.company_currency_id
         return {tax: balance for tax, balance in balances.items() if not currency.is_zero(balance)}
+
+    @api.model
+    def _expense_scan_vat_lines(self, lines):
+        """The tax lines that carry recoverable VAT.
+
+        Those of a purchase tax on a share that goes to the tax return: the
+        share a tax books on the expense account (80 % of the VAT on fuel is
+        deductible, the rest is a cost) is not recovered.
+        """
+        purchase = self._expense_scan_vat_purchase_taxes(lines.tax_line_id)
+        return lines.filtered(
+            lambda line: line.tax_line_id in purchase and line.tax_repartition_line_id.use_in_tax_closing)
+
+    @api.model
+    def _expense_scan_vat_purchase_taxes(self, taxes):
+        """The purchase taxes among ``taxes``, with the taxes of a purchase group (often without scope)."""
+        groups = self.env['account.tax'].sudo().with_context(active_test=False).search([
+            ('amount_type', '=', 'group'), ('type_tax_use', '=', 'purchase'), ('children_tax_ids', 'in', taxes.ids)])
+        return taxes.filtered(lambda tax: tax.type_tax_use == 'purchase') | (taxes & groups.children_tax_ids)
 
     def _expense_scan_vat_open_corrections(self):
         """Posted corrections that no posted reversal has cancelled."""
@@ -198,6 +216,8 @@ class HrExpense(models.Model):
 
     def _expense_scan_check_correctable(self):
         """The VAT of an expense is corrected once its entry is posted."""
+        # The checks below read as superuser: nothing is said about an expense the user cannot see.
+        self.check_access('read')
         for expense in self.sudo():
             name = expense.name or expense.display_name
             if expense.state not in POSTED_STATES:
@@ -241,16 +261,16 @@ class HrExpense(models.Model):
     def _expense_scan_vat_default_tax(self):
         """Purchase tax for the VAT: the expense's own, its category's, the company's.
 
-        Only a single percentage tax makes a rate to apply.
+        Only a single percentage tax makes a rate to apply; a group gives its
+        tax when it holds only one.
         """
         self.ensure_one()
         expense = self.sudo()._origin
         company = expense.company_id
 
         def usable(taxes):
-            taxes = taxes.filtered(
-                lambda tax: tax.type_tax_use == 'purchase' and tax.amount_type == 'percent'
-                and tax.company_id == company)
+            taxes = taxes.filtered(lambda tax: tax.type_tax_use == 'purchase' and tax.company_id == company)
+            taxes = taxes.flatten_taxes_hierarchy().filtered(lambda tax: tax.amount_type == 'percent')
             return taxes if len(taxes) == 1 else taxes.browse()
 
         return (usable(expense.tax_ids) or usable(expense.product_id.supplier_taxes_id)
@@ -258,13 +278,15 @@ class HrExpense(models.Model):
 
     def _expense_scan_vat_check_tax(self, tax):
         self.ensure_one()
-        if tax.amount_type != 'percent' or tax.type_tax_use != 'purchase':
+        if tax.amount_type != 'percent' or not self._expense_scan_vat_purchase_taxes(tax):
             raise UserError(_(
                 "%s is not a purchase tax with a percentage: its VAT cannot be corrected here.",
                 tax.display_name))
-        if tax.tax_exigibility != 'on_invoice':
+        # A miscellaneous entry has no payment to wait for: its VAT is due at once. The VAT of
+        # the expense is only due once it is paid, and the correction comes after.
+        if tax.tax_exigibility != 'on_invoice' and self.sudo()._origin.state not in ('in_payment', 'paid'):
             raise UserError(_(
-                "%s is due on payment: its VAT cannot be corrected here.", tax.display_name))
+                "%s is due on payment: correct the VAT once the expense is paid.", tax.display_name))
         if tax.company_id != self.company_id:
             raise UserError(_("%s belongs to another company.", tax.display_name))
 
@@ -272,8 +294,9 @@ class HrExpense(models.Model):
         """Recoverable VAT the correction aims at, and the tax it goes through.
 
         ``mode``: ``none`` (nothing is recoverable), ``recoverable`` (the VAT
-        the tax gives on the total) or ``amount`` (the amount entered, on the
-        single tax of the expense).
+        the entry booked with this tax, the receipt's, or else the VAT the tax
+        gives on the total) or ``amount`` (the amount entered, on the single
+        tax of the expense).
         """
         self.ensure_one()
         expense = self.sudo()._origin
@@ -282,7 +305,7 @@ class HrExpense(models.Model):
         if mode == 'none':
             return 0.0, expense.env['account.tax']
         if mode == 'amount':
-            tax = expense.tax_ids
+            tax = expense.tax_ids.flatten_taxes_hierarchy()
             if len(tax) != 1:
                 raise UserError(_(
                     "%(expense)s carries %(count)s taxes. Another amount needs exactly one: "
@@ -294,9 +317,10 @@ class HrExpense(models.Model):
                 raise UserError(_("No purchase tax found for %s: choose one.", name))
         expense._expense_scan_vat_check_tax(tax)
         total = expense.total_amount
-        ceiling = currency.round(total - total / (1.0 + tax.amount / 100.0))
+        ceiling = expense._expense_scan_vat_compute(tax, total, included=True)[1]
         if mode == 'recoverable':
-            return ceiling, tax
+            # A receipt with mixed rates gives less VAT than the rate on its total.
+            return expense._expense_scan_vat_by_tax(corrections=False).get(tax) or ceiling, tax
         if amount < 0 or currency.compare_amounts(amount, ceiling + TAX_ROUNDING_MARGIN) > 0:
             raise ValidationError(_(
                 "The VAT of %(expense)s is between 0 and %(ceiling)s, the VAT that the rate "
@@ -335,8 +359,29 @@ class HrExpense(models.Model):
             raise UserError(_("No miscellaneous journal found for %s: create one first.", company.name))
         return journal
 
-    def _expense_scan_vat_base(self, tax, vat):
-        """The base on which the tax gives exactly ``vat``.
+    def _expense_scan_vat_compute(self, tax, amount, included=False, refund=False):
+        """``(base, recoverable VAT)`` that the tax gives on ``amount``, in the company currency.
+
+        Computed as the entry computes it, rounding included: ``compute_all``
+        works on unrounded amounts and misses half cents (10 % of 1.75 gives
+        0.17 there, 0.18 in the entry).
+        """
+        self.ensure_one()
+        AccountTax = self.env['account.tax']
+        company = self.company_id
+        base_line = AccountTax._prepare_base_line_for_taxes_computation(
+            None, tax_ids=tax, price_unit=amount, quantity=1.0, currency_id=self.company_currency_id,
+            special_mode='total_included' if included else 'total_excluded', is_refund=refund)
+        AccountTax._add_tax_details_in_base_lines([base_line], company)
+        AccountTax._round_base_lines_tax_details([base_line], company)
+        AccountTax._add_accounting_data_in_base_lines_tax_details([base_line], company)
+        details = base_line['tax_details']
+        vat = sum(rep['tax_amount'] for data in details['taxes_data'] for rep in data['tax_reps_data']
+                  if rep['tax_rep'].use_in_tax_closing)
+        return details['total_excluded'], vat
+
+    def _expense_scan_vat_base(self, tax, vat, refund=False):
+        """The base on which the tax gives exactly ``vat`` of recoverable VAT.
 
         Starting from the share of the real base of the expense that carries
         this VAT (the whole base when all the VAT is corrected). The rate
@@ -346,17 +391,17 @@ class HrExpense(models.Model):
         self.ensure_one()
         currency = self.company_currency_id
         step = currency.rounding
-        total = self.total_amount
-        base = total / (1.0 + tax.amount / 100.0)
-        # The VAT of the whole expense, as it is booked (to the cent).
-        whole = currency.round(total - base)
-        first = currency.round(base * vat / whole) if whole > 0 else currency.round(vat * 100.0 / tax.amount)
+        # The VAT of the whole expense at this rate, as it is booked (to the cent), and its base.
+        base, whole = self._expense_scan_vat_compute(tax, self.total_amount, included=True)
+        if whole > 0:
+            first = currency.round(base * vat / whole)
+        else:
+            first = currency.round(vat * 100.0 / tax.amount) if tax.amount else step
         for gap in range(BASE_SEARCH):
             for base in (first + gap * step, first - gap * step):
                 if base <= 0:
                     continue
-                taxes = tax.compute_all(base, currency=currency, quantity=1.0, handle_price_include=False)['taxes']
-                if currency.compare_amounts(sum(t['amount'] for t in taxes), vat) == 0:
+                if currency.compare_amounts(self._expense_scan_vat_compute(tax, base, refund=refund)[1], vat) == 0:
                     return currency.round(base)
         raise UserError(_(
             "The tax %(tax)s cannot give a VAT of %(amount)s.",
@@ -382,8 +427,9 @@ class HrExpense(models.Model):
         lines = []
         for tax, delta in deltas:
             vat = abs(delta)
-            base = expense._expense_scan_vat_base(tax, vat)
             recover = delta > 0
+            # A credit base takes the refund repartition of a purchase tax, as the entry will.
+            base = expense._expense_scan_vat_base(tax, vat, refund=not recover and tax.type_tax_use == 'purchase')
             lines.append(Command.create({
                 'name': label,
                 'account_id': account.id,
@@ -424,7 +470,7 @@ class HrExpense(models.Model):
         values = expense._expense_scan_vat_move_values(deltas, date, journal)
         move = self.env['account.move'].with_company(expense.company_id).create(values)
         # The tax engine adds the VAT lines: they must come to what was asked.
-        generated = sum(move.line_ids.filtered('tax_line_id').mapped('balance'))
+        generated = sum(self._expense_scan_vat_lines(move.line_ids).mapped('balance'))
         if not expense.company_currency_id.is_zero(generated - sum(delta for _tax, delta in deltas)):
             raise UserError(_(
                 "The VAT generated for %s is not the one asked: the correction was not made.",

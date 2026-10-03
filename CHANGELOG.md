@@ -9,6 +9,30 @@
   update moves the Excel model kept on a sales order to its project. The
   migration notes that Odoo drops the old column at the update of the module
   that declared it.
+- **Correct VAT**:
+  - The base of the entry is checked as the entry rounds its tax. A base
+    whose VAT ends in half a cent (10 % of 1.75) stopped the correction with
+    "The VAT generated is not the one asked", for about one 10 % expense in
+    thirty.
+  - Only the VAT that goes to the tax return counts as recovered. On fuel
+    (80 % deductible) the expense recovers 16.00 of its 20.00 of VAT, and
+    *Other amount* is what reaches the VAT account.
+  - *Recoverable* gives back the VAT the entry booked with the tax, the one
+    read on the receipt when it mixes rates, instead of the rate applied to
+    the total; the rate applies when the entry booked none.
+  - A tax due on payment is corrected once the expense is paid. The
+    miscellaneous entry is due at once: its VAT goes to the VAT account and to
+    the grid of the return, not to the waiting account.
+  - The taxes of a purchase group are seen even when they have no scope of
+    their own: their VAT is recovered and corrected, and a group of one tax
+    gives it to *Recoverable* and *Other amount*.
+  - The expense of a company the user cannot open is refused as such: the
+    message no longer gives its name and state.
+  - The warning of the wizard says what happened: "paid", and "invoiced" only
+    for a re-invoiced expense. It said "invoiced and reimbursed" of an expense
+    that is not re-invoiced, or that the company paid.
+- **Translations**: Norwegian "et annet firma", "innrapportert"; Polish
+  number of taxes; French "auprès de votre comptable"; Spanish "empresa".
 
 ## 19.0.2.11.0 — 2026-10-03
 
