@@ -11,6 +11,8 @@ from odoo import Command
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import common, tagged
 
+from .tax_setup import ensure_fiscal_country
+
 
 @tagged('post_install', '-at_install')
 class TestInvoicing(common.TransactionCase):
@@ -20,9 +22,8 @@ class TestInvoicing(common.TransactionCase):
         super().setUpClass()
         if 'sale.order' not in cls.env or 'reinvoiced_sale_order_id' not in cls.env['project.project']._fields:
             raise unittest.SkipTest("Sales is not installed")
-        # A database without a chart of accounts has no fiscal country, and a tax needs one.
-        if not cls.env.company.account_fiscal_country_id:
-            cls.env.company.account_fiscal_country_id = cls.env.ref('base.fr')
+        # A database without a chart of accounts may have no country or tax group for a tax.
+        ensure_fiscal_country(cls.env)
         cls.company = cls.env.company
         cls.company.expense_scan_reinvoice = True
         cls.employee = cls.env['hr.employee'].create({

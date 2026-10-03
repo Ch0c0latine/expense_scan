@@ -15,6 +15,8 @@ from odoo.exceptions import AccessError, UserError
 from odoo.service.model import get_public_method
 from odoo.tests import common, tagged
 
+from .tax_setup import ensure_fiscal_country
+
 
 class VatAuditCase(common.TransactionCase):
     """Expenses, users and assertions shared by the classes below."""
@@ -213,6 +215,7 @@ class TestVatAudit(VatAuditCase):
         cls.company = cls.env.company
         if not cls.company.chart_template:
             raise unittest.SkipTest("no chart of accounts")
+        ensure_fiscal_country(cls.env)
         cls.vat_account = cls.env['account.account'].create({
             'name': "Deductible VAT (audit)", 'code': 'AUDVAT445', 'account_type': 'asset_current'})
         cls.grid = cls.env['account.account.tag'].create({

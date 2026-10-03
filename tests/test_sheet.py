@@ -9,6 +9,8 @@ from datetime import date
 from odoo.exceptions import UserError
 from odoo.tests import common, tagged
 
+from .tax_setup import ensure_fiscal_country
+
 
 def png(color=(200, 30, 30)):
     from PIL import Image
@@ -75,6 +77,7 @@ class TestExpenseSheet(common.TransactionCase):
         self.assertEqual(lines[2]['n'], "3")
 
     def test_vat_summary_groups_by_rate(self):
+        ensure_fiscal_country(self.env)
         Tax = self.env['account.tax']
 
         def purchase_tax(rate):

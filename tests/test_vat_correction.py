@@ -15,6 +15,8 @@ from odoo import Command, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import Form, common, tagged
 
+from .tax_setup import ensure_fiscal_country
+
 PAID = ("This expense is paid: its VAT may already have been declared. "
         "Check with your accountant before correcting it.")
 PAID_INVOICED = ("This expense is paid and invoiced: its VAT may already have been declared. "
@@ -32,6 +34,7 @@ class TestVatCorrection(common.TransactionCase):
         cls.company = cls.env.company
         if not cls.company.chart_template:
             raise unittest.SkipTest("no chart of accounts")
+        ensure_fiscal_country(cls.env)
         cls.currency = cls.company.currency_id
         cls.vat_account = cls.env['account.account'].create({
             'name': "Deductible VAT (test)", 'code': 'TESTVAT445', 'account_type': 'asset_current'})

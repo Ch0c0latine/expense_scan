@@ -10,6 +10,7 @@ data.
 from odoo.tests import common, tagged
 
 from ..ocr import lexicon, parser
+from .tax_setup import ensure_fiscal_country
 from .test_parser import words_from_text
 
 
@@ -199,9 +200,8 @@ class TestCategoryRecognition(common.TransactionCase):
         super().setUpClass()
         Product = cls.env['product.product']
         cls.company = cls.env.company
-        # A database without a chart of accounts has no fiscal country, and a tax needs one.
-        if not cls.env.company.account_fiscal_country_id:
-            cls.env.company.account_fiscal_country_id = cls.env.ref('base.fr')
+        # A database without a chart of accounts may have no country or tax group for a tax.
+        ensure_fiscal_country(cls.env)
         cls.default = Product.create({'name': "Divers test", 'can_be_expensed': True})
         cls.company.expense_scan_product_id = cls.default
         cls.company.expense_scan_apply_tax = True

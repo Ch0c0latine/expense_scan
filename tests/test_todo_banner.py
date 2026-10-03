@@ -4,6 +4,8 @@
 """The review banner goes away as the corrections are made, without a new scan."""
 from odoo.tests import common, tagged
 
+from .tax_setup import ensure_fiscal_country
+
 
 @tagged('post_install', '-at_install')
 class TestTodoBanner(common.TransactionCase):
@@ -11,9 +13,8 @@ class TestTodoBanner(common.TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        # A database without a chart of accounts has no fiscal country, and a tax needs one.
-        if not cls.env.company.account_fiscal_country_id:
-            cls.env.company.account_fiscal_country_id = cls.env.ref('base.fr')
+        # A database without a chart of accounts may have no country or tax group for a tax.
+        ensure_fiscal_country(cls.env)
         cls.employee = cls.env['hr.employee'].create({'name': "Camille Bandeau"})
         cls.product = cls.env['product.product'].create(
             {'name': "Repas bandeau", 'can_be_expensed': True})

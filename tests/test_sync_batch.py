@@ -19,6 +19,8 @@ from odoo import Command
 from odoo.exceptions import UserError
 from odoo.tests import common, tagged
 
+from .tax_setup import ensure_fiscal_country
+
 
 @tagged('post_install', '-at_install')
 class TestSyncBatch(common.TransactionCase):
@@ -26,6 +28,7 @@ class TestSyncBatch(common.TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        ensure_fiscal_country(cls.env)
         if 'sale.order' not in cls.env or 'reinvoiced_sale_order_id' not in cls.env['project.project']._fields:
             raise unittest.SkipTest("Sales is not installed")
         cls.env.company.expense_scan_reinvoice = True

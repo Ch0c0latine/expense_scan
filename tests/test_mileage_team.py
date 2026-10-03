@@ -4,6 +4,8 @@
 """Mileage rate and entry for a team member."""
 from odoo.tests import Form, common, new_test_user, tagged
 
+from .tax_setup import ensure_fiscal_country
+
 
 @tagged('post_install', '-at_install')
 class TestExpenseScanMileage(common.TransactionCase):
@@ -11,9 +13,6 @@ class TestExpenseScanMileage(common.TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        # A database without a chart of accounts has no fiscal country, and a tax needs one.
-        if not cls.env.company.account_fiscal_country_id:
-            cls.env.company.account_fiscal_country_id = cls.env.ref('base.fr')
         cls.mileage = cls.env.ref('hr_expense.expense_product_mileage')
         cls.mileage.standard_price = 1.0
         cls.employee = cls.env['hr.employee'].create({
@@ -146,6 +145,8 @@ class TestExpenseScanCategories(common.TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # A database without a chart of accounts may have no country or tax group for a tax.
+        ensure_fiscal_country(cls.env)
         cls.mileage = cls.env.ref('hr_expense.expense_product_mileage')
         cls.mileage.standard_price = 1.0
         cls.employee = cls.env['hr.employee'].create({'name': "Camille Test"})
