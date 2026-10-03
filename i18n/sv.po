@@ -47,6 +47,11 @@ msgid "\"%(value)s\" cannot go in %(where)s (%(cell)s)."
 msgstr "\"%(value)s\" kan inte stå i %(where)s (%(cell)s)."
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "\"My Expenses\" and \"Expenses to Process\" start with the \"Current month\" filter."
+msgstr "\"Mina utlägg\" och \"Utgifter att behandla\" startar med filtret \"Innevarande månad\"."
+
+#. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__reinvoice_mode
 msgid "\"To decide\" flags an expense whose fate is still open, and the review banner reminds it. \"No\" is a decision, not an omission: the company bears the expense."
 msgstr "\"Att avgöra\" markerar ett utlägg vars utfall fortfarande är öppet, och granskningsmeddelandet påminner om det. \"Nej\" är ett beslut, inte ett förbiseende: företaget står för utlägget."
@@ -454,6 +459,11 @@ msgstr "Beloppet hittades inte på kvittot: ange det."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "An employee is offered the projects they manage, have a task on or are assigned to."
+msgstr "Den anställde erbjuds de projekt hen leder, har en uppgift i eller är tilldelad."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "An older date is ignored: usually a warranty or loyalty card date."
 msgstr "Ett äldre datum ignoreras: oftast ett garanti- eller kundkortsdatum."
 
@@ -616,6 +626,11 @@ msgstr "Kategorin kändes inte igen på kvittot: välj den."
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_category_reason
 msgid "Category recognised"
 msgstr "Igenkänd kategori"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Changes to what Odoo shows, for every company. Off unless you choose them"
+msgstr "Ändringar i det Odoo visar, för alla företag. Av tills du väljer dem"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__rule_type
@@ -1613,11 +1628,6 @@ msgid "Keep the text read for (days)"
 msgstr "Behåll läst text i (dagar)"
 
 #. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_previous_month
-msgid "Last Month"
-msgstr "Förra månaden"
-
-#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__write_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__write_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__write_uid
@@ -1646,6 +1656,12 @@ msgstr "Sista utläggsraden"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__amount
 msgid "Limit (tax incl.)"
 msgstr "Gräns (inkl. skatt)"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_limit_projects
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_limit_projects
+msgid "Limit the projects to the employee's own"
+msgstr "Begränsa projekten till den anställdes egna"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -2032,6 +2048,11 @@ msgstr ""
 "Bara bredden räknas: ett fönster som är högre än brett är ändå brett nog för två kolumner. Under tröskeln blir förhandsvisningen en list ovanför fälten."
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Odoo's menus and filters"
+msgstr "Odoos menyer och filter"
+
+#. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__words
 msgid "One per line. Their presence on the receipt or in the description triggers the warning."
 msgstr "Ett per rad. Förekomst på kvittot eller i beskrivningen utlöser varningen."
@@ -2064,11 +2085,8 @@ msgstr "Bara ett utlägg i utkast kan fördelas på dagar."
 msgid "Only accountants can reimburse the employees."
 msgstr "Bara bokförare kan ersätta de anställda."
 
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "Only accounting managers can correct the VAT of an expense."
-msgstr "Bara bokföringsansvariga kan korrigera momsen för ett utlägg."
+msgstr "Endast redovisningsansvariga kan ersätta de anställda."
+
 
 #. module: expense_scan
 #. odoo-python
@@ -2093,21 +2111,18 @@ msgid "Open full screen"
 msgstr "Öppna i helskärm"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_month_default
+msgid "Open the expense lists on the current month"
+msgstr "Öppna utläggslistorna på innevarande månad"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__scan_original_attachment_id
 msgid "Original photo"
 msgstr "Originalfoto"
 
 #. module: expense_scan
-#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_vat_wizard__mode__amount
-msgid "Other amount"
-msgstr "Annat belopp"
-
 #. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_custom_period
-msgid "Other Period..."
-msgstr "Annan period..."
 
-#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__custom
 msgid "Other period"
 msgstr "Annan period"
@@ -2513,12 +2528,6 @@ msgid "Receipt?"
 msgstr "Kvitto?"
 
 #. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/expense_sheet.py:0
-msgid "Receipts"
-msgstr "Kvitton"
-
-#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__receipts
 msgid "Receipts only (PDF)"
 msgstr "Endast kvitton (PDF)"
@@ -2579,6 +2588,16 @@ msgstr "Ersätt den anställde"
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
 msgid "Reimbursed"
 msgstr "Ersatta"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Removes the \"My Team\", \"Company\" and \"Employee\" shortcuts, and the months listed under the expense date."
+msgstr "Tar bort genvägarna \"Mitt lag\", \"Företag\" och \"Anställd\" samt månaderna som listas under utläggsdatumet."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_tidy_menu
+msgid "Rename the \"My Expenses\" menu"
+msgstr "Byt namn på menyn \"Mina utlägg\""
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_export_template_view_form
@@ -2760,6 +2779,11 @@ msgstr "Flera skattesatser"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__sheet_name
 msgid "Sheet"
 msgstr "Blad"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_tidy_filters
+msgid "Simplify the expense filters"
+msgstr "Förenkla utläggsfiltren"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_one_payment_method
@@ -3053,6 +3077,11 @@ msgid "The form cannot be saved as it is: correct it, then try again."
 msgstr "Formuläret kan inte sparas som det är: rätta det och försök igen."
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "The group that holds the expense lists is called \"Expense follow-up\"."
+msgstr "Gruppen som innehåller utläggslistorna heter \"Utläggsuppföljning\"."
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "The invoice %(invoice)s carries this expense, but it could not be posted: %(error)s"
@@ -3064,11 +3093,8 @@ msgstr "Fakturan %(invoice)s innehåller detta utlägg, men det kunde inte bokf�
 msgid "The invoice of an expense is set by the invoicing, not by hand."
 msgstr "Ett utläggs faktura anges av faktureringen, inte för hand."
 
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "The journal entry of %s is not posted."
-msgstr "Verifikationen för %s är inte bokförd."
+msgstr "Fakturan för ett utlägg sätts av faktureringen, inte för hand."
+
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night
@@ -3258,11 +3284,7 @@ msgstr ""
 "%(names)s"
 
 #. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_current_month
-msgid "This Month"
-msgstr "Denna månad"
 
-#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "This PDF has several pages: it stays the receipt as it is. Retouch applies to photos and single-page PDFs."
@@ -3538,6 +3560,12 @@ msgstr "Varför utlägget går utöver reglerna"
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_policy_justification
 msgid "Why this expense goes beyond the rules. The manager reads it when approving the expense."
 msgstr "Varför utlägget går utöver reglerna. Chefen läser det när utlägget godkänns."
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_limit_projects
+#: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_limit_projects
+msgid "With re-invoicing, an employee is offered the projects they manage, have a task on or are assigned to, not the whole list. A project manager and an administrator always see every project. Only the choice offered in the form is limited."
+msgstr "Vid vidarefakturering erbjuds den anställde de projekt hen leder, har en uppgift i eller är tilldelad, inte hela listan. En projektledare och en administratör ser alltid alla projekt. Endast valet i formuläret är begränsat."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_no_vat

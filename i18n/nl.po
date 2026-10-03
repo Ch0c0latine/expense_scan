@@ -47,6 +47,11 @@ msgid "\"%(value)s\" cannot go in %(where)s (%(cell)s)."
 msgstr "\"%(value)s\" kan niet in %(where)s (%(cell)s)."
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "\"My Expenses\" and \"Expenses to Process\" start with the \"Current month\" filter."
+msgstr "\"Mijn onkosten\" en \"Onkosten om te verwerken\" starten met het filter \"Huidige maand\"."
+
+#. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__reinvoice_mode
 msgid "\"To decide\" flags an expense whose fate is still open, and the review banner reminds it. \"No\" is a decision, not an omission: the company bears the expense."
 msgstr "\"Te bepalen\" markeert een declaratie waarover nog niet beslist is, en de controlemelding herinnert eraan. \"Nee\" is een beslissing, geen vergetelheid: het bedrijf draagt de kosten."
@@ -454,6 +459,11 @@ msgstr "Bedrag niet gevonden op de bon: vul het in."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "An employee is offered the projects they manage, have a task on or are assigned to."
+msgstr "Aan de medewerker worden de projecten voorgesteld die hij beheert, waarop hij een taak heeft of waaraan hij is toegewezen."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "An older date is ignored: usually a warranty or loyalty card date."
 msgstr "Een oudere datum wordt genegeerd: meestal die van een garantie of klantenkaart."
 
@@ -616,6 +626,11 @@ msgstr "Categorie niet herkend op de bon: kies ze."
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_category_reason
 msgid "Category recognised"
 msgstr "Herkende categorie"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Changes to what Odoo shows, for every company. Off unless you choose them"
+msgstr "Wijzigingen in wat Odoo toont, voor alle bedrijven. Uit tot u ze kiest"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__rule_type
@@ -1613,11 +1628,6 @@ msgid "Keep the text read for (days)"
 msgstr "Gelezen tekst bewaren (dagen)"
 
 #. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_previous_month
-msgid "Last Month"
-msgstr "Vorige maand"
-
-#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__write_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__write_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__write_uid
@@ -1646,6 +1656,12 @@ msgstr "Laatste declaratierij"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__amount
 msgid "Limit (tax incl.)"
 msgstr "Limiet (incl. belasting)"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_limit_projects
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_limit_projects
+msgid "Limit the projects to the employee's own"
+msgstr "De projecten beperken tot die van de medewerker"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -2032,6 +2048,11 @@ msgstr ""
 "Alleen de breedte telt: een venster dat hoger dan breed is, is nog breed genoeg voor twee kolommen. Onder de drempel wordt het voorbeeld een balk boven de velden."
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Odoo's menus and filters"
+msgstr "Menu's en filters van Odoo"
+
+#. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__words
 msgid "One per line. Their presence on the receipt or in the description triggers the warning."
 msgstr "Eén per regel. Hun aanwezigheid op de bon of in de omschrijving activeert de waarschuwing."
@@ -2064,11 +2085,8 @@ msgstr "Alleen een conceptdeclaratie kan over dagen worden verdeeld."
 msgid "Only accountants can reimburse the employees."
 msgstr "Alleen boekhouders kunnen de werknemers terugbetalen."
 
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "Only accounting managers can correct the VAT of an expense."
-msgstr "Alleen boekhoudbeheerders kunnen de btw van een declaratie corrigeren."
+msgstr "Alleen boekhouders kunnen medewerkers terugbetalen."
+
 
 #. module: expense_scan
 #. odoo-python
@@ -2093,21 +2111,18 @@ msgid "Open full screen"
 msgstr "Openen op volledig scherm"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_month_default
+msgid "Open the expense lists on the current month"
+msgstr "De onkostenlijsten openen op de huidige maand"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__scan_original_attachment_id
 msgid "Original photo"
 msgstr "Originele foto"
 
 #. module: expense_scan
-#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_vat_wizard__mode__amount
-msgid "Other amount"
-msgstr "Ander bedrag"
-
 #. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_custom_period
-msgid "Other Period..."
-msgstr "Andere periode..."
 
-#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__custom
 msgid "Other period"
 msgstr "Andere periode"
@@ -2513,12 +2528,6 @@ msgid "Receipt?"
 msgstr "Bon?"
 
 #. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/expense_sheet.py:0
-msgid "Receipts"
-msgstr "Bonnen"
-
-#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__receipts
 msgid "Receipts only (PDF)"
 msgstr "Alleen bonnen (PDF)"
@@ -2579,6 +2588,16 @@ msgstr "Medewerker terugbetalen"
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
 msgid "Reimbursed"
 msgstr "Terugbetaald"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Removes the \"My Team\", \"Company\" and \"Employee\" shortcuts, and the months listed under the expense date."
+msgstr "Verwijdert de snelkoppelingen \"Mijn team\", \"Bedrijf\" en \"Werknemer\" en de maanden onder de kostendatum."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_tidy_menu
+msgid "Rename the \"My Expenses\" menu"
+msgstr "Het menu \"Mijn onkosten\" hernoemen"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_export_template_view_form
@@ -2760,6 +2779,11 @@ msgstr "Meerdere belastingtarieven"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__sheet_name
 msgid "Sheet"
 msgstr "Blad"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_tidy_filters
+msgid "Simplify the expense filters"
+msgstr "De onkostenfilters vereenvoudigen"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_one_payment_method
@@ -3053,6 +3077,11 @@ msgid "The form cannot be saved as it is: correct it, then try again."
 msgstr "Het formulier kan zo niet worden opgeslagen: corrigeer het en probeer opnieuw."
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "The group that holds the expense lists is called \"Expense follow-up\"."
+msgstr "De groep met de onkostenlijsten heet \"Opvolging declaraties\"."
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "The invoice %(invoice)s carries this expense, but it could not be posted: %(error)s"
@@ -3064,11 +3093,8 @@ msgstr "De factuur %(invoice)s bevat deze declaratie, maar ze kon niet worden ge
 msgid "The invoice of an expense is set by the invoicing, not by hand."
 msgstr "De factuur van een declaratie wordt door de facturatie ingesteld, niet met de hand."
 
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "The journal entry of %s is not posted."
-msgstr "De boeking van %s is niet geboekt."
+msgstr "De factuur van een onkost wordt door de facturatie ingesteld, niet handmatig."
+
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night
@@ -3258,11 +3284,7 @@ msgstr ""
 "%(names)s"
 
 #. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_current_month
-msgid "This Month"
-msgstr "Deze maand"
 
-#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "This PDF has several pages: it stays the receipt as it is. Retouch applies to photos and single-page PDFs."
@@ -3538,6 +3560,12 @@ msgstr "Waarom deze declaratie buiten de regels valt"
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_policy_justification
 msgid "Why this expense goes beyond the rules. The manager reads it when approving the expense."
 msgstr "Waarom deze declaratie buiten de regels valt. De manager leest dit bij het goedkeuren."
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_limit_projects
+#: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_limit_projects
+msgid "With re-invoicing, an employee is offered the projects they manage, have a task on or are assigned to, not the whole list. A project manager and an administrator always see every project. Only the choice offered in the form is limited."
+msgstr "Bij doorfactureren worden aan de medewerker de projecten voorgesteld die hij beheert, waarop hij een taak heeft of waaraan hij is toegewezen, niet de hele lijst. Een projectmanager en een beheerder zien altijd alle projecten. Alleen de keuze in het formulier is beperkt."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_no_vat

@@ -47,6 +47,11 @@ msgid "\"%(value)s\" cannot go in %(where)s (%(cell)s)."
 msgstr "\"%(value)s\" nie może trafić do %(where)s (%(cell)s)."
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "\"My Expenses\" and \"Expenses to Process\" start with the \"Current month\" filter."
+msgstr "\"Moje wydatki\" i \"Wydatki do przetworzenia\" zaczynają od filtra \"Bieżący miesiąc\"."
+
+#. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__reinvoice_mode
 msgid "\"To decide\" flags an expense whose fate is still open, and the review banner reminds it. \"No\" is a decision, not an omission: the company bears the expense."
 msgstr "\"Do decyzji\" oznacza wydatek, którego los jest jeszcze otwarty, a komunikat weryfikacji o nim przypomina. \"Nie\" to decyzja, a nie przeoczenie: wydatek pokrywa firma."
@@ -454,6 +459,11 @@ msgstr "Nie znaleziono kwoty na paragonie: wpisz ją."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "An employee is offered the projects they manage, have a task on or are assigned to."
+msgstr "Pracownikowi proponowane są projekty, którymi kieruje, w których ma zadanie lub do których jest przypisany."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "An older date is ignored: usually a warranty or loyalty card date."
 msgstr "Starsza data jest pomijana: zwykle to data gwarancji lub karty lojalnościowej."
 
@@ -616,6 +626,11 @@ msgstr "Nie rozpoznano kategorii na paragonie: wybierz ją."
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_category_reason
 msgid "Category recognised"
 msgstr "Rozpoznana kategoria"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Changes to what Odoo shows, for every company. Off unless you choose them"
+msgstr "Zmiany w tym, co pokazuje Odoo, dla wszystkich firm. Wyłączone, dopóki ich nie wybierzesz"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__rule_type
@@ -1613,11 +1628,6 @@ msgid "Keep the text read for (days)"
 msgstr "Przechowuj odczytany tekst przez (dni)"
 
 #. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_previous_month
-msgid "Last Month"
-msgstr "Poprzedni miesiąc"
-
-#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__write_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__write_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__write_uid
@@ -1646,6 +1656,12 @@ msgstr "Ostatni wiersz wydatków"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__amount
 msgid "Limit (tax incl.)"
 msgstr "Limit (brutto)"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_limit_projects
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_limit_projects
+msgid "Limit the projects to the employee's own"
+msgstr "Ogranicz projekty do projektów pracownika"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -2032,6 +2048,11 @@ msgstr ""
 "Liczy się tylko szerokość: okno wyższe niż szersze jest wciąż wystarczająco szerokie na dwie kolumny. Poniżej progu podgląd staje się paskiem nad polami."
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Odoo's menus and filters"
+msgstr "Menu i filtry Odoo"
+
+#. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__words
 msgid "One per line. Their presence on the receipt or in the description triggers the warning."
 msgstr "Jedno w wierszu. Ich obecność na paragonie lub w opisie wywołuje ostrzeżenie."
@@ -2064,11 +2085,8 @@ msgstr "Tylko wydatek roboczy można rozłożyć na dni."
 msgid "Only accountants can reimburse the employees."
 msgstr "Tylko księgowi mogą zwracać koszty pracownikom."
 
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "Only accounting managers can correct the VAT of an expense."
-msgstr "Tylko kierownicy księgowości mogą skorygować VAT wydatku."
+msgstr "Tylko księgowi mogą zwracać pieniądze pracownikom."
+
 
 #. module: expense_scan
 #. odoo-python
@@ -2093,21 +2111,18 @@ msgid "Open full screen"
 msgstr "Otwórz na pełnym ekranie"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_month_default
+msgid "Open the expense lists on the current month"
+msgstr "Otwieraj listy wydatków na bieżącym miesiącu"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__scan_original_attachment_id
 msgid "Original photo"
 msgstr "Oryginalne zdjęcie"
 
 #. module: expense_scan
-#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_vat_wizard__mode__amount
-msgid "Other amount"
-msgstr "Inna kwota"
-
 #. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_custom_period
-msgid "Other Period..."
-msgstr "Inny okres..."
 
-#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__custom
 msgid "Other period"
 msgstr "Inny okres"
@@ -2513,12 +2528,6 @@ msgid "Receipt?"
 msgstr "Paragon?"
 
 #. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/expense_sheet.py:0
-msgid "Receipts"
-msgstr "Paragony"
-
-#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__receipts
 msgid "Receipts only (PDF)"
 msgstr "Tylko paragony (PDF)"
@@ -2579,6 +2588,16 @@ msgstr "Zwróć pracownikowi"
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_invoicing
 msgid "Reimbursed"
 msgstr "Zwrócone"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Removes the \"My Team\", \"Company\" and \"Employee\" shortcuts, and the months listed under the expense date."
+msgstr "Usuwa skróty \"Mój zespół\", \"Firma\" i \"Pracownik\" oraz miesiące wymienione pod datą wydatku."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_tidy_menu
+msgid "Rename the \"My Expenses\" menu"
+msgstr "Zmień nazwę menu \"Moje wydatki\""
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_export_template_view_form
@@ -2760,6 +2779,11 @@ msgstr "Kilka stawek podatku"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__sheet_name
 msgid "Sheet"
 msgstr "Arkusz"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_tidy_filters
+msgid "Simplify the expense filters"
+msgstr "Uprość filtry wydatków"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_one_payment_method
@@ -3053,6 +3077,11 @@ msgid "The form cannot be saved as it is: correct it, then try again."
 msgstr "Formularza nie można zapisać w tym stanie: popraw go i spróbuj ponownie."
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "The group that holds the expense lists is called \"Expense follow-up\"."
+msgstr "Grupa zawierająca listy wydatków nazywa się \"Śledzenie wydatków\"."
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "The invoice %(invoice)s carries this expense, but it could not be posted: %(error)s"
@@ -3064,11 +3093,8 @@ msgstr "Faktura %(invoice)s zawiera ten wydatek, ale nie udało się go zaksięg
 msgid "The invoice of an expense is set by the invoicing, not by hand."
 msgstr "Fakturę wydatku ustawia fakturowanie, a nie ręcznie."
 
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "The journal entry of %s is not posted."
-msgstr "Zapis księgowy %s nie jest zaksięgowany."
+msgstr "Fakturę wydatku ustawia fakturowanie, a nie ręczna zmiana."
+
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night
@@ -3258,11 +3284,7 @@ msgstr ""
 "%(names)s"
 
 #. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_current_month
-msgid "This Month"
-msgstr "Ten miesiąc"
 
-#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "This PDF has several pages: it stays the receipt as it is. Retouch applies to photos and single-page PDFs."
@@ -3538,6 +3560,12 @@ msgstr "Dlaczego ten wydatek wykracza poza zasady"
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_policy_justification
 msgid "Why this expense goes beyond the rules. The manager reads it when approving the expense."
 msgstr "Dlaczego ten wydatek wykracza poza zasady. Przełożony czyta to przy zatwierdzaniu."
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_limit_projects
+#: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_limit_projects
+msgid "With re-invoicing, an employee is offered the projects they manage, have a task on or are assigned to, not the whole list. A project manager and an administrator always see every project. Only the choice offered in the form is limited."
+msgstr "Przy refakturowaniu pracownikowi proponowane są projekty, którymi kieruje, w których ma zadanie lub do których jest przypisany, a nie cała lista. Kierownik projektu i administrator zawsze widzą wszystkie projekty. Ograniczony jest tylko wybór proponowany w formularzu."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_no_vat

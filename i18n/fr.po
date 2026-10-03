@@ -32,24 +32,29 @@ msgstr " par nuit"
 #. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "\"%(cell)s\": a column letter (B) or a cell (K4)."
-msgstr "« %(cell)s » : une lettre de colonne (B) ou une cellule (K4)."
+msgstr "« %(cell)s » : une lettre de colonne (B) ou une cellule (K4)."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_nights.py:0
 msgid "\"%(expense)s\" is in the \"%(category)s\" category, which requires the number of nights. Enter it before saving."
-msgstr "« %(expense)s » relève de la catégorie « %(category)s », qui demande le nombre de nuitées. Indiquez-le avant d'enregistrer."
+msgstr "« %(expense)s » relève de la catégorie « %(category)s », qui demande le nombre de nuitées. Indiquez-le avant d'enregistrer."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "\"%(value)s\" cannot go in %(where)s (%(cell)s)."
-msgstr "« %(value)s » ne peut pas aller en %(where)s (%(cell)s)."
+msgstr "« %(value)s » ne peut pas aller en %(where)s (%(cell)s)."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "\"My Expenses\" and \"Expenses to Process\" start with the \"Current month\" filter."
+msgstr "« Mes dépenses » et « Dépenses à traiter » démarrent avec le filtre « Mois en cours »."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__reinvoice_mode
 msgid "\"To decide\" flags an expense whose fate is still open, and the review banner reminds it. \"No\" is a decision, not an omission: the company bears the expense."
-msgstr "« À déterminer » signale un frais dont le sort n'est pas tranché, et le bandeau de relecture le rappelle. « Non » est une décision, pas un oubli : le frais reste à la charge de la société."
+msgstr "« À déterminer » signale un frais dont le sort n'est pas tranché, et le bandeau de relecture le rappelle. « Non » est une décision, pas un oubli : le frais reste à la charge de la société."
 
 #. module: expense_scan
 #. odoo-python
@@ -109,7 +114,7 @@ msgstr "%(count)s laissée(s) de côté faute de droits (%(names)s)."
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_batch.py:0
 msgid "%(count)s skipped: their journal entry is posted (%(names)s). Cancel it in Accounting first."
-msgstr "%(count)s laissée(s) de côté : leur écriture comptable est validée (%(names)s). Annulez-la d'abord depuis la comptabilité."
+msgstr "%(count)s laissée(s) de côté : leur écriture comptable est validée (%(names)s). Annulez-la d'abord depuis la comptabilité."
 
 #. module: expense_scan
 #. odoo-python
@@ -131,7 +136,7 @@ msgid ""
 "Text read: \"%(text)s\""
 msgstr ""
 "%(engine)s — chargé et testé en %(duration)s s.\n"
-"Texte lu : « %(text)s »"
+"Texte lu : « %(text)s »"
 
 #. module: expense_scan
 #. odoo-python
@@ -197,7 +202,7 @@ msgstr "%(rule)s — %(value)s%(unit)s pour %(limit)s autorisés."
 #. odoo-python
 #: code:addons/expense_scan/models/expense_policy.py:0
 msgid "%(rule)s - the receipt mentions \"%(words)s\"."
-msgstr "%(rule)s — le justificatif mentionne « %(words)s »."
+msgstr "%(rule)s — le justificatif mentionne « %(words)s »."
 
 #. module: expense_scan
 #. odoo-python
@@ -245,7 +250,7 @@ msgstr "La dépense %s est déjà approuvée ou comptabilisée : un scan en ré
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "%s is approved: its re-invoicing has to stay decided."
-msgstr "%s est approuvé : sa refacturation doit rester décidée."
+msgstr "%s est approuvé : sa refacturation doit rester décidée."
 
 #. module: expense_scan
 #. odoo-python
@@ -263,7 +268,7 @@ msgstr "%s n'est pas une taxe d'achat à pourcentage : sa TVA ne peut pas être
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "%s is not approved: only an approval can be taken back."
-msgstr "%s n'est pas approuvé : seule une approbation peut être reprise."
+msgstr "%s n'est pas approuvé : seule une approbation peut être reprise."
 
 #. module: expense_scan
 #. odoo-python
@@ -336,20 +341,20 @@ msgstr "<strong>Règles de dépenses</strong>"
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_column__cell
 msgid "A column letter (\"B\"): each expense's value, row by row. A cell (\"K4\"): a header value, written once. For a merged cell, its top-left cell."
-msgstr "Une lettre de colonne (« B ») : la valeur de chaque dépense, ligne par ligne. Une cellule (« K4 ») : une valeur d'en-tête, écrite une fois. Pour une cellule fusionnée, sa première cellule en haut à gauche."
+msgstr "Une lettre de colonne (« B ») : la valeur de chaque dépense, ligne par ligne. Une cellule (« K4 ») : une valeur d'en-tête, écrite une fois. Pour une cellule fusionnée, sa première cellule en haut à gauche."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_max_age_days
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_max_age_days
 msgid "A date older than this is ignored: it is almost always a warranty or loyalty card date."
-msgstr "Une date lue au-delà de cette ancienneté est écartée : c'est presque toujours une date de garantie ou de carte de fidélité."
+msgstr "Une date lue au-delà de cette ancienneté est écartée : c'est presque toujours une date de garantie ou de carte de fidélité."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 #: code:addons/expense_scan/models/hr_expense_multi.py:0
 msgid "A receipt with a different total or date was moved to its own expense: %s"
-msgstr "Un ticket d'un autre total ou d'une autre date a été déplacé dans sa propre dépense : %s"
+msgstr "Un ticket d'un autre total ou d'une autre date a été déplacé dans sa propre dépense : %s"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
@@ -358,7 +363,7 @@ msgid ""
 "                        exceeded, ℹ︎ for a point to check. \"Done\" puts out\n"
 "                        the ℹ︎ signs, a justification the ⚠ signs. Without a\n"
 "                        family or a category, it applies to every expense."
-msgstr "Une règle alerte sans bloquer : ⚠ pour un dépassement, ℹ︎ pour un point à vérifier. « Terminé » éteint les ℹ︎, une justification les ⚠. Sans famille ni catégorie, elle vise toutes les dépenses."
+msgstr "Une règle alerte sans bloquer : ⚠ pour un dépassement, ℹ︎ pour un point à vérifier. « Terminé » éteint les ℹ︎, une justification les ⚠. Sans famille ni catégorie, elle vise toutes les dépenses."
 
 #. module: expense_scan
 #. odoo-python
@@ -368,7 +373,7 @@ msgid ""
 "\n"
 "For a receipt mixing several rates, keep the highest and leave the amount read on the receipt."
 msgstr ""
-"Une dépense scannée ne peut porter qu'une seule taxe : c'est le montant du champ « TVA du ticket » qui fait foi, et le taux ne sert qu'à porter les tags fiscaux.\n"
+"Une dépense scannée ne peut porter qu'une seule taxe : c'est le montant du champ « TVA du ticket » qui fait foi, et le taux ne sert qu'à porter les tags fiscaux.\n"
 "\n"
 "Pour un ticket mêlant plusieurs taux, gardez le plus élevé et laissez le montant lu sur le justificatif."
 
@@ -413,9 +418,9 @@ msgid ""
 "\n"
 "Off by default: not every organisation works by project."
 msgstr ""
-"Ajoute un champ « À refacturer » aux frais et y propose la mission du salarié en cours à la date du ticket. Le frais est alors imputé sur l'analytique de la mission. Une fois approuvé, il s'additionne aux autres frais de la mission sur la ligne de frais de sa commande client, pour la prochaine facture, et est comptabilisé avec cette facture.\n"
+"Ajoute un champ « À refacturer » aux frais et y propose la mission du salarié en cours à la date du ticket. Le frais est alors imputé sur l'analytique de la mission. Une fois approuvé, il s'additionne aux autres frais de la mission sur la ligne de frais de sa commande client, pour la prochaine facture, et est comptabilisé avec cette facture.\n"
 "\n"
-"Désactivé par défaut : toutes les organisations ne travaillent pas par mission."
+"Désactivé par défaut : toutes les organisations ne travaillent pas par mission."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__apply_to_all
@@ -439,7 +444,7 @@ msgstr "Montant (%s sur le justificatif)"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Amount hard to read on the receipt: check it."
-msgstr "Montant peu lisible sur le ticket : vérifiez-le."
+msgstr "Montant peu lisible sur le ticket : vérifiez-le."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_reinvoiced_amount
@@ -450,12 +455,17 @@ msgstr "Montant TTC d'une dépense refacturée, zéro sinon. Son total en bas de
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Amount not found on the receipt: enter it."
-msgstr "Montant introuvable sur le ticket : saisissez-le."
+msgstr "Montant introuvable sur le ticket : saisissez-le."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "An employee is offered the projects they manage, have a task on or are assigned to."
+msgstr "Le salarié se voit proposer les projets qu'il dirige, sur lesquels il a une tâche ou auxquels il est affecté."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "An older date is ignored: usually a warranty or loyalty card date."
-msgstr "Une date plus ancienne est ignorée : c'est en général celle d'une garantie ou d'une carte de fidélité."
+msgstr "Une date plus ancienne est ignorée : c'est en général celle d'une garantie ou d'une carte de fidélité."
 
 #. module: expense_scan
 #. odoo-javascript
@@ -552,7 +562,7 @@ msgstr "Budget utilisé"
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_merchant
 msgid "Business that issued the receipt. Correct it if the scan misread it: on submission, the merchant and the category are used to file the next receipts, for the whole team."
-msgstr "Commerce qui a émis le ticket. Corrigez-la si l'analyse l'a mal lue : à la soumission, l'enseigne et la catégorie servent à classer les tickets suivants, pour toute l'équipe."
+msgstr "Commerce qui a émis le ticket. Corrigez-la si l'analyse l'a mal lue : à la soumission, l'enseigne et la catégorie servent à classer les tickets suivants, pour toute l'équipe."
 
 #. module: expense_scan
 #. odoo-javascript
@@ -604,18 +614,23 @@ msgid ""
 msgstr ""
 "Catégorie affectée aux dépenses créées par un scan.\n"
 "\n"
-"Laissé vide, c'est Odoo qui choisit : il cherche la référence interne « EXP_GEN », et à défaut prend la première catégorie venue par ordre alphabétique. Renommer cette référence suffit donc à faire arriver les tickets sur n'importe quoi — d'où ce réglage, qui ne dépend d'aucune référence."
+"Laissé vide, c'est Odoo qui choisit : il cherche la référence interne « EXP_GEN », et à défaut prend la première catégorie venue par ordre alphabétique. Renommer cette référence suffit donc à faire arriver les tickets sur n'importe quoi — d'où ce réglage, qui ne dépend d'aucune référence."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Category not recognised on the receipt: choose it."
-msgstr "Catégorie non reconnue sur le ticket : choisissez-la."
+msgstr "Catégorie non reconnue sur le ticket : choisissez-la."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_category_reason
 msgid "Category recognised"
 msgstr "Catégorie reconnue"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Changes to what Odoo shows, for every company. Off unless you choose them"
+msgstr "Modifications de ce qu'Odoo affiche, pour toutes les sociétés. Désactivées tant que vous ne les choisissez pas"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__rule_type
@@ -630,7 +645,7 @@ msgstr "Contrôles avant export"
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy__apply_to_all
 msgid "Checks every expense, with or without a project: the company's good practice rules. Otherwise, only the projects of the customers or the projects listed below are concerned."
-msgstr "Contrôle chaque dépense, avec ou sans mission : les règles de bonne conduite de l'entreprise. Sinon, seules les missions des clients ou les missions désignées ci-dessous sont concernées."
+msgstr "Contrôle chaque dépense, avec ou sans mission : les règles de bonne conduite de l'entreprise. Sinon, seules les missions des clients ou les missions désignées ci-dessous sont concernées."
 
 #. module: expense_scan
 #. odoo-python
@@ -779,7 +794,7 @@ msgstr "Devise"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Currency %s activated in Odoo: the receipt is in this currency."
-msgstr "Devise %s activée dans Odoo : le ticket est dans cette devise."
+msgstr "Devise %s activée dans Odoo : le ticket est dans cette devise."
 
 #. module: expense_scan
 #. odoo-python
@@ -827,7 +842,7 @@ msgstr "Avertissement de fin de cycle"
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Daily reference rates for the active currencies: a foreign receipt is converted at the rate of its day."
-msgstr "Taux de référence quotidiens pour les devises actives : un ticket étranger est converti au taux de son jour."
+msgstr "Taux de référence quotidiens pour les devises actives : un ticket étranger est converti au taux de son jour."
 
 #. module: expense_scan
 #. odoo-python
@@ -846,19 +861,19 @@ msgstr "Date (%s sur le justificatif)"
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__scan_datetime
 msgid "Date and time printed on the receipt. An expense date has no time: this field orders several receipts of the same day."
-msgstr "Date et heure imprimées sur le justificatif. La date d'une dépense ne porte pas l'heure : ce champ permet d'ordonner plusieurs tickets d'une même journée."
+msgstr "Date et heure imprimées sur le justificatif. La date d'une dépense ne porte pas l'heure : ce champ permet d'ordonner plusieurs tickets d'une même journée."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Date hard to read on the receipt: check it."
-msgstr "Date peu lisible sur le ticket : vérifiez-la."
+msgstr "Date peu lisible sur le ticket : vérifiez-la."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Date not found on the receipt: enter it."
-msgstr "Date introuvable sur le ticket : saisissez-la."
+msgstr "Date introuvable sur le ticket : saisissez-la."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__date
@@ -883,7 +898,7 @@ msgid ""
 "Decide whether to re-invoice these expenses before approving them:\n"
 "%s"
 msgstr ""
-"Précisez si ces frais sont à refacturer avant de les approuver :\n"
+"Précisez si ces frais sont à refacturer avant de les approuver :\n"
 "%s"
 
 #. module: expense_scan
@@ -905,12 +920,12 @@ msgstr "Supprimer"
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
 msgid "Delete this expense and its receipt for good?"
-msgstr "Supprimer définitivement cette dépense et son justificatif ?"
+msgstr "Supprimer définitivement cette dépense et son justificatif ?"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Delivered examples: an Excel template to adapt, good practice rules to adjust or archive"
-msgstr "Exemples livrés : un modèle Excel à adapter, des règles de bonne conduite à ajuster ou archiver"
+msgstr "Exemples livrés : un modèle Excel à adapter, des règles de bonne conduite à ajuster ou archiver"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__description
@@ -922,7 +937,7 @@ msgstr "Description"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Description taken from the expense of the same trip: %s"
-msgstr "Description reprise de la dépense du même déplacement : %s"
+msgstr "Description reprise de la dépense du même déplacement : %s"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_policy_rule__meal_period__dinner
@@ -963,7 +978,7 @@ msgstr "Ordre d'affichage"
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_project_domain
 msgid "Domain of the \"Project\" field. It limits an employee to their own projects; a project manager or an administrator keeps the whole list."
-msgstr "Domaine appliqué au champ « Mission ». Il restreint le choix d'un salarié à ses propres missions ; un chef de projet ou un administrateur garde la liste entière."
+msgstr "Domaine appliqué au champ « Mission ». Il restreint le choix d'un salarié à ses propres missions ; un chef de projet ou un administrateur garde la liste entière."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
@@ -996,22 +1011,22 @@ msgstr "Salariés"
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_sheet_wizard__employee_ids
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
 msgid "Empty: every employee whose expenses you can see."
-msgstr "Vide : tous les salariés dont vous voyez les frais."
+msgstr "Vide : tous les salariés dont vous voyez les frais."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_sheet_wizard__project_ids
 msgid "Empty: every project of the selection."
-msgstr "Vide : toutes les missions de la sélection."
+msgstr "Vide : toutes les missions de la sélection."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_template__sheet_name
 msgid "Empty: the first sheet of the workbook."
-msgstr "Vide : la première feuille du classeur."
+msgstr "Vide : la première feuille du classeur."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy__company_id
 msgid "Empty: the rules apply to every company."
-msgstr "Vide : les règles valent pour toutes les sociétés."
+msgstr "Vide : les règles valent pour toutes les sociétés."
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__date_fin
@@ -1049,7 +1064,7 @@ msgstr "Activité d'un établissement (base Sirene)"
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_ecb_rates
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_ecb_rates
 msgid "Every day, the reference rates of the European Central Bank (free, no account) are added for the active currencies, over the last ninety days. Without them, Odoo Community converts a foreign receipt one for one. Only this public file is downloaded; nothing leaves the server."
-msgstr "Chaque jour, les taux de référence de la Banque centrale européenne (gratuits, sans compte) sont ajoutés pour les devises actives, sur les quatre-vingt-dix derniers jours. Sans eux, Odoo Community convertit un ticket étranger un pour un. Seul ce fichier public est téléchargé ; rien ne sort du serveur."
+msgstr "Chaque jour, les taux de référence de la Banque centrale européenne (gratuits, sans compte) sont ajoutés pour les devises actives, sur les quatre-vingt-dix derniers jours. Sans eux, Odoo Community convertit un ticket étranger un pour un. Seul ce fichier public est téléchargé ; rien ne sort du serveur."
 
 #. module: expense_scan
 #: model:ir.model,name:expense_scan.model_expense_scan_export_template
@@ -1097,7 +1112,7 @@ msgstr "Dépense"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Expense \"%(name)s\" carries a receipt tax of %(amount)s, but no tax with a usable rate. Select the matching tax on the expense (or on its category, for the next ones), or empty the \"Receipt tax\" field."
-msgstr "La dépense « %(name)s » porte une TVA de ticket de %(amount)s, mais aucune taxe à un taux exploitable. Sélectionnez la taxe correspondante sur la dépense — ou sur sa catégorie, pour les suivantes — ou videz le champ « TVA du ticket »."
+msgstr "La dépense « %(name)s » porte une TVA de ticket de %(amount)s, mais aucune taxe à un taux exploitable. Sélectionnez la taxe correspondante sur la dépense — ou sur sa catégorie, pour les suivantes — ou videz le champ « TVA du ticket »."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__expense_count
@@ -1114,27 +1129,27 @@ msgstr "Règles de dépenses"
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hint_category
 msgid "Expense Scan Hint Category"
-msgstr "Indice : catégorie"
+msgstr "Indice : catégorie"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hint_date
 msgid "Expense Scan Hint Date"
-msgstr "Indice : date"
+msgstr "Indice : date"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hint_reinvoice
 msgid "Expense Scan Hint Reinvoice"
-msgstr "Indice : refacturation"
+msgstr "Indice : refacturation"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hint_tax
 msgid "Expense Scan Hint Tax"
-msgstr "Indice : taxe"
+msgstr "Indice : taxe"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hint_total
 msgid "Expense Scan Hint Total"
-msgstr "Indice : total"
+msgstr "Indice : total"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hints
@@ -1203,9 +1218,9 @@ msgid ""
 "\n"
 "No need to tick it for mileage: a category counted in kilometres or miles is handled this way automatically."
 msgstr ""
-"Catégorie de dépense sans TVA récupérable : indemnités forfaitaires, barèmes Urssaf, mais aussi hébergement ou transport de personnes, dont la TVA n'est pas déductible. La saisie d'une dépense de cette catégorie masque les champs de TVA et n'en reporte aucune.\n"
+"Catégorie de dépense sans TVA récupérable : indemnités forfaitaires, barèmes Urssaf, mais aussi hébergement ou transport de personnes, dont la TVA n'est pas déductible. La saisie d'une dépense de cette catégorie masque les champs de TVA et n'en reporte aucune.\n"
 "\n"
-"Inutile de le cocher pour le kilométrage : une catégorie comptée en kilomètres ou en miles est traitée ainsi d'office."
+"Inutile de le cocher pour le kilométrage : une catégorie comptée en kilomètres ou en miles est traitée ainsi d'office."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_currency_id
@@ -1277,7 +1292,7 @@ msgstr "Fabrication des fiches de frais"
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/xml/action_menus_patch.xml:0
 msgid "Expense sheet: summary, Excel export, receipts"
-msgstr "Fiche de frais : récapitulatif, export Excel, justificatifs"
+msgstr "Fiche de frais : récapitulatif, export Excel, justificatifs"
 
 #. module: expense_scan
 #. odoo-python
@@ -1378,7 +1393,7 @@ msgstr "Supplément"
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_todo_pending
 msgid "False as soon as every point listed in \"Fields to check\" is resolved: the review banner relies on it to go away without waiting for a new scan."
-msgstr "Faux dès que chaque point listé dans « Champs à vérifier » est résolu — le bandeau de relecture s'appuie dessus pour disparaître sans attendre un nouveau scan."
+msgstr "Faux dès que chaque point listé dans « Champs à vérifier » est résolu — le bandeau de relecture s'appuie dessus pour disparaître sans attendre un nouveau scan."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_manual_fields
@@ -1405,7 +1420,7 @@ msgstr "Fichiers (PDF compris)"
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_apply_tax
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_apply_tax
 msgid "Fills the \"Receipt tax\" field with the amount read on the receipt. That amount then takes precedence over the one the rate would give, down to the journal entry, so that a receipt with several rates keeps its exact tax. The rate stays the one of the expense category."
-msgstr "Renseigne le champ « TVA du ticket » avec le montant lu sur le justificatif. Ce montant prime alors sur celui que produirait le taux, jusque dans l'écriture comptable — c'est ce qui permet à un ticket mêlant plusieurs taux de porter sa TVA exacte. Le taux, lui, reste celui de la catégorie de dépense."
+msgstr "Renseigne le champ « TVA du ticket » avec le montant lu sur le justificatif. Ce montant prime alors sur celui que produirait le taux, jusque dans l'écriture comptable — c'est ce qui permet à un ticket mêlant plusieurs taux de porter sa TVA exacte. Le taux, lui, reste celui de la catégorie de dépense."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_policy_seen
@@ -1471,7 +1486,7 @@ msgstr "TVA étrangère (%s), non déduite"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Foreign tax (%s): it cannot be deducted on your tax return, leave it at zero."
-msgstr "TVA étrangère (%s) : elle ne se déduit pas en France, laissez-la à zéro."
+msgstr "TVA étrangère (%s) : elle ne se déduit pas en France, laissez-la à zéro."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -1561,7 +1576,7 @@ msgstr "ID"
 #. odoo-python
 #: code:addons/expense_scan/models/res_config_settings.py:0
 msgid "Image processing: %s"
-msgstr "Traitement d'image : %s"
+msgstr "Traitement d'image : %s"
 
 #. module: expense_scan
 #. odoo-python
@@ -1571,9 +1586,9 @@ msgid ""
 "\n"
 "Choose an expense category whose rate covers this tax, or empty the \"Receipt tax\" field if this expense gives no right to deduction."
 msgstr ""
-"TVA du ticket impossible : %(entered)s dépasse le maximum de %(ceiling)s, qui correspond au taux de %(rate)s %% appliqué à la totalité des %(total)s du ticket.\n"
+"TVA du ticket impossible : %(entered)s dépasse le maximum de %(ceiling)s, qui correspond au taux de %(rate)s %% appliqué à la totalité des %(total)s du ticket.\n"
 "\n"
-"Choisissez une catégorie de dépense dont le taux couvre cette TVA, ou videz le champ « TVA du ticket » si cette dépense n'ouvre pas droit à déduction."
+"Choisissez une catégorie de dépense dont le taux couvre cette TVA, ou videz le champ « TVA du ticket » si cette dépense n'ouvre pas droit à déduction."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
@@ -1613,11 +1628,6 @@ msgid "Keep the text read for (days)"
 msgstr "Conservation du texte lu (jours)"
 
 #. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_previous_month
-msgid "Last Month"
-msgstr "Mois précédent"
-
-#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__write_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__write_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__write_uid
@@ -1646,6 +1656,12 @@ msgstr "Dernière ligne de dépense"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__amount
 msgid "Limit (tax incl.)"
 msgstr "Plafond TTC"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_limit_projects
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_limit_projects
+msgid "Limit the projects to the employee's own"
+msgstr "Limiter les projets à ceux du salarié"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -1724,21 +1740,21 @@ msgid ""
 "               suspend it."
 msgstr ""
 "Plafonds de repas et d'hôtel, dépenses à écarter, exigences d'un\n"
-"               client : chaque dépense concernée affiche une alerte, et le\n"
-"               filtre « Hors règles » les rassemble. Archivez un ensemble pour\n"
+"               client : chaque dépense concernée affiche une alerte, et le\n"
+"               filtre « Hors règles » les rassemble. Archivez un ensemble pour\n"
 "               le suspendre."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_policy.py:0
 msgid "Meal of %(value)s without a readable time: above \"%(rule)s\" if it is that meal. Say which meal in the description."
-msgstr "Repas de %(value)s sans heure lisible : au-delà de « %(rule)s » s'il s'agit de ce repas. Précisez-le dans la description."
+msgstr "Repas de %(value)s sans heure lisible : au-delà de « %(rule)s » s'il s'agit de ce repas. Précisez-le dans la description."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_policy.py:0
 msgid "Meal of %(value)s: above every limit (%(limit)s at most)."
-msgstr "Repas de %(value)s : au-delà de tous les plafonds (%(limit)s au plus)."
+msgstr "Repas de %(value)s : au-delà de tous les plafonds (%(limit)s au plus)."
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_policy_rule__family__meal
@@ -1821,7 +1837,7 @@ msgstr "Confirmation requise"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Neither amount nor date found: check that this image is a receipt, or enter the expense by hand."
-msgstr "Ni montant ni date trouvés : vérifiez que cette image est bien un ticket, ou saisissez la dépense à la main."
+msgstr "Ni montant ni date trouvés : vérifiez que cette image est bien un ticket, ou saisissez la dépense à la main."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
@@ -1854,13 +1870,13 @@ msgstr "Non"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "No exchange rate for %s in Odoo: the amount counts one for one in the company currency until a rate is entered."
-msgstr "Aucun taux de change pour %s dans Odoo : le montant compte un pour un dans la devise de la société tant qu'aucun taux n'est saisi."
+msgstr "Aucun taux de change pour %s dans Odoo : le montant compte un pour un dans la devise de la société tant qu'aucun taux n'est saisi."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_policy.py:0
 msgid "No exchange rate for %s: the amount limits are not checked."
-msgstr "Aucun taux de change pour %s : les plafonds de montant ne sont pas contrôlés."
+msgstr "Aucun taux de change pour %s : les plafonds de montant ne sont pas contrôlés."
 
 #. module: expense_scan
 #: model_terms:ir.actions.act_window,help:expense_scan.action_expense_scan_employee_expenses
@@ -1883,13 +1899,13 @@ msgstr "Aucun journal d'opérations diverses trouvé pour %s : créez-en un d'a
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "No project found for %s: open the expense and choose one."
-msgstr "Aucune mission trouvée pour %s : ouvrez la dépense et choisissez-en une."
+msgstr "Aucune mission trouvée pour %s : ouvrez la dépense et choisissez-en une."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "No project found for this date: say whether this expense is re-invoiced."
-msgstr "Aucune mission trouvée pour cette date : indiquez si ce frais est à refacturer."
+msgstr "Aucune mission trouvée pour cette date : indiquez si ce frais est à refacturer."
 
 #. module: expense_scan
 #. odoo-python
@@ -1913,7 +1929,7 @@ msgstr "Aucun justificatif à retoucher."
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "No receipt to scan: attach one first."
-msgstr "Aucun justificatif à analyser : joignez-en un d'abord."
+msgstr "Aucun justificatif à analyser : joignez-en un d'abord."
 
 #. module: expense_scan
 #. odoo-python
@@ -1925,7 +1941,7 @@ msgstr "Sans TVA récupérable"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "No tax read on the receipt: enter it if it is printed."
-msgstr "Aucune TVA lue sur le ticket : saisissez-la si elle y figure."
+msgstr "Aucune TVA lue sur le ticket : saisissez-la si elle y figure."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
@@ -1981,7 +1997,7 @@ msgstr "Rien à corriger : la TVA récupérable est déjà celle demandée."
 #. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "Nothing to produce: none of these expenses has a receipt."
-msgstr "Rien à produire : aucune de ces dépenses n'a de justificatif."
+msgstr "Rien à produire : aucune de ces dépenses n'a de justificatif."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_vat_move_count
@@ -2033,7 +2049,12 @@ msgid ""
 msgstr ""
 "Odoo n'affiche le justificatif à côté du formulaire qu'à partir de 1400 px de large. Cette option abaisse le seuil aux écrans d'ordinateur portable, aux fenêtres en demi-écran et aux tablettes, quelle que soit leur orientation.\n"
 "\n"
-"Le seuil porte sur la largeur seule : une fenêtre plus haute que large reste assez large pour deux colonnes. En deçà, l'aperçu passe en bandeau au-dessus des champs."
+"Le seuil porte sur la largeur seule : une fenêtre plus haute que large reste assez large pour deux colonnes. En deçà, l'aperçu passe en bandeau au-dessus des champs."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Odoo's menus and filters"
+msgstr "Menus et filtres d'Odoo"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__words
@@ -2048,13 +2069,13 @@ msgstr "Un mot par ligne"
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.product_product_expense_form_view_scan
 msgid "One word per line: hotel, nocleg, Ibis..."
-msgstr "Un mot par ligne : hôtel, nocleg, Ibis…"
+msgstr "Un mot par ligne : hôtel, nocleg, Ibis…"
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_spread.py:0
 msgid "Only %(found)s free day(s) found from %(date)s for %(count)s: lower the quantity or move the date."
-msgstr "Seulement %(found)s jour(s) libre(s) trouvé(s) à partir du %(date)s pour %(count)s : diminuez la quantité ou déplacez la date."
+msgstr "Seulement %(found)s jour(s) libre(s) trouvé(s) à partir du %(date)s pour %(count)s : diminuez la quantité ou déplacez la date."
 
 #. module: expense_scan
 #. odoo-python
@@ -2070,12 +2091,9 @@ msgstr "Seuls les comptables peuvent rembourser les salariés."
 
 #. module: expense_scan
 #. odoo-python
-#: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "Only accounting managers can correct the VAT of an expense."
-msgstr "Seuls les responsables comptables peuvent corriger la TVA d'une dépense."
-
 #. module: expense_scan
 #. odoo-python
+
 #: code:addons/expense_scan/models/hr_expense_spread.py:0
 msgid "Only an expense of a flat-rate category can be spread over days."
 msgstr "Seule une dépense d'une catégorie au forfait peut être répartie sur des jours."
@@ -2087,7 +2105,7 @@ msgid ""
 "Only approved or posted expenses can be paid:\n"
 "%s"
 msgstr ""
-"Seules les dépenses approuvées ou comptabilisées peuvent être payées :\n"
+"Seules les dépenses approuvées ou comptabilisées peuvent être payées :\n"
 "%s"
 
 #. module: expense_scan
@@ -2097,21 +2115,18 @@ msgid "Open full screen"
 msgstr "Ouvrir en plein écran"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_month_default
+msgid "Open the expense lists on the current month"
+msgstr "Ouvrir les listes de frais sur le mois en cours"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__scan_original_attachment_id
 msgid "Original photo"
 msgstr "Photo d'origine"
 
 #. module: expense_scan
-#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_vat_wizard__mode__amount
-msgid "Other amount"
-msgstr "Autre montant"
-
 #. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_custom_period
-msgid "Other Period..."
-msgstr "Autre période…"
 
-#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__custom
 msgid "Other period"
 msgstr "Autre période"
@@ -2218,7 +2233,7 @@ msgstr "Mois précédent"
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_employee__expense_mileage_rate
 msgid "Price per kilometre applied to this employee's distance expenses. When empty, the category cost applies. No decimal is lost: official scales often have three, an in-house rate may have more."
-msgstr "Prix au kilomètre appliqué aux frais de distance de ce salarié. Laissé vide, c'est le coût de la catégorie qui s'applique. Aucune décimale n'est perdue : le barème fiscal en compte trois, un tarif maison peut en compter davantage."
+msgstr "Prix au kilomètre appliqué aux frais de distance de ce salarié. Laissé vide, c'est le coût de la catégorie qui s'applique. Aucune décimale n'est perdue : le barème fiscal en compte trois, un tarif maison peut en compter davantage."
 
 #. module: expense_scan
 #: model:ir.model,name:expense_scan.model_product_template
@@ -2400,19 +2415,19 @@ msgstr "Justificatif supprimé"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Receipt in %s: activate this currency in Odoo, otherwise the amount counts in the company currency."
-msgstr "Ticket en %s : cette devise est à activer dans Odoo, sans quoi le montant compte en euros."
+msgstr "Ticket en %s : cette devise est à activer dans Odoo, sans quoi le montant compte en euros."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_policy.py:0
 msgid "Receipt in a currency not active in Odoo: the amount limits are not checked."
-msgstr "Ticket dans une devise non active dans Odoo : les plafonds de montant ne sont pas contrôlés."
+msgstr "Ticket dans une devise non active dans Odoo : les plafonds de montant ne sont pas contrôlés."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_multi.py:0
 msgid "Receipt moved here from %s: its total or date differ from the receipt of that expense."
-msgstr "Ticket déplacé ici depuis %s : son total ou sa date diffèrent du ticket de cette dépense."
+msgstr "Ticket déplacé ici depuis %s : son total ou sa date diffèrent du ticket de cette dépense."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -2439,27 +2454,27 @@ msgstr "Analyse du ticket"
 #. module: expense_scan
 #: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_purge_texts_ir_actions_server
 msgid "Receipt scan: erase the text read on old expenses"
-msgstr "Scan de tickets : effacer le texte lu des anciennes dépenses"
+msgstr "Scan de tickets : effacer le texte lu des anciennes dépenses"
 
 #. module: expense_scan
 #: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_ecb_rates_ir_actions_server
 msgid "Receipt scan: exchange rates of the European Central Bank"
-msgstr "Scan de tickets : taux de change de la Banque centrale européenne"
+msgstr "Scan de tickets : taux de change de la Banque centrale européenne"
 
 #. module: expense_scan
 #: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_learn_words_ir_actions_server
 msgid "Receipt scan: learn the words of each category"
-msgstr "Scan de tickets : apprendre les mots de chaque catégorie"
+msgstr "Scan de tickets : apprendre les mots de chaque catégorie"
 
 #. module: expense_scan
 #: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_pending_ir_actions_server
 msgid "Receipt scan: pick up pending scans"
-msgstr "Scan de tickets : reprendre les analyses en attente"
+msgstr "Scan de tickets : reprendre les analyses en attente"
 
 #. module: expense_scan
 #: model:ir.actions.server,name:expense_scan.ir_cron_expense_scan_order_lines_ir_actions_server
 msgid "Receipt scan: update the expense line of the sales orders"
-msgstr "Scan de tickets : mettre à jour la ligne de frais des commandes"
+msgstr "Scan de tickets : mettre à jour la ligne de frais des commandes"
 
 #. module: expense_scan
 #. odoo-javascript
@@ -2470,13 +2485,13 @@ msgstr "Ticket analysé."
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
 msgid "Receipt scanned. Check these fields before submitting:"
-msgstr "Ticket analysé. Vérifiez ces champs avant de soumettre :"
+msgstr "Ticket analysé. Vérifiez ces champs avant de soumettre :"
 
 #. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/expense_scan_upload.js:0
 msgid "Receipt scanned. To check: %s"
-msgstr "Ticket analysé. À vérifier : %s"
+msgstr "Ticket analysé. À vérifier : %s"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -2514,13 +2529,7 @@ msgstr "Mots du ticket"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Receipt?"
-msgstr "Ticket ?"
-
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/expense_sheet.py:0
-msgid "Receipts"
-msgstr "Justificatifs"
+msgstr "Ticket ?"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__receipts
@@ -2567,7 +2576,7 @@ msgstr "TVA récupérable par taux"
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_template__reinvoice_only
 msgid "Refuses the export if any expense is not marked \"Re-invoice: Yes\"."
-msgstr "Refuse l'export si l'une des dépenses n'est pas marquée « À refacturer : Oui »."
+msgstr "Refuse l'export si l'une des dépenses n'est pas marquée « À refacturer : Oui »."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_template__single_project
@@ -2585,9 +2594,19 @@ msgid "Reimbursed"
 msgstr "Remboursés"
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Removes the \"My Team\", \"Company\" and \"Employee\" shortcuts, and the months listed under the expense date."
+msgstr "Retire les raccourcis « Mon équipe », « Société » et « Employé », et les mois listés sous la date de la dépense."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_tidy_menu
+msgid "Rename the \"My Expenses\" menu"
+msgstr "Renommer le menu « Mes dépenses »"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_export_template_view_form
 msgid "Replace the current workbook with a blank one, built from the mappings?"
-msgstr "Remplacer le classeur actuel par un classeur vierge, construit d'après les correspondances ?"
+msgstr "Remplacer le classeur actuel par un classeur vierge, construit d'après les correspondances ?"
 
 #. module: expense_scan
 #. odoo-javascript
@@ -2605,7 +2624,7 @@ msgstr "Remise en brouillon"
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/retouch_dialog.xml:0
 msgid "Reset: uploaded image, untouched"
-msgstr "Réinitialiser : image téléversée, sans retouche"
+msgstr "Réinitialiser : image téléversée, sans retouche"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__result_file
@@ -2678,7 +2697,7 @@ msgstr "Enregistrement"
 #. module: expense_scan
 #: model_terms:ir.actions.act_window,help:expense_scan.action_expense_scan_employee_expenses
 msgid "Scan a receipt or create an expense: it will be in their name."
-msgstr "Scannez un ticket ou créez une dépense : elle sera à son nom."
+msgstr "Scannez un ticket ou créez une dépense : elle sera à son nom."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
@@ -2766,6 +2785,11 @@ msgid "Sheet"
 msgstr "Feuille"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_tidy_filters
+msgid "Simplify the expense filters"
+msgstr "Simplifier les filtres des frais"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_one_payment_method
 msgid "Single payment method"
 msgstr "Mode de paiement unique"
@@ -2800,10 +2824,10 @@ msgid ""
 "               kept for the expenses, then which column receives which value;\n"
 "               the old data of the workbook is replaced at each export."
 msgstr ""
-"Partez du « modèle de base » livré avec le module : téléchargez\n"
+"Partez du « modèle de base » livré avec le module : téléchargez\n"
 "               son classeur, adaptez-le, redéposez-le. Indiquez les lignes\n"
 "               réservées aux dépenses, puis quelle colonne reçoit quelle\n"
-"               valeur ; les anciennes données du classeur sont remplacées à\n"
+"               valeur ; les anciennes données du classeur sont remplacées à\n"
 "               chaque export."
 
 #. module: expense_scan
@@ -2909,17 +2933,17 @@ msgid ""
 "\n"
 "The rate only does two things: carry the tax tags of the entry, and cap this amount. A tax higher than the rate applied to the receipt total is necessarily an error, and choosing a lower rate trims the amount accordingly."
 msgstr ""
-"Montant de TVA imprimé sur le justificatif. C'est lui qui fait foi : la TVA de la dépense et celle de l'écriture comptable prennent cette valeur, quel que soit le taux affiché à côté. C'est ce qui permet à un ticket mêlant 5,5 %, 10 % et 20 % de produire exactement sa TVA.\n"
+"Montant de TVA imprimé sur le justificatif. C'est lui qui fait foi : la TVA de la dépense et celle de l'écriture comptable prennent cette valeur, quel que soit le taux affiché à côté. C'est ce qui permet à un ticket mêlant 5,5 %, 10 % et 20 % de produire exactement sa TVA.\n"
 "\n"
-"Vide : la TVA suit le taux, comme dans Odoo standard. Un justificatif sans TVA déductible (ticket de carte bancaire, TVA illisible) n'a pas de taxe sélectionnée.\n"
+"Vide : la TVA suit le taux, comme dans Odoo standard. Un justificatif sans TVA déductible (ticket de carte bancaire, TVA illisible) n'a pas de taxe sélectionnée.\n"
 "\n"
-"Le taux ne sert qu'à deux choses : porter les tags fiscaux de l'écriture, et plafonner ce montant — une TVA supérieure au taux appliqué au total du ticket est forcément une erreur, et choisir un taux plus bas rabote le montant d'autant."
+"Le taux ne sert qu'à deux choses : porter les tags fiscaux de l'écriture, et plafonner ce montant — une TVA supérieure au taux appliqué au total du ticket est forcément une erreur, et choisir un taux plus bas rabote le montant d'autant."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Tax of %s read: enter the total to carry it."
-msgstr "TVA de %s lue : saisissez le total pour la reporter."
+msgstr "TVA de %s lue : saisissez le total pour la reporter."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
@@ -2946,19 +2970,19 @@ msgstr "Modèle"
 #. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "Template \"%(template)s\" expects a single project; the selection has %(count)s: %(names)s."
-msgstr "Le modèle « %(template)s » attend une seule mission ; la sélection en compte %(count)s : %(names)s."
+msgstr "Le modèle « %(template)s » attend une seule mission ; la sélection en compte %(count)s : %(names)s."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "Template \"%(template)s\" only accepts re-invoiced expenses. These are not: %(names)s."
-msgstr "Le modèle « %(template)s » n'accepte que des frais refacturables. Ne le sont pas : %(names)s."
+msgstr "Le modèle « %(template)s » n'accepte que des frais refacturables. Ne le sont pas : %(names)s."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "Template \"%s\" has no Excel file."
-msgstr "Le modèle « %s » n'a pas de fichier Excel."
+msgstr "Le modèle « %s » n'a pas de fichier Excel."
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__res_company__expense_scan_engine__tesseract
@@ -2975,7 +2999,7 @@ msgstr "Langue Tesseract"
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_tesseract_lang
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_tesseract_lang
 msgid "Tesseract language codes, joined with \"+\" (\"eng+fra\"). Each language needs its tesseract-ocr package on the server."
-msgstr "Codes de langue Tesseract, joints par « + » (« eng+fra »). Chaque langue demande son paquet tesseract-ocr sur le serveur."
+msgstr "Codes de langue Tesseract, joints par « + » (« eng+fra »). Chaque langue demande son paquet tesseract-ocr sur le serveur."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -2990,19 +3014,19 @@ msgstr "Texte reconnu"
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_has_tasks
 msgid "The \"Task\" field only shows when there is a choice to make."
-msgstr "Le champ « Tâche » n'apparaît que s'il y a un choix à faire."
+msgstr "Le champ « Tâche » n'apparaît que s'il y a un choix à faire."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "The PDF could not be converted. Install \"pdf2image\" and the \"poppler-utils\" system package to retouch PDFs."
-msgstr "Conversion du PDF impossible. Installez « pdf2image » et le paquet système « poppler-utils » pour retoucher des PDF."
+msgstr "Conversion du PDF impossible. Installez « pdf2image » et le paquet système « poppler-utils » pour retoucher des PDF."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "The PDF could not be converted. Install \"pdf2image\" and the \"poppler-utils\" system package to scan PDFs."
-msgstr "Conversion du PDF impossible. Installez « pdf2image » et le paquet système « poppler-utils » pour scanner des PDF."
+msgstr "Conversion du PDF impossible. Installez « pdf2image » et le paquet système « poppler-utils » pour scanner des PDF."
 
 #. module: expense_scan
 #. odoo-python
@@ -3025,7 +3049,7 @@ msgstr "La retouche automatique a échoué."
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_keep_name
 msgid "The description comes from the email subject: the receipt scan does not replace it with the merchant name."
-msgstr "La description vient de l'objet du courriel : l'analyse du ticket ne la remplace pas par l'enseigne."
+msgstr "La description vient de l'objet du courriel : l'analyse du ticket ne la remplace pas par l'enseigne."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__family
@@ -3036,7 +3060,7 @@ msgstr "Les catégories de dépenses de cette famille, telles que le module les 
 #. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "The expense rows of template \"%s\" are inconsistent."
-msgstr "Les lignes de dépense du modèle « %s » sont incohérentes."
+msgstr "Les lignes de dépense du modèle « %s » sont incohérentes."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -3045,12 +3069,12 @@ msgid ""
 "                            list: select the expenses, then \"Expense Sheet\"."
 msgstr ""
 "La fiche de frais s'édite depuis la liste des\n"
-"                            dépenses : sélectionnez-les, puis « Fiche de frais »."
+"                            dépenses : sélectionnez-les, puis « Fiche de frais »."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_template__last_row
 msgid "The exported table has exactly one row per expense: extra rows are deleted, missing ones added, and the totals below follow."
-msgstr "Le tableau exporté compte exactement une ligne par dépense : les lignes en trop sont supprimées, celles qui manquent ajoutées, et les totaux placés dessous suivent."
+msgstr "Le tableau exporté compte exactement une ligne par dépense : les lignes en trop sont supprimées, celles qui manquent ajoutées, et les totaux placés dessous suivent."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__extra_cities
@@ -3061,13 +3085,24 @@ msgstr "Le supplément s'ajoute au plafond quand le justificatif cite l'une de c
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/retouch_dialog.js:0
 msgid "The form cannot be saved as it is: correct it, then try again."
-msgstr "La fiche ne peut pas être enregistrée en l'état : corrigez-la, puis réessayez."
+msgstr "La fiche ne peut pas être enregistrée en l'état : corrigez-la, puis réessayez."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "The group that holds the expense lists is called \"Expense follow-up\"."
+msgstr "Le groupe qui contient les listes de frais s'appelle « Suivi des frais »."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "The invoice %(invoice)s carries this expense, but it could not be posted: %(error)s"
-msgstr "La facture %(invoice)s porte cette dépense, mais elle n'a pas pu être comptabilisée : %(error)s"
+msgstr "La facture %(invoice)s porte cette dépense, mais elle n'a pas pu être comptabilisée : %(error)s"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "The invoice of an expense is set by the invoicing, not by hand."
+msgstr "La facture d'un frais est posée par la facturation, pas à la main."
 
 #. module: expense_scan
 #. odoo-python
@@ -3084,12 +3119,12 @@ msgstr "L'écriture comptable de %s n'est pas validée."
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night
 msgid "The limit is for one night: the amount is divided by the number of nights."
-msgstr "Le plafond vaut pour une nuit : le montant est divisé par le nombre de nuitées."
+msgstr "Le plafond vaut pour une nuit : le montant est divisé par le nombre de nuitées."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_merchant_read
 msgid "The merchant as the OCR read it, before any correction. A logo reads badly, but the same way on every receipt: this is what lets it be recognised the next time."
-msgstr "L'enseigne telle que l'OCR l'a lue, avant toute correction. Un logo se lit mal, mais de la même façon à chaque ticket : c'est ce qui permet de le reconnaître la fois suivante."
+msgstr "L'enseigne telle que l'OCR l'a lue, avant toute correction. Un logo se lit mal, mais de la même façon à chaque ticket : c'est ce qui permet de le reconnaître la fois suivante."
 
 #. module: expense_scan
 #. odoo-python
@@ -3107,13 +3142,13 @@ msgstr "La refacturation de %s ne peut plus changer."
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/expense_scan_upload.js:0
 msgid "The receipt could not be scanned: %s"
-msgstr "Le ticket n'a pas pu être analysé : %s"
+msgstr "Le ticket n'a pas pu être analysé : %s"
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "The receipt is dated %s: check the date entered."
-msgstr "Le justificatif est daté du %s : vérifiez la date saisie."
+msgstr "Le justificatif est daté du %s : vérifiez la date saisie."
 
 #. module: expense_scan
 #. odoo-python
@@ -3130,13 +3165,13 @@ msgstr "Le justificatif est trop volumineux (%(size)d Mo, plafond %(max)d Mo)."
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_mixed_rates
 msgid "The receipt prints several tax rates: none of them holds for the whole expense."
-msgstr "Le ticket imprime plusieurs taux de TVA : aucun ne vaut pour la dépense entière."
+msgstr "Le ticket imprime plusieurs taux de TVA : aucun ne vaut pour la dépense entière."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "The receipt says %s: check the amount entered."
-msgstr "Le justificatif indique %s : vérifiez le montant saisi."
+msgstr "Le justificatif indique %s : vérifiez le montant saisi."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
@@ -3147,13 +3182,13 @@ msgstr "L'analyse du ticket a échoué, saisissez la dépense manuellement."
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/scan_progress.js:0
 msgid "The receipt scan failed: start it again from the form."
-msgstr "L'analyse du ticket a échoué : relancez-la depuis la fiche."
+msgstr "L'analyse du ticket a échoué : relancez-la depuis la fiche."
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "The receipt tax (%(amount)s) cannot yet be carried on an expense paid by the company. Set the expense back to \"Employee (to reimburse)\", or empty the \"Receipt tax\" field to let Odoo compute it from the rate."
-msgstr "La TVA du ticket (%(amount)s) ne peut pas encore être reportée sur une dépense payée par la société. Repassez la dépense en « Employé (à rembourser) », ou videz le champ « TVA du ticket » pour laisser Odoo la calculer depuis le taux."
+msgstr "La TVA du ticket (%(amount)s) ne peut pas encore être reportée sur une dépense payée par la société. Repassez la dépense en « Employé (à rembourser) », ou videz le champ « TVA du ticket » pour laisser Odoo la calculer depuis le taux."
 
 #. module: expense_scan
 #. odoo-python
@@ -3197,7 +3232,7 @@ msgstr "L'analyse de ce justificatif n'a pas abouti. Saisissez la dépense à la
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/reinvoice_toggle.xml:0
 msgid "The selected expenses do not all have the same answer. Which one should they all take?"
-msgstr "Les dépenses sélectionnées n'ont pas toutes la même réponse. Laquelle doivent-elles toutes prendre ?"
+msgstr "Les dépenses sélectionnées n'ont pas toutes la même réponse. Laquelle doivent-elles toutes prendre ?"
 
 #. module: expense_scan
 #. odoo-python
@@ -3220,13 +3255,13 @@ msgstr "La TVA imprimée sur le ticket passe dans l'écriture comptable, plutôt
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "The tax read does not match the rate: enter the amount printed on the receipt."
-msgstr "La TVA lue ne colle pas avec le taux : saisissez le montant imprimé sur le ticket."
+msgstr "La TVA lue ne colle pas avec le taux : saisissez le montant imprimé sur le ticket."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_text_retention_days
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_text_retention_days
 msgid "The text read on a receipt (names, addresses, last digits of a card) is only erased after this delay. The default, 10 years, is the retention period of accounting records, receipts included, in France (Commercial Code, art. L123-22) and in several other countries; check the rule that applies to you. The receipt image itself is never erased by the module. Zero: never erase the text either."
-msgstr "Le texte lu sur un justificatif — noms, adresses, fin de numéro de carte — n'est effacé qu'après ce délai. Par défaut, 10 ans : le Code de commerce (art. L123-22) impose cette durée de conservation des pièces comptables, tickets compris, à compter de la clôture de l'exercice. L'image du justificatif, elle, n'est jamais effacée par le module. Zéro : ne jamais effacer le texte non plus."
+msgstr "Le texte lu sur un justificatif — noms, adresses, fin de numéro de carte — n'est effacé qu'après ce délai. Par défaut, 10 ans : le Code de commerce (art. L123-22) impose cette durée de conservation des pièces comptables, tickets compris, à compter de la clôture de l'exercice. L'image du justificatif, elle, n'est jamais effacée par le module. Zéro : ne jamais effacer le texte non plus."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__name
@@ -3237,22 +3272,22 @@ msgstr "Le texte rappelé au salarié en cas de dépassement."
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_keep_original
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_keep_original
 msgid "The untouched photo stays attached to the expense as the receipt; the cropped image is used for display."
-msgstr "La photo non retouchée reste attachée à la dépense comme justificatif ; l'image recadrée sert à l'affichage."
+msgstr "La photo non retouchée reste attachée à la dépense comme justificatif ; l'image recadrée sert à l'affichage."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "The untouched photo stays reachable from the expense; the cropped image is shown."
-msgstr "La photo intacte reste accessible depuis la dépense ; l'image recadrée est affichée."
+msgstr "La photo intacte reste accessible depuis la dépense ; l'image recadrée est affichée."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_export_template__file
 msgid "The workbook as it is filled in by hand, data included: the expense lines are emptied before being filled."
-msgstr "Le classeur tel qu'il est rempli à la main, données comprises : les lignes de dépenses sont vidées avant d'être remplies."
+msgstr "Le classeur tel qu'il est rempli à la main, données comprises : les lignes de dépenses sont vidées avant d'être remplies."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Then the text read is erased; the receipt image stays. 0: never."
-msgstr "Ensuite le texte lu est effacé ; l'image du ticket reste. 0 : jamais."
+msgstr "Ensuite le texte lu est effacé ; l'image du ticket reste. 0  : jamais."
 
 #. module: expense_scan
 #. odoo-python
@@ -3271,15 +3306,11 @@ msgstr ""
 "%(names)s"
 
 #. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_current_month
-msgid "This Month"
-msgstr "Mois en cours"
 
-#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "This PDF has several pages: it stays the receipt as it is. Retouch applies to photos and single-page PDFs."
-msgstr "Ce PDF a plusieurs pages : il reste le justificatif tel quel. La retouche s'applique aux photos et aux PDF d'une seule page."
+msgstr "Ce PDF a plusieurs pages : il reste le justificatif tel quel. La retouche s'applique aux photos et aux PDF d'une seule page."
 
 #. module: expense_scan
 #. odoo-javascript
@@ -3291,7 +3322,7 @@ msgstr "Cette pièce ne peut pas être ouverte comme une image."
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "This category has no tax: choose the rate so that the tax read is deducted."
-msgstr "Cette catégorie n'a pas de taxe : choisissez le taux pour que la TVA lue soit déduite."
+msgstr "Cette catégorie n'a pas de taxe : choisissez le taux pour que la TVA lue soit déduite."
 
 #. module: expense_scan
 #. odoo-python
@@ -3344,7 +3375,7 @@ msgstr "À déterminer"
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/reinvoice_toggle.js:0
 msgid "To decide: click to change"
-msgstr "À déterminer : cliquez pour changer"
+msgstr "À déterminer : cliquez pour changer"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_scan
@@ -3381,24 +3412,24 @@ msgstr "Train / avion"
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_no_vat
 msgid "True for an expense without recoverable VAT: mileage, or a category marked \"Flat rate without VAT\" (official scales, allowances). The form then hides its VAT fields."
-msgstr "Vrai pour une dépense sans TVA récupérable : kilométrage, ou catégorie cochée « Forfait sans TVA » (barèmes Urssaf, indemnités). Le formulaire en masque alors les champs de TVA."
+msgstr "Vrai pour une dépense sans TVA récupérable : kilométrage, ou catégorie cochée « Forfait sans TVA » (barèmes Urssaf, indemnités). Le formulaire en masque alors les champs de TVA."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_nights_required
 #: model:ir.model.fields,help:expense_scan.field_product_product__expense_scan_nights_required
 #: model:ir.model.fields,help:expense_scan.field_product_template__expense_scan_nights_required
 msgid "True for hotel categories, recognised by their name or reference: their expenses give the number of nights."
-msgstr "Vrai pour les catégories d'hôtel, reconnues à leur nom ou à leur référence : leurs dépenses indiquent le nombre de nuits."
+msgstr "Vrai pour les catégories d'hôtel, reconnues à leur nom ou à leur référence : leurs dépenses indiquent le nombre de nuits."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_one_payment_method
 msgid "True when the company has only one possible payment method. The form then hides the field, which Odoo fills on its own: a choice with a single option is no choice."
-msgstr "Vrai quand la société n'a qu'un mode de paiement possible. Le formulaire masque alors le champ, qu'Odoo renseigne de lui-même : un choix à une seule option n'est pas un choix."
+msgstr "Vrai quand la société n'a qu'un mode de paiement possible. Le formulaire masque alors le champ, qu'Odoo renseigne de lui-même : un choix à une seule option n'est pas un choix."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_own
 msgid "True when the expense belongs to the user viewing it. The form uses it to hide the \"Employee\" field, which only matters when a manager enters an expense for someone else."
-msgstr "Vrai quand la dépense appartient à l'utilisateur qui la consulte. Le formulaire s'en sert pour masquer le champ « Employé », qui n'a d'intérêt que lorsqu'un gestionnaire saisit pour quelqu'un d'autre."
+msgstr "Vrai quand la dépense appartient à l'utilisateur qui la consulte. Le formulaire s'en sert pour masquer le champ « Employé », qui n'a d'intérêt que lorsqu'un gestionnaire saisit pour quelqu'un d'autre."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_expense_manager
@@ -3441,7 +3472,7 @@ msgstr "Choix inconnu."
 #. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "Unreadable receipt: %s"
-msgstr "Justificatif illisible : %s"
+msgstr "Justificatif illisible : %s"
 
 #. module: expense_scan
 #. odoo-python
@@ -3553,6 +3584,12 @@ msgid "Why this expense goes beyond the rules. The manager reads it when approvi
 msgstr "Pourquoi cette dépense dépasse les règles. Le manager la lit en validant la dépense."
 
 #. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_limit_projects
+#: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_limit_projects
+msgid "With re-invoicing, an employee is offered the projects they manage, have a task on or are assigned to, not the whole list. A project manager and an administrator always see every project. Only the choice offered in the form is limited."
+msgstr "Avec la refacturation, le salarié se voit proposer les projets qu'il dirige, sur lesquels il a une tâche ou auxquels il est affecté, et non la liste complète. Un responsable de projet et un administrateur voient toujours tous les projets. Seul le choix proposé dans le formulaire est limité."
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_no_vat
 msgid "Without VAT"
 msgstr "Sans TVA"
@@ -3566,7 +3603,7 @@ msgstr "Mots"
 #: model:ir.model.fields,help:expense_scan.field_product_product__expense_scan_learned_keywords
 #: model:ir.model.fields,help:expense_scan.field_product_template__expense_scan_learned_keywords
 msgid "Words found on the receipts filed in this category by a person, at several merchants, and almost never on the others. Updated every day; they point to this category like the receipt words above. A word entered above, here or on another category, is never learnt."
-msgstr "Mots trouvés sur les tickets classés dans cette catégorie par une personne, chez plusieurs commerçants, et presque jamais sur les autres. Mis à jour chaque jour ; ils désignent cette catégorie comme les mots du ticket ci-dessus. Un mot saisi ci-dessus, ici ou sur une autre catégorie, n'est jamais appris."
+msgstr "Mots trouvés sur les tickets classés dans cette catégorie par une personne, chez plusieurs commerçants, et presque jamais sur les autres. Mis à jour chaque jour ; ils désignent cette catégorie comme les mots du ticket ci-dessus. Un mot saisi ci-dessus, ici ou sur une autre catégorie, n'est jamais appris."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_product_product__expense_scan_learned_keywords
@@ -3582,9 +3619,9 @@ msgid ""
 "\n"
 "Merchants already filed are learnt on their own when expenses are submitted: no need to enter them all here."
 msgstr ""
-"Mots qui, lus sur un ticket, désignent cette catégorie : un par ligne, dans toutes les langues utiles, enseignes comprises (« Ibis », « nocleg », « pedaggio »…). Accents et majuscules sont ignorés, et une faute de lecture est tolérée sur les mots de cinq lettres ou plus.\n"
+"Mots qui, lus sur un ticket, désignent cette catégorie : un par ligne, dans toutes les langues utiles, enseignes comprises (« Ibis », « nocleg », « pedaggio »…). Accents et majuscules sont ignorés, et une faute de lecture est tolérée sur les mots de cinq lettres ou plus.\n"
 "\n"
-"Les enseignes déjà classées sont apprises d'elles-mêmes, à la soumission des dépenses : inutile de toutes les saisir ici."
+"Les enseignes déjà classées sont apprises d'elles-mêmes, à la soumission des dépenses : inutile de toutes les saisir ici."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_export_template_view_form
@@ -3642,12 +3679,12 @@ msgstr "recadré"
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "default: Odoo's choice (reference EXP_GEN)"
-msgstr "par défaut : choix d'Odoo (référence EXP_GEN)"
+msgstr "par défaut : choix d'Odoo (référence EXP_GEN)"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "default: Odoo's data directory"
-msgstr "par défaut : répertoire de données d'Odoo"
+msgstr "par défaut : répertoire de données d'Odoo"
 
 #. module: expense_scan
 #. odoo-python
@@ -3671,13 +3708,13 @@ msgstr "d'après un prix au litre ou au kWh"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_category.py:0
 msgid "from the brand \"%s\""
-msgstr "d'après la marque « %s »"
+msgstr "d'après la marque « %s »"
 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_category.py:0
 msgid "from the merchant \"%s\", already filed this way"
-msgstr "d'après l'enseigne « %s », déjà classée ainsi"
+msgstr "d'après l'enseigne « %s », déjà classée ainsi"
 
 #. module: expense_scan
 #. odoo-python
@@ -3765,24 +3802,24 @@ msgid ""
 "\n"
 "Beyond a ceiling, an actual expense can usually be reimbursed if it is justified. Fines and personal expenses are neither business expenses nor deductible."
 msgstr ""
-"Exemples à ajuster : ajoutez vos propres plafonds par repas, par jour ou par nuitée, selon les règles de votre pays et de votre entreprise.\n"
+"Exemples à ajuster : ajoutez vos propres plafonds par repas, par jour ou par nuitée, selon les règles de votre pays et de votre entreprise.\n"
 "\n"
 "Au-delà d'un plafond, un frais réel reste en général remboursable s'il est justifié. Les amendes et les dépenses personnelles ne sont ni des frais professionnels ni déductibles."
 
 #. module: expense_scan
 #: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_personal
 msgid "Fines and personal expenses: neither business expenses nor deductible"
-msgstr "Amendes et dépenses personnelles : ni frais professionnels, ni déductibles"
+msgstr "Amendes et dépenses personnelles : ni frais professionnels, ni déductibles"
 
 #. module: expense_scan
 #: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_hotel_extras
 msgid "Personal hotel extras (minibar, films, laundry): paid by the employee"
-msgstr "Extras d'hôtel personnels (minibar, films, pressing) : à la charge du salarié"
+msgstr "Extras d'hôtel personnels (minibar, films, pressing) : à la charge du salarié"
 
 #. module: expense_scan
 #: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_alcohol
 msgid "Alcohol on a meal bill: moderate consumption, to be justified"
-msgstr "Alcool sur une note de repas : consommation modérée, à justifier"
+msgstr "Alcool sur une note de repas : consommation modérée, à justifier"
 
 #. module: expense_scan
 #: model:expense.scan.policy.rule,name:expense_scan.policy_good_practice_travel_class
@@ -3797,17 +3834,17 @@ msgstr "Fiche de frais (modèle de base)"
 #. module: expense_scan
 #: model:expense.scan.export.template,note:expense_scan.export_template_basic
 msgid "Workbook delivered with the module: download it from the \"Excel file\" field, adapt it (logo, colours, columns), then upload it again. Keep a row of titles above the expenses and the totals just below: the export adds or removes rows and the totals follow. The \"Blank workbook\" button builds a new one from the mappings below."
-msgstr "Classeur livré avec le module : téléchargez-le depuis le champ « Fichier Excel », adaptez-le (logo, couleurs, colonnes), puis redéposez-le. Gardez une ligne de titres au-dessus des dépenses et les totaux juste en dessous : l'export ajoute ou retire des lignes et les totaux suivent. Le bouton « Classeur vierge » en refabrique un d'après les correspondances ci-dessous."
+msgstr "Classeur livré avec le module : téléchargez-le depuis le champ « Fichier Excel », adaptez-le (logo, couleurs, colonnes), puis redéposez-le. Gardez une ligne de titres au-dessus des dépenses et les totaux juste en dessous : l'export ajoute ou retire des lignes et les totaux suivent. Le bouton « Classeur vierge » en refabrique un d'après les correspondances ci-dessous."
 
 #. module: expense_scan
 #: model:expense.scan.policy,name:expense_scan.demo_policy
 msgid "Example: a customer's requirements"
-msgstr "Exemple : exigences d'un client"
+msgstr "Exemple : exigences d'un client"
 
 #. module: expense_scan
 #: model:expense.scan.policy,note:expense_scan.demo_policy
 msgid "Made-up rules, set by contract with the customer: they apply to the projects of its sites, on top of the company's good practice."
-msgstr "Règles fictives, fixées par contrat avec le client : elles s'appliquent aux missions de ses sites, en plus des bonnes pratiques de l'entreprise."
+msgstr "Règles fictives, fixées par contrat avec le client : elles s'appliquent aux missions de ses sites, en plus des bonnes pratiques de l'entreprise."
 
 #. module: expense_scan
 #: model:expense.scan.policy.rule,name:expense_scan.demo_policy_travel_class
@@ -3817,24 +3854,24 @@ msgstr "Train en 2de classe, avion en classe économique, sans exception"
 #. module: expense_scan
 #: model:expense.scan.policy.rule,name:expense_scan.demo_policy_breakfast
 msgid "Breakfast: 15 at most"
-msgstr "Petit-déjeuner : 15 au plus"
+msgstr "Petit-déjeuner : 15 au plus"
 
 #. module: expense_scan
 #: model:expense.scan.policy.rule,name:expense_scan.demo_policy_lunch
 msgid "Lunch: 25 at most"
-msgstr "Déjeuner : 25 au plus"
+msgstr "Déjeuner : 25 au plus"
 
 #. module: expense_scan
 #: model:expense.scan.policy.rule,name:expense_scan.demo_policy_dinner
 msgid "Dinner: 35 at most"
-msgstr "Dîner : 35 au plus"
+msgstr "Dîner : 35 au plus"
 
 #. module: expense_scan
 #: model:expense.scan.policy.rule,name:expense_scan.demo_policy_daily_meals
 msgid "Meals of the day: 55 in total (a more expensive meal is accepted within this limit)"
-msgstr "Repas du jour : 55 au total (un repas plus cher reste admis dans cette limite)"
+msgstr "Repas du jour : 55 au total (un repas plus cher reste admis dans cette limite)"
 
 #. module: expense_scan
 #: model:expense.scan.policy.rule,name:expense_scan.demo_policy_hotel
 msgid "Hotel: 110 a night, 140 in large cities"
-msgstr "Hôtel : 110 la nuit, 140 dans les grandes villes"
+msgstr "Hôtel : 110 la nuit, 140 dans les grandes villes"
