@@ -11,6 +11,9 @@ class TestTodoBanner(common.TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # A database without a chart of accounts has no fiscal country, and a tax needs one.
+        if not cls.env.company.account_fiscal_country_id:
+            cls.env.company.account_fiscal_country_id = cls.env.ref('base.fr')
         cls.employee = cls.env['hr.employee'].create({'name': "Camille Bandeau"})
         cls.product = cls.env['product.product'].create(
             {'name': "Repas bandeau", 'can_be_expensed': True})

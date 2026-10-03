@@ -20,6 +20,9 @@ class TestInvoicing(common.TransactionCase):
         super().setUpClass()
         if 'sale.order' not in cls.env or 'reinvoiced_sale_order_id' not in cls.env['project.project']._fields:
             raise unittest.SkipTest("Sales is not installed")
+        # A database without a chart of accounts has no fiscal country, and a tax needs one.
+        if not cls.env.company.account_fiscal_country_id:
+            cls.env.company.account_fiscal_country_id = cls.env.ref('base.fr')
         cls.company = cls.env.company
         cls.company.expense_scan_reinvoice = True
         cls.employee = cls.env['hr.employee'].create({

@@ -11,6 +11,9 @@ class TestExpenseScanMileage(common.TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # A database without a chart of accounts has no fiscal country, and a tax needs one.
+        if not cls.env.company.account_fiscal_country_id:
+            cls.env.company.account_fiscal_country_id = cls.env.ref('base.fr')
         cls.mileage = cls.env.ref('hr_expense.expense_product_mileage')
         cls.mileage.standard_price = 1.0
         cls.employee = cls.env['hr.employee'].create({

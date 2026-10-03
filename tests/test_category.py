@@ -199,6 +199,9 @@ class TestCategoryRecognition(common.TransactionCase):
         super().setUpClass()
         Product = cls.env['product.product']
         cls.company = cls.env.company
+        # A database without a chart of accounts has no fiscal country, and a tax needs one.
+        if not cls.env.company.account_fiscal_country_id:
+            cls.env.company.account_fiscal_country_id = cls.env.ref('base.fr')
         cls.default = Product.create({'name': "Divers test", 'can_be_expensed': True})
         cls.company.expense_scan_product_id = cls.default
         cls.company.expense_scan_apply_tax = True

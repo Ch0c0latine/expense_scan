@@ -27,3 +27,4 @@ from . import test_vat_audit
 from . import test_sync_batch
 from . import test_sync_bench
 from . import test_store_readiness
+from . import test_ergonomie
