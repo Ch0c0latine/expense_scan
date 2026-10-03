@@ -2091,9 +2091,12 @@ msgstr "Seuls les comptables peuvent rembourser les salariés."
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "Only accounting managers can correct the VAT of an expense."
+msgstr "Seuls les responsables comptables peuvent corriger la TVA d'une dépense."
+
 #. module: expense_scan
 #. odoo-python
-
 #: code:addons/expense_scan/models/hr_expense_spread.py:0
 msgid "Only an expense of a flat-rate category can be spread over days."
 msgstr "Seule une dépense d'une catégorie au forfait peut être répartie sur des jours."
@@ -2125,8 +2128,11 @@ msgid "Original photo"
 msgstr "Photo d'origine"
 
 #. module: expense_scan
-#. module: expense_scan
+#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_vat_wizard__mode__amount
+msgid "Other amount"
+msgstr "Autre montant"
 
+#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__custom
 msgid "Other period"
 msgstr "Autre période"
@@ -2880,6 +2886,12 @@ msgstr "Soutenir ce module"
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "The journal entry of %s is not posted."
+msgstr "L'écriture comptable de %s n'est pas validée."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "TOTAL"
 msgstr "TOTAL"
@@ -3105,12 +3117,6 @@ msgid "The invoice of an expense is set by the invoicing, not by hand."
 msgstr "La facture d'un frais est posée par la facturation, pas à la main."
 
 #. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense_vat.py:0
-msgid "The journal entry of %s is not posted."
-msgstr "L'écriture comptable de %s n'est pas validée."
-
-#. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night
 msgid "The limit is for one night: the amount is divided by the number of nights."
 msgstr "Le plafond vaut pour une nuit : le montant est divisé par le nombre de nuitées."
@@ -3300,7 +3306,6 @@ msgstr ""
 "%(names)s"
 
 #. module: expense_scan
-
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "This PDF has several pages: it stays the receipt as it is. Retouch applies to photos and single-page PDFs."

@@ -2085,7 +2085,11 @@ msgstr "Alleen een conceptdeclaratie kan over dagen worden verdeeld."
 msgid "Only accountants can reimburse the employees."
 msgstr "Alleen boekhouders kunnen de werknemers terugbetalen."
 
-msgstr "Alleen boekhouders kunnen medewerkers terugbetalen."
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "Only accounting managers can correct the VAT of an expense."
+msgstr "Alleen boekhoudbeheerders kunnen de btw van een declaratie corrigeren."
 
 #. module: expense_scan
 #. odoo-python
@@ -2120,8 +2124,11 @@ msgid "Original photo"
 msgstr "Originele foto"
 
 #. module: expense_scan
-#. module: expense_scan
+#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_vat_wizard__mode__amount
+msgid "Other amount"
+msgstr "Ander bedrag"
 
+#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__custom
 msgid "Other period"
 msgstr "Andere periode"
@@ -2870,6 +2877,12 @@ msgstr "Deze module steunen"
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "The journal entry of %s is not posted."
+msgstr "De boeking van %s is niet geboekt."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "TOTAL"
 msgstr "TOTAAL"
@@ -3092,8 +3105,6 @@ msgstr "De factuur %(invoice)s bevat deze declaratie, maar ze kon niet worden ge
 msgid "The invoice of an expense is set by the invoicing, not by hand."
 msgstr "De factuur van een declaratie wordt door de facturatie ingesteld, niet met de hand."
 
-msgstr "De factuur van een onkost wordt door de facturatie ingesteld, niet handmatig."
-
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night
 msgid "The limit is for one night: the amount is divided by the number of nights."
@@ -3282,7 +3293,6 @@ msgstr ""
 "%(names)s"
 
 #. module: expense_scan
-
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "This PDF has several pages: it stays the receipt as it is. Retouch applies to photos and single-page PDFs."

@@ -141,6 +141,10 @@ def parse(text, report):
             elif keyword != 'msgstr':
                 report(number, 'E', 'syntax', 'unknown keyword %r' % keyword)
                 continue
+            if index in current.strs or current.id is None:
+                report(number, 'E', 'syntax', 'msgstr without its own msgid')
+                target = None
+                continue
             current.strs[index] = value
             target = index
         else:

@@ -2087,9 +2087,12 @@ msgstr "Kun bogholdere kan refundere medarbejderne."
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "Only accounting managers can correct the VAT of an expense."
+msgstr "Kun regnskabsansvarlige kan korrigere momsen på et udlæg."
+
 #. module: expense_scan
 #. odoo-python
-
 #: code:addons/expense_scan/models/hr_expense_spread.py:0
 msgid "Only an expense of a flat-rate category can be spread over days."
 msgstr "Kun et udlæg i en satskategori kan fordeles på dage."
@@ -2121,8 +2124,11 @@ msgid "Original photo"
 msgstr "Originalbillede"
 
 #. module: expense_scan
-#. module: expense_scan
+#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_vat_wizard__mode__amount
+msgid "Other amount"
+msgstr "Andet beløb"
 
+#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_sheet_wizard__period__custom
 msgid "Other period"
 msgstr "Anden periode"
@@ -2871,6 +2877,12 @@ msgstr "Støt dette modul"
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "The journal entry of %s is not posted."
+msgstr "Posteringen for %s er ikke bogført."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "TOTAL"
 msgstr "I ALT"
@@ -3093,8 +3105,6 @@ msgstr "Fakturaen %(invoice)s indeholder dette udlæg, men det kunne ikke bogfø
 msgid "The invoice of an expense is set by the invoicing, not by hand."
 msgstr "Fakturaen for et udlæg angives af faktureringen, ikke manuelt."
 
-msgstr "Fakturaen på et udlæg sættes af faktureringen, ikke i hånden."
-
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night
 msgid "The limit is for one night: the amount is divided by the number of nights."
@@ -3283,7 +3293,6 @@ msgstr ""
 "%(names)s"
 
 #. module: expense_scan
-
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "This PDF has several pages: it stays the receipt as it is. Retouch applies to photos and single-page PDFs."
