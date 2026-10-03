@@ -294,8 +294,8 @@ msgstr "<em>(sats)</em>"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "<i class=\"fa fa-coffee me-1\"/>Buy the author a coffee"
-msgstr "<i class=\"fa fa-coffee me-1\"/>Spander en kaffe på utvikleren"
+msgid "<span class=\"o_expense_scan_coffee me-1\" aria-hidden=\"true\"/>Buy the author a coffee"
+msgstr "<span class=\"o_expense_scan_coffee me-1\" aria-hidden=\"true\"/>Spander en kaffe på utvikleren"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
