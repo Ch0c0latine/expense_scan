@@ -151,6 +151,13 @@ Environment=MALLOC_ARENA_MAX=2
   nothing leaves the server.
 - **Split view from 768 px**: shows the receipt next to the form on laptop
   screens, which Odoo otherwise leaves without a preview.
+- **Limit the projects to the employee's own** (with re-invoicing): on by
+  default; a project manager or an administrator always sees every project.
+- **Odoo's menus and filters**: three options, off by default, for every
+  company: rename the "My Expenses" menu group "Expense follow-up", open the
+  expense lists on the current month, and remove the "My Team", "Company" and
+  "Employee" shortcuts from the filters. Uninstalling the module gives Odoo
+  back its menu name, icon and filters.
 
 The **Test and preload the engine** button loads the models and reads a
 control image: use it after each restart of the service, so that the first

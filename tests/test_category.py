@@ -218,7 +218,7 @@ class TestCategoryRecognition(common.TransactionCase):
             'name': "Rail test", 'can_be_expensed': True,
             'expense_scan_no_vat': True, 'expense_scan_keywords': "glumptrain",
         })
-        cls.employee = cls.env['hr.employee'].create({'name': "Camille Catégorie"})
+        cls.employee = cls.env['hr.employee'].create({'name': "Clovis Catégorie"})
 
     def expense(self, **values):
         return self.env['hr.expense'].create(dict({
