@@ -21,8 +21,8 @@ class ResCompany(models.Model):
     expense_scan_engine = fields.Selection(
         selection=[
             ('auto', "Automatic (best available)"),
-            ('rapidocr', "RapidOCR / PP-OCR (recommended)"),
-            ('tesseract', "Tesseract"),
+            ('rapidocr', "AI RapidOCR / PP-OCR (recommended)"),
+            ('tesseract', "AI Tesseract"),
         ],
         string="OCR engine",
         default='auto',

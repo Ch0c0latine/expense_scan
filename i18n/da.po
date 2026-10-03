@@ -53,8 +53,8 @@ msgstr "\"Mine udlæg\" og \"Udlæg til behandling\" starter med filteret \"Inde
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__reinvoice_mode
-msgid "\"To decide\" flags an expense whose fate is still open, and the review banner reminds it. \"No\" is a decision, not an omission: the company bears the expense."
-msgstr "\"Afgøres senere\" markerer et udlæg, der endnu ikke er afgjort, og kontrolbeskeden minder om det. \"Nej\" er en beslutning, ikke en forglemmelse: virksomheden afholder udlægget."
+msgid "An expense without a project is not re-invoiced: there is nothing to decide. Choosing a project sets \"Yes\"; \"No\" then keeps the cost on the project without billing it. \"To decide\" holds an expense back: the manager cannot approve it until it is settled."
+msgstr "Et udlæg uden projekt viderefaktureres ikke: der er intet at afgøre. Hvis man vælger et projekt, sættes »Ja«; »Nej« lader så omkostningen blive på projektet uden at fakturere den. »Afgøres senere« holder udlægget tilbage: lederen kan ikke godkende det, før det er afgjort."
 
 #. module: expense_scan
 #. odoo-python
@@ -628,8 +628,8 @@ msgstr "Genkendt kategori"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "Changes to what Odoo shows, for every company. Off unless you choose them"
-msgstr "Ændringer i det, Odoo viser, for alle virksomheder. Slået fra, indtil du vælger dem"
+msgid "Simplifications of Odoo's display, for every company. Off unless you choose them"
+msgstr "Forenklinger af visningen i Odoo, for alle virksomheder. Slået fra, indtil du vælger dem"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -1914,12 +1914,6 @@ msgstr "Intet projekt fundet for %s: åbn udlægget og vælg et."
 
 #. module: expense_scan
 #. odoo-python
-#: code:addons/expense_scan/models/hr_expense.py:0
-msgid "No project found for this date: say whether this expense is re-invoiced."
-msgstr "Der blev ikke fundet noget projekt for denne dato: angiv, om udlægget viderefaktureres."
-
-#. module: expense_scan
-#. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
 msgid "No purchase tax found for %s: choose one."
 msgstr "Der blev ikke fundet nogen købsafgift for %s: vælg en."
@@ -2324,8 +2318,8 @@ msgstr "Antal (nætter, km...)"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__res_company__expense_scan_engine__rapidocr
-msgid "RapidOCR / PP-OCR (recommended)"
-msgstr "RapidOCR / PP-OCR (anbefalet)"
+msgid "AI RapidOCR / PP-OCR (recommended)"
+msgstr "AI RapidOCR / PP-OCR (anbefalet)"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
@@ -3056,8 +3050,8 @@ msgstr "Skabelonen \"%s\" har ingen Excel-fil."
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__res_company__expense_scan_engine__tesseract
-msgid "Tesseract"
-msgstr "Tesseract"
+msgid "AI Tesseract"
+msgstr "AI Tesseract"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_tesseract_lang
@@ -3644,8 +3638,8 @@ msgstr "Hvor reglerne kommer fra, dato for seneste opdatering..."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "Which dates are believed, and how long the text read on a receipt is kept"
-msgstr "Hvilke datoer der accepteres, og hvor længe den tekst, der er læst på en kvittering, gemmes"
+msgid "Oldest date accepted, and how long the text read on a receipt is kept"
+msgstr "Ældste dato, der accepteres, og hvor længe den tekst, der er læst på en kvittering, gemmes"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan

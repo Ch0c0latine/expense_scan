@@ -1,5 +1,25 @@
 # Changelog
 
+## 19.0.2.14.0 — 2026-10-03
+
+- **Re-invoicing asks nothing when there is nothing to re-invoice.** An expense
+  without a project starts at "No" and is no longer "to decide" (which blocked
+  its approval); choosing a project sets "Yes", and removing it sets "No". An
+  expense created with a project by another module stays "to decide". A "No"
+  given to an expense that has a project is kept (cost followed on the project,
+  not billed). The scan no longer raises a "Re-invoice" point when it finds no
+  project. The *Project* field stays visible whatever the answer. The update sets
+  "No" on the draft and submitted expenses that were waiting without a project.
+- **AI engines named as such**: the reading engines are listed as *AI RapidOCR /
+  PP-OCR (recommended)* and *AI Tesseract*; both read with neural networks.
+  RapidOCR stays the default.
+- **Settings**: the date and kept-text help reads "Oldest date accepted, and how long
+  the text read on a receipt is kept"; the menus and filters option says
+  "Simplifications of Odoo's display". The support link shows a cup of hot
+  coffee, steam included.
+- Translations of these texts in the ten languages; the help of the *Re-invoice* field
+  tells how the three answers work.
+
 ## 19.0.2.13.0 — 2026-10-03
 
 Each function is found where it is looked for, in plain words.

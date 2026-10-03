@@ -53,8 +53,8 @@ msgstr "\"Meine Spesen\" und \"Zu bearbeitende Auslagen\" starten mit dem Filter
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__reinvoice_mode
-msgid "\"To decide\" flags an expense whose fate is still open, and the review banner reminds it. \"No\" is a decision, not an omission: the company bears the expense."
-msgstr "\"Offen\" markiert eine Ausgabe, über die noch nicht entschieden ist, und der Prüfhinweis erinnert daran. \"Nein\" ist eine Entscheidung, kein Versäumnis: das Unternehmen trägt die Ausgabe."
+msgid "An expense without a project is not re-invoiced: there is nothing to decide. Choosing a project sets \"Yes\"; \"No\" then keeps the cost on the project without billing it. \"To decide\" holds an expense back: the manager cannot approve it until it is settled."
+msgstr "Eine Ausgabe ohne Projekt wird nicht weiterberechnet: Es gibt nichts zu entscheiden. Wählt man ein Projekt, steht „Ja“ da; „Nein“ behält die Kosten dann beim Projekt, ohne sie zu berechnen. „Offen“ hält eine Ausgabe zurück: Die Genehmigung ist erst möglich, wenn sie geklärt ist."
 
 #. module: expense_scan
 #. odoo-python
@@ -628,8 +628,8 @@ msgstr "Erkannte Kategorie"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "Changes to what Odoo shows, for every company. Off unless you choose them"
-msgstr "Änderungen an dem, was Odoo anzeigt, für alle Unternehmen. Aus, solange Sie sie nicht wählen"
+msgid "Simplifications of Odoo's display, for every company. Off unless you choose them"
+msgstr "Vereinfachungen der Odoo-Anzeige, für alle Unternehmen. Aus, solange Sie sie nicht wählen"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -1914,12 +1914,6 @@ msgstr "Kein Projekt für %s gefunden: Öffnen Sie die Ausgabe und wählen Sie e
 
 #. module: expense_scan
 #. odoo-python
-#: code:addons/expense_scan/models/hr_expense.py:0
-msgid "No project found for this date: say whether this expense is re-invoiced."
-msgstr "Kein Projekt für dieses Datum gefunden: geben Sie an, ob diese Ausgabe weiterberechnet wird."
-
-#. module: expense_scan
-#. odoo-python
 #: code:addons/expense_scan/models/hr_expense_vat.py:0
 msgid "No purchase tax found for %s: choose one."
 msgstr "Keine Einkaufssteuer für %s gefunden: wählen Sie eine aus."
@@ -2324,8 +2318,8 @@ msgstr "Menge (Nächte, km...)"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__res_company__expense_scan_engine__rapidocr
-msgid "RapidOCR / PP-OCR (recommended)"
-msgstr "RapidOCR / PP-OCR (empfohlen)"
+msgid "AI RapidOCR / PP-OCR (recommended)"
+msgstr "KI RapidOCR / PP-OCR (empfohlen)"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
@@ -3056,8 +3050,8 @@ msgstr "Die Vorlage \"%s\" hat keine Excel-Datei."
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__res_company__expense_scan_engine__tesseract
-msgid "Tesseract"
-msgstr "Tesseract"
+msgid "AI Tesseract"
+msgstr "KI Tesseract"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_tesseract_lang
@@ -3644,8 +3638,8 @@ msgstr "Herkunft der Regeln, Datum der letzten Aktualisierung..."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "Which dates are believed, and how long the text read on a receipt is kept"
-msgstr "Welche Daten als glaubwürdig gelten und wie lange der auf einem Beleg gelesene Text aufbewahrt wird"
+msgid "Oldest date accepted, and how long the text read on a receipt is kept"
+msgstr "Ältestes akzeptiertes Datum und Aufbewahrungsdauer des auf einem Beleg gelesenen Textes"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan

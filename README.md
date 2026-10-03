@@ -15,7 +15,7 @@ token, no document sent to a third party.
 | **One tap** | The **Scan** (mobile) / **Upload** (desktop) button of the expense list opens the camera or the photo library directly. |
 | **Crop** | The edges of the receipt are detected in the photo, the perspective is corrected, the image is cut out. |
 | **Straighten** | The remaining tilt of the lines is measured and cancelled; a photo taken sideways (quarter turn) is turned upright. |
-| **Read** | The PP-OCR networks read the receipt (text area detection + recognition), in about 0.5 to 1.5 s on a recent processor. |
+| **Read** | AI reads the receipt: the PP-OCR neural networks (text area detection + recognition), on your own server, in about 0.5 to 1.5 s on a recent processor. |
 | **Extract** | Merchant, date, time, total, currency and tax are extracted, each with a confidence score. |
 | **Review** | The form opens at once, receipt on one side, fields on the other: the scan runs in the background, shows its progress and fills the fields as it goes. A hint appears under each field to check (date, total, tax, category...) and goes away once it is corrected. |
 
@@ -155,8 +155,9 @@ are gathered under *Receipt scanner: advanced options*.
 
 Under *Receipt scanner: advanced options*:
 
-- **Reading engine**: `Automatic` uses RapidOCR if available, otherwise
-  Tesseract. *Threads per worker* is 4 by default: Odoo already runs several
+- **Reading engine**: `Automatic` uses RapidOCR (the PP-OCR neural networks,
+  the more accurate of the two) if available, otherwise AI Tesseract, its
+  neural-network fallback. *Threads per worker* is 4 by default: Odoo already runs several
   workers; letting ONNX open one thread per core in each of them lowers the
   throughput instead of raising it.
 - **Photo processing**: crop, straighten, turn sideways receipts upright, keep
@@ -202,8 +203,10 @@ and its own requirements.
 
 - **Re-invoicing**: the *Re-invoice* column of the expense lists shows
   whether an expense is re-invoiced (a ticked box), not (an empty box) or
-  still to decide (a question mark); a click switches it. The manager cannot
-  approve an expense whose re-invoicing is still to decide. Once approved, the
+  still to decide (a question mark); a click switches it. An expense without a
+  project is not re-invoiced and has nothing to decide; choosing a project sets
+  "Yes", and "No" keeps the cost on the project without billing it. The manager
+  cannot approve an expense left "to decide". Once approved, the
   expense is added up with the others of its project on the **expense line**
   of the project's sales order (the line whose product can be expensed): its
   quantity is the amount incl. tax, at a unit price of 1, so one invoice line
