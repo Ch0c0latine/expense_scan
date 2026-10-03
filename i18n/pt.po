@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 19.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-29 19:26+0000\n"
-"PO-Revision-Date: 2026-09-29 19:26+0000\n"
+"POT-Creation-Date: 2026-10-03 14:31+0000\n"
+"PO-Revision-Date: 2026-10-03 14:31+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: pt\n"
@@ -113,6 +113,18 @@ msgstr "%(count)s ignorada(s): o lançamento contabilístico está publicado (%(
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_batch.py:0
+msgid "%(count)s skipped: they are on a customer invoice (%(names)s). Cancel the invoice first."
+msgstr "%(count)s ignorada(s): estão numa fatura de cliente (%(names)s). Cancele primeiro a fatura."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_project.py:0
+msgid "%(employee)s is not assigned to: %(projects)s. Ask a project manager to assign them first."
+msgstr "%(employee)s não está atribuído(a) a: %(projects)s. Peça primeiro a um gestor de projeto que faça a atribuição."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/res_config_settings.py:0
 msgid ""
 "%(engine)s - loaded and tested in %(duration)s s.\n"
@@ -120,6 +132,24 @@ msgid ""
 msgstr ""
 "%(engine)s - carregado e testado em %(duration)s s.\n"
 "Texto lido: \"%(text)s\""
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "%(expense)s carries %(count)s taxes. Another amount needs exactly one: use \"Recoverable\" or \"Not recoverable\" instead."
+msgstr "%(expense)s tem %(count)s impostos. Outro valor exige exatamente um: use antes «Recuperável» ou «Não recuperável»."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "%(expense)s has a VAT correction (%(entry)s). Reverse the correction first."
+msgstr "%(expense)s tem uma correção do IVA (%(entry)s). Estorne primeiro a correção."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "%(expense)s is on the invoice %(invoice)s. Cancel the invoice (or issue a credit note) first."
+msgstr "%(expense)s está na fatura %(invoice)s. Cancele primeiro a fatura (ou emita uma nota de crédito)."
 
 #. module: expense_scan
 #. odoo-python
@@ -195,15 +225,39 @@ msgstr "%s (sem imposto)"
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "%s belongs to another company."
+msgstr "%s pertence a outra empresa."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/hr_expense_batch.py:0
 msgid "%s expense(s) reset to draft."
 msgstr "%s despesa(s) devolvida(s) a rascunho."
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "%s is already approved or posted: a scan would rewrite its figures."
+msgstr "%s já está aprovada ou contabilizada: uma digitalização reescreveria os seus valores."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "%s is approved: its re-invoicing has to stay decided."
 msgstr "%s está aprovada: a sua refaturação tem de continuar decidida."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "%s is due on payment: its VAT cannot be corrected here."
+msgstr "%s é exigível no pagamento: o seu IVA não pode ser corrigido aqui."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "%s is not a purchase tax with a percentage: its VAT cannot be corrected here."
+msgstr "%s não é um imposto de compra com percentagem: o seu IVA não pode ser corrigido aqui."
 
 #. module: expense_scan
 #. odoo-python
@@ -216,6 +270,12 @@ msgstr "%s não está aprovada: só se pode retirar uma aprovação."
 #: code:addons/expense_scan/models/hr_expense_team.py:0
 msgid "%s is not in your team."
 msgstr "%s não faz parte da sua equipa."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "%s is not posted: its VAT cannot be corrected yet."
+msgstr "%s não está contabilizada: o seu IVA ainda não pode ser corrigido."
 
 #. module: expense_scan
 #. odoo-python
@@ -506,6 +566,7 @@ msgstr "Câmara"
 #: code:addons/expense_scan/static/src/js/retouch_dialog.xml:0
 #: code:addons/expense_scan/static/src/js/sale_invoice_warning.js:0
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
+#: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_vat_wizard_view_form
 msgid "Cancel"
 msgstr "Cancelar"
 
@@ -618,6 +679,7 @@ msgstr "Empresas"
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__company_id
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__company_id
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__company_id
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__societe
 msgid "Company"
 msgstr "Empresa"
@@ -631,6 +693,37 @@ msgstr "Boas práticas da empresa"
 #: model:ir.model,name:expense_scan.model_res_config_settings
 msgid "Config Settings"
 msgstr "Definições de configuração"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_vat_wizard_view_form
+msgid "Correct"
+msgstr "Corrigir"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+#: model:ir.actions.server,name:expense_scan.action_expense_scan_correct_vat
+#: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_vat_wizard_view_form
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_vat
+msgid "Correct VAT"
+msgstr "Corrigir o IVA"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "Correct the VAT of the expenses of one company at a time."
+msgstr "Corrija o IVA das despesas de uma só empresa de cada vez."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__mode
+#: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_vat_wizard_view_form
+msgid "Correction"
+msgstr "Correção"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__batch_mode
+msgid "Correction of the selection"
+msgstr "Correção da seleção"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_deskew
@@ -651,6 +744,7 @@ msgstr "Criar a fatura mesmo assim"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__create_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__create_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__create_uid
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__create_uid
 msgid "Created by"
 msgstr "Criado por"
 
@@ -660,6 +754,7 @@ msgstr "Criado por"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__create_date
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__create_date
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__create_date
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__create_date
 msgid "Created on"
 msgstr "Criado em"
 
@@ -676,6 +771,7 @@ msgstr "Recibo recortado"
 
 #. module: expense_scan
 #: model:ir.model,name:expense_scan.model_res_currency
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__currency_id
 msgid "Currency"
 msgstr "Moeda"
 
@@ -724,6 +820,11 @@ msgid "Cut out and straighten the receipt before reading it"
 msgstr "Recortar e endireitar o recibo antes de o ler"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__cycle_warning
+msgid "Cycle Warning"
+msgstr "Aviso de ciclo concluído"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Daily reference rates for the active currencies: a foreign receipt is converted at the rate of its day."
 msgstr "Taxas de referência diárias para as moedas ativas: um recibo estrangeiro é convertido à taxa do seu dia."
@@ -758,6 +859,11 @@ msgstr "Data difícil de ler no recibo: verifique-a."
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Date not found on the receipt: enter it."
 msgstr "Data não encontrada no recibo: introduza-a."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__date
+msgid "Date of the entry"
+msgstr "Data do lançamento"
 
 #. module: expense_scan
 #. odoo-javascript
@@ -832,6 +938,7 @@ msgstr "Jantar"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sirene__display_name
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_hr_employee__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_hr_employee_public__display_name
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__display_name
@@ -993,6 +1100,11 @@ msgid "Expense \"%(name)s\" carries a receipt tax of %(amount)s, but no tax with
 msgstr "A despesa \"%(name)s\" tem um imposto de recibo de %(amount)s, mas nenhum imposto com uma taxa utilizável. Selecione o imposto correspondente na despesa (ou na sua categoria, para as seguintes) ou esvazie o campo \"Imposto do recibo\"."
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__expense_count
+msgid "Expense Count"
+msgstr "Número de despesas"
+
+#. module: expense_scan
 #: model:ir.actions.act_window,name:expense_scan.expense_scan_policy_action
 #: model:ir.ui.menu,name:expense_scan.menu_expense_scan_policies
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -1058,8 +1170,6 @@ msgstr "Pontos a verificar fora dos campos"
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/xml/action_menus_patch.xml:0
 #: model:ir.actions.act_window,name:expense_scan.expense_scan_sheet_current_month_action
-#: model:ir.actions.act_window,name:expense_scan.expense_scan_sheet_custom_period_action
-#: model:ir.actions.act_window,name:expense_scan.expense_scan_sheet_previous_month_action
 #: model:ir.actions.act_window,name:expense_scan.expense_scan_sheet_wizard_action
 #: model:ir.actions.report,name:expense_scan.action_report_expense_sheet
 msgid "Expense Sheet"
@@ -1101,6 +1211,12 @@ msgstr "Família de despesa"
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_expense_manager
 msgid "Expense manager"
 msgstr "Responsável por despesas"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_account_bank_statement_line__expense_scan_vat_expense_id
+#: model:ir.model.fields,field_description:expense_scan.field_account_move__expense_scan_vat_expense_id
+msgid "Expense of the VAT correction"
+msgstr "Despesa da correção do IVA"
 
 #. module: expense_scan
 #. odoo-python
@@ -1165,9 +1281,16 @@ msgid "Expense sheets and rules"
 msgstr "Folhas de despesas e regras"
 
 #. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_account_bank_statement_line__expense_scan_vat_expense_id
+#: model:ir.model.fields,help:expense_scan.field_account_move__expense_scan_vat_expense_id
+msgid "Expense whose recoverable VAT this entry corrects. A reversal of the entry keeps the link, so that the correction is cancelled."
+msgstr "Despesa cujo IVA recuperável este lançamento corrige. O estorno do lançamento mantém a ligação, de modo que a correção fica anulada."
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__scope
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__expense_ids
 #: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_count
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__kind__line
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
@@ -1370,7 +1493,7 @@ msgstr "Gerar"
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/expense_scan_upload.js:0
 msgid "Generate Expenses"
-msgstr ""
+msgstr "Gerar despesas"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -1394,6 +1517,11 @@ msgid "History"
 msgstr "Histórico"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__confirmed
+msgid "I checked with my accountant"
+msgstr "Verifiquei com o meu contabilista"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_account_move__id
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__id
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__id
@@ -1402,6 +1530,7 @@ msgstr "Histórico"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet__id
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__id
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sirene__id
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__id
 #: model:ir.model.fields,field_description:expense_scan.field_hr_employee__id
 #: model:ir.model.fields,field_description:expense_scan.field_hr_employee_public__id
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__id
@@ -1447,6 +1576,11 @@ msgid "Invoiced"
 msgstr "Faturadas"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__journal_id
+msgid "Journal"
+msgstr "Diário"
+
+#. module: expense_scan
 #: model:ir.model,name:expense_scan.model_account_move
 msgid "Journal Entry"
 msgstr "Lançamento contabilístico"
@@ -1479,6 +1613,7 @@ msgstr "Mês passado"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__write_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__write_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__write_uid
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__write_uid
 msgid "Last Updated by"
 msgstr "Última atualização por"
 
@@ -1488,6 +1623,7 @@ msgstr "Última atualização por"
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__write_date
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__write_date
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__write_date
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__write_date
 msgid "Last Updated on"
 msgstr "Última atualização em"
 
@@ -1511,6 +1647,11 @@ msgstr "Associa o contacto com o nome do comerciante, quando exatamente um corre
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_set_vendor
 msgid "Links the contact whose name matches the merchant read on the receipt, only when exactly one contact matches."
 msgstr "Associa o contacto cujo nome corresponde ao comerciante lido no recibo, apenas se corresponder exatamente um contacto."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__lock_notice
+msgid "Lock Notice"
+msgstr "Aviso de bloqueio"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_policy_rule__family__lodging
@@ -1658,6 +1799,11 @@ msgid "Name"
 msgstr "Nome"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__needs_confirmation
+msgid "Needs Confirmation"
+msgstr "Requer confirmação"
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "Neither amount nor date found: check that this image is a receipt, or enter the expense by hand."
@@ -1667,6 +1813,11 @@ msgstr "Nem valor nem data encontrados: verifique se esta imagem é um recibo, o
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Net base"
 msgstr "Base tributável"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__amount
+msgid "New recoverable VAT"
+msgstr "Novo IVA recuperável"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_nights
@@ -1710,6 +1861,12 @@ msgstr "Nenhuma despesa corresponde aos filtros."
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "No miscellaneous journal found for %s: create one first."
+msgstr "Não foi encontrado nenhum diário de operações diversas para %s: crie um primeiro."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "No project found for %s: open the expense and choose one."
 msgstr "Nenhum projeto encontrado para %s: abra a despesa e escolha um."
@@ -1719,6 +1876,12 @@ msgstr "Nenhum projeto encontrado para %s: abra a despesa e escolha um."
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "No project found for this date: say whether this expense is re-invoiced."
 msgstr "Nenhum projeto encontrado para esta data: indique se esta despesa é refaturada."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "No purchase tax found for %s: choose one."
+msgstr "Não foi encontrado nenhum imposto de compra para %s: escolha um."
 
 #. module: expense_scan
 #. odoo-python
@@ -1773,6 +1936,12 @@ msgid "Not re-invoiced"
 msgstr "Não refaturada"
 
 #. module: expense_scan
+#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_vat_wizard__batch_mode__none
+#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_vat_wizard__mode__none
+msgid "Not recoverable"
+msgstr "Não recuperável"
+
+#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__hr_expense__scan_state__none
 msgid "Not scanned"
 msgstr "Não digitalizado"
@@ -1790,9 +1959,20 @@ msgstr "Notas sobre este modelo..."
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/expense_vat_wizard.py:0
+msgid "Nothing to correct: the recoverable VAT is already the one asked."
+msgstr "Nada a corrigir: o IVA recuperável já é o pedido."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/expense_sheet.py:0
 msgid "Nothing to produce: none of these expenses has a receipt."
 msgstr "Nada a produzir: nenhuma destas despesas tem recibo."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_vat_move_count
+msgid "Number of VAT corrections"
+msgstr "Número de correções do IVA"
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_nights
@@ -1870,6 +2050,18 @@ msgstr "Só uma despesa em rascunho pode ser repartida por dias."
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "Only accountants can reimburse the employees."
+msgstr "Só os contabilistas podem reembolsar os funcionários."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "Only accounting managers can correct the VAT of an expense."
+msgstr "Só os responsáveis pela contabilidade podem corrigir o IVA de uma despesa."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/hr_expense_spread.py:0
 msgid "Only an expense of a flat-rate category can be spread over days."
 msgstr "Só uma despesa de uma categoria forfetária pode ser repartida por dias."
@@ -1894,6 +2086,11 @@ msgstr "Abrir em ecrã inteiro"
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__scan_original_attachment_id
 msgid "Original photo"
 msgstr "Fotografia original"
+
+#. module: expense_scan
+#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_vat_wizard__mode__amount
+msgid "Other amount"
+msgstr "Outro valor"
 
 #. module: expense_scan
 #: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_custom_period
@@ -2322,6 +2519,33 @@ msgid "Received by email"
 msgstr "Recebido por e-mail"
 
 #. module: expense_scan
+#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_vat_wizard__batch_mode__recoverable
+#: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_vat_wizard__mode__recoverable
+msgid "Recoverable"
+msgstr "Recuperável"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_recoverable_vat
+msgid "Recoverable VAT"
+msgstr "IVA recuperável"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__new_vat
+msgid "Recoverable VAT after"
+msgstr "IVA recuperável depois"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__current_vat
+msgid "Recoverable VAT now"
+msgstr "IVA recuperável atual"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "Recoverable VAT: %(old)s → %(new)s (%(entry)s)"
+msgstr "IVA recuperável: %(old)s → %(new)s (%(entry)s)"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Recoverable tax by rate"
 msgstr "Imposto recuperável por taxa"
@@ -2628,6 +2852,7 @@ msgid "Task of the project, for follow-up. The cost goes into the project budget
 msgstr "Tarefa do projeto, para acompanhamento. O custo entra no orçamento do projeto, quer a despesa seja refaturada ou não."
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_expense_scan_vat_wizard__tax_id
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Tax"
 msgstr "Imposto"
@@ -2761,6 +2986,18 @@ msgid "The PDF could not be converted. Install \"pdf2image\" and the \"poppler-u
 msgstr "Não foi possível converter o PDF. Instale \"pdf2image\" e o pacote de sistema \"poppler-utils\" para digitalizar PDF."
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "The VAT generated for %s is not the one asked: the correction was not made."
+msgstr "O IVA gerado para %s não é o pedido: a correção não foi feita."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "The VAT of %(expense)s is between 0 and %(ceiling)s, the VAT that the rate of %(rate)s %% gives on %(total)s."
+msgstr "O IVA de %(expense)s está entre 0 e %(ceiling)s, o IVA que a taxa de %(rate)s %% dá sobre %(total)s."
+
+#. module: expense_scan
 #. odoo-javascript
 #: code:addons/expense_scan/static/src/js/retouch_dialog.js:0
 msgid "The automatic retouch failed."
@@ -2810,6 +3047,18 @@ msgstr "O formulário não pode ser guardado assim: corrija-o e tente de novo."
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "The invoice %(invoice)s carries this expense, but it could not be posted: %(error)s"
 msgstr "A fatura %(invoice)s inclui esta despesa, mas não foi possível contabilizá-la: %(error)s"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
+msgid "The invoice of an expense is set by the invoicing, not by hand."
+msgstr "A fatura de uma despesa é definida pela faturação, não à mão."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "The journal entry of %s is not posted."
+msgstr "O lançamento contabilístico de %s não está publicado."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_expense_scan_policy_rule__per_night
@@ -2928,6 +3177,18 @@ msgid "The selected expenses do not all have the same answer. Which one should t
 msgstr "As despesas selecionadas não têm todas a mesma resposta. Qual devem tomar todas?"
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_project.py:0
+msgid "The task %(task)s is not a task of the project %(project)s."
+msgstr "A tarefa %(task)s não é uma tarefa do projeto %(project)s."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "The tax %(tax)s cannot give a VAT of %(amount)s."
+msgstr "O imposto %(tax)s não pode dar um IVA de %(amount)s."
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "The tax printed on the receipt goes to the journal entry, rather than the one the rate gives."
 msgstr "O imposto impresso no recibo vai para o lançamento contabilístico, em vez do que resulta da taxa."
@@ -2977,6 +3238,16 @@ msgid "These expenses are already paid."
 msgstr "Estas despesas já estão pagas."
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_vat_wizard.py:0
+msgid ""
+"These expenses have been invoiced and reimbursed: their VAT may already have been declared. Check with your accountant before correcting them.\n"
+"%(names)s"
+msgstr ""
+"Estas despesas foram faturadas e reembolsadas: o seu IVA pode já ter sido declarado. Consulte o seu contabilista antes de as corrigir.\n"
+"%(names)s"
+
+#. module: expense_scan
 #: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheet_current_month
 msgid "This Month"
 msgstr "Este mês"
@@ -3001,6 +3272,12 @@ msgstr "Esta categoria não tem imposto: escolha a taxa para que o imposto lido 
 
 #. module: expense_scan
 #. odoo-python
+#: code:addons/expense_scan/models/expense_vat_wizard.py:0
+msgid "This expense has been invoiced and reimbursed: its VAT may already have been declared. Check with your accountant before correcting it."
+msgstr "Esta despesa foi faturada e reembolsada: o seu IVA pode já ter sido declarado. Consulte o seu contabilista antes de a corrigir."
+
+#. module: expense_scan
+#. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "This receipt is already being scanned. Try again in a moment."
 msgstr "Este recibo já está a ser digitalizado. Tente de novo dentro de momentos."
@@ -3010,6 +3287,12 @@ msgstr "Este recibo já está a ser digitalizado. Tente de novo dentro de moment
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_threads
 msgid "Threads per worker"
 msgstr "Threads por worker"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/expense_vat_wizard.py:0
+msgid "Tick the box to confirm that you checked with your accountant."
+msgstr "Assinale a caixa para confirmar que consultou o seu contabilista."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__date_to
@@ -3166,9 +3449,48 @@ msgid "VAT amount"
 msgstr "Valor do IVA"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_vat_changed
+msgid "VAT corrected"
+msgstr "IVA corrigido"
+
+#. module: expense_scan
+#: model:ir.model,name:expense_scan.model_expense_scan_vat_wizard
+msgid "VAT correction of expenses"
+msgstr "Correção do IVA de despesas"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+msgid "VAT correction: %s"
+msgstr "Correção do IVA: %s"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_vat.py:0
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_vat_move_ids
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_vat
+msgid "VAT corrections"
+msgstr "Correções do IVA"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_original_vat
+msgid "VAT of the entry"
+msgstr "IVA do lançamento"
+
+#. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__taux_tva
 msgid "VAT rate"
 msgstr "Taxa de IVA"
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_original_vat
+msgid "VAT recovered by the journal entry of the expense, before any correction."
+msgstr "IVA recuperado pelo lançamento contabilístico da despesa, antes de qualquer correção."
+
+#. module: expense_scan
+#: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_recoverable_vat
+msgid "VAT the accounting recovers on this expense: the purchase tax lines of its journal entry, plus its posted corrections."
+msgstr "IVA que a contabilidade recupera nesta despesa: as linhas de imposto de compra do seu lançamento contabilístico, mais as correções publicadas."
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__value
@@ -3384,7 +3706,7 @@ msgstr "tarefa, para acompanhamento"
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 msgid "total"
-msgstr ""
+msgstr "total"
 
 #. module: expense_scan
 #. odoo-python
