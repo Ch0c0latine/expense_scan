@@ -1,5 +1,15 @@
 # Changelog
 
+## 19.0.2.11.1 — 2026-10-03
+
+- **Stands alone, tested**: new tests check that the module depends on Odoo apps
+  only (Expenses, Project), that its data names no xmlid of Sales or of a
+  companion module, that `account.move.expense_scan_sheet_files()` returns the
+  Excel table on the model of the project and the receipts, and that the
+  update moves the Excel model kept on a sales order to its project. The
+  migration notes that Odoo drops the old column at the update of the module
+  that declared it.
+
 ## 19.0.2.11.0 — 2026-10-03
 
 - **Excel model of the expenses on the project**: the project form (Expenses

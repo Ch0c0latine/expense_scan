@@ -4,8 +4,9 @@
 """The Excel model of the expenses moves from the sales order to the project.
 
 A module that sent the invoices used to keep it on the order, in the column
-``mission_expense_template_id``, which Odoo leaves in place when that module no longer
-declares the field: the value goes to the project of the order when the project has none.
+``mission_expense_template_id``. Odoo drops that column at the update of the module that
+declared the field: when this module is updated first, the value goes here to the project
+of the order when the project has none; otherwise that module carries it over itself.
 """
 
 
@@ -16,7 +17,8 @@ def _has_column(cr, table, column):
 
 
 def migrate(cr, version):
-    if not _has_column(cr, 'sale_order', 'mission_expense_template_id')             or not _has_column(cr, 'project_project', 'expense_scan_sheet_template_id'):
+    if not _has_column(cr, 'sale_order', 'mission_expense_template_id') \
+            or not _has_column(cr, 'project_project', 'expense_scan_sheet_template_id'):
         return
     cr.execute("""
         UPDATE project_project p
