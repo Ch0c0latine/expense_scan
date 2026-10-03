@@ -24,7 +24,7 @@ class HrExpense(models.Model):
         view = self.env.ref('expense_scan.hr_employee_public_view_kanban_expense_team')
         return {
             'type': 'ir.actions.act_window',
-            'name': _("My team's expenses"),
+            'name': _("My Team's Expenses"),
             # Path of the server action: on reload, Odoo runs the action again
             # instead of failing.
             'path': 'my-team-expenses',

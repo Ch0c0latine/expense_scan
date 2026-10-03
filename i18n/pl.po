@@ -159,12 +159,6 @@ msgstr "%(expense)s jest na fakturze %(invoice)s. Najpierw anuluj fakturę (lub 
 #. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
-msgid "%(expense)s is on the draft invoice %(invoice)s. Delete the draft first."
-msgstr "%(expense)s jest na fakturze roboczej %(invoice)s. Najpierw usuń wersję roboczą."
-
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid "%(expense)s is on the invoice %(invoice)s. Delete or cancel the invoice first, change the expenses, then invoice again."
 msgstr "%(expense)s jest na fakturze %(invoice)s. Najpierw usuń lub anuluj fakturę, zmień wydatki, a potem wystaw fakturę ponownie."
 
@@ -360,10 +354,10 @@ msgstr "Paragon z inną sumą lub datą przeniesiono do osobnego wydatku: %s"
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
 msgid ""
 "A rule warns without blocking: ⚠ when a limit is\n"
-"                        exceeded, ℹ︎ for a point to check. \"Done\" puts out\n"
+"                        exceeded, ℹ︎ for a point to check. \"Save and close\" puts out\n"
 "                        the ℹ︎ signs, a justification the ⚠ signs. Without a\n"
 "                        family or a category, it applies to every expense."
-msgstr "Zasada ostrzega, nie blokując: ⚠ przy przekroczeniu, ℹ︎ dla punktu do sprawdzenia. „Gotowe” gasi ℹ︎, uzasadnienie gasi ⚠. Bez rodziny i kategorii dotyczy wszystkich wydatków."
+msgstr "Zasada ostrzega, nie blokując: ⚠ przy przekroczeniu, ℹ︎ dla punktu do sprawdzenia. „Zapisz i zamknij” gasi ℹ︎, uzasadnienie gasi ⚠. Bez rodziny i kategorii dotyczy wszystkich wydatków."
 
 #. module: expense_scan
 #. odoo-python
@@ -386,11 +380,6 @@ msgstr "Jeden projekt"
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_policy_breach
 msgid "Above a limit of the rules, justified or not."
 msgstr "Powyżej limitu zasad, uzasadnione lub nie."
-
-#. module: expense_scan
-#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "Accounting fields"
-msgstr "Pola księgowe"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__active
@@ -514,6 +503,11 @@ msgid "Automatic retouch (can be changed before applying)"
 msgstr "Automatyczna poprawka (do zmiany przed zastosowaniem)"
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Automatic uses RapidOCR, and Tesseract when it is missing."
+msgstr "Automatyczny używa RapidOCR, a Tesseract, gdy go brakuje."
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sheet_wizard__available_project_ids
 msgid "Available Project"
 msgstr "Dostępne projekty"
@@ -543,6 +537,11 @@ msgstr "Pusty skoroszyt"
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_policy_rule__meal_period__breakfast
 msgid "Breakfast"
 msgstr "Śniadanie"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.project_project_view_form_expense_budget
+msgid "Budget"
+msgstr "Budżet"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_left
@@ -633,6 +632,11 @@ msgid "Changes to what Odoo shows, for every company. Off unless you choose them
 msgstr "Zmiany w tym, co pokazuje Odoo, dla wszystkich firm. Wyłączone, dopóki ich nie wybierzesz"
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Charge the expenses of a project to its customer, through its sales order"
+msgstr "Refakturuj wydatki projektu na klienta, za pośrednictwem jego zamówienia sprzedaży"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__rule_type
 msgid "Check"
 msgstr "Sprawdzić"
@@ -669,6 +673,12 @@ msgstr "Wybierz wartość do wpisania w %s."
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy_rule__extra_cities
 msgid "Cities with extra"
 msgstr "Miasta z dopłatą"
+
+#. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/action_helper_patch.js:0
+msgid "Click \"Upload\" to choose a receipt, or \"New\" to enter an expense by hand."
+msgstr "Kliknij „Prześlij”, aby wybrać paragon, lub „Nowe”, aby wprowadzić wydatek ręcznie."
 
 #. module: expense_scan
 #. odoo-javascript
@@ -892,13 +902,18 @@ msgid "Dates"
 msgstr "Daty"
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Dates and kept text"
+msgstr "Daty i przechowywany tekst"
+
+#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_invoicing.py:0
 msgid ""
-"Decide whether to re-invoice these expenses before approving them:\n"
+"Decide whether to re-invoice these expenses before approving them (Yes or No, in the Re-invoice column of the list or in the expense):\n"
 "%s"
 msgstr ""
-"Zdecyduj, czy te wydatki mają być refakturowane, zanim je zatwierdzisz:\n"
+"Zdecyduj, czy refakturować te wydatki, zanim je zatwierdzisz (Tak lub Nie, w kolumnie „Refakturować” listy lub w wydatku):\n"
 "%s"
 
 #. module: expense_scan
@@ -921,11 +936,6 @@ msgstr "Usuń"
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
 msgid "Delete this expense and its receipt for good?"
 msgstr "Trwale usunąć ten wydatek i jego paragon?"
-
-#. module: expense_scan
-#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "Delivered examples: an Excel template to adapt, good practice rules to adjust or archive"
-msgstr "Dołączone przykłady: szablon Excel do dostosowania, zasady dobrych praktyk do zmiany lub archiwizacji"
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__description
@@ -979,11 +989,6 @@ msgstr "Kolejność wyświetlania"
 #: model:ir.model.fields,help:expense_scan.field_hr_expense__expense_scan_project_domain
 msgid "Domain of the \"Project\" field. It limits an employee to their own projects; a project manager or an administrator keeps the whole list."
 msgstr "Domena pola \"Projekt\". Ogranicza pracownika do jego własnych projektów; kierownik projektu lub administrator zachowuje pełną listę."
-
-#. module: expense_scan
-#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
-msgid "Done"
-msgstr "Gotowe"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__scan_duration
@@ -1082,6 +1087,12 @@ msgid "Excel export templates"
 msgstr "Szablony eksportu do Excela"
 
 #. module: expense_scan
+#: model:ir.actions.act_window,name:expense_scan.expense_scan_export_template_action
+#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_export_templates
+msgid "Excel Export Templates"
+msgstr "Szablony eksportu do Excela"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__file
 msgid "Excel file"
 msgstr "Plik Excel"
@@ -1125,6 +1136,11 @@ msgstr "Liczba wydatków"
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Expense Rules"
 msgstr "Zasady wydatków"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Expense rules and sheets"
+msgstr "Zasady wydatków i zestawienia wydatków"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_hint_category
@@ -1187,13 +1203,9 @@ msgstr "Punkty do sprawdzenia poza polami"
 #: model:ir.actions.act_window,name:expense_scan.expense_scan_sheet_current_month_action
 #: model:ir.actions.act_window,name:expense_scan.expense_scan_sheet_wizard_action
 #: model:ir.actions.report,name:expense_scan.action_report_expense_sheet
+#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheets
 msgid "Expense Sheet"
 msgstr "Zestawienie wydatków"
-
-#. module: expense_scan
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_sheets
-msgid "Expense Sheets"
-msgstr "Zestawienia wydatków"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_sheet_template_id
@@ -1301,11 +1313,6 @@ msgid "Expense sheets"
 msgstr "Zestawienia wydatków"
 
 #. module: expense_scan
-#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "Expense sheets and rules"
-msgstr "Zestawienia wydatków i zasady"
-
-#. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_account_bank_statement_line__expense_scan_vat_expense_id
 #: model:ir.model.fields,help:expense_scan.field_account_move__expense_scan_vat_expense_id
 msgid "Expense whose recoverable VAT this entry corrects. A reversal of the entry keeps the link, so that the correction is cancelled."
@@ -1323,6 +1330,15 @@ msgstr "Wydatek, którego odliczalny VAT koryguje ten zapis. Storno zapisu zacho
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "Expenses"
 msgstr "Wydatki"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.project_project_view_form_expense_budget
+msgid ""
+"Expenses are not re-invoiced to customers yet. An administrator\n"
+"                                turns it on in Settings, under Expenses."
+msgstr ""
+"Wydatki nie są jeszcze refakturowane na klientów.\n"
+"                                Administrator włącza to w Ustawieniach, w sekcji Wydatki."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
@@ -1375,12 +1391,6 @@ msgid "Expenses waiting for the manager, or whose re-invoicing is still to decid
 msgstr "Wydatki oczekujące na przełożonego lub z nierozstrzygniętym refakturowaniem. Dopóki jakieś są, wiersz wydatków zamówienia nie rusza się."
 
 #. module: expense_scan
-#: model:ir.actions.act_window,name:expense_scan.expense_scan_export_template_action
-#: model:ir.ui.menu,name:expense_scan.menu_expense_scan_export_templates
-msgid "Export Templates"
-msgstr "Szablony eksportu"
-
-#. module: expense_scan
 #: model:ir.model,name:expense_scan.model_expense_scan_export_column
 msgid "Export template mapping"
 msgstr "Mapowanie szablonu eksportu"
@@ -1399,6 +1409,11 @@ msgstr "Fałsz, gdy tylko każdy punkt z \"Pól do sprawdzenia\" zostanie rozwi�
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_manual_fields
 msgid "Fields entered by hand"
 msgstr "Pola wpisane ręcznie"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Fields filled in by the scan"
+msgstr "Pola wypełniane przez skan"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__scan_todo
@@ -1453,12 +1468,6 @@ msgstr "Pierwszy wiersz wydatków"
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_export_template_view_form
 msgid "First sheet"
 msgstr "Pierwszy arkusz"
-
-#. module: expense_scan
-#: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_auto_rotate
-#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_auto_rotate
-msgid "Fix quarter turns"
-msgstr "Korygować obroty o ćwierć"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_keep_name
@@ -1628,6 +1637,16 @@ msgid "Keep the text read for (days)"
 msgstr "Przechowuj odczytany tekst przez (dni)"
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Language codes joined with \"+\", for example eng+fra."
+msgstr "Kody języków połączone znakiem „+”, na przykład eng+fra."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Laptops, tablets and half-screen windows: from 768 px wide instead of 1400 px."
+msgstr "Laptopy, tablety i okna na pół ekranu: od szerokości 768 px zamiast 1400 px."
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__write_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_template__write_uid
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_policy__write_uid
@@ -1736,9 +1755,9 @@ msgstr "Posiłek"
 msgid ""
 "Meal and hotel ceilings, expenses to avoid, a customer's\n"
 "               requirements: each expense concerned shows a warning, and the\n"
-"               \"Rule breaches\" filter gathers them. Archive a set of rules to\n"
+"               \"Rule breaches\" filter gathers them. Switch a set off to\n"
 "               suspend it."
-msgstr "Limity posiłków i hotelu, wydatki do unikania, wymagania klienta: każdy dotknięty wydatek pokazuje ostrzeżenie, a filtr \"Naruszenia zasad\" je zbiera. Zarchiwizuj zestaw zasad, aby go zawiesić."
+msgstr "Limity posiłków i hotelu, wydatki do unikania, wymagania klienta: każdy dotknięty wydatek pokazuje ostrzeżenie, a filtr \"Naruszenia zasad\" je zbiera. Wyłącz zestaw zasad, aby go zawiesić."
 
 #. module: expense_scan
 #. odoo-python
@@ -1807,15 +1826,11 @@ msgid "My Expenses"
 msgstr "Moje wydatki"
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_team.py:0
 #: model:ir.actions.server,name:expense_scan.action_expense_scan_team
 #: model:ir.ui.menu,name:expense_scan.menu_expense_scan_team
 msgid "My Team's Expenses"
-msgstr "Wydatki mojego zespołu"
-
-#. module: expense_scan
-#. odoo-python
-#: code:addons/expense_scan/models/hr_expense_team.py:0
-msgid "My team's expenses"
 msgstr "Wydatki mojego zespołu"
 
 #. module: expense_scan
@@ -2119,6 +2134,11 @@ msgid "Open the expense lists on the current month"
 msgstr "Otwieraj listy wydatków na bieżącym miesiącu"
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.project_project_view_form_expense_budget
+msgid "Open the settings"
+msgstr "Otwórz ustawienia"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__scan_original_attachment_id
 msgid "Original photo"
 msgstr "Oryginalne zdjęcie"
@@ -2307,14 +2327,10 @@ msgid "Rate"
 msgstr "Stawka"
 
 #. module: expense_scan
-#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_list_invoicing
-msgid "Re-invoicable"
-msgstr "Do refakturowania"
-
-#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense.py:0
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__reinvoice_mode
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_list_invoicing
 msgid "Re-invoice"
 msgstr "Refakturować"
 
@@ -2365,6 +2381,17 @@ msgid "Re-invoiced to the customer"
 msgstr "Refakturowane na klienta"
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.project_project_view_form_expense_budget
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Re-invoicing"
+msgstr "Refakturowanie"
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_reinvoice_on
+msgid "Re-invoicing enabled"
+msgstr "Refakturowanie włączone"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_search_scan
 msgid "Re-invoicing to be decided"
 msgstr "Refakturowanie do decyzji"
@@ -2378,6 +2405,11 @@ msgstr "Odczyt sfotografowanych paragonów na własnym serwerze, bez kredytów i
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__scan_score
 msgid "Reading confidence"
 msgstr "Pewność odczytu"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Reading engine"
+msgstr "Silnik odczytu"
 
 #. module: expense_scan
 #. odoo-javascript
@@ -2409,6 +2441,12 @@ msgid "Receipt"
 msgstr "Paragon"
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_wide_split
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_wide_split
+msgid "Receipt beside the form on narrower screens"
+msgstr "Paragon obok formularza na węższych ekranach"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_receipt_removed
 msgid "Receipt deleted"
 msgstr "Paragon usunięty"
@@ -2430,11 +2468,6 @@ msgstr "Paragon w walucie nieaktywnej w Odoo: limity kwot nie są sprawdzane."
 #: code:addons/expense_scan/models/hr_expense_multi.py:0
 msgid "Receipt moved here from %s: its total or date differ from the receipt of that expense."
 msgstr "Paragon przeniesiony tutaj z %s: jego suma lub data różni się od paragonu tamtego wydatku."
-
-#. module: expense_scan
-#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "Receipt next to the form from 768 px wide instead of 1400 px."
-msgstr "Paragon obok formularza od 768 px szerokości zamiast 1400 px."
 
 #. module: expense_scan
 #: model:ir.model.fields.selection,name:expense_scan.selection__expense_scan_export_column__value__n
@@ -2494,6 +2527,11 @@ msgstr "Paragon zeskanowany. Sprawdź te pola przed przesłaniem:"
 #: code:addons/expense_scan/static/src/js/expense_scan_upload.js:0
 msgid "Receipt scanned. To check: %s"
 msgstr "Paragon zeskanowany. Do sprawdzenia: %s"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Receipt scanner: advanced options"
+msgstr "Skaner paragonów: opcje zaawansowane"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
@@ -2587,6 +2625,8 @@ msgstr "Odrzuca eksport, jeśli wydatki należą do kilku projektów."
 
 #. module: expense_scan
 #: model:ir.actions.server,name:expense_scan.action_expense_scan_pay
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_invoicing
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_list_invoicing
 msgid "Reimburse the employee"
 msgstr "Zwróć pracownikowi"
 
@@ -2684,6 +2724,11 @@ msgstr "Zasady"
 #: model:ir.model.fields,help:expense_scan.field_res_config_settings__expense_scan_enabled
 msgid "Runs OCR on every receipt uploaded from the expense list."
 msgstr "Uruchamia OCR dla każdego paragonu przesłanego z listy wydatków."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
+msgid "Save and close"
+msgstr "Zapisz i zamknij"
 
 #. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_sirene__siret
@@ -2797,12 +2842,6 @@ msgid "Single payment method"
 msgstr "Jedyna metoda płatności"
 
 #. module: expense_scan
-#: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_wide_split
-#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_wide_split
-msgid "Split view from 768 px"
-msgstr "Widok dzielony od 768 px"
-
-#. module: expense_scan
 #. odoo-python
 #: code:addons/expense_scan/models/hr_expense_spread.py:0
 msgid "Spread expenses"
@@ -2874,6 +2913,22 @@ msgstr "Proponuje projekt pracownika trwający w dniu paragonu."
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "Support this module"
 msgstr "Wesprzyj ten moduł"
+
+#. module: expense_scan
+#. odoo-javascript
+#: code:addons/expense_scan/static/src/js/action_helper_patch.js:0
+msgid "Tap \"Scan\" to photograph a receipt, or \"New\" to enter an expense by hand."
+msgstr "Dotknij „Skanuj”, aby sfotografować paragon, lub „Nowe”, aby wprowadzić wydatek ręcznie."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "The delivered \"Good practice\" rules are on: open the list to adjust them or to switch them off."
+msgstr "Dostarczone zasady „Dobre praktyki” są włączone: otwórz listę, aby je dostosować lub wyłączyć."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "The engine and the photo processing have good defaults: see the advanced options below."
+msgstr "Silnik i przetwarzanie zdjęcia mają dobre ustawienia domyślne: zobacz opcje zaawansowane poniżej."
 
 #. module: expense_scan
 #. odoo-python
@@ -3423,6 +3478,12 @@ msgid "True when the user viewing the expense manages expenses. The account and 
 msgstr "Prawda, gdy użytkownik przeglądający wydatek zarządza wydatkami. Konto i podział analityczny są pokazywane tylko jemu, oprócz grup księgowych wymaganych przez Odoo."
 
 #. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_res_company__expense_scan_auto_rotate
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_auto_rotate
+msgid "Turn sideways receipts upright"
+msgstr "Prostuj paragony ułożone bokiem"
+
+#. module: expense_scan
 #: model:ir.model.fields,field_description:expense_scan.field_expense_scan_export_column__kind
 msgid "Type"
 msgstr "Typ"
@@ -3545,8 +3606,18 @@ msgstr "Wartość"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Warnings on expenses that go beyond your rules, and Excel templates for the expense sheet"
+msgstr "Ostrzeżenia o wydatkach przekraczających zasady oraz szablony Excela dla zestawienia wydatków"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "What the scan may fill in on its own"
 msgstr "Co skanowanie może wypełnić samo"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Where the recognition models are downloaded."
+msgstr "Gdzie pobierane są modele rozpoznawania."
 
 #. module: expense_scan
 #: model:ir.model.fields,help:expense_scan.field_res_company__expense_scan_model_dir
@@ -3558,6 +3629,16 @@ msgstr "Gdzie pobierane są modele rozpoznawania. Zostaw puste, aby użyć podfo
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_policy_view_form
 msgid "Where the rules come from, date of the last update..."
 msgstr "Skąd pochodzą zasady, data ostatniej aktualizacji..."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Which dates are believed, and how long the text read on a receipt is kept"
+msgstr "Które daty są uznawane i jak długo przechowywany jest tekst odczytany z paragonu"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Which software reads the receipts, and how"
+msgstr "Które oprogramowanie czyta paragony i w jaki sposób"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_policy

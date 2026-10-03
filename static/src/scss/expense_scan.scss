@@ -267,3 +267,11 @@
     font-size: 1.15em;
     font-weight: bold;
 }
+
+// Line under Odoo's message on an empty expense list: Odoo styles the
+// paragraphs of that message as headings.
+.o_nocontent_help .o_expense_scan_empty_hint {
+    font-size: 1rem;
+    font-weight: normal;
+    margin-top: 1rem;
+}

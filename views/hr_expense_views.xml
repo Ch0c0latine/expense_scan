@@ -10,9 +10,10 @@
         <field name="arch" type="xml">
 
             <xpath expr="//header/button[1]" position="before">
-                <!-- "Done" button: the main action once the fields are corrected. -->
+                <!-- Keeps the expense as a draft and goes back to the list:
+                     "Submit" stays the main action. -->
                 <button name="action_expense_scan_done" type="object"
-                        string="Done" class="oe_highlight"
+                        string="Save and close"
                         invisible="state != 'draft'"/>
             </xpath>
 
@@ -75,7 +76,9 @@
                     <i class="fa fa-exclamation-triangle" role="img" aria-label="Error"/>
                     <span>
                         The receipt scan failed, enter the expense by hand.
-                        <field name="scan_message" nolabel="1" readonly="1"/>
+                        <!-- The technical reason is for the people who can act on it. -->
+                        <field name="scan_message" nolabel="1" readonly="1"
+                               groups="hr_expense.group_hr_expense_manager"/>
                     </span>
                 </div>
             </xpath>
@@ -279,7 +282,8 @@
             <xpath expr="//sheet" position="inside">
                 <group string="Receipt scan" name="expense_scan_details"
                        invisible="scan_state == 'none'" col="2">
-                    <field name="scan_message" readonly="1"/>
+                    <field name="scan_message" readonly="1"
+                           invisible="scan_state == 'error' and not expense_scan_expense_manager"/>
                     <field name="expense_scan_merchant" readonly="not is_editable"
                            placeholder="Merchant on the receipt"/>
                     <field name="expense_scan_category_reason" readonly="1"

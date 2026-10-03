@@ -15,69 +15,24 @@
                          company_dependent="1"
                          help="Read photographed receipts on your own server, without credits or subscription">
                     <field name="expense_scan_enabled"/>
-                    <div class="content-group" invisible="not expense_scan_enabled">
-                        <div class="row mt16">
-                            <label for="expense_scan_engine" class="col-lg-4 o_light_label"/>
-                            <field name="expense_scan_engine"/>
-                        </div>
-                        <div class="row" invisible="expense_scan_engine == 'rapidocr'">
-                            <label for="expense_scan_tesseract_lang" class="col-lg-4 o_light_label"/>
-                            <field name="expense_scan_tesseract_lang"/>
-                        </div>
-                        <div class="row">
-                            <label for="expense_scan_threads" class="col-lg-4 o_light_label"/>
-                            <field name="expense_scan_threads"/>
-                            <div class="text-muted small">0 means 4. More threads do not read a receipt faster.</div>
-                        </div>
-                        <div class="row">
-                            <label for="expense_scan_max_age_days" class="col-lg-4 o_light_label"/>
-                            <field name="expense_scan_max_age_days"/>
-                            <div class="text-muted small">An older date is ignored: usually a warranty or loyalty card date.</div>
-                        </div>
-                        <div class="row">
-                            <label for="expense_scan_text_retention_days" class="col-lg-4 o_light_label"/>
-                            <field name="expense_scan_text_retention_days"/>
-                            <div class="text-muted small">Then the text read is erased; the receipt image stays. 0: never.</div>
-                        </div>
-                        <div class="row" invisible="expense_scan_engine == 'tesseract'">
-                            <label for="expense_scan_model_dir" class="col-lg-4 o_light_label"/>
-                            <field name="expense_scan_model_dir"
-                                   placeholder="default: Odoo's data directory"/>
-                        </div>
-                        <div class="mt8">
-                            <button name="action_expense_scan_self_test" type="object"
-                                    string="Test and preload the engine"
-                                    class="btn btn-link ps-0" icon="fa-play-circle"/>
-                        </div>
-                        <field name="expense_scan_status" widget="text" readonly="1"
-                               class="text-muted small"/>
+                    <div class="text-muted small" invisible="not expense_scan_enabled">
+                        The engine and the photo processing have good defaults: see the advanced options below.
                     </div>
                 </setting>
 
-                <setting id="expense_scan_image_setting" string="Photo processing"
+                <setting id="expense_scan_reinvoice_setting" string="Re-invoicing"
                          company_dependent="1"
-                         invisible="not expense_scan_enabled"
-                         help="Cut out and straighten the receipt before reading it">
-                    <div class="content-group">
-                        <div><field name="expense_scan_autocrop"/>
-                            <label for="expense_scan_autocrop"/>
-                            <div class="text-muted small ps-4">Finds the edges of the receipt and corrects the perspective.</div></div>
-                        <div><field name="expense_scan_deskew"/>
-                            <label for="expense_scan_deskew"/>
-                            <div class="text-muted small ps-4">Corrects the remaining tilt of the text lines.</div></div>
-                        <div><field name="expense_scan_auto_rotate"/>
-                            <label for="expense_scan_auto_rotate"/>
-                            <div class="text-muted small ps-4">Reads again after a quarter turn when the text runs vertically. Slower.</div></div>
-                        <div><field name="expense_scan_keep_original"/>
-                            <label for="expense_scan_keep_original"/>
-                            <div class="text-muted small ps-4">The untouched photo stays reachable from the expense; the cropped image is shown.</div></div>
-                        <div><field name="expense_scan_wide_split"/>
-                            <label for="expense_scan_wide_split"/>
-                            <div class="text-muted small ps-4">Receipt next to the form from 768 px wide instead of 1400 px.</div></div>
+                         help="Charge the expenses of a project to its customer, through its sales order">
+                    <field name="expense_scan_reinvoice"/>
+                    <div class="content-group" invisible="not expense_scan_reinvoice">
+                        <div class="text-muted small ps-4">Suggests the employee's project running on the receipt date.</div>
+                        <div class="mt-2"><field name="expense_scan_limit_projects"/>
+                            <label for="expense_scan_limit_projects"/>
+                            <div class="text-muted small ps-4">An employee is offered the projects they manage, have a task on or are assigned to.</div></div>
                     </div>
                 </setting>
 
-                <setting id="expense_scan_accounting_setting" string="Accounting fields"
+                <setting id="expense_scan_accounting_setting" string="Fields filled in by the scan"
                          company_dependent="1"
                          invisible="not expense_scan_enabled"
                          help="What the scan may fill in on its own">
@@ -91,12 +46,6 @@
                         <div><field name="expense_scan_ecb_rates"/>
                             <label for="expense_scan_ecb_rates"/>
                             <div class="text-muted small ps-4">Daily reference rates for the active currencies: a foreign receipt is converted at the rate of its day.</div></div>
-                        <div><field name="expense_scan_reinvoice"/>
-                            <label for="expense_scan_reinvoice"/>
-                            <div class="text-muted small ps-4">Suggests the employee's project running on the receipt date.</div></div>
-                        <div invisible="not expense_scan_reinvoice"><field name="expense_scan_limit_projects"/>
-                            <label for="expense_scan_limit_projects"/>
-                            <div class="text-muted small ps-4">An employee is offered the projects they manage, have a task on or are assigned to.</div></div>
                         <div class="mt-2">
                             <label for="expense_scan_product_id" class="o_light_label"/>
                             <field name="expense_scan_product_id"
@@ -107,52 +56,141 @@
                     </div>
                 </setting>
 
-                <setting id="expense_scan_sheet_setting" string="Expense sheets and rules"
-                         help="Delivered examples: an Excel template to adapt, good practice rules to adjust or archive">
+                <setting id="expense_scan_sheet_setting" string="Expense rules and sheets"
+                         help="Warnings on expenses that go beyond your rules, and Excel templates for the expense sheet">
                     <div class="content-group">
-                        <div>
-                            <button name="%(expense_scan.expense_scan_export_template_action)d"
-                                    type="action" string="Excel export templates"
-                                    class="btn-link ps-0" icon="oi-arrow-right"/>
-                        </div>
                         <div>
                             <button name="%(expense_scan.expense_scan_policy_action)d"
                                     type="action" string="Expense Rules"
                                     class="btn-link ps-0" icon="oi-arrow-right"/>
                         </div>
-                        <div class="text-muted small mt-1">
+                        <div class="text-muted small ps-4">
+                            The delivered "Good practice" rules are on: open the list to adjust them or to switch them off.
+                        </div>
+                        <div>
+                            <button name="%(expense_scan.expense_scan_export_template_action)d"
+                                    type="action" string="Excel export templates"
+                                    class="btn-link ps-0" icon="oi-arrow-right"/>
+                        </div>
+                        <div class="text-muted small ps-4">
                             The expense sheet is produced from the expense
                             list: select the expenses, then "Expense Sheet".
                         </div>
                     </div>
                 </setting>
 
-                <setting id="expense_scan_menus_setting" string="Odoo's menus and filters"
-                         help="Changes to what Odoo shows, for every company. Off unless you choose them">
-                    <div class="content-group">
-                        <div><field name="expense_scan_tidy_menu"/>
-                            <label for="expense_scan_tidy_menu"/>
-                            <div class="text-muted small ps-4">The group that holds the expense lists is called "Expense follow-up".</div></div>
-                        <div><field name="expense_scan_month_default"/>
-                            <label for="expense_scan_month_default"/>
-                            <div class="text-muted small ps-4">"My Expenses" and "Expenses to Process" start with the "Current month" filter.</div></div>
-                        <div><field name="expense_scan_tidy_filters"/>
-                            <label for="expense_scan_tidy_filters"/>
-                            <div class="text-muted small ps-4">Removes the "My Team", "Company" and "Employee" shortcuts, and the months listed under the expense date.</div></div>
-                    </div>
-                </setting>
+            </xpath>
+
+            <!-- Settings an ordinary user never needs to touch. -->
+            <xpath expr="//app[@name='hr_expense']" position="inside">
+                <block title="Receipt scanner: advanced options" name="expense_scan_advanced_container">
+
+                    <setting id="expense_scan_engine_setting" string="Reading engine"
+                             company_dependent="1"
+                             invisible="not expense_scan_enabled"
+                             help="Which software reads the receipts, and how">
+                        <div class="content-group">
+                            <div class="row mt16">
+                                <label for="expense_scan_engine" class="col-lg-4 o_light_label"/>
+                                <field name="expense_scan_engine"/>
+                                <div class="text-muted small">Automatic uses RapidOCR, and Tesseract when it is missing.</div>
+                            </div>
+                            <div class="row" invisible="expense_scan_engine == 'rapidocr'">
+                                <label for="expense_scan_tesseract_lang" class="col-lg-4 o_light_label"/>
+                                <field name="expense_scan_tesseract_lang"/>
+                                <div class="text-muted small">Language codes joined with "+", for example eng+fra.</div>
+                            </div>
+                            <div class="row">
+                                <label for="expense_scan_threads" class="col-lg-4 o_light_label"/>
+                                <field name="expense_scan_threads"/>
+                                <div class="text-muted small">0 means 4. More threads do not read a receipt faster.</div>
+                            </div>
+                            <div class="row" invisible="expense_scan_engine == 'tesseract'">
+                                <label for="expense_scan_model_dir" class="col-lg-4 o_light_label"/>
+                                <field name="expense_scan_model_dir"
+                                       placeholder="default: Odoo's data directory"/>
+                                <div class="text-muted small">Where the recognition models are downloaded.</div>
+                            </div>
+                            <div class="mt8">
+                                <button name="action_expense_scan_self_test" type="object"
+                                        string="Test and preload the engine"
+                                        class="btn btn-link ps-0" icon="fa-play-circle"/>
+                            </div>
+                            <field name="expense_scan_status" widget="text" readonly="1"
+                                   class="text-muted small"/>
+                        </div>
+                    </setting>
+
+                    <setting id="expense_scan_image_setting" string="Photo processing"
+                             company_dependent="1"
+                             invisible="not expense_scan_enabled"
+                             help="Cut out and straighten the receipt before reading it">
+                        <div class="content-group">
+                            <div><field name="expense_scan_autocrop"/>
+                                <label for="expense_scan_autocrop"/>
+                                <div class="text-muted small ps-4">Finds the edges of the receipt and corrects the perspective.</div></div>
+                            <div><field name="expense_scan_deskew"/>
+                                <label for="expense_scan_deskew"/>
+                                <div class="text-muted small ps-4">Corrects the remaining tilt of the text lines.</div></div>
+                            <div><field name="expense_scan_auto_rotate"/>
+                                <label for="expense_scan_auto_rotate"/>
+                                <div class="text-muted small ps-4">Reads again after a quarter turn when the text runs vertically. Slower.</div></div>
+                            <div><field name="expense_scan_keep_original"/>
+                                <label for="expense_scan_keep_original"/>
+                                <div class="text-muted small ps-4">The untouched photo stays reachable from the expense; the cropped image is shown.</div></div>
+                            <div><field name="expense_scan_wide_split"/>
+                                <label for="expense_scan_wide_split"/>
+                                <div class="text-muted small ps-4">Laptops, tablets and half-screen windows: from 768 px wide instead of 1400 px.</div></div>
+                        </div>
+                    </setting>
+
+                    <setting id="expense_scan_dates_setting" string="Dates and kept text"
+                             company_dependent="1"
+                             invisible="not expense_scan_enabled"
+                             help="Which dates are believed, and how long the text read on a receipt is kept">
+                        <div class="content-group">
+                            <div class="row mt16">
+                                <label for="expense_scan_max_age_days" class="col-lg-4 o_light_label"/>
+                                <field name="expense_scan_max_age_days"/>
+                                <div class="text-muted small">An older date is ignored: usually a warranty or loyalty card date.</div>
+                            </div>
+                            <div class="row">
+                                <label for="expense_scan_text_retention_days" class="col-lg-4 o_light_label"/>
+                                <field name="expense_scan_text_retention_days"/>
+                                <div class="text-muted small">Then the text read is erased; the receipt image stays. 0: never.</div>
+                            </div>
+                        </div>
+                    </setting>
+
+                    <setting id="expense_scan_menus_setting" string="Odoo's menus and filters"
+                             help="Changes to what Odoo shows, for every company. Off unless you choose them">
+                        <div class="content-group">
+                            <div><field name="expense_scan_tidy_menu"/>
+                                <label for="expense_scan_tidy_menu"/>
+                                <div class="text-muted small ps-4">The group that holds the expense lists is called "Expense follow-up".</div></div>
+                            <div><field name="expense_scan_month_default"/>
+                                <label for="expense_scan_month_default"/>
+                                <div class="text-muted small ps-4">"My Expenses" and "Expenses to Process" start with the "Current month" filter.</div></div>
+                            <div><field name="expense_scan_tidy_filters"/>
+                                <label for="expense_scan_tidy_filters"/>
+                                <div class="text-muted small ps-4">Removes the "My Team", "Company" and "Employee" shortcuts, and the months listed under the expense date.</div></div>
+                        </div>
+                    </setting>
+
+                </block>
 
                 <!-- Last: support is optional. -->
-                <setting id="expense_scan_support_setting" string="Support this module"
-                         help="Free module, developed in its author's own time">
-                    <div class="content-group">
-                        <a href="https://github.com/sponsors/Ch0c0latine" target="_blank"
-                           rel="noopener noreferrer" class="btn btn-link ps-0" role="button">
-                            <i class="fa fa-coffee me-1"/>Buy the author a coffee
-                        </a>
-                    </div>
-                </setting>
-
+                <block name="expense_scan_support_container">
+                    <setting id="expense_scan_support_setting" string="Support this module"
+                             help="Free module, developed in its author's own time">
+                        <div class="content-group">
+                            <a href="https://github.com/sponsors/Ch0c0latine" target="_blank"
+                               rel="noopener noreferrer" class="btn btn-link ps-0" role="button">
+                                <i class="fa fa-coffee me-1"/>Buy the author a coffee
+                            </a>
+                        </div>
+                    </setting>
+                </block>
             </xpath>
         </field>
     </record>

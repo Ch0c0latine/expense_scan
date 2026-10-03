@@ -30,6 +30,10 @@ class ProjectProject(models.Model):
         help="Excel model of the table of the re-invoiced expenses that goes with the e-mail of "
              "the customer invoices (for example the model the customer asks for). Empty: no Excel table.",
     )
+    expense_scan_reinvoice_on = fields.Boolean(
+        compute='_compute_expense_scan_reinvoice_on',
+        string="Re-invoicing enabled",
+    )
     expense_scan_budget = fields.Monetary(
         string="Expense budget",
         currency_field='expense_scan_currency_id',
@@ -94,6 +98,12 @@ class ProjectProject(models.Model):
         for project in self:
             project.expense_scan_currency_id = (
                 project.company_id.currency_id or self.env.company.currency_id)
+
+    @api.depends('company_id')
+    def _compute_expense_scan_reinvoice_on(self):
+        for project in self:
+            project.expense_scan_reinvoice_on = (
+                project.company_id or self.env.company).sudo().expense_scan_reinvoice
 
     @api.depends('expense_scan_budget')
     def _compute_expense_scan_amounts(self):

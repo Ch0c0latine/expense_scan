@@ -497,7 +497,8 @@ class HrExpense(models.Model):
             lambda e: e.company_id.expense_scan_reinvoice and e.reinvoice_mode == 'todo')
         if undecided:
             raise UserError(_(
-                "Decide whether to re-invoice these expenses before approving them:\n%s",
+                "Decide whether to re-invoice these expenses before approving them "
+                "(Yes or No, in the Re-invoice column of the list or in the expense):\n%s",
                 "\n".join("- %s" % (e.name or e.display_name) for e in undecided[:20])))
 
     def _do_approve(self, check=True):

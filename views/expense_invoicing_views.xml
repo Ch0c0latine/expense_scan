@@ -11,12 +11,20 @@
         <field name="model">hr.expense</field>
         <field name="inherit_id" ref="hr_expense.hr_expense_view_expenses_analysis_tree"/>
         <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <!-- Select the expenses, then reimburse: the payment of the
+                     approved or posted ones, one per employee. -->
+                <header>
+                    <button name="action_expense_scan_pay" string="Reimburse the employee"
+                            type="object" groups="account.group_account_invoice"/>
+                </header>
+            </xpath>
             <field name="state" position="before">
                 <!-- The cell shows the answer; the total at the bottom is the amount that
                      goes to the customers. -->
                 <field name="reinvoice_mode" column_invisible="True"/>
                 <field name="expense_scan_invoice_id" column_invisible="True"/>
-                <field name="expense_scan_reinvoiced_amount" string="Re-invoicable"
+                <field name="expense_scan_reinvoiced_amount" string="Re-invoice"
                        widget="expense_scan_reinvoice" optional="show" class="text-center"
                        sum="Total re-invoiced"/>
             </field>
@@ -93,6 +101,13 @@
                         invisible="state != 'approved' or not can_approve or expense_scan_invoice_id"
                         groups="hr_expense.group_hr_expense_team_approver"/>
             </xpath>
+            <!-- The accountant settles an approved or posted expense from the form too. -->
+            <xpath expr="//header" position="inside">
+                <button name="action_expense_scan_pay" string="Reimburse the employee" type="object"
+                        class="oe_highlight"
+                        invisible="state != 'posted' or payment_mode != 'own_account'"
+                        groups="account.group_account_invoice"/>
+            </xpath>
             <xpath expr="//field[@name='project_id']" position="after">
                 <field name="expense_scan_invoice_id" readonly="1"
                        invisible="not expense_scan_invoice_id"/>
@@ -142,24 +157,41 @@
                     </div>
                 </button>
             </xpath>
-            <xpath expr="//page[@name='settings']/group" position="inside">
-                <group name="expense_budget" string="Expenses"
-                       groups="hr_expense.group_hr_expense_user">
+            <!-- A tab of its own, before the project's technical settings. -->
+            <xpath expr="//page[@name='settings']" position="before">
+                <page name="expenses" string="Expenses"
+                      groups="hr_expense.group_hr_expense_user">
                     <field name="expense_scan_currency_id" invisible="1"/>
                     <field name="expense_scan_over_budget" invisible="1"/>
-                    <field name="expense_scan_sheet_template_id" options="{'no_create': True}"/>
-                    <field name="expense_scan_budget"/>
-                    <field name="expense_scan_progress" widget="progressbar"
-                           invisible="not expense_scan_budget"
-                           decoration-danger="expense_scan_over_budget"/>
-                    <field name="expense_scan_spent"/>
-                    <field name="expense_scan_waiting"/>
-                    <field name="expense_scan_left" invisible="not expense_scan_budget"
-                           decoration-danger="expense_scan_left &lt; 0"/>
-                    <field name="expense_scan_held_back"
-                           invisible="not expense_scan_held_back"
-                           decoration-warning="1"/>
-                </group>
+                    <field name="expense_scan_reinvoice_on" invisible="1"/>
+                    <group name="expense_budget">
+                        <group string="Budget">
+                            <field name="expense_scan_budget"/>
+                            <field name="expense_scan_progress" widget="progressbar"
+                                   invisible="not expense_scan_budget"
+                                   decoration-danger="expense_scan_over_budget"/>
+                            <field name="expense_scan_spent"/>
+                            <field name="expense_scan_waiting"/>
+                            <field name="expense_scan_left" invisible="not expense_scan_budget"
+                                   decoration-danger="expense_scan_left &lt; 0"/>
+                        </group>
+                        <group string="Re-invoicing" name="expense_reinvoicing">
+                            <field name="expense_scan_sheet_template_id" options="{'no_create': True}"
+                                   invisible="not expense_scan_reinvoice_on"/>
+                            <field name="expense_scan_held_back"
+                                   invisible="not expense_scan_held_back or not expense_scan_reinvoice_on"
+                                   decoration-warning="1"/>
+                            <div colspan="2" class="text-muted" invisible="expense_scan_reinvoice_on"
+                                 name="expense_scan_reinvoice_hint">
+                                Expenses are not re-invoiced to customers yet. An administrator
+                                turns it on in Settings, under Expenses.
+                                <button name="%(hr_expense.action_hr_expense_configuration)d"
+                                        type="action" string="Open the settings"
+                                        class="btn-link p-0 ms-1" groups="base.group_system"/>
+                            </div>
+                        </group>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>

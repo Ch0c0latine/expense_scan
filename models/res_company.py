@@ -53,7 +53,7 @@ class ResCompany(models.Model):
         help="Corrects the remaining tilt of the text lines.",
     )
     expense_scan_auto_rotate = fields.Boolean(
-        string="Fix quarter turns",
+        string="Turn sideways receipts upright",
         default=True,
         help="Reads the receipt again after rotating it when the text seems "
              "to run vertically. Makes that scan slower.",
@@ -137,7 +137,7 @@ class ResCompany(models.Model):
              "receipt, only when exactly one contact matches.",
     )
     expense_scan_wide_split = fields.Boolean(
-        string="Split view from 768 px",
+        string="Receipt beside the form on narrower screens",
         default=True,
         help="Odoo only shows the receipt next to the form from 1400 px wide. "
              "This option lowers the threshold for laptop screens, half-screen "
