@@ -10,6 +10,8 @@ The expense history keeps the actual author.
 Logging in as the employee would give access to everything they can see
 (time off, messages, personal file) and credit them with every action.
 """
+from markupsafe import Markup
+
 from odoo import _, api, models
 from odoo.exceptions import AccessError
 
@@ -32,6 +34,11 @@ class HrExpense(models.Model):
             'view_mode': 'kanban',
             'views': [(view.id, 'kanban')],
             'domain': [('id', 'in', team.ids)],
+            # An approver with nobody in the team learns who is listed here.
+            'help': Markup('<p class="o_view_nocontent_smiling_face">%s</p><p>%s</p>') % (
+                _("No team member yet"),
+                _("The employees whose expenses you approve, or who report to you, appear here. "
+                  "Click one to see their expenses or to enter one in their name.")),
             # No "create" in this context: a card button passes it on to the
             # action it opens, and the "New" button disappeared from the
             # employee's expenses. The view already forbids creating

@@ -186,6 +186,11 @@ class TestRoles(common.TransactionCase):
         menu = self.env.ref('expense_scan.menu_expense_scan_team')
         self.assertEqual(team['name'], menu.with_context(lang='en_US').name)
 
+    def test_an_empty_team_page_says_who_is_listed(self):
+        action = self.env['hr.expense'].with_user(self.users['approver']).action_expense_scan_team()
+        self.assertIn('o_view_nocontent_smiling_face', action['help'])
+        self.assertIn("approve", action['help'])
+
     def test_menus_are_not_visible_without_the_right_to_open_them(self):
         policies = self.env.ref('expense_scan.menu_expense_scan_policies').id
         templates = self.env.ref('expense_scan.menu_expense_scan_export_templates').id

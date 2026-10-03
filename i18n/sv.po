@@ -1955,6 +1955,12 @@ msgid "No tax read on the receipt: enter it if it is printed."
 msgstr "Ingen skatt lästes på kvittot: ange den om den är tryckt."
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_team.py:0
+msgid "No team member yet"
+msgstr "Inga teammedlemmar ännu"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "No."
 msgstr "Nr"
@@ -2924,6 +2930,12 @@ msgstr "Tryck på ”Scanning” för att fotografera ett kvitto, eller på ”N
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "The delivered \"Good practice\" rules are on: open the list to adjust them or to switch them off."
 msgstr "De medföljande reglerna ”God praxis” är på: öppna listan för att justera eller stänga av dem."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_team.py:0
+msgid "The employees whose expenses you approve, or who report to you, appear here. Click one to see their expenses or to enter one in their name."
+msgstr "Här visas de anställda vars utlägg du godkänner eller som rapporterar till dig. Klicka på en för att se deras utlägg eller ange ett i deras namn."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan

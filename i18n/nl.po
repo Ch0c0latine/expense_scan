@@ -1955,6 +1955,12 @@ msgid "No tax read on the receipt: enter it if it is printed."
 msgstr "Geen belasting gelezen op de bon: vul ze in als ze gedrukt is."
 
 #. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_team.py:0
+msgid "No team member yet"
+msgstr "Nog geen teamleden"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.report_expense_sheet
 msgid "No."
 msgstr "Nr."
@@ -2924,6 +2930,12 @@ msgstr "Tik op ‘Scan’ om een bon te fotograferen, of op ‘Nieuw’ om een d
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
 msgid "The delivered \"Good practice\" rules are on: open the list to adjust them or to switch them off."
 msgstr "De meegeleverde regels ‘Goede praktijken’ staan aan: open de lijst om ze aan te passen of uit te zetten."
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense_team.py:0
+msgid "The employees whose expenses you approve, or who report to you, appear here. Click one to see their expenses or to enter one in their name."
+msgstr "Hier staan de medewerkers van wie u de declaraties goedkeurt of die onder u vallen. Klik op een medewerker om diens declaraties te zien of er een op diens naam in te voeren."
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
