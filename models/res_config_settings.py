@@ -5,6 +5,7 @@ from odoo import _, api, fields, models
 from odoo.tools import formatLang
 
 from ..ocr import engines, preprocess
+from . import native_tweaks
 
 
 class ResConfigSettings(models.TransientModel):
@@ -40,15 +41,33 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.expense_scan_set_vendor', readonly=False)
     expense_scan_ecb_rates = fields.Boolean(
         related='company_id.expense_scan_ecb_rates', readonly=False)
+    expense_scan_limit_projects = fields.Boolean(
+        related='company_id.expense_scan_limit_projects', readonly=False)
     expense_scan_product_id = fields.Many2one(
         related='company_id.expense_scan_product_id', readonly=False)
     expense_scan_wide_split = fields.Boolean(
         related='company_id.expense_scan_wide_split', readonly=False)
 
+    # Odoo's own menus, actions and filters, shared by every company: see
+    # models/native_tweaks.py. Off unless chosen.
+    expense_scan_tidy_menu = fields.Boolean(
+        string="Rename the \"My Expenses\" menu",
+        config_parameter=native_tweaks.PARAMETERS['menu'])
+    expense_scan_month_default = fields.Boolean(
+        string="Open the expense lists on the current month",
+        config_parameter=native_tweaks.PARAMETERS['month'])
+    expense_scan_tidy_filters = fields.Boolean(
+        string="Simplify the expense filters",
+        config_parameter=native_tweaks.PARAMETERS['filters'])
+
     expense_scan_status = fields.Text(
         string="Engine status",
         compute='_compute_expense_scan_status',
     )
+
+    def set_values(self):
+        super().set_values()
+        native_tweaks.apply(self.env)
 
     @api.depends('expense_scan_engine')
     def _compute_expense_scan_status(self):

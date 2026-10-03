@@ -6,7 +6,8 @@
 A record renamed in English keeps the name it has in the other languages (the
 update does not overwrite a translation that exists), and a record of another
 module (the menu group) is not exported with this module's translations. They
-are set here, at installation and at update.
+are set here, at installation and at update. The menu group is only renamed
+when the settings ask for it: see ``native_tweaks``.
 """
 
 ACTION = {
@@ -29,9 +30,7 @@ MENU = {
 
 def apply_renamed_translations(env):
     installed = {code for code, _name in env['res.lang'].get_installed()}
-    for xmlid, values in (('expense_scan.action_expense_scan_pay', ACTION),
-                          ('hr_expense.menu_hr_expense_my_expenses', MENU)):
-        record = env.ref(xmlid, raise_if_not_found=False)
-        if record:
-            record.update_field_translations(
-                'name', {code: text for code, text in values.items() if code in installed})
+    record = env.ref('expense_scan.action_expense_scan_pay', raise_if_not_found=False)
+    if record:
+        record.update_field_translations(
+            'name', {code: text for code, text in ACTION.items() if code in installed})

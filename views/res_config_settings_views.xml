@@ -94,6 +94,9 @@
                         <div><field name="expense_scan_reinvoice"/>
                             <label for="expense_scan_reinvoice"/>
                             <div class="text-muted small ps-4">Suggests the employee's project running on the receipt date.</div></div>
+                        <div invisible="not expense_scan_reinvoice"><field name="expense_scan_limit_projects"/>
+                            <label for="expense_scan_limit_projects"/>
+                            <div class="text-muted small ps-4">An employee is offered the projects they manage, have a task on or are assigned to.</div></div>
                         <div class="mt-2">
                             <label for="expense_scan_product_id" class="o_light_label"/>
                             <field name="expense_scan_product_id"
@@ -121,6 +124,21 @@
                             The expense sheet is produced from the expense
                             list: select the expenses, then "Expense Sheet".
                         </div>
+                    </div>
+                </setting>
+
+                <setting id="expense_scan_menus_setting" string="Odoo's menus and filters"
+                         help="Changes to what Odoo shows, for every company. Off unless you choose them">
+                    <div class="content-group">
+                        <div><field name="expense_scan_tidy_menu"/>
+                            <label for="expense_scan_tidy_menu"/>
+                            <div class="text-muted small ps-4">The group that holds the expense lists is called "Expense follow-up".</div></div>
+                        <div><field name="expense_scan_month_default"/>
+                            <label for="expense_scan_month_default"/>
+                            <div class="text-muted small ps-4">"My Expenses" and "Expenses to Process" start with the "Current month" filter.</div></div>
+                        <div><field name="expense_scan_tidy_filters"/>
+                            <label for="expense_scan_tidy_filters"/>
+                            <div class="text-muted small ps-4">Removes the "My Team", "Company" and "Employee" shortcuts, and the months listed under the expense date.</div></div>
                     </div>
                 </setting>
 

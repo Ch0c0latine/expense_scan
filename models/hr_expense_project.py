@@ -145,7 +145,7 @@ class HrExpense(models.Model):
     )
 
     @api.depends_context('uid')
-    @api.depends('employee_id')
+    @api.depends('employee_id', 'company_id')
     def _compute_expense_scan_project_domain(self):
         """Limit the project choice to those of the expense's employee.
 
@@ -161,13 +161,12 @@ class HrExpense(models.Model):
         not the records, and is not a security barrier.
         """
         viewer = self.env.user
-        if viewer.has_group('project.group_project_manager') \
-                or viewer.has_group('base.group_system'):
-            for expense in self:
-                expense.expense_scan_project_domain = "[]"
-            return
-
+        everything = viewer.has_group('project.group_project_manager') \
+            or viewer.has_group('base.group_system')
         for expense in self:
+            if everything or not (expense.company_id or self.env.company).expense_scan_limit_projects:
+                expense.expense_scan_project_domain = "[]"
+                continue
             employee = expense.employee_id or viewer.employee_id
             user = employee.user_id
             # The second term covers the projects the employee manages: they

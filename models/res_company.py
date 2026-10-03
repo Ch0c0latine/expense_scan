@@ -111,6 +111,14 @@ class ResCompany(models.Model):
              "that invoice is.\n\n"
              "Off by default: not every organisation works by project.",
     )
+    expense_scan_limit_projects = fields.Boolean(
+        string="Limit the projects to the employee's own",
+        default=True,
+        help="With re-invoicing, an employee is offered the projects they "
+             "manage, have a task on or are assigned to, not the whole list. "
+             "A project manager and an administrator always see every project. "
+             "Only the choice offered in the form is limited.",
+    )
     expense_scan_product_id = fields.Many2one(
         comodel_name='product.product',
         string="Default category",

@@ -1290,6 +1290,7 @@ class HrExpense(models.Model):
         second photo, then scanning again, says that the two belong
         together.
         """
+        self.check_access('write')
         self._expense_scan_check_scannable()
         for expense in self:
             if not expense._expense_scan_image_attachments():

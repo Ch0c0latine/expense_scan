@@ -34,10 +34,6 @@
                 <filter string="Invoiced" name="invoiced"
                         domain="[('expense_scan_invoice_id', '!=', False)]"/>
             </xpath>
-            <!-- Shortcuts that served no purpose. -->
-            <xpath expr="//filter[@name='my_team_expenses']" position="replace"/>
-            <xpath expr="//filter[@name='by_company']" position="replace"/>
-            <xpath expr="//filter[@name='by_employee']" position="replace"/>
             <xpath expr="//filter[@name='to_pay']" position="after">
                 <filter string="Reimbursed" name="reimbursed"
                         domain="[('state', 'in', ['in_payment', 'paid']), ('payment_mode', '=', 'own_account')]"/>
@@ -53,12 +49,32 @@
                                  ('date', '&lt;', context_today().strftime('%Y-%m-01'))]"/>
                 <separator/>
             </xpath>
-            <xpath expr="//filter[@name='date']" position="attributes">
-                <attribute name="start_month">0</attribute>
-                <attribute name="end_month">-1</attribute>
-            </xpath>
         </field>
     </record>
+
+    <!-- Odoo's own search view, trimmed: an option of the settings, off by
+         default (see models/native_tweaks.py). Not updated, so that an update
+         keeps the choice. -->
+    <data noupdate="1">
+        <record id="hr_expense_view_search_tidy" model="ir.ui.view">
+            <field name="name">hr.expense.view.search.tidy</field>
+            <field name="model">hr.expense</field>
+            <field name="inherit_id" ref="hr_expense.hr_expense_view_search"/>
+            <field name="active" eval="False"/>
+            <field name="arch" type="xml">
+                <!-- Shortcuts that served no purpose. -->
+                <xpath expr="//filter[@name='my_team_expenses']" position="replace"/>
+                <xpath expr="//filter[@name='by_company']" position="replace"/>
+                <xpath expr="//filter[@name='by_employee']" position="replace"/>
+                <!-- The months are the two filters above: the expense date no
+                     longer lists them. -->
+                <xpath expr="//filter[@name='date']" position="attributes">
+                    <attribute name="start_month">0</attribute>
+                    <attribute name="end_month">-1</attribute>
+                </xpath>
+            </field>
+        </record>
+    </data>
 
     <!-- Invoice carrying the expense, under the project; "Unapprove" takes an
          approval back without refusing the expense or sending it to draft. -->
@@ -161,17 +177,4 @@
         </field>
     </record>
 
-    <!-- "My Expenses" held "My Expenses", the expenses to process and the team's:
-         the group is renamed after what it does. -->
-    <record id="hr_expense.menu_hr_expense_my_expenses" model="ir.ui.menu">
-        <field name="name">Expense follow-up</field>
-    </record>
-
-    <!-- The lists open on the current month. -->
-    <record id="hr_expense.hr_expense_actions_my_all" model="ir.actions.act_window">
-        <field name="context">{'search_default_my_open_expenses': 1, 'search_default_current_month': 1}</field>
-    </record>
-    <record id="hr_expense.hr_expense_actions_to_process" model="ir.actions.act_window">
-        <field name="context">{'searchpanel_default_state': ['submitted'], 'search_default_current_month': 1}</field>
-    </record>
 </odoo>
