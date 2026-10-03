@@ -35,6 +35,12 @@ class AccountMove(models.Model):
             # The lines may have changed since the draft was made.
             covered = move._expense_scan_reserve_expenses()
             covered.filtered(lambda e: e.state == 'approved')._expense_scan_post_after_invoice(move)
+        # A credit note for the whole invoice gives the expenses back: they can be invoiced again.
+        for refund in posted.filtered(lambda m: m.move_type == 'out_refund' and m.reversed_entry_id):
+            original = refund.reversed_entry_id
+            if original.expense_scan_expense_ids and refund.currency_id.compare_amounts(
+                    refund.amount_total, original.amount_total) >= 0:
+                original._expense_scan_release_expenses()
         return posted
 
     def button_draft(self):

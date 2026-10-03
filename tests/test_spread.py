@@ -2,7 +2,7 @@
 # Copyright 2026 T.T.C. SAS
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """A flat-rate expense entered for several days, spread one line per day."""
-from datetime import date
+from datetime import date, datetime
 
 from odoo.exceptions import UserError
 from odoo.tests import common, tagged
@@ -54,3 +54,16 @@ class TestSpread(common.TransactionCase):
             expense.action_expense_scan_spread_days()
         with self.assertRaises(UserError):
             self.expense(date(2031, 3, 3), 1).action_expense_scan_spread_days()
+
+    def test_a_holiday_stored_in_utc_removes_its_own_day(self):
+        """1 May in Paris starts at 22:00 UTC on 30 April: 30 April stays a working day."""
+        calendar = self.employee.resource_calendar_id or self.employee.company_id.resource_calendar_id
+        calendar.tz = 'Europe/Paris'
+        self.env['resource.calendar.leaves'].create({
+            'name': "Férié test", 'company_id': self.employee.company_id.id, 'calendar_id': False,
+            'date_from': datetime(2031, 4, 30, 22, 0), 'date_to': datetime(2031, 5, 1, 21, 59, 59),
+            'time_type': 'leave'})
+        first = self.expense(date(2031, 4, 30), 3)  # Wednesday
+        spread = first.action_expense_scan_spread_days()
+        days = sorted(self.env['hr.expense'].search(spread['domain']).mapped('date'))
+        self.assertEqual(days, [date(2031, 4, 30), date(2031, 5, 2), date(2031, 5, 5)])

@@ -8,7 +8,7 @@ These scenarios need Sales and a chart of accounts: without them they skip.
 import unittest
 
 from odoo import Command
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 from odoo.tests import common, tagged
 
 
@@ -355,3 +355,73 @@ class TestInvoicing(common.TransactionCase):
         project.invalidate_recordset()
         self.assertTrue(project.expense_scan_over_budget)
         self.assertEqual(project.expense_scan_held_back, 2)
+
+    # ------------------------------------------------------------------
+    # Review of 03/10/2026
+    # ------------------------------------------------------------------
+
+    def _internal_user(self, name="Interne"):
+        return self.env['res.users'].create({
+            'name': name, 'login': '%s@example.com' % name.lower(),
+            'group_ids': [Command.set([self.env.ref('base.group_user').id])]})
+
+    def test_the_line_added_by_the_module_carries_no_tax(self):
+        tax = self.env['account.tax'].create({'name': "TVA ligne frais", 'amount': 20.0, 'type_tax_use': 'sale'})
+        self.expense_product.taxes_id = [Command.set(tax.ids)]
+        order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'order_line': [Command.create({'product_id': self.service.id, 'product_uom_qty': 5.0})],
+        })
+        order.action_confirm()
+        project = self.env['project.project'].create({'name': "Sans taxe", 'reinvoiced_sale_order_id': order.id})
+        self.approve(self.expense(70.0, project_id=project.id))
+        added = order.order_line.filtered(lambda l: l.product_id.can_be_expensed)
+        self.assertEqual(len(added), 1)
+        self.assertFalse(added.tax_ids, "the amount already includes tax")
+
+    def test_a_credit_note_for_the_whole_invoice_gives_the_expenses_back(self):
+        first = self.expense(100.0)
+        self.approve(first)
+        invoice = self.order._create_invoices()
+        invoice.action_post()
+        self.assertEqual(first.expense_scan_invoice_id, invoice)
+        self.env['account.move.reversal'].with_context(
+            active_model='account.move', active_ids=invoice.ids).create({
+                'journal_id': invoice.journal_id.id}).refund_moves()
+        refund = invoice.reversal_move_ids
+        self.assertTrue(refund)
+        refund.action_post()
+        self.assertFalse(first.expense_scan_invoice_id, "free to be invoiced again")
+
+    def test_only_the_invoicing_sets_the_invoice_of_an_expense(self):
+        first = self.expense(100.0)
+        self.approve(first)
+        invoice = self.order._create_invoices()
+        user = self._internal_user()
+        with self.assertRaises(AccessError):
+            first.with_user(user).write({'expense_scan_invoice_id': False})
+        with self.assertRaises(AccessError):
+            self.env['hr.expense'].with_user(user).create({
+                'name': "Frais", 'employee_id': self.employee.id, 'product_id': self.category.id,
+                'total_amount_currency': 5.0, 'expense_scan_invoice_id': invoice.id})
+
+    def test_a_context_flag_from_a_client_does_not_open_the_lock(self):
+        first = self.expense(100.0)
+        self.approve(first)
+        self.order._create_invoices()
+        user = self._internal_user()
+        with self.assertRaises((UserError, AccessError)):
+            first.with_user(user).with_context(expense_scan_free=True).write({'total_amount_currency': 1.0})
+
+    def test_only_accountants_reimburse(self):
+        first = self.expense(40.0, mode='none')
+        self.approve(first)
+        with self.assertRaises(AccessError):
+            first.with_user(self._internal_user()).action_expense_scan_pay()
+
+    def test_the_date_of_an_invoiced_expense_is_locked(self):
+        first = self.expense(100.0)
+        self.approve(first)
+        self.order._create_invoices()
+        with self.assertRaises(UserError):
+            first.write({'date': '2031-01-01'})

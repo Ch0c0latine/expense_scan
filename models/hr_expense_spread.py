@@ -15,6 +15,8 @@ holds the same category is skipped.
 """
 from datetime import timedelta
 
+import pytz
+
 from odoo import _, api, models
 from odoo.exceptions import UserError
 from odoo.tools import float_is_zero
@@ -93,11 +95,14 @@ class HrExpense(models.Model):
         holidays = self.env['resource.calendar.leaves'].sudo().search([
             ('resource_id', '=', False),
             ('company_id', 'in', [False, employee.company_id.id]),
-            ('date_from', '<=', end), ('date_to', '>=', start),
+            ('date_from', '<=', end + timedelta(days=1)), ('date_to', '>=', start - timedelta(days=1)),
         ])
+        # Stored in UTC: a holiday of Paris starts at 22:00 the day before.
+        tz = pytz.timezone((calendar and calendar.tz) or employee.tz or 'UTC')
         for holiday in holidays:
-            day = holiday.date_from.date()
-            while day <= holiday.date_to.date():
+            day = pytz.utc.localize(holiday.date_from).astimezone(tz).date()
+            last = pytz.utc.localize(holiday.date_to).astimezone(tz).date()
+            while day <= last:
                 days.discard(day)
                 day += timedelta(days=1)
         if 'hr.leave' in self.env:

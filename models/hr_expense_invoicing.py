@@ -14,7 +14,7 @@ setting off, nothing happens.
 """
 import logging
 
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 from odoo.tools import float_compare, float_round
 
@@ -58,13 +58,14 @@ class HrExpense(models.Model):
     SYNC_FIELDS = frozenset({
         'reinvoice_mode', 'project_id', 'approval_state', 'total_amount',
         'total_amount_currency', 'tax_ids', 'quantity', 'price_unit',
-        'currency_id', 'company_id',
+        'currency_id', 'company_id', 'date', 'product_id', 'employee_id',
     })
 
     #: Fields that cannot change while an invoice carries the expense.
     LOCKED_FIELDS = frozenset({
         'reinvoice_mode', 'project_id', 'total_amount', 'total_amount_currency',
-        'tax_ids', 'quantity', 'price_unit', 'currency_id',
+        'tax_ids', 'quantity', 'price_unit', 'currency_id', 'date', 'product_id',
+        'employee_id', 'company_id', 'payment_mode',
     })
 
     # ------------------------------------------------------------------
@@ -73,11 +74,15 @@ class HrExpense(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if not self.env.su and any('expense_scan_invoice_id' in vals for vals in vals_list):
+            raise AccessError(_("The invoice of an expense is set by the invoicing, not by hand."))
         expenses = super().create(vals_list)
         expenses._expense_scan_sync_after()
         return expenses
 
     def write(self, vals):
+        if 'expense_scan_invoice_id' in vals and not self.env.su:
+            raise AccessError(_("The invoice of an expense is set by the invoicing, not by hand."))
         self._expense_scan_check_not_invoiced(vals)
         watch = bool(self.SYNC_FIELDS & set(vals)) and not self.env.context.get('expense_scan_no_sync')
         before = self._expense_scan_order_ids() if watch else set()
@@ -94,7 +99,9 @@ class HrExpense(models.Model):
         way out is to delete (or cancel) the invoice, change the expenses,
         then invoice again.
         """
-        if self.env.context.get('expense_scan_free'):
+        # The flag only counts for the server's own calls (they run as superuser): a
+        # client can send any context.
+        if self.env.context.get('expense_scan_free') and self.env.su:
             return
         touches = bool(self.LOCKED_FIELDS & set(vals)) or (
             'approval_state' in vals and vals['approval_state'] != 'approved')
@@ -142,7 +149,9 @@ class HrExpense(models.Model):
         if not names:
             return Project
         links = [(name, '=', order.id) for name in names]
-        return Project.search(domain + ['|'] * (len(links) - 1) + links)
+        projects = Project.search(domain + ['|'] * (len(links) - 1) + links)
+        # A project is re-invoiced on one order: the one `_expense_scan_orders_of` gives it.
+        return projects.filtered(lambda p: order in self._expense_scan_orders_of(p))
 
     @api.model
     def _expense_scan_sync_orders(self, order_ids):
@@ -193,16 +202,18 @@ class HrExpense(models.Model):
         return self._expense_scan_in_period(expenses, order) if order else expenses
 
     @api.model
-    def _expense_scan_waiting(self, projects, company):
+    def _expense_scan_waiting(self, projects, company, order=None):
         """Expenses of these projects that hold the order line back.
 
         Those waiting for the manager, and those whose re-invoicing is still
-        to decide: the line only moves once they are all settled.
+        to decide: the line only moves once they are all settled. With an
+        order, only those of its period.
         """
         base = [('company_id', '=', company.id), ('project_id', 'in', projects.ids)]
         Expense = self.sudo()
-        return Expense.search(base + [('state', '=', 'submitted'), ('reinvoice_mode', '!=', 'none')]) \
+        waiting = Expense.search(base + [('state', '=', 'submitted'), ('reinvoice_mode', '!=', 'none')]) \
             | Expense.search(base + [('reinvoice_mode', '=', 'todo'), ('state', 'not in', ('refused',))])
+        return self._expense_scan_in_period(waiting, order) if order else waiting
 
     @api.model
     def _expense_scan_order_line(self, order):
@@ -266,10 +277,11 @@ class HrExpense(models.Model):
         projects = self._expense_scan_projects_of(order)
         if not projects:
             return
-        waiting = self._expense_scan_waiting(projects, company)
+        waiting = self._expense_scan_waiting(projects, company, order)
         self._expense_scan_flag_waiting(order, waiting)
         counted = self._expense_scan_counted(projects, company, order)
-        amount = sum(counted.mapped('total_amount'))
+        # Refunds can leave a negative total: the line never goes below zero.
+        amount = max(sum(counted.mapped('total_amount')), 0.0)
         if order.currency_id != company.currency_id:
             amount = company.currency_id._convert(
                 amount, order.currency_id, company, order.date_order or fields.Date.context_today(self))
@@ -294,6 +306,8 @@ class HrExpense(models.Model):
                 'product_id': product.id,
                 'product_uom_qty': amount,
                 'price_unit': 1.0,
+                # The amount already includes tax: no tax on it a second time.
+                'tax_ids': [Command.clear()],
                 'sequence': last + 1,
             })
             return
@@ -389,7 +403,7 @@ class HrExpense(models.Model):
         if not order or not order.company_id.expense_scan_reinvoice:
             return False
         projects = self._expense_scan_projects_of(order)
-        waiting = self._expense_scan_waiting(projects, order.company_id) if projects else False
+        waiting = self._expense_scan_waiting(projects, order.company_id, order) if projects else False
         if not waiting:
             return False
         return _(
@@ -478,6 +492,8 @@ class HrExpense(models.Model):
         settles them together with the expenses already posted (those an
         invoice posted, for instance).
         """
+        if not self.env.su and not self.env.user.has_group('account.group_account_invoice'):
+            raise AccessError(_("Only accountants can reimburse the employees."))
         expenses = self.filtered(lambda e: e.payment_mode == 'own_account')
         if not expenses:
             raise UserError(_("Select expenses paid by the employee."))

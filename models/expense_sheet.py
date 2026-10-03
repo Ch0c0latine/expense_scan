@@ -761,6 +761,8 @@ class ExpenseSheetReport(models.AbstractModel):
 
 class ExpenseScanSheetWizard(models.TransientModel):
     _name = 'expense.scan.sheet.wizard'
+    # hr.mixin: without it, a user without HR rights cannot set a many2many to hr.employee.
+    _inherit = ['hr.mixin']
     _description = "Expense sheet printing"
 
     expense_ids = fields.Many2many('hr.expense', string="Selected expenses")

@@ -83,6 +83,12 @@ export class ExpenseScanReinvoice extends Component {
         if (this.locked) {
             return;
         }
+        // Changes typed in the row and not saved yet would be lost by the reload below.
+        if (await this.props.record.isDirty()) {
+            if (!(await this.props.record.save())) {
+                return;
+            }
+        }
         // The server knows the next answer: to decide, yes, no, to decide...
         await this.orm.call("hr.expense", "action_expense_scan_set_reinvoice", [
             [this.props.record.resId],
