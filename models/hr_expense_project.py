@@ -26,11 +26,12 @@ class HrExpense(models.Model):
             ('todo', "To decide"),
         ],
         string="Re-invoice",
-        default='todo',
+        default='none',
         required=True,
-        help="\"To decide\" flags an expense whose fate is still open, and the "
-             "review banner reminds it. \"No\" is a decision, not an omission: "
-             "the company bears the expense.",
+        help="An expense without a project is not re-invoiced: there is nothing "
+             "to decide. Choosing a project sets \"Yes\"; \"No\" then keeps the "
+             "cost on the project without billing it. \"To decide\" holds an "
+             "expense back: the manager cannot approve it until it is settled.",
     )
     project_id = fields.Many2one(
         comodel_name='project.project',
@@ -75,6 +76,12 @@ class HrExpense(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        # Without a project there is nothing to re-invoice; with one, the choice is open.
+        has_default_project = bool(self.env.context.get('default_project_id'))
+        vals_list = [
+            vals if 'reinvoice_mode' in vals else dict(
+                vals, reinvoice_mode='todo' if vals.get('project_id') or has_default_project else 'none')
+            for vals in vals_list]
         expenses = super().create(vals_list)
         expenses._expense_scan_sync_analytic()
         return expenses
@@ -88,6 +95,9 @@ class HrExpense(models.Model):
         result = super().write(vals)
         if syncing:
             self._expense_scan_sync_analytic(previous)
+        if 'project_id' in vals and not vals['project_id'] and 'reinvoice_mode' not in vals:
+            # An expense that leaves its project has nothing left to re-invoice.
+            self.filtered(lambda expense: expense.reinvoice_mode != 'none').write({'reinvoice_mode': 'none'})
         return result
 
     @api.model
@@ -269,16 +279,13 @@ class HrExpense(models.Model):
 
     @api.onchange('reinvoice_mode')
     def _onchange_expense_scan_reinvoice_mode(self):
-        """"To decide" frees the project; "No" keeps it, without a sales order.
+        """"No" keeps the project, without a sales order.
 
         An expense that is not re-invoiced can stay linked to its project:
         its cost then goes into the project budget without reaching the
         customer invoice.
         """
         for expense in self:
-            if expense.reinvoice_mode == 'todo':
-                expense.project_id = False
-                expense.expense_scan_task_id = False
             if expense.reinvoice_mode != 'project' and 'sale_order_id' in expense._fields:
                 expense.sale_order_id = False
             if expense.reinvoice_mode in ('project', 'none') and expense.project_id:
@@ -293,9 +300,14 @@ class HrExpense(models.Model):
         for expense in self:
             if expense.expense_scan_task_id.sudo().project_id != expense.project_id:
                 expense.expense_scan_task_id = False
-            # "No" is kept when the project is chosen afterwards: it then only
-            # serves budget follow-up.
-            reinvoice = expense.reinvoice_mode != 'none'
+            if not expense.project_id:
+                # Nothing to re-invoice without a project.
+                expense.reinvoice_mode = 'none'
+                continue
+            # A "No" given to an expense that already had a project is kept: it
+            # then only serves budget follow-up. The "No" of an expense that had
+            # no project is automatic: choosing one makes it "Yes".
+            reinvoice = not (expense.reinvoice_mode == 'none' and expense._origin.project_id)
             values = expense._expense_scan_project_values(expense.project_id, reinvoice=reinvoice)
             values.pop('project_id', None)
             for name, value in values.items():

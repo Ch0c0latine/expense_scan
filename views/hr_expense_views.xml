@@ -214,7 +214,7 @@
                 <!-- With "No", the project is optional: the cost is charged
                      to the project budget without being re-invoiced. -->
                 <field name="project_id"
-                       invisible="not expense_scan_reinvoice or reinvoice_mode == 'todo'"
+                       invisible="not expense_scan_reinvoice"
                        required="expense_scan_reinvoice and reinvoice_mode == 'project'"
                        readonly="not is_editable"
                        domain="expense_scan_project_domain"

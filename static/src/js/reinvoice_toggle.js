@@ -21,7 +21,7 @@ import { useService } from "@web/core/utils/hooks";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 
 const FINAL_STATES = ["posted", "in_payment", "paid", "refused"];
-const NEXT = { todo: "project", project: "none", none: "todo" };
+const NEXT = { todo: "project", project: "none", none: "project" };
 
 export class ExpenseScanReinvoiceChoice extends Component {
     static template = "expense_scan.ReinvoiceChoice";

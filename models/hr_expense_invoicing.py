@@ -595,8 +595,13 @@ class HrExpense(models.Model):
         return action
 
     def _expense_scan_next_reinvoice(self):
-        """To decide, then yes, then no, then to decide again."""
+        """To decide, then yes, then no, then to decide again.
+
+        An expense without a project has nothing to decide: its answer goes from no to yes.
+        """
         self.ensure_one()
+        if self.reinvoice_mode == 'none' and not self.project_id:
+            return 'project'
         order = {'todo': 'project', 'project': 'none', 'none': 'todo'}
         choice = order.get(self.reinvoice_mode, 'project')
         if choice == 'todo' and self.state == 'approved':

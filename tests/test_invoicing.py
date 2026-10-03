@@ -6,12 +6,15 @@
 These scenarios need Sales and a chart of accounts: without them they skip.
 """
 import unittest
+from unittest.mock import patch
 
 from odoo import Command
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import common, tagged
 
 from .tax_setup import ensure_fiscal_country
+from .test_category import reading
+from .test_independence import _migration
 
 
 @tagged('post_install', '-at_install')
@@ -343,6 +346,93 @@ class TestInvoicing(common.TransactionCase):
                          "only the button that creates invoices")
         self.approve(waiting)
         self.assertFalse(Expense.expense_scan_order_warning(self.order.id, action.id))
+
+    # -- Without a project there is nothing to decide -------------------------------------------
+
+    def bare_expense(self, **values):
+        return self.env['hr.expense'].create(dict({
+            'name': "Sans projet", 'employee_id': self.employee.id, 'product_id': self.category.id,
+            'total_amount_currency': 20.0}, **values))
+
+    def test_an_expense_without_a_project_is_not_re_invoiced_and_nothing_blocks_it(self):
+        expense = self.bare_expense()
+        self.assertEqual(expense.reinvoice_mode, 'none')
+        expense.action_submit()
+        self.approve(expense)
+        self.assertEqual(expense.approval_state, 'approved')
+        self.assertFalse(expense.expense_scan_todo_pending)
+
+    def test_an_expense_created_with_a_project_still_has_to_be_decided(self):
+        self.assertEqual(self.bare_expense(project_id=self.project.id).reinvoice_mode, 'todo')
+        by_default = self.env['hr.expense'].with_context(
+            default_project_id=self.project.id).create({
+                'name': "Projet par défaut", 'employee_id': self.employee.id,
+                'product_id': self.category.id, 'total_amount_currency': 5.0})
+        self.assertEqual(by_default.reinvoice_mode, 'todo')
+
+    def test_an_explicit_answer_is_kept(self):
+        self.assertEqual(self.bare_expense(reinvoice_mode='todo').reinvoice_mode, 'todo')
+        self.assertEqual(self.bare_expense(project_id=self.project.id, reinvoice_mode='none').reinvoice_mode, 'none')
+
+    def test_leaving_the_project_ends_the_re_invoicing(self):
+        expense = self.expense(30.0, submit=False)
+        self.assertEqual(expense.reinvoice_mode, 'project')
+        expense.project_id = False
+        self.assertEqual(expense.reinvoice_mode, 'none')
+
+    def test_choosing_a_project_by_hand_says_yes_and_removing_it_says_no(self):
+        expense = self.env['hr.expense'].new({
+            'employee_id': self.employee.id, 'product_id': self.category.id})
+        self.assertEqual(expense.reinvoice_mode, 'none')
+        expense.project_id = self.project
+        expense._onchange_expense_scan_project()
+        self.assertEqual(expense.reinvoice_mode, 'project')
+        expense.project_id = False
+        expense._onchange_expense_scan_project()
+        self.assertEqual(expense.reinvoice_mode, 'none')
+
+    def test_a_no_given_to_an_expense_that_has_a_project_is_kept_when_the_project_changes(self):
+        saved = self.expense(30.0, mode='none', submit=False)
+        other = self.env['project.project'].create({'name': "Autre mission"})
+        edited = saved.new({'project_id': other.id, 'reinvoice_mode': 'none'}, origin=saved)
+        edited._onchange_expense_scan_project()
+        self.assertEqual(edited.reinvoice_mode, 'none')
+
+    def test_the_toggle_of_an_expense_without_a_project_goes_to_yes(self):
+        expense = self.bare_expense()
+        self.assertEqual(expense._expense_scan_next_reinvoice(), 'project')
+        with self.assertRaises(UserError):
+            expense.action_expense_scan_set_reinvoice()  # no mission at its date
+
+    def test_the_scan_says_yes_to_the_project_it_finds_for_an_expense_without_one(self):
+        receipt = reading("BRASSERIE\nTOTAL 11,00 EUR")
+        bare = self.bare_expense()
+        with patch.object(type(bare), '_expense_scan_find_project', return_value=self.project):
+            values = bare._expense_scan_field_values(receipt, bare.company_id)
+        self.assertEqual(values['project_id'], self.project.id)
+        self.assertEqual(values['reinvoice_mode'], 'project')
+        # A "No" the employee gave to an expense that has a project is theirs.
+        kept = self.expense(10.0, mode='none', submit=False)
+        with patch.object(type(kept), '_expense_scan_find_project', return_value=self.project):
+            values = kept._expense_scan_field_values(receipt, kept.company_id)
+        self.assertEqual(values['reinvoice_mode'], 'none')
+
+    def test_the_scan_does_not_ask_to_decide_when_no_project_is_found(self):
+        bare = self.bare_expense()
+        with patch.object(type(bare), '_expense_scan_store_image', autospec=True, return_value={}):
+            bare.with_context(lang='en_US')._expense_scan_apply(
+                reading("BRASSERIE\nTOTAL 11,00 EUR"), self.env['ir.attachment'])
+        self.assertNotIn('reinvoice', (bare.expense_scan_todo_codes or '').split(','))
+        self.assertEqual(bare.reinvoice_mode, 'none')
+
+    def test_the_update_closes_the_open_question_of_expenses_without_a_project(self):
+        waiting = self.bare_expense(reinvoice_mode='todo')
+        with_project = self.bare_expense(project_id=self.project.id)
+        _migration('19.0.2.14.0', 'post-migrate.py').migrate(self.env.cr, '19.0.2.13.0')
+        waiting.invalidate_recordset()
+        with_project.invalidate_recordset()
+        self.assertEqual(waiting.reinvoice_mode, 'none')
+        self.assertEqual(with_project.reinvoice_mode, 'todo')
 
     def test_list_toggle_needs_a_project(self):
         expense = self.expense(25.0, mode='todo', submit=False)

@@ -1882,13 +1882,6 @@ class HrExpense(models.Model):
                           _("No exchange rate for %s in Odoo: the amount counts one "
                             "for one in the company currency until a rate is entered.",
                             code)))
-        if company.expense_scan_reinvoice and not values.get('project_id'):
-            # No project covers this date, or several do: the employee
-            # decides (including to say that the expense is not re-invoiced).
-            # Resolved as soon as they choose.
-            items.append((_("Re-invoice"), 'reinvoice',
-                          _("No project found for this date: "
-                            "say whether this expense is re-invoiced.")))
         check_category_tax = False
         target = self._expense_scan_target_product(values)
         if company.expense_scan_apply_tax and not self._expense_scan_product_no_vat(target):
@@ -2364,11 +2357,12 @@ class HrExpense(models.Model):
             # The project is looked up at the date of the receipt, not of the
             # entry: an expense scanned on Monday may date from Friday, on
             # another project.
-            # "No" is the employee's decision: the project found then only
-            # serves budget tracking, without re-invoicing.
+            # "No" on an expense that already has a project is the employee's
+            # decision: the project found then only serves budget tracking,
+            # without re-invoicing. Without a project, "No" is only the default.
             values.update(self._expense_scan_project_values(
                 self._expense_scan_find_project(expense_date),
-                reinvoice=self.reinvoice_mode != 'none'))
+                reinvoice=not (self.reinvoice_mode == 'none' and self.project_id)))
 
         if company.expense_scan_set_vendor and 'vendor_id' not in keep:
             # The merchant recognised from history is better spelt than the
