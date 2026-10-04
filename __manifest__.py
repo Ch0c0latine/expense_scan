@@ -3,7 +3,7 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 {
     'name': "Receipt Scanner for Expenses",
-    'version': '19.0.2.14.0',
+    'version': '19.0.2.15.0',
     'summary': "Create expenses by photographing receipts: automatic crop and "
                "straightening, fields filled in by a local OCR, side by side "
                "review. No IAP credits, no API key.",
@@ -35,6 +35,7 @@ No document leaves the server.
 
 Free module (LGPL-3). If it helps you, you can buy its author a coffee:
 https://github.com/sponsors/Ch0c0latine
+Or support T.T.C. SAS, the company behind the module: https://payment-links.mollie.com/payment/NVWgeiofyRchMRgF8DkDc
 """,
     'author': "T.T.C. SAS",
     'website': "https://github.com/Ch0c0latine/expense_scan",

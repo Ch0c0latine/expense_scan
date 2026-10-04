@@ -188,6 +188,10 @@
                                rel="noopener noreferrer" class="btn btn-link ps-0" role="button">
                                 <span class="o_expense_scan_coffee me-1" aria-hidden="true"/>Buy the author a coffee
                             </a>
+                            <a href="https://payment-links.mollie.com/payment/NVWgeiofyRchMRgF8DkDc" target="_blank"
+                               rel="noopener noreferrer" class="btn btn-link ps-0" role="button">
+                                <i class="fa fa-building-o me-1" aria-hidden="true"/>Support T.T.C. SAS, the company behind the module
+                            </a>
                         </div>
                     </setting>
                 </block>

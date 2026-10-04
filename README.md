@@ -370,5 +370,6 @@ LGPL-3, like Odoo Community.
 ## Supporting the project
 
 The module is free and will stay free. If it saves you time, you can
-[buy its author a coffee](https://github.com/sponsors/Ch0c0latine) — or, if
+[buy its author a coffee](https://github.com/sponsors/Ch0c0latine), or
+[support T.T.C. SAS](https://payment-links.mollie.com/payment/NVWgeiofyRchMRgF8DkDc), the company that carries the project — or, if
 you prefer, remember it in your will.

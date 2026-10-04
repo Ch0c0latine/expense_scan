@@ -1,5 +1,11 @@
 # Changelog
 
+## 19.0.2.15.0 — 2026-10-04
+
+- **Support**: a second link in the settings, the manifest, the readme and the store
+  page lets users support T.T.C. SAS, the company behind the module, besides the
+  author. Translated in the ten languages.
+
 ## 19.0.2.14.0 — 2026-10-03
 
 - **Re-invoicing asks nothing when there is nothing to re-invoice.** An expense

@@ -298,6 +298,11 @@ msgid "<span class=\"o_expense_scan_coffee me-1\" aria-hidden=\"true\"/>Buy the 
 msgstr "<span class=\"o_expense_scan_coffee me-1\" aria-hidden=\"true\"/>Giv udvikleren en kop kaffe"
 
 #. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "<i class=\"fa fa-building-o me-1\" aria-hidden=\"true\"/>Support T.T.C. SAS, the company behind the module"
+msgstr "<i class=\"fa fa-building-o me-1\" aria-hidden=\"true\"/>Støt T.T.C. SAS, virksomheden bag modulet"
+
+#. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
 msgid "<i class=\"fa fa-exclamation-triangle\" role=\"img\" aria-label=\"Error\"/>"
 msgstr "<i class=\"fa fa-exclamation-triangle\" role=\"img\" aria-label=\"Fejl\"/>"
