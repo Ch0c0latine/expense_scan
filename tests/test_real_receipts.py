@@ -273,6 +273,7 @@ ASF Lieu-dit Les Pins BP 10017
         self.assertFalse(Expense._expense_scan_is_pdf(photo))
 
 
+@tagged('post_install', '-at_install')
 class TestPdfExtraPages(common.TransactionCase):
     """Following pages of a PDF read when the first gives no total.
 
