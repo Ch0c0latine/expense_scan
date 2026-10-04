@@ -3,9 +3,11 @@
      License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0). -->
 <odoo>
 
-    <!-- Expenses icon replaced by the module's (scanning as the entry point). -->
+    <!-- Expenses icon replaced by the module's (scanning as the entry point), and the app comes
+         first on the home screen: 1 is below the default of every Odoo app (Discuss is 5). -->
     <record id="hr_expense.menu_hr_expense_root" model="ir.ui.menu">
         <field name="web_icon">expense_scan,static/description/icon.png</field>
+        <field name="sequence">1</field>
     </record>
 
 </odoo>
