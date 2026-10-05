@@ -3,7 +3,7 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 {
     'name': "Expense Receipt Scanner",
-    'version': '19.0.3.0.0',
+    'version': '19.0.3.0.1',
     'summary': "A local AI reads photographed receipts and fills in the expense: crop, straighten, "
                "OCR and parsing run on your own server. No API, no fee per scan.",
     'description': """
@@ -36,6 +36,7 @@ sent out and no data of yours leaves the server.
 Free module, LGPL-3.
 """,
     'author': "T.T.C. SAS",
+    'support': "ttc@green-engine.eu",
     'category': 'Human Resources/Expenses',
     'license': 'LGPL-3',
     'images': ['static/description/banner.png'],

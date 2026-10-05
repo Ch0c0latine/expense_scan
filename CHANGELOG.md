@@ -1,5 +1,9 @@
 # Changelog
 
+## 19.0.3.0.1 — 2026-10-05
+
+Contact address of T.T.C. SAS in the manifest (`support`) and on the store page.
+
 ## 19.0.3.0.0 — 2026-10-05
 
 First version published on the Odoo Apps Store: it gathers everything of 19.0.2.15 to 19.0.2.17 below.
