@@ -2,43 +2,40 @@
 # Copyright 2026 T.T.C. SAS
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 {
-    'name': "Receipt Scanner for Expenses",
+    'name': "Expense Receipt Scanner",
     'version': '19.0.2.17.0',
-    'summary': "Create expenses by photographing receipts: automatic crop and "
-               "straightening, fields filled in by a local OCR, side by side "
-               "review. No IAP credits, no API key.",
+    'summary': "A local AI reads photographed receipts and fills in the expense: crop, straighten, "
+               "OCR and parsing run on your own server. No API, no fee per scan.",
     'description': """
-Receipt Scanner for Expenses
-============================
+Expense Receipt Scanner
+=======================
 
-Photograph a receipt with your phone and get a filled-in expense, reviewed
-side by side with the image of the receipt.
+A local AI reads your receipts. Photograph one with your phone and get a filled-in
+expense, reviewed side by side with the image of the receipt.
 
-* One button ("Scan" on a phone, "Upload" on a computer) opens the camera or
-  the photo library directly.
-* The receipt is detected in the photo, cut out and straightened
-  (perspective correction and deskewing) before it is read.
-* Merchant, date, total, currency and tax are extracted and written on the
-  expense; each doubtful field is flagged for review.
-* The review screen shows the receipt next to the fields (an image strip at
-  the top on a phone), to correct them before submitting.
-* Category recognition, multi-piece receipts, manual retouch, projects and
+The reading runs on your Odoo server: a small neural network (PP-OCR, run by ONNX
+Runtime) reads the text and a parser written for this module turns it into an expense
+(merchant, date, total, currency, tax, category). No API key, no account, no fee per
+scan; receipts never leave the server.
+
+* One button ("Scan" on a phone, "Upload" on a computer) opens the camera or the photo
+  library.
+* The receipt is cropped and straightened before it is read.
+* Doubtful fields carry a hint; the module never approves an expense by itself.
+* Category recognition, receipts in several pieces, manual retouch, projects and
   re-invoicing, expense sheets (PDF and Excel), expense rules, team entry.
 
-The OCR engine runs **on your server**, without an IAP account, API key or
-paid token, and without network access at scan time (once the models are downloaded):
+Requirements: the Python packages opencv-python-headless, rapidocr, onnxruntime,
+pdf2image and openpyxl, and the poppler-utils package; about 285 MB on disk with the
+OCR models (47.5 MB, downloaded once). Not for Odoo Online.
 
-* AI RapidOCR / PP-OCR (neural networks run by ONNX Runtime), the default
-* AI Tesseract, as a fallback
+Network access: the OCR models are downloaded once; the public reference rates of the
+European Central Bank are downloaded daily (one switch in the settings). Nothing is
+sent out and no data of yours leaves the server.
 
-No document leaves the server.
-
-Free module (LGPL-3). If it helps you, you can buy its author a coffee:
-https://github.com/sponsors/Ch0c0latine
-Or support T.T.C. SAS, the company behind the module: https://payment-links.mollie.com/payment/NVWgeiofyRchMRgF8DkDc
+Free module, LGPL-3.
 """,
     'author': "T.T.C. SAS",
-    'website': "https://github.com/TTC-Technologies/expense_scan",
     'category': 'Human Resources/Expenses',
     'license': 'LGPL-3',
     'images': ['static/description/banner.png'],

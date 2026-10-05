@@ -1,4 +1,4 @@
-# Receipt Scanner for Expenses — Odoo 19
+# Expense Receipt Scanner — Odoo 19
 
 Photograph a receipt with your phone and get a filled-in expense, reviewed
 side by side with the image of the receipt.

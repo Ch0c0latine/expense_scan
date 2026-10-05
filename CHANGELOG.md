@@ -10,6 +10,11 @@
   (default `TTC-Technologies/expense_scan`). Translated in the ten languages.
 - **Sheet**: quantities and the tax summary follow the language; **PDF preview**: the first page is drawn once
   per file instead of at each opening.
+- **Hotel nights**: a hotel category is recognised in every language of the database, so the nights read on the
+  bill are kept whatever the language of the user.
+- **Store page** (rules of the Odoo Apps Store): the module is named *Expense Receipt Scanner* (25 characters at most),
+  the page and its screenshots are in English, with no outside link, and it lists the network access, the weight of
+  the requirements and measured processing times.
 
 ## 19.0.2.16.0 — 2026-10-05
 

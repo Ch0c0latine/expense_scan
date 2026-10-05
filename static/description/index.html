@@ -1,8 +1,43 @@
 <section class="oe_container">
     <div class="oe_row oe_spaced">
-        <h2 class="oe_slogan" style="color:#875A7B;">Receipt Scanner for Expenses</h2>
-        <h3 class="oe_slogan">Photograph a receipt, get a filled-in expense.<br/>
-            The OCR runs on your own server: no IAP credits, no API key, no subscription.</h3>
+        <h2 class="oe_slogan" style="color:#875A7B;">Expense Receipt Scanner</h2>
+        <h3 class="oe_slogan">A local AI reads your receipts.<br/>
+            Photograph one, get a filled-in expense.</h3>
+    </div>
+</section>
+
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <div class="oe_span12">
+            <p class="text-center">The reading happens on your own Odoo server. A small neural network (PP-OCR, run by
+                ONNX Runtime) reads the text, and a parser written for this module turns it into an expense:
+                merchant, date, total, currency, tax, category. No API key, no account, no fee per scan, and no
+                receipt ever leaves your server.</p>
+            <div class="text-center mt16 mb16">
+                <img src="screenshot_review.png" alt="A restaurant receipt read and filed as a meal, next to the expense form" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
+            </div>
+            <p class="text-center text-muted">A restaurant receipt: merchant, date, time, total and 19 % VAT read,
+                category "Meals" recognised, the expense checked against the company rules.</p>
+        </div>
+    </div>
+</section>
+
+<section class="oe_container oe_dark">
+    <div class="oe_row oe_spaced">
+        <div class="oe_span12">
+            <h3 class="text-center">Made to work out of the box</h3>
+            <ul>
+                <li><b>One module, open source (LGPL-3).</b> It installs on its own, on Odoo Community, and it does
+                    not depend on any outside service, paid or free.</li>
+                <li><b>Local AI, small footprint.</b> The OCR models weigh 47 MB in total. The parser is plain code,
+                    not a language model: it was written and tuned on more than 1,500 real receipts, French and
+                    from fifteen countries, and checked against known amounts.</li>
+                <li><b>It tells you what it is not sure about.</b> A doubtful field carries a hint under it, so you
+                    check one field rather than the whole receipt. The module never approves an expense by itself.</li>
+                <li><b>Eleven languages</b> for the interface: English, French, Spanish, German, Italian, Dutch,
+                    Portuguese, Polish, Swedish, Norwegian and Danish.</li>
+            </ul>
+        </div>
     </div>
 </section>
 
@@ -13,25 +48,20 @@
             <div class="row">
                 <div class="col-md-4 text-center">
                     <h4>1. Scan</h4>
-                    <p>The <b>Scan</b> button of the expense list opens the camera on a phone
-                        (or the gallery, or your files). On a computer, upload a photo or a PDF.</p>
+                    <p>The <b>Scan</b> button of the expense list opens the camera on a phone (or the gallery, or
+                        your files). On a computer, upload a photo or a PDF.</p>
                 </div>
                 <div class="col-md-4 text-center">
                     <h4>2. Read</h4>
-                    <p>The receipt is found in the photo, cropped and straightened, then read:
-                        merchant, date, time, total, currency and tax.</p>
+                    <p>The receipt is found in the photo, cropped and straightened, then read: merchant, date, time,
+                        total, currency and tax.</p>
                 </div>
                 <div class="col-md-4 text-center">
                     <h4>3. Review</h4>
-                    <p>The form opens at once, receipt on one side, fields on the other. A hint
-                        shows under each field to check, and goes away once it is corrected.</p>
+                    <p>The form opens at once, receipt on one side, fields on the other. A hint shows under each
+                        field to check, and goes away once it is corrected.</p>
                 </div>
             </div>
-            <div class="text-center mt16 mb16">
-                <img src="screenshot_review.png" alt="A restaurant receipt read and filed as a meal, side by side with the expense form" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
-            </div>
-            <p class="text-center text-muted">A German restaurant receipt: merchant, date, time, total and 19 % VAT
-                read, category "Meals" recognised, the glass of wine flagged by a company rule.</p>
         </div>
     </div>
 </section>
@@ -39,54 +69,35 @@
 <section class="oe_container oe_dark">
     <div class="oe_row oe_spaced">
         <div class="oe_span12">
-            <h3 class="text-center">Your receipts stay with you</h3>
-            <p class="text-center">The module reads receipts with AI: RapidOCR (PP-OCR neural networks run by ONNX
-                Runtime), or Tesseract as a fallback, installed next to Odoo. No document is sent to a third
-                party, nothing is billed per page, and scanning works without Internet access.
-                About one second per receipt on an ordinary server processor.</p>
-        </div>
-    </div>
-</section>
-
-<section class="oe_container">
-    <div class="oe_row oe_spaced">
-        <div class="oe_span12">
             <h3 class="text-center">Around the scan</h3>
             <ul>
-                <li><b>Category recognition</b> from the receipt words, the printed activity code,
-                    the price per litre or kWh, known brands, and the merchants your team already
-                    filed. The module creates no category: it learns, every day, the words found
-                    on the receipts your team filed in each of yours.</li>
-                <li><b>Receipts from abroad</b>: dates, totals and currencies of European, Nordic,
-                    Swiss and US receipts. The expense is recorded in the currency of the receipt;
-                    a tax paid abroad (MwSt, IVA, Moms... depending on your country) is not carried
-                    as deductible tax.</li>
-                <li><b>Exchange rates</b>: the reference rates of the European Central Bank are
-                    added every day, so that a foreign receipt is converted at the rate of its own
-                    day. Odoo Community updates no rate on its own.</li>
-                <li><b>Your chart of accounts</b>: the tax printed on the receipt goes to the
-                    journal entry, with the tax of its rate, even on receipts with several rates.</li>
-                <li><b>Receipts in several pieces</b> (till receipt and card slip) are merged into
-                    one expense, or split when they describe two purchases.</li>
-                <li><b>Manual retouch</b>: rotate and crop in the browser, or accept the
-                    automatic suggestion.</li>
-                <li><b>Projects</b>: re-invoice an expense to a project, or charge it to the
-                    project budget only; the analytic account follows the project. The approved
-                    expenses add up on one line of the sales order, and an expense budget can be
-                    followed on the project.</li>
-                <li><b>Expense sheets</b>: PDF summary with tax by rate and numbered receipts,
-                    Excel export on your own workbook.</li>
-                <li><b>Expense rules</b>: ceilings per meal, per day or per night, words to watch.
-                    A warning shows on the expense, with a sign in the list: &#9888; for a breach,
-                    &#8505;&#65038; for a point to check. "Save and close" or a justification puts the sign
-                    out; the manager reads the justification when approving.</li>
+                <li><b>Category recognition</b> from the receipt words, the printed activity code, the price per
+                    litre or kWh, known brands, and the merchants your team already filed. The module creates no
+                    category of its own: every day it learns the words found on the receipts your team filed in
+                    each of yours.</li>
+                <li><b>Receipts from abroad</b>: dates, totals and currencies of European, Nordic, Swiss and US
+                    receipts. The expense is recorded in the currency of the receipt; a tax paid abroad is not
+                    carried as deductible tax.</li>
+                <li><b>Exchange rates</b>: the reference rates of the European Central Bank are added every day, so
+                    that a foreign receipt is converted at the rate of its own day.</li>
+                <li><b>Your chart of accounts</b>: the tax printed on the receipt goes to the journal entry, with the
+                    tax of its rate, even on receipts with several rates.</li>
+                <li><b>Receipts in several pieces</b> (till receipt and card slip) are merged into one expense, or
+                    split when they describe two purchases.</li>
+                <li><b>Manual retouch</b>: rotate and crop in the browser, or accept the automatic suggestion.</li>
+                <li><b>Projects</b>: re-invoice an expense to a project, or charge it to the project budget only;
+                    the analytic account follows the project. Approved expenses add up on one line of the sales
+                    order (with the Sales app), and an expense budget can be followed on the project.</li>
+                <li><b>Expense sheets</b>: PDF summary with tax by rate and numbered receipts, Excel export on your
+                    own workbook.</li>
+                <li><b>Expense rules</b>: ceilings per meal, per day or per night, words to watch. A warning shows
+                    on the expense, with a sign in the list: &#9888; for a breach, &#8505;&#65038; for a point to
+                    check. A justification puts the sign out; the manager reads it when approving.</li>
                 <li><b>Team entry</b>: managers enter expenses for their team members.</li>
-                <li><b>E-mail</b>: receipts sent from an employee's private address are
-                    recognised; the subject becomes the description.</li>
-                <li><b>Mobile first</b>: receipt preview on phones, split view from 768 px.</li>
+                <li><b>E-mail</b>: receipts sent from an employee's private address are recognised; the subject
+                    becomes the description.</li>
+                <li><b>Phone first</b>: receipt preview on phones, split view from 768 px.</li>
             </ul>
-            <p>The module never approves an expense by itself: it fills in, flags what is
-                doubtful, and leaves the decision to the employee.</p>
         </div>
     </div>
 </section>
@@ -99,55 +110,42 @@
             <div class="text-center mt16 mb16">
                 <img src="screenshot_list.png" alt="Expense list with categories and rule signs" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
             </div>
-            <p class="text-center text-muted">Parking, fuel, meals and hotel recognised; &#9888; on the hotel above
-                the company's ceiling, &#8505;&#65038; on the meal with wine.</p>
-
-            <h4 class="text-center mt32">A crumpled photo taken at an angle</h4>
+            <h4 class="text-center mt32">A crumpled ticket, photographed at an angle</h4>
             <div class="text-center mt16 mb16">
-                <img src="screenshot_crumpled.png" alt="A crumpled parking ticket photographed at an angle, and the expense read from it" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
+                <img src="screenshot_crumpled.png" alt="A crumpled parking ticket, cropped and straightened, and the expense read from it" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
             </div>
-            <p class="text-center text-muted">Cut out, straightened and read on its own. When the photo is really
-                bad, the retouch tool rotates and crops it in the browser:</p>
+            <h4 class="text-center mt32">Retouch by hand when you want to</h4>
             <div class="text-center mt16 mb16">
                 <img src="screenshot_retouch.png" alt="The retouch dialog with rotation and crop handles" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
             </div>
-
-            <h4 class="text-center mt32">Expense rules that warn without blocking</h4>
+            <h4 class="text-center mt32">Rules that warn without blocking</h4>
             <div class="text-center mt16 mb16">
                 <img src="screenshot_rules_hotel.png" alt="A hotel bill above the ceiling per night, with the nights read" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
             </div>
-            <p class="text-center text-muted">Two nights read on the hotel bill: 127 &euro; a night for 100 &euro;
-                allowed. The employee writes a justification; the manager reads it when approving.</p>
             <div class="text-center mt16 mb16">
-                <img src="screenshot_rules.png" alt="A company travel policy with a ceiling per night and words to watch" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
+                <img src="screenshot_rules.png" alt="A company travel policy with a ceiling per night and a ceiling per meal" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
             </div>
-
-            <h4 class="text-center mt32">Receipts from abroad</h4>
+            <h4 class="text-center mt32">Foreign receipts, converted at the rate of their day</h4>
             <div class="text-center mt16 mb16">
-                <img src="screenshot_currency.png" alt="A Swiss receipt in francs converted at the ECB rate of its day" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
+                <img src="screenshot_currency.png" alt="A Swiss receipt in francs converted at the rate of its day" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
             </div>
-            <p class="text-center text-muted">A Swiss caf&eacute; for a German company: recorded in francs, converted
-                at the European Central Bank rate of 24 September, the Swiss VAT left out of the deductible
-                tax.</p>
-
             <h4 class="text-center mt32">On a phone</h4>
             <div class="row">
-                <div class="col-md-6 text-center">
+                <div class="col-md-6 text-center mt16 mb16">
                     <img src="screenshot_mobile_list.png" alt="Expense list on a phone with the Scan button" class="img-fluid shadow" style="max-width:320px; border-radius:6px"/>
                 </div>
-                <div class="col-md-6 text-center">
+                <div class="col-md-6 text-center mt16 mb16">
                     <img src="screenshot_mobile_form.png" alt="Expense form on a phone with the receipt above the fields" class="img-fluid shadow" style="max-width:320px; border-radius:6px"/>
                 </div>
             </div>
-
             <h4 class="text-center mt32">Settings</h4>
             <div class="text-center mt16 mb16">
                 <img src="screenshot_settings.png" alt="Settings of the receipt scanner in the Expenses settings" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
             </div>
-            <p class="text-center">Help and feedback, at the end of the settings: a bug, an idea or a custom
-                adaptation opens a public GitHub page, already filled in. Nothing is sent from your server.</p>
+            <p class="text-center">At the end of the settings, <b>Help and feedback</b> opens a pre-filled page to
+                report a bug, suggest an idea or ask for a custom adaptation. Nothing is sent from your server.</p>
             <div class="text-center mt16 mb16">
-                <img src="screenshot_help.png" alt="The help and support links at the end of the settings" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
+                <img src="screenshot_help.png" alt="Help and feedback links at the end of the settings" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
             </div>
         </div>
     </div>
@@ -156,19 +154,31 @@
 <section class="oe_container oe_dark">
     <div class="oe_row oe_spaced">
         <div class="oe_span12">
-            <h3 class="text-center">Languages</h3>
-            <p class="text-center">English, French, Spanish, German, Italian, Dutch, Portuguese,
-                Polish, Swedish, Norwegian and Danish.</p>
-            <p class="text-center">The same screen in eleven languages: the expense list, with the
-                warning sign of a company rule on the hotel bill.</p>
-            <div class="text-center mt16 mb16">
-                <img src="screenshot_languages.png" alt="The expense list in English, French, German, Spanish, Italian, Dutch, Portuguese, Polish, Swedish, Norwegian and Danish" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
-            </div>
-            <p class="text-center">A German hotel bill, read in each language: two nights, the ceiling per night
-                of the company policy, in the currency of the company.</p>
-            <div class="text-center mt16 mb16">
-                <img src="screenshot_languages_hotel.png" alt="The same German hotel bill opened in eleven languages, with the two nights read and the rule warning" class="img-fluid shadow" style="max-width:100%; border-radius:6px"/>
-            </div>
+            <h3 class="text-center">Server requirements, and what they weigh</h3>
+            <p>It is a lot of names, but not a lot of weight. Everything the module adds to the server, measured on
+                our test installation:</p>
+            <table class="table table-sm">
+                <thead><tr><th>Component</th><th>Role</th><th class="text-end">On disk</th></tr></thead>
+                <tbody>
+                    <tr><td>onnxruntime</td><td>runs the OCR networks</td><td class="text-end">46 MB</td></tr>
+                    <tr><td>rapidocr</td><td>OCR engine (PP-OCR)</td><td class="text-end">33 MB</td></tr>
+                    <tr><td>opencv-python-headless</td><td>crop and straighten the photo</td><td class="text-end">about 115 MB</td></tr>
+                    <tr><td>numpy</td><td>image arrays (often installed already)</td><td class="text-end">35 MB</td></tr>
+                    <tr><td>openpyxl</td><td>Excel export (often installed already)</td><td class="text-end">3 MB</td></tr>
+                    <tr><td>pdf2image and poppler-utils</td><td>PDF receipts</td><td class="text-end">a few MB</td></tr>
+                    <tr><td>OCR models</td><td>downloaded once, kept in the Odoo data folder</td><td class="text-end">47.5 MB</td></tr>
+                    <tr><th colspan="2">Total</th><th class="text-end">about 285 MB</th></tr>
+                </tbody>
+            </table>
+            <p>No GPU, no extra service, no extra daemon. Tesseract is optional, as a fallback engine.</p>
+            <pre>pip install opencv-python-headless rapidocr onnxruntime pdf2image openpyxl
+sudo apt install poppler-utils</pre>
+            <p>The Python packages and <code>pdftoppm</code> are declared in the manifest: if one is missing, Odoo
+                names it when you install the module instead of leaving a module that cannot read a receipt. With
+                Odoo workers, set <code>MALLOC_ARENA_MAX=2</code> in the service environment: it stops Odoo from
+                recycling a worker after each scan because of address space the OCR threads reserve.</p>
+            <p>This module needs packages that Odoo Online does not let you install: it is meant for Odoo you
+                host yourself, or on Odoo.sh.</p>
         </div>
     </div>
 </section>
@@ -176,29 +186,60 @@
 <section class="oe_container">
     <div class="oe_row oe_spaced">
         <div class="oe_span12">
-            <h3 class="text-center">Installation</h3>
-            <p>Install the Python packages in Odoo's environment:</p>
-            <pre>pip install rapidocr onnxruntime opencv-python-headless pdf2image openpyxl</pre>
-            <p>And the <code>poppler-utils</code> system package, for PDF receipts. These
-                dependencies are declared: Odoo names a missing one when the module is installed.
-                Tesseract stays an optional fallback engine. The <b>Test and preload the
-                engine</b> button checks the installation.</p>
-            <p>With Odoo workers, set <code>MALLOC_ARENA_MAX=2</code> in the service environment,
-                so that the memory reserved by the OCR threads does not make workers restart
-                after each scan. The README gives the details.</p>
+            <h3 class="text-center">How fast, and how heavy</h3>
+            <p>The whole path for one receipt: crop, straighten, read, parse, write the expense. 40 real photos of
+                receipts from six countries, replayed three times with a different number of OCR threads.
+                Machine: AMD Ryzen 7 7800X3D (8 cores), Odoo 19 and PostgreSQL on the same computer.</p>
+            <table class="table table-sm">
+                <thead><tr><th>OCR threads</th><th class="text-end">Median</th><th class="text-end">Slowest 10 %</th>
+                    <th class="text-end">CPU time per receipt</th><th class="text-end">Odoo process memory</th></tr></thead>
+                <tbody>
+                    <tr><td>1</td><td class="text-end">2.5 s</td><td class="text-end">4.9 s</td><td class="text-end">3.3 s</td><td class="text-end">510 MB</td></tr>
+                    <tr><td>2</td><td class="text-end">2.2 s</td><td class="text-end">4.3 s</td><td class="text-end">5.2 s</td><td class="text-end">750 MB</td></tr>
+                    <tr><td>4 (default)</td><td class="text-end">1.5 s</td><td class="text-end">2.9 s</td><td class="text-end">6.5 s</td><td class="text-end">1,040 MB</td></tr>
+                </tbody>
+            </table>
+            <ul>
+                <li>More threads shorten the wait for the person and spend more CPU: on a busy server, set one or two
+                    threads in the settings.</li>
+                <li>Memory is that of the whole Odoo process after the 120 scans of the test, which started at
+                    180 MB. The OCR engine itself adds about 160 MB once loaded.</li>
+                <li>The first scan after a restart adds one to three seconds (the models load). The button
+                    <b>Test and preload the engine</b> does it in advance, and tells you how long a scan takes on
+                    your own server.</li>
+                <li>A scan runs in the background of the form: the person keeps typing while the fields fill in.</li>
+            </ul>
+            <p class="text-muted">Times depend on the processor and on the size of the photo. On a modest server expect
+                longer times than these; the test button gives the exact figure for yours.</p>
         </div>
     </div>
 </section>
 
 <section class="oe_container oe_dark">
     <div class="oe_row oe_spaced">
+        <div class="oe_span12">
+            <h3 class="text-center">Network access, all of it</h3>
+            <ul>
+                <li>The OCR models (47.5 MB, data files and no code) are downloaded once, at the first scan or with
+                    the <b>Test and preload the engine</b> button. To avoid any download, copy them into the folder
+                    named in the settings.</li>
+                <li>Every day, the public reference rates of the European Central Bank are downloaded (a public file;
+                    nothing is sent). The option is on by default and has one switch in the settings.</li>
+                <li>Optional: the public French Sirene register can be imported, by hand, to find the activity of a
+                    merchant from its SIRET number.</li>
+                <li>Receipts, texts and amounts never leave the server. The module needs no activation key and keeps
+                    no data of yours anywhere else.</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
         <div class="oe_span12 text-center">
             <h3>Free module, LGPL-3</h3>
-            <p>Source code, issues and questions:
-                <a href="https://github.com/TTC-Technologies/expense_scan" target="_blank">github.com/TTC-Technologies/expense_scan</a>.
-                If the module saves you time, you can
-                <a href="https://github.com/sponsors/Ch0c0latine" target="_blank">buy its author a coffee</a>
-                or <a href="https://payment-links.mollie.com/payment/NVWgeiofyRchMRgF8DkDc" target="_blank">support T.T.C. SAS</a>, the company behind the module.</p>
+            <p>Developed by T.T.C. SAS. The source is open, and questions, bug reports and ideas have their place at the
+                end of the settings of the module.</p>
         </div>
     </div>
 </section>
