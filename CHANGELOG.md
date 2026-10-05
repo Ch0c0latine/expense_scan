@@ -1,5 +1,16 @@
 # Changelog
 
+## 19.0.2.17.0 — 2026-10-05
+
+- **Help and feedback** (Settings, Expenses): three buttons open a new GitHub issue in the browser, with the
+  title and the technical lines already written (module and Odoo versions, language, Sales app installed):
+  *Report a bug*, *Suggest an improvement*, *Ask for a custom adaptation* (T.T.C. SAS answers with a quote).
+  The page is public and the user writes and sends it; nothing is sent from the server and no receipt, name or
+  amount is added. The repository is the system parameter `expense_scan.support_repo`
+  (default `TTC-Technologies/expense_scan`). Translated in the ten languages.
+- **Sheet**: quantities and the tax summary follow the language; **PDF preview**: the first page is drawn once
+  per file instead of at each opening.
+
 ## 19.0.2.16.0 — 2026-10-05
 
 - **Excel export**: a description or merchant starting with "=" is written as text. It used to

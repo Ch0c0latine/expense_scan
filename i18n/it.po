@@ -3975,3 +3975,28 @@ msgstr "Questa spesa non può ancora essere riaddebitata: il riaddebito passa da
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_sales
 msgid "Sales installed"
 msgstr "App Vendite installata"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Help and feedback"
+msgstr "Aiuto e feedback"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Opens a page of GitHub, public, where you write to the authors. Nothing is sent from your server."
+msgstr "Apre una pagina pubblica di GitHub in cui scrivere agli autori. Il vostro server non invia nulla."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "<i class=\"fa fa-bug me-1\" aria-hidden=\"true\"/>Report a bug"
+msgstr "<i class=\"fa fa-bug me-1\" aria-hidden=\"true\"/>Segnalare un errore"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "<i class=\"fa fa-lightbulb-o me-1\" aria-hidden=\"true\"/>Suggest an improvement"
+msgstr "<i class=\"fa fa-lightbulb-o me-1\" aria-hidden=\"true\"/>Suggerire un miglioramento"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "<i class=\"fa fa-wrench me-1\" aria-hidden=\"true\"/>Ask for a custom adaptation"
+msgstr "<i class=\"fa fa-wrench me-1\" aria-hidden=\"true\"/>Richiedere un adattamento su misura"

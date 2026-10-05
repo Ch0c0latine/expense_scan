@@ -62,3 +62,18 @@ class TestReviewFixes(common.TransactionCase):
         self.assertTrue(first.startswith('data:image/png;base64,'))
         self.assertEqual(first, second)
         self.assertEqual(draw.call_count, 1)
+
+    def test_help_and_feedback_open_a_prefilled_github_issue(self):
+        from urllib.parse import parse_qs, urlparse
+        settings = self.env['res.config.settings'].create({})
+        for method, label in (('action_expense_scan_report_bug', 'bug'), ('action_expense_scan_suggest', 'enhancement'),
+                              ('action_expense_scan_custom', 'custom work')):
+            action = getattr(settings, method)()
+            self.assertEqual(action['type'], 'ir.actions.act_url')
+            url = urlparse(action['url'])
+            self.assertEqual((url.scheme, url.netloc), ('https', 'github.com'))
+            self.assertTrue(url.path.endswith('/issues/new'))
+            query = parse_qs(url.query)
+            self.assertEqual(query['labels'], [label])
+            self.assertIn('Module: expense_scan', query['body'][0])
+            self.assertIn('do not paste receipts', query['body'][0])

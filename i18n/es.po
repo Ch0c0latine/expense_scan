@@ -3975,3 +3975,28 @@ msgstr "Este gasto aún no se puede refacturar: la refacturación pasa por un pe
 #: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_sales
 msgid "Sales installed"
 msgstr "Aplicación Ventas instalada"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Help and feedback"
+msgstr "Ayuda y comentarios"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Opens a page of GitHub, public, where you write to the authors. Nothing is sent from your server."
+msgstr "Abre una página pública de GitHub donde escribe a los autores. Su servidor no envía nada."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "<i class=\"fa fa-bug me-1\" aria-hidden=\"true\"/>Report a bug"
+msgstr "<i class=\"fa fa-bug me-1\" aria-hidden=\"true\"/>Notificar un error"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "<i class=\"fa fa-lightbulb-o me-1\" aria-hidden=\"true\"/>Suggest an improvement"
+msgstr "<i class=\"fa fa-lightbulb-o me-1\" aria-hidden=\"true\"/>Sugerir una mejora"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "<i class=\"fa fa-wrench me-1\" aria-hidden=\"true\"/>Ask for a custom adaptation"
+msgstr "<i class=\"fa fa-wrench me-1\" aria-hidden=\"true\"/>Pedir una adaptación a medida"

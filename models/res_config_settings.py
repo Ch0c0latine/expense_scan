@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 T.T.C. SAS
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
-from odoo import _, api, fields, models
+from urllib.parse import urlencode
+
+from odoo import _, api, fields, models, release
+from odoo.modules.module import get_manifest
 from odoo.tools import formatLang
 
 from ..ocr import engines, preprocess
@@ -111,6 +114,48 @@ class ResConfigSettings(models.TransientModel):
               text=report['text']),
             'success' if report['word_count'] else 'warning',
         )
+
+    # --- Help and feedback: a GitHub issue, written by the user and public; nothing leaves the server on its own.
+    def _expense_scan_issue_url(self, kind):
+        """The page of a new GitHub issue, with the title and the technical lines already written.
+
+        The page opens in the browser of the user, who reads, completes and sends it. No receipt, name or
+        amount is added: only the versions, the language and whether the Sales app is installed.
+        """
+        repo = self.env['ir.config_parameter'].sudo().get_param(
+            'expense_scan.support_repo', 'TTC-Technologies/expense_scan')
+        titles = {'bug': "[Bug] ", 'idea': "[Idea] ", 'custom': "[Custom work] "}
+        labels = {'bug': "bug", 'idea': "enhancement", 'custom': "custom work"}
+        intro = {
+            'bug': ["What happened, and what did you expect?", "", "Steps to reproduce:", "1. ", "2. "],
+            'idea': ["What would you like the module to do, and why?"],
+            'custom': ["What should the module do for your company? T.T.C. SAS answers with a quote.",
+                       "Say how to reach you only if you want it written here: this page is public."],
+        }[kind]
+        lines = intro + [
+            "",
+            "---",
+            "Module: expense_scan %s" % get_manifest('expense_scan').get('version', '?'),
+            "Odoo: %s" % release.version,
+            "Language: %s" % (self.env.user.lang or "?"),
+            "Sales app installed: %s" % ("yes" if 'sale.order' in self.env else "no"),
+            "",
+            "> This page is public: do not paste receipts, names or amounts.",
+        ]
+        query = urlencode({'title': titles[kind], 'labels': labels[kind], 'body': chr(10).join(lines)})
+        return "https://github.com/%s/issues/new?%s" % (repo, query)
+
+    def _expense_scan_open_issue(self, kind):
+        return {'type': 'ir.actions.act_url', 'url': self._expense_scan_issue_url(kind), 'target': 'new'}
+
+    def action_expense_scan_report_bug(self):
+        return self._expense_scan_open_issue('bug')
+
+    def action_expense_scan_suggest(self):
+        return self._expense_scan_open_issue('idea')
+
+    def action_expense_scan_custom(self):
+        return self._expense_scan_open_issue('custom')
 
     def _expense_scan_notification(self, title, message, kind):
         return {
