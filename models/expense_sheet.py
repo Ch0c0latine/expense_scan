@@ -333,7 +333,7 @@ class ExpenseScanSheet(models.AbstractModel):
                 'prix_unitaire_ht': total_ht / quantity,
                 'total_ht': total_ht,
                 'taux_tva': rate,
-                'taux_label': ("%g %%" % (rate * 100)) if isinstance(rate, float) else rate,
+                'taux_label': ("%s %%" % expense._expense_scan_rate_text(rate * 100)) if isinstance(rate, float) else rate,
                 'quantite_label': "%g" % quantity,
                 'tva_unitaire': total_tva / quantity,
                 'total_tva': total_tva,
@@ -433,6 +433,17 @@ class ExpenseScanSheet(models.AbstractModel):
     # ------------------------------------------------------------------
 
     @api.model
+    @staticmethod
+    def _set_cell(cell, value):
+        """Write a value typed by a person (description, merchant) as text, never as a formula.
+
+        openpyxl types any string starting with "=" as a formula: "=1+1 taxi" would be
+        calculated, "=HYPERLINK(...)" would open a link in the accountant's workbook.
+        """
+        cell.value = value
+        if isinstance(value, str) and value.startswith('='):
+            cell.data_type = 's'
+
     def _excel(self, template, expenses):
         """The template workbook, filled with one employee's expenses."""
         try:
@@ -481,7 +492,7 @@ class ExpenseScanSheet(models.AbstractModel):
                         formula, origin=sheet.cell(row=last, column=column).coordinate
                     ).translate_formula(sheet.cell(row=row, column=column).coordinate)
             for column, value in columns.items():
-                sheet.cell(row=row, column=column).value = line[value] if line[value] != '' else None
+                self._set_cell(sheet.cell(row=row, column=column), line[value] if line[value] != '' else None)
         # The last row keeps the look of the others (alignment, font, number
         # format) and only takes the bottom border of the template.
         for column, border in bottom.items():
@@ -491,7 +502,7 @@ class ExpenseScanSheet(models.AbstractModel):
             cell.border = copy(border)
 
         for column in template.column_ids.filtered(lambda c: c.kind == 'header' and c.value):
-            sheet[column.cell.strip().upper()].value = header[column.value] or None
+            self._set_cell(sheet[column.cell.strip().upper()], header[column.value] or None)
 
         output = io.BytesIO()
         book.save(output)

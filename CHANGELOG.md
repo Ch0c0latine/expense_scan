@@ -1,5 +1,17 @@
 # Changelog
 
+## 19.0.2.16.0 — 2026-10-05
+
+- **Excel export**: a description or merchant starting with "=" is written as text. It used to
+  become a formula ("=1+1 taxi" was calculated, "=HYPERLINK(...)" opened a link).
+- **Expense sheet**: the tax rate follows the language ("4,9 %" in German, not "4.9 %").
+- **Several companies**: the expense rules and the Excel templates of a company are no longer
+  readable from another company (record rules); those with no company stay shared.
+- **Kanban**: a receipt that is a PDF no longer shows a broken thumbnail.
+- **Without the Sales app**: the settings read "Expenses by project", the "Re-invoice" choice gives
+  way to a message saying what to install, and nothing is left "to decide".
+- Documentation: the OCR models are downloaded once, which the readme now says.
+
 ## 19.0.2.15.0 — 2026-10-04
 
 - **Support**: a second link in the settings, the manifest, the readme and the store

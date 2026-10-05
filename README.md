@@ -146,9 +146,9 @@ are gathered under *Receipt scanner: advanced options*.
   the tax of its rate is set on the expense. *Look up the vendor* is off by
   default. *Exchange rates from the European Central Bank* is on by default:
   a daily task adds the reference rates of the last ninety days for the
-  active currencies, and the rate of its day for an older receipt. It is the
-  only network request of the module: a public file, never during a scan, and
-  nothing leaves the server. The default category is the one given to a
+  active currencies, and the rate of its day for an older receipt. Apart from
+  the one-time download of the OCR models, it is the only network request of
+  the module: a public file, never during a scan, and nothing leaves the server. The default category is the one given to a
   receipt that names none.
 - **Expense rules and sheets**: links to the rules and to the Excel
   templates.

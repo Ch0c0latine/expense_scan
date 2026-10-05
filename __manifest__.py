@@ -3,7 +3,7 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 {
     'name': "Receipt Scanner for Expenses",
-    'version': '19.0.2.15.0',
+    'version': '19.0.2.16.0',
     'summary': "Create expenses by photographing receipts: automatic crop and "
                "straightening, fields filled in by a local OCR, side by side "
                "review. No IAP credits, no API key.",
@@ -26,7 +26,7 @@ side by side with the image of the receipt.
   re-invoicing, expense sheets (PDF and Excel), expense rules, team entry.
 
 The OCR engine runs **on your server**, without an IAP account, API key or
-paid token, and without network access at scan time:
+paid token, and without network access at scan time (once the models are downloaded):
 
 * AI RapidOCR / PP-OCR (neural networks run by ONNX Runtime), the default
 * AI Tesseract, as a fallback
@@ -50,6 +50,7 @@ Or support T.T.C. SAS, the company behind the module: https://payment-links.moll
     },
     'data': [
         'security/ir.model.access.csv',
+        'security/expense_scan_rules.xml',
         'report/expense_sheet_report.xml',
         'data/export_templates.xml',
         'data/expense_policies.xml',

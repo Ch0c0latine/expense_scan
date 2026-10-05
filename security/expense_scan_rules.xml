@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Rules, rule lines and Excel templates belong to a company (empty: every company). A user
+         of one company reads the ones of the companies they are allowed in, and the shared ones. -->
+    <record id="expense_scan_policy_company_rule" model="ir.rule">
+        <field name="name">Expense rules: multi-company</field>
+        <field name="model_id" ref="model_expense_scan_policy"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="expense_scan_policy_rule_company_rule" model="ir.rule">
+        <field name="name">Expense rule lines: multi-company</field>
+        <field name="model_id" ref="model_expense_scan_policy_rule"/>
+        <field name="domain_force">['|', ('policy_id.company_id', '=', False), ('policy_id.company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="expense_scan_export_template_company_rule" model="ir.rule">
+        <field name="name">Excel export templates: multi-company</field>
+        <field name="model_id" ref="model_expense_scan_export_template"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="expense_scan_export_column_company_rule" model="ir.rule">
+        <field name="name">Excel export columns: multi-company</field>
+        <field name="model_id" ref="model_expense_scan_export_column"/>
+        <field name="domain_force">['|', ('template_id.company_id', '=', False), ('template_id.company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

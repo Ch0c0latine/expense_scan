@@ -329,9 +329,11 @@
         <field name="arch" type="xml">
             <xpath expr="//kanban/field[@name='currency_id']" position="after">
                 <field name="message_main_attachment_id"/>
+                <field name="expense_scan_main_mimetype"/>
             </xpath>
             <xpath expr="//templates//t[@t-name='card']" position="inside">
-                <img t-if="record.message_main_attachment_id.raw_value"
+                <!-- Only an image has a thumbnail: a PDF would show a broken picture. -->
+                <img t-if="record.message_main_attachment_id.raw_value and (record.expense_scan_main_mimetype.raw_value or '').startsWith('image/')"
                      t-att-src="'/web/image/' + record.message_main_attachment_id.raw_value"
                      class="o_expense_scan_card_thumb mt-2"
                      alt="Receipt thumbnail"/>
