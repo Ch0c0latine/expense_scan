@@ -3968,3 +3968,10 @@ msgstr "De uitgaven van elk project volgen: budget, analytische rekening. Instal
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
 msgid "This expense cannot be re-invoiced yet: re-invoicing goes through a sales order. To re-invoice it, install the Sales app, create the customer's order, then select that order on the project (Invoicing tab). Until then the expense is only followed in the project budget."
 msgstr "Deze uitgave kan nog niet worden doorberekend: doorberekenen gaat via een verkooporder. Installeer de app Verkoop, maak de order van de klant aan en selecteer die op het project (tabblad Facturatie). Tot dan wordt de uitgave alleen gevolgd in het projectbudget."
+
+#. module: expense_scan
+#: model:ir.model.fields,field_description:expense_scan.field_hr_expense__expense_scan_sales
+#: model:ir.model.fields,field_description:expense_scan.field_project_project__expense_scan_sales
+#: model:ir.model.fields,field_description:expense_scan.field_res_config_settings__expense_scan_sales
+msgid "Sales installed"
+msgstr "App Verkoop geïnstalleerd"

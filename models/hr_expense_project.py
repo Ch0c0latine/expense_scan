@@ -56,7 +56,6 @@ class HrExpense(models.Model):
     expense_scan_sales = fields.Boolean(
         compute='_compute_expense_scan_sales',
         string="Sales installed",
-        help="Re-invoicing goes through the sales order of the project: it needs the Sales app.",
     )
 
     def _compute_expense_scan_sales(self):
