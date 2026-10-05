@@ -37,6 +37,12 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.expense_scan_apply_tax', readonly=False)
     expense_scan_reinvoice = fields.Boolean(
         related='company_id.expense_scan_reinvoice', readonly=False)
+    expense_scan_sales = fields.Boolean(compute='_compute_expense_scan_sales')
+
+    def _compute_expense_scan_sales(self):
+        installed = 'sale.order' in self.env
+        for settings in self:
+            settings.expense_scan_sales = installed
     expense_scan_set_vendor = fields.Boolean(
         related='company_id.expense_scan_set_vendor', readonly=False)
     expense_scan_ecb_rates = fields.Boolean(

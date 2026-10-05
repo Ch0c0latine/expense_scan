@@ -3953,3 +3953,18 @@ msgstr "Pasti del giorno: 55 in totale (un pasto più caro è ammesso entro ques
 #: model:expense.scan.policy.rule,name:expense_scan.demo_policy_hotel
 msgid "Hotel: 110 a night, 140 in large cities"
 msgstr "Hotel: 110 a notte, 140 nelle grandi città"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Expenses by project"
+msgstr "Spese per progetto"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Follow the expenses of each project: budget, analytic account. To re-invoice them to the customer, install the Sales app."
+msgstr "Seguire le spese di ogni progetto: budget, conto analitico. Per riaddebitarle al cliente, installare l'app Vendite."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
+msgid "This expense cannot be re-invoiced yet: re-invoicing goes through a sales order. To re-invoice it, install the Sales app, create the customer's order, then select that order on the project (Invoicing tab). Until then the expense is only followed in the project budget."
+msgstr "Questa spesa non può ancora essere riaddebitata: il riaddebito passa da un ordine di vendita. Per riaddebitarla, installare l'app Vendite, creare l'ordine del cliente e selezionarlo sul progetto (scheda Fatturazione). Fino ad allora la spesa è seguita solo nel budget del progetto."

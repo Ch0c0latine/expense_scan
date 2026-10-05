@@ -3966,3 +3966,18 @@ msgstr "Repas du jour : 55 au total (un repas plus cher reste admis dans cette 
 #: model:expense.scan.policy.rule,name:expense_scan.demo_policy_hotel
 msgid "Hotel: 110 a night, 140 in large cities"
 msgstr "Hôtel : 110 la nuit, 140 dans les grandes villes"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Expenses by project"
+msgstr "Dépenses par projet"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Follow the expenses of each project: budget, analytic account. To re-invoice them to the customer, install the Sales app."
+msgstr "Suivre les dépenses de chaque projet : budget, compte analytique. Pour les refacturer au client, installez l'application Ventes."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
+msgid "This expense cannot be re-invoiced yet: re-invoicing goes through a sales order. To re-invoice it, install the Sales app, create the customer's order, then select that order on the project (Invoicing tab). Until then the expense is only followed in the project budget."
+msgstr "Cette dépense ne peut pas encore être refacturée : la refacturation passe par une commande de vente. Pour la refacturer, installez l'application Ventes, créez la commande du client, puis sélectionnez-la sur le projet (onglet Facturation). D'ici là, la dépense est seulement suivie dans le budget du projet."

@@ -34,6 +34,15 @@ class ProjectProject(models.Model):
         compute='_compute_expense_scan_reinvoice_on',
         string="Re-invoicing enabled",
     )
+    expense_scan_sales = fields.Boolean(
+        compute='_compute_expense_scan_sales',
+        string="Sales installed",
+    )
+
+    def _compute_expense_scan_sales(self):
+        installed = 'sale.order' in self.env
+        for project in self:
+            project.expense_scan_sales = installed
     expense_scan_budget = fields.Monetary(
         string="Expense budget",
         currency_field='expense_scan_currency_id',

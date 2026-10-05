@@ -3953,3 +3953,18 @@ msgstr "Maaltijden van de dag: 55 in totaal (een duurdere maaltijd is binnen dez
 #: model:expense.scan.policy.rule,name:expense_scan.demo_policy_hotel
 msgid "Hotel: 110 a night, 140 in large cities"
 msgstr "Hotel: 110 per nacht, 140 in grote steden"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Expenses by project"
+msgstr "Uitgaven per project"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Follow the expenses of each project: budget, analytic account. To re-invoice them to the customer, install the Sales app."
+msgstr "De uitgaven van elk project volgen: budget, analytische rekening. Installeer de app Verkoop om ze door te rekenen aan de klant."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
+msgid "This expense cannot be re-invoiced yet: re-invoicing goes through a sales order. To re-invoice it, install the Sales app, create the customer's order, then select that order on the project (Invoicing tab). Until then the expense is only followed in the project budget."
+msgstr "Deze uitgave kan nog niet worden doorberekend: doorberekenen gaat via een verkooporder. Installeer de app Verkoop, maak de order van de klant aan en selecteer die op het project (tabblad Facturatie). Tot dan wordt de uitgave alleen gevolgd in het projectbudget."

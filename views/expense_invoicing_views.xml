@@ -164,6 +164,7 @@
                     <field name="expense_scan_currency_id" invisible="1"/>
                     <field name="expense_scan_over_budget" invisible="1"/>
                     <field name="expense_scan_reinvoice_on" invisible="1"/>
+                    <field name="expense_scan_sales" invisible="1"/>
                     <group name="expense_budget">
                         <group string="Budget">
                             <field name="expense_scan_budget"/>
@@ -175,7 +176,7 @@
                             <field name="expense_scan_left" invisible="not expense_scan_budget"
                                    decoration-danger="expense_scan_left &lt; 0"/>
                         </group>
-                        <group string="Re-invoicing" name="expense_reinvoicing">
+                        <group string="Re-invoicing" name="expense_reinvoicing" invisible="not expense_scan_sales">
                             <field name="expense_scan_sheet_template_id" options="{'no_create': True}"
                                    invisible="not expense_scan_reinvoice_on"/>
                             <field name="expense_scan_held_back"

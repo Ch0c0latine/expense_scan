@@ -197,11 +197,17 @@
             <!-- Re-invoicing after payment; project_id and task_id follow the user's domain. -->
             <xpath expr="//div[@id='payment_mode']" position="after">
                 <xpath expr="//field[@name='payment_method_line_id']" position="move"/>
-                <label for="reinvoice_mode" invisible="not expense_scan_reinvoice"/>
-                <div invisible="not expense_scan_reinvoice">
+                <field name="expense_scan_sales" invisible="1"/>
+                <label for="reinvoice_mode" invisible="not expense_scan_reinvoice or not expense_scan_sales"/>
+                <div invisible="not expense_scan_reinvoice or not expense_scan_sales">
                     <field name="reinvoice_mode" widget="radio"
                            options="{'horizontal': True}" nolabel="1"
                            readonly="not is_editable"/>
+                </div>
+                <!-- Without the Sales app, the answer is always "No": say what to do. -->
+                <div colspan="2" class="text-muted o_expense_scan_hint"
+                     invisible="not expense_scan_reinvoice or expense_scan_sales">
+                    This expense cannot be re-invoiced yet: re-invoicing goes through a sales order. To re-invoice it, install the Sales app, create the customer's order, then select that order on the project (Invoicing tab). Until then the expense is only followed in the project budget.
                 </div>
                 <field name="expense_scan_hint_reinvoice" nolabel="1" colspan="2" readonly="1"
                        invisible="not expense_scan_hint_reinvoice or not expense_scan_reinvoice"

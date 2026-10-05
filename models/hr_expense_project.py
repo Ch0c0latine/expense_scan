@@ -53,6 +53,16 @@ class HrExpense(models.Model):
         related='company_id.expense_scan_reinvoice',
         string="Project link enabled",
     )
+    expense_scan_sales = fields.Boolean(
+        compute='_compute_expense_scan_sales',
+        string="Sales installed",
+        help="Re-invoicing goes through the sales order of the project: it needs the Sales app.",
+    )
+
+    def _compute_expense_scan_sales(self):
+        installed = 'sale.order' in self.env
+        for expense in self:
+            expense.expense_scan_sales = installed
 
     expense_scan_has_tasks = fields.Boolean(
         string="Project with tasks",
@@ -78,9 +88,10 @@ class HrExpense(models.Model):
     def create(self, vals_list):
         # Without a project there is nothing to re-invoice; with one, the choice is open.
         has_default_project = bool(self.env.context.get('default_project_id'))
+        sales = 'sale.order' in self.env
         vals_list = [
             vals if 'reinvoice_mode' in vals else dict(
-                vals, reinvoice_mode='todo' if vals.get('project_id') or has_default_project else 'none')
+                vals, reinvoice_mode='todo' if sales and (vals.get('project_id') or has_default_project) else 'none')
             for vals in vals_list]
         expenses = super().create(vals_list)
         expenses._expense_scan_sync_analytic()
@@ -274,7 +285,7 @@ class HrExpense(models.Model):
                     # Removed rather than made invisible: the label that the
                     # group draws for the field would stay on the form.
                     node.getparent().remove(node)
-        elif view_type == 'list' and not reinvoice:
+        elif view_type == 'list' and (not reinvoice or 'sale.order' not in self.env):
             # The "Re-invoicable" column means nothing to a company that does
             # not re-invoice.
             for node in arch.xpath(
@@ -329,8 +340,9 @@ class HrExpense(models.Model):
         if not project:
             return {}
 
+        # Without the Sales app there is no order to re-invoice on: the cost is only followed.
         values = {'project_id': project.id,
-                  'reinvoice_mode': 'project' if reinvoice else 'none'}
+                  'reinvoice_mode': 'project' if reinvoice and 'sale.order' in self.env else 'none'}
 
         # Read with elevated rights: the analytic account and the sales
         # order are restricted to the Analytic and Sales groups. Only ids,

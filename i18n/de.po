@@ -3953,3 +3953,18 @@ msgstr "Mahlzeiten des Tages: insgesamt 55 (eine teurere Mahlzeit ist innerhalb 
 #: model:expense.scan.policy.rule,name:expense_scan.demo_policy_hotel
 msgid "Hotel: 110 a night, 140 in large cities"
 msgstr "Hotel: 110 pro Nacht, 140 in Großstädten"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Expenses by project"
+msgstr "Ausgaben nach Projekt"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Follow the expenses of each project: budget, analytic account. To re-invoice them to the customer, install the Sales app."
+msgstr "Die Ausgaben jedes Projekts verfolgen: Budget, Analysekonto. Um sie dem Kunden weiterzuberechnen, installieren Sie die App Verkauf."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
+msgid "This expense cannot be re-invoiced yet: re-invoicing goes through a sales order. To re-invoice it, install the Sales app, create the customer's order, then select that order on the project (Invoicing tab). Until then the expense is only followed in the project budget."
+msgstr "Diese Ausgabe kann noch nicht weiterberechnet werden: Die Weiterberechnung läuft über einen Kundenauftrag. Installieren Sie dafür die App Verkauf, legen Sie den Auftrag des Kunden an und wählen Sie ihn im Projekt aus (Reiter Rechnungsstellung). Bis dahin wird die Ausgabe nur im Projektbudget verfolgt."

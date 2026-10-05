@@ -3953,3 +3953,18 @@ msgstr "Dagens måltider: 55 totalt (et dyrere måltid godtas innenfor denne gre
 #: model:expense.scan.policy.rule,name:expense_scan.demo_policy_hotel
 msgid "Hotel: 110 a night, 140 in large cities"
 msgstr "Hotell: 110 per natt, 140 i storbyer"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Expenses by project"
+msgstr "Utgifter per prosjekt"
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
+msgid "Follow the expenses of each project: budget, analytic account. To re-invoice them to the customer, install the Sales app."
+msgstr "Følg utgiftene til hvert prosjekt: budsjett, analytisk konto. Installer appen Salg for å viderefakturere dem til kunden."
+
+#. module: expense_scan
+#: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
+msgid "This expense cannot be re-invoiced yet: re-invoicing goes through a sales order. To re-invoice it, install the Sales app, create the customer's order, then select that order on the project (Invoicing tab). Until then the expense is only followed in the project budget."
+msgstr "Denne utgiften kan ikke viderefaktureres ennå: viderefakturering går via en salgsordre. Installer appen Salg, opprett kundens ordre og velg den på prosjektet (fanen Fakturering). Inntil da følges utgiften bare i prosjektbudsjettet."

@@ -15,13 +15,26 @@
                          company_dependent="1"
                          help="Read photographed receipts on your own server, without credits or subscription">
                     <field name="expense_scan_enabled"/>
+                    <field name="expense_scan_sales" invisible="1"/>
                     <div class="text-muted small" invisible="not expense_scan_enabled">
                         The engine and the photo processing have good defaults: see the advanced options below.
                     </div>
                 </setting>
 
+                <setting id="expense_scan_project_setting" string="Expenses by project"
+                         company_dependent="1" invisible="expense_scan_sales"
+                         help="Follow the expenses of each project: budget, analytic account. To re-invoice them to the customer, install the Sales app.">
+                    <field name="expense_scan_reinvoice"/>
+                    <div class="content-group" invisible="not expense_scan_reinvoice">
+                        <div class="text-muted small ps-4">Suggests the employee's project running on the receipt date.</div>
+                        <div class="mt-2"><field name="expense_scan_limit_projects"/>
+                            <label for="expense_scan_limit_projects"/>
+                            <div class="text-muted small ps-4">An employee is offered the projects they manage, have a task on or are assigned to.</div></div>
+                    </div>
+                </setting>
+
                 <setting id="expense_scan_reinvoice_setting" string="Re-invoicing"
-                         company_dependent="1"
+                         company_dependent="1" invisible="not expense_scan_sales"
                          help="Charge the expenses of a project to its customer, through its sales order">
                     <field name="expense_scan_reinvoice"/>
                     <div class="content-group" invisible="not expense_scan_reinvoice">
