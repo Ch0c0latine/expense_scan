@@ -29,7 +29,7 @@ import urllib.request
 
 API = "https://prices.openfoodfacts.org/api/v1/proofs?type=RECEIPT&size=100&page=%d"
 IMAGES = "https://prices.openfoodfacts.org/img/"
-USER_AGENT = "expense_scan-corpus/1.0 (https://github.com/Ch0c0latine/expense_scan)"
+USER_AGENT = "expense_scan-corpus/1.0 (https://github.com/TTC-Technologies/expense_scan)"
 
 
 def get(url, method="GET"):

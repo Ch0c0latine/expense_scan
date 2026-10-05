@@ -38,7 +38,7 @@ https://github.com/sponsors/Ch0c0latine
 Or support T.T.C. SAS, the company behind the module: https://payment-links.mollie.com/payment/NVWgeiofyRchMRgF8DkDc
 """,
     'author': "T.T.C. SAS",
-    'website': "https://github.com/Ch0c0latine/expense_scan",
+    'website': "https://github.com/TTC-Technologies/expense_scan",
     'category': 'Human Resources/Expenses',
     'license': 'LGPL-3',
     'images': ['static/description/banner.png'],
