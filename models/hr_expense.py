@@ -2274,9 +2274,11 @@ class HrExpense(models.Model):
                     neighbour._get_html_link(title=neighbour.name))]
 
         nights = result.value('nights')
-        if nights and self._expense_scan_target_product(values).expense_scan_nights_required \
+        if self._expense_scan_target_product(values).expense_scan_nights_required \
                 and 'expense_scan_nights' not in keep:
-            values['expense_scan_nights'] = nights
+            # The number printed on the bill, otherwise one night: the category requires at least one.
+            if nights or self.expense_scan_nights < 1:
+                values['expense_scan_nights'] = nights or 1
 
         currency = self._expense_scan_currency(result, company)
         if currency and 'currency_id' not in keep:

@@ -29,6 +29,10 @@ class HrExpense(models.Model):
     def _onchange_expense_scan_nights(self):
         """At least one night when switching to a hotel category."""
         for expense in self:
+            # While the receipt is being read, the scan brings the number of nights: a 1 written here would
+            # look like a correction by hand and replace the number printed on the bill.
+            if expense.scan_state == 'running':
+                continue
             if expense.expense_scan_nights_required and expense.expense_scan_nights < 1:
                 expense.expense_scan_nights = 1
 
