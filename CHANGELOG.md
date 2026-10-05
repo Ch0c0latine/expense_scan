@@ -1,5 +1,9 @@
 # Changelog
 
+## 19.0.3.0.0 — 2026-10-05
+
+First version published on the Odoo Apps Store: it gathers everything of 19.0.2.15 to 19.0.2.17 below.
+
 ## 19.0.2.17.0 — 2026-10-05
 
 - **Help and feedback** (Settings, Expenses): three buttons open a new GitHub issue in the browser, with the
