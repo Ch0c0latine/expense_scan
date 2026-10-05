@@ -268,7 +268,12 @@ class HrExpense(models.Model):
         reinvoice = self.env.company.expense_scan_reinvoice
         if view_type == 'form' and reinvoice:
             for node in arch.xpath("//field[@name='sale_order_id']"):
-                node.set('invisible', '1')
+                if node.get('widget') == 'statinfo':
+                    node.set('invisible', '1')
+                else:
+                    # Removed rather than made invisible: the label that the
+                    # group draws for the field would stay on the form.
+                    node.getparent().remove(node)
         elif view_type == 'list' and not reinvoice:
             # The "Re-invoicable" column means nothing to a company that does
             # not re-invoice.
