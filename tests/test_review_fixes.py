@@ -77,3 +77,13 @@ class TestReviewFixes(common.TransactionCase):
             self.assertEqual(query['labels'], [label])
             self.assertIn('Module: expense_scan', query['body'][0])
             self.assertIn('do not paste receipts', query['body'][0])
+
+    def test_the_hotel_categories_do_not_depend_on_the_language_of_the_user(self):
+        Product = self.env['product.product']
+        hotel = Product.create({'name': "Viaggio e alloggio", 'can_be_expensed': True, 'type': 'service'})
+        taxi = Product.create({'name': "Taxi", 'can_be_expensed': True, 'type': 'service'})
+        self.assertTrue(hotel.expense_scan_nights_required)
+        self.assertFalse(taxi.expense_scan_nights_required)
+        installed = [code for code, _label in self.env['res.lang'].get_installed()]
+        for code in installed:
+            self.assertTrue(hotel.with_context(lang=code).expense_scan_nights_required, code)

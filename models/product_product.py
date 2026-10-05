@@ -17,7 +17,8 @@ from odoo import api, fields, models
 # allowance is not counted in nights paid on a receipt.
 HOTEL_WORDS = ('hotel', 'heberg', 'bnb', 'nuitee', 'lodging', 'accommodation', 'albergo',
                'alojamiento', 'alojamento', 'hospedaje', 'unterkunft', 'ubernachtung',
-               'nocleg', 'overnachting', 'overnatning')
+               'nocleg', 'overnachting', 'overnatning', 'overnattning', 'overnatting', 'alloggio',
+               'pernottamento', 'hospedagem', 'hotell', 'logies')
 
 
 class ProductTemplate(models.Model):
@@ -40,15 +41,18 @@ class ProductTemplate(models.Model):
     )
 
     @api.depends('name', 'default_code')
-    @api.depends_context('lang')
     def _compute_expense_scan_nights_required(self):
         """True for hotel categories only.
 
         Derived from the name or reference rather than a checkbox: a box on
         every category would invite asking for nights on a taxi or a meal.
+        The name is read in every installed language: the answer must not
+        depend on the language of the user who opens the expense.
         """
+        languages = [code for code, _label in self.env['res.lang'].get_installed()]
         for template in self:
-            text = ' '.join(filter(None, (template.name, template.default_code)))
+            names = {template.with_context(lang=code).name for code in languages}
+            text = ' '.join(filter(None, list(names) + [template.default_code]))
             text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode().lower()
             template.expense_scan_nights_required = any(word in text for word in HOTEL_WORDS)
 
