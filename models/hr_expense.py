@@ -8,7 +8,7 @@ import math
 import os
 import re
 import time
-from collections import Counter
+from collections import Counter, OrderedDict
 from datetime import datetime, time as dtime, timedelta
 
 import psycopg2
@@ -35,6 +35,10 @@ PDF_MAX_PAGES_READ = 5
 #: Resolution of a PDF rendered for the phone preview: readable on a narrow
 #: screen, light to transfer.
 PDF_PREVIEW_DPI = 110
+# First pages already drawn, by checksum of the file: opening a form again does not draw the PDF again
+# (2 to 6 seconds for a long document). A few entries per worker; the key changes with the file.
+_PDF_PREVIEWS = OrderedDict()
+PDF_PREVIEWS_KEPT = 24
 #: Gap, in days, between two expenses of the same trip.
 TRIP_DAYS = 3
 #: Tax printed above the exact ceiling of its rate, still accepted: tills
@@ -975,10 +979,18 @@ class HrExpense(models.Model):
         attachment = self.message_main_attachment_id
         if not attachment or not self._expense_scan_is_pdf(attachment):
             return False
+        key = (attachment.checksum, PDF_PREVIEW_DPI)
+        if key in _PDF_PREVIEWS:
+            _PDF_PREVIEWS.move_to_end(key)
+            return _PDF_PREVIEWS[key]
         data = preprocess.pdf_first_page_to_image_bytes(attachment.raw, dpi=PDF_PREVIEW_DPI)
         if not data:
             return False
-        return 'data:image/png;base64,%s' % base64.b64encode(data).decode()
+        url = 'data:image/png;base64,%s' % base64.b64encode(data).decode()
+        _PDF_PREVIEWS[key] = url
+        while len(_PDF_PREVIEWS) > PDF_PREVIEWS_KEPT:
+            _PDF_PREVIEWS.popitem(last=False)
+        return url
 
     def expense_scan_auto_retouch_params(self):
         """Settings the automatic retouch would suggest, for the editor.

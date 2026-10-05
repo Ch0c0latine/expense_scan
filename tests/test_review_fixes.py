@@ -2,6 +2,8 @@
 # Copyright 2026 T.T.C. SAS
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 """Defects found by the quality sweeps: Excel formulas, several companies, kanban thumbnail."""
+from unittest.mock import patch
+
 from openpyxl import Workbook
 
 from odoo.tests import common, tagged
@@ -43,3 +45,20 @@ class TestReviewFixes(common.TransactionCase):
         view = self.env.ref('expense_scan.hr_expense_view_kanban_scan')
         self.assertIn("startsWith('image/')", view.arch_db)
         self.assertIn('name="expense_scan_main_mimetype"', view.arch_db)
+
+    def test_a_pdf_preview_is_drawn_once(self):
+        from odoo.addons.expense_scan.models import hr_expense
+        from odoo.addons.expense_scan.ocr import preprocess
+        employee = self.env['hr.employee'].create({'name': "Preview"})
+        expense = self.env['hr.expense'].create({'name': "Pdf", 'employee_id': employee.id})
+        attachment = self.env['ir.attachment'].create(
+            {'name': "r.pdf", 'raw': b'%PDF-1.4 preview-cache-test', 'mimetype': 'application/pdf',
+             'res_model': 'hr.expense', 'res_id': expense.id})
+        expense.message_main_attachment_id = attachment
+        hr_expense._PDF_PREVIEWS.clear()
+        with patch.object(preprocess, 'pdf_first_page_to_image_bytes', return_value=b'png') as draw:
+            first = expense.expense_scan_pdf_preview()
+            second = expense.expense_scan_pdf_preview()
+        self.assertTrue(first.startswith('data:image/png;base64,'))
+        self.assertEqual(first, second)
+        self.assertEqual(draw.call_count, 1)
