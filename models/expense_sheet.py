@@ -334,7 +334,7 @@ class ExpenseScanSheet(models.AbstractModel):
                 'total_ht': total_ht,
                 'taux_tva': rate,
                 'taux_label': ("%s %%" % expense._expense_scan_rate_text(rate * 100)) if isinstance(rate, float) else rate,
-                'quantite_label': "%g" % quantity,
+                'quantite_label': expense._expense_scan_rate_text(quantity),
                 'tva_unitaire': total_tva / quantity,
                 'total_tva': total_tva,
                 'ttc_unitaire': total_ttc / quantity,
@@ -397,7 +397,7 @@ class ExpenseScanSheet(models.AbstractModel):
         rows = sorted(groups.values(), key=lambda group: -group['rate'])
         for row in rows:
             if row['rate']:
-                row['label'] = "%g %%" % (row['rate'] * 100)
+                row['label'] = "%s %%" % self.env['hr.expense']._expense_scan_rate_text(row['rate'] * 100)
                 if row['mixed']:
                     row['label'] += _(" (incl. mixed rates)")
             else:
