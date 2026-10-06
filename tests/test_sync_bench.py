@@ -50,7 +50,7 @@ class TestSyncBench(common.TransactionCase):
             {'name': "Assistance banc", 'type': 'service', 'list_price': 500.0, 'invoice_policy': 'delivery'})
         cls.expense_product = cls.env['product.product'].create({
             'name': "Depenses banc", 'type': 'service', 'list_price': 1.0,
-            'can_be_expensed': True, 'expense_policy': 'cost', 'invoice_policy': 'order'})
+            'can_be_expensed': True, 'reinvoice_policy': 'cost', 'invoice_policy': 'order'})
         cls.partner = cls.env['res.partner'].create({'name': "Client banc"})
         cls.manager = cls.env.ref('base.user_admin')
 

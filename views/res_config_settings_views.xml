@@ -127,7 +127,7 @@
                             <div class="mt8">
                                 <button name="action_expense_scan_self_test" type="object"
                                         string="Test and preload the engine"
-                                        class="btn btn-link ps-0" icon="fa-play-circle"/>
+                                        class="btn btn-link ps-0" icon="play_circle"/>
                             </div>
                             <field name="expense_scan_status" widget="text" readonly="1"
                                    class="text-muted small"/>
@@ -198,13 +198,13 @@
                              help="Opens a page of GitHub, public, where you write to the authors. Nothing is sent from your server.">
                         <div class="content-group">
                             <button name="action_expense_scan_report_bug" type="object" class="btn btn-link ps-0">
-                                <i class="fa fa-bug me-1" aria-hidden="true"/>Report a bug
+                                <i class="oi me-1" data-icon="bug_report" aria-hidden="true"/>Report a bug
                             </button>
                             <button name="action_expense_scan_suggest" type="object" class="btn btn-link ps-0">
-                                <i class="fa fa-lightbulb-o me-1" aria-hidden="true"/>Suggest an improvement
+                                <i class="oi me-1" data-icon="lightbulb" aria-hidden="true"/>Suggest an improvement
                             </button>
                             <button name="action_expense_scan_custom" type="object" class="btn btn-link ps-0">
-                                <i class="fa fa-wrench me-1" aria-hidden="true"/>Ask for a custom adaptation
+                                <i class="oi me-1" data-icon="build" aria-hidden="true"/>Ask for a custom adaptation
                             </button>
                         </div>
                     </setting>
@@ -217,7 +217,7 @@
                             </a>
                             <a href="https://payment-links.mollie.com/payment/NVWgeiofyRchMRgF8DkDc" target="_blank"
                                rel="noopener noreferrer" class="btn btn-link ps-0" role="button">
-                                <i class="fa fa-building-o me-1" aria-hidden="true"/>Support T.T.C. SAS, the company behind the module
+                                <i class="oi me-1" data-icon="business" aria-hidden="true"/>Support T.T.C. SAS, the company behind the module
                             </a>
                         </div>
                     </setting>

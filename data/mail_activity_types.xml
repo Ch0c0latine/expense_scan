@@ -7,7 +7,7 @@
          that still wait for the manager or for a decision. -->
     <record id="mail_activity_type_waiting" model="mail.activity.type">
         <field name="name">Expenses to settle before invoicing</field>
-        <field name="icon">fa-money</field>
+        <field name="icon">payments</field>
         <field name="delay_count">0</field>
     </record>
 

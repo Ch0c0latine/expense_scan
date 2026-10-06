@@ -298,10 +298,20 @@ class HrExpense(models.Model):
         return lines.sorted(lambda l: (l.sequence, l.id))[:1]
 
     @api.model
+    def _expense_scan_sets_delivered(self, line):
+        """The module sets the delivered quantity of its line when nothing else computes it.
+
+        Since Odoo 20 a product with a re-invoice policy gets its delivered quantity from analytic lines;
+        the line the module keeps is not one of those (no expense is linked to it).
+        """
+        return line.qty_delivered_method == 'manual' or (
+            line.qty_delivered_method == 'analytic' and not line.is_expense)
+
+    @api.model
     def _expense_scan_line_product(self, company):
         """Product of an expense line added by the module, when the order has none."""
         domain = [('can_be_expensed', '=', True), ('type', '=', 'service'),
-                  ('expense_policy', 'in', ('cost', 'sales_price')),
+                  ('reinvoice_policy', 'in', ('cost', 'sales_price')),
                   ('company_id', 'in', [False, company.id])]
         return self.env['product.product'].sudo().search(domain, order='id', limit=1)
 
@@ -339,7 +349,7 @@ class HrExpense(models.Model):
         unit = line.price_unit if line.price_unit > 0 else 1.0
         held = max(min(line.qty_delivered, amount / unit), line.qty_invoiced)
         values = {}
-        if line.qty_delivered_method == 'manual' and float_compare(line.qty_delivered, held, precision_digits=2):
+        if self._expense_scan_sets_delivered(line) and float_compare(line.qty_delivered, held, precision_digits=2):
             values['qty_delivered'] = held
         if line.product_id.invoice_policy == 'order' and float_compare(line.product_uom_qty, held, precision_digits=2):
             values['product_uom_qty'] = held
@@ -385,7 +395,7 @@ class HrExpense(models.Model):
             })
             # The amount carries the tax of the expenses; the order's own tax is then added to
             # it as to any line (the customer is billed the amount incl. tax, plus the order's VAT).
-            if line.qty_delivered_method == 'manual':
+            if self._expense_scan_sets_delivered(line):
                 line.qty_delivered = amount
             return
         if order.locked:
@@ -398,12 +408,18 @@ class HrExpense(models.Model):
         values = {}
         if float_compare(line.product_uom_qty, quantity, precision_digits=2):
             values['product_uom_qty'] = quantity
-        if line.qty_delivered_method == 'manual' and float_compare(line.qty_delivered, quantity, precision_digits=2):
+        if self._expense_scan_sets_delivered(line) and float_compare(line.qty_delivered, quantity, precision_digits=2):
             values['qty_delivered'] = quantity
         if line.price_unit <= 0:
             values['price_unit'] = unit
         if values:
             line.sudo().write(values)
+
+    def _expense_scan_post_entries(self):
+        """Post the journal entries of the approved expenses (Odoo creates them as drafts at the approval)."""
+        drafts = self.sudo().account_move_id.filtered(lambda m: m.state == 'draft')
+        if drafts:
+            drafts.action_post()
 
     def _expense_scan_post_after_invoice(self, move):
         """Post the expenses an invoice has just covered.
@@ -414,10 +430,7 @@ class HrExpense(models.Model):
         for expense in self:
             try:
                 with self.env.cr.savepoint():
-                    if expense.payment_mode == 'company_account':
-                        expense.action_post()
-                    else:
-                        expense._post_without_wizard()
+                    expense._expense_scan_post_entries()
             except Exception as error:  # noqa: BLE001
                 _logger.warning("Could not post expense %s after invoice %s",
                                 expense.id, move.name, exc_info=True)
@@ -458,7 +471,13 @@ class HrExpense(models.Model):
                 raise UserError(_("%s is not approved: only an approval can be taken back.",
                                   expense.name or expense.display_name))
         self._expense_scan_check_not_invoiced({'approval_state': 'submitted'})
+        # The entry made at the approval goes with it; the expenses sharing it get a new one.
+        drafts = self.sudo().account_move_id.filtered(lambda m: m.state == 'draft')
+        sharing = drafts.expense_ids - self
+        drafts.unlink()
         self.sudo().write({'approval_state': 'submitted', 'approval_date': False})
+        if sharing:
+            sharing._create_move()
         self.sudo().update_activities_and_mails()
         return True
 
@@ -501,11 +520,19 @@ class HrExpense(models.Model):
                 "(Yes or No, in the Re-invoice column of the list or in the expense):\n%s",
                 "\n".join("- %s" % (e.name or e.display_name) for e in undecided[:20])))
 
-    def _do_approve(self, check=True):
+    def _do_approve(self):
         self._expense_scan_check_decided()
         # Odoo approves the expenses one by one: the order lines are updated once, at the end.
+        # Odoo 20 makes one entry for all the employee's expenses approved together, and posts it as a
+        # whole. An expense the module may hold back (re-invoiced on a project) gets an entry of its own:
+        # posting it, refusing it or taking its approval back leaves the others alone.
+        own_entry = self.filtered(lambda e: e.company_id.expense_scan_reinvoice and e.reinvoice_mode == 'project')
         with self._expense_scan_batch_sync():
-            return super()._do_approve(check=check)
+            for expense in own_entry:
+                super(HrExpense, expense)._do_approve()
+            rest = self - own_entry
+            if rest:
+                super(HrExpense, rest)._do_approve()
 
     # ------------------------------------------------------------------
     # Toggle in the list
@@ -585,7 +612,7 @@ class HrExpense(models.Model):
                 "\n".join("- %s" % (e.name or e.display_name) for e in wrong[:20])))
         to_post = expenses.filtered(lambda e: e.state == 'approved')
         if to_post:
-            to_post._post_without_wizard()
+            to_post._expense_scan_post_entries()
         moves = expenses.account_move_id.filtered(
             lambda m: m.state == 'posted' and m.payment_state in ('not_paid', 'partial'))
         if not moves:

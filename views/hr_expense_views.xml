@@ -20,7 +20,7 @@
             <!-- Delete button at the end of the bar, behind a confirmation. -->
             <xpath expr="//header" position="inside">
                 <button name="action_expense_scan_drop" type="object"
-                        icon="fa-trash" title="Delete" class="text-danger"
+                        icon="delete" title="Delete" class="text-danger"
                         confirm="Delete this expense and its receipt for good?"
                         invisible="state != 'draft'">
                     <span class="d-none d-md-inline ms-1">Delete</span>
@@ -39,9 +39,6 @@
 
             <!-- Hide the attachment widget (duplicate of the attachments panel). -->
             <xpath expr="(//widget[@name='attach_document'])[1]" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="(//widget[@name='attach_document'])[2]" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
@@ -64,7 +61,7 @@
                 <div class="alert alert-warning d-flex align-items-center gap-2"
                      role="alert" name="expense_scan_todo"
                      invisible="not expense_scan_todo_unplaced or state != 'draft'">
-                    <i class="fa fa-search" role="img" aria-label="Scan"/>
+                    <i class="oi" data-icon="search" role="img" aria-label="Scan"/>
                     <span>
                         Receipt scanned. Check these fields before submitting:
                         <field name="scan_todo" class="fw-bold" nolabel="1" readonly="1"/>
@@ -73,7 +70,7 @@
                 <div class="alert alert-danger d-flex align-items-center gap-2"
                      role="alert" name="expense_scan_error"
                      invisible="scan_state != 'error'">
-                    <i class="fa fa-exclamation-triangle" role="img" aria-label="Error"/>
+                    <i class="oi" data-icon="warning" role="img" aria-label="Error"/>
                     <span>
                         The receipt scan failed, enter the expense by hand.
                         <!-- The technical reason is for the people who can act on it. -->
@@ -89,12 +86,19 @@
             </xpath>
 
             <!-- Amount and currency on one line, with fixed widths (see expense_scan.scss). -->
-            <xpath expr="//field[@name='total_amount_currency']" position="attributes">
-                <attribute name="class">oe_inline me-2 o_expense_scan_amount</attribute>
-            </xpath>
-            <xpath expr="//field[@name='total_amount_currency']/parent::div/field[@name='currency_id']"
-                   position="attributes">
-                <attribute name="class">oe_inline ms-0 o_expense_scan_currency</attribute>
+            <!-- Amount and currency on one line (two separate rows of the group in the standard form). -->
+            <xpath expr="//field[@name='total_amount_currency']/following-sibling::field[@name='currency_id']"
+                   position="replace"/>
+            <xpath expr="//field[@name='total_amount_currency']" position="replace">
+                <label for="total_amount_currency" string="Total" invisible="product_has_cost"/>
+                <div class="o_row" invisible="product_has_cost">
+                    <field name="total_amount_currency" widget="monetary"
+                           options="{'currency_field': 'currency_id'}" readonly="not is_editable"
+                           class="oe_inline me-2 o_expense_scan_amount"/>
+                    <field name="currency_id" groups="base.group_multi_currency"
+                           options="{'no_create': True, 'no_open': True}" readonly="not is_editable"
+                           class="oe_inline ms-0 o_expense_scan_currency"/>
+                </div>
             </xpath>
 
             <!-- Unit price editable for flat rates with a variable scale (mileage). -->
@@ -103,9 +107,6 @@
             </xpath>
 
             <!-- Hide the duplicate tax amount (still on the taxes line). -->
-            <xpath expr="//field[@name='total_amount_currency']/parent::div/span" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
             <xpath expr="//field[@name='tax_amount_currency']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
@@ -307,7 +308,7 @@
                     <field name="scan_score" invisible="1"/>
                     <div colspan="2">
                         <button name="action_expense_scan_rescan" type="object"
-                                string="Scan again" icon="fa-refresh"
+                                string="Scan again" icon="refresh"
                                 class="btn btn-secondary btn-sm"
                                 invisible="not is_editable or state not in ('draft', 'submitted')"/>
                     </div>

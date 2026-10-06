@@ -299,23 +299,23 @@ msgstr "<span class=\"o_expense_scan_coffee me-1\" aria-hidden=\"true\"/>Oferece
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "<i class=\"fa fa-building-o me-1\" aria-hidden=\"true\"/>Support T.T.C. SAS, the company behind the module"
-msgstr "<i class=\"fa fa-building-o me-1\" aria-hidden=\"true\"/>Apoiar a T.T.C. SAS, a empresa por trás do módulo"
+msgid "<i class=\"oi me-1\" data-icon=\"business\" aria-hidden=\"true\"/>Support T.T.C. SAS, the company behind the module"
+msgstr "<i class=\"oi me-1\" data-icon=\"business\" aria-hidden=\"true\"/>Apoiar a T.T.C. SAS, a empresa por trás do módulo"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
-msgid "<i class=\"fa fa-exclamation-triangle\" role=\"img\" aria-label=\"Error\"/>"
-msgstr "<i class=\"fa fa-exclamation-triangle\" role=\"img\" aria-label=\"Erro\"/>"
+msgid "<i class=\"oi\" data-icon=\"warning\" role=\"img\" aria-label=\"Error\"/>"
+msgstr "<i class=\"oi\" data-icon=\"warning\" role=\"img\" aria-label=\"Erro\"/>"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.expense_scan_sheet_wizard_view_form
-msgid "<i class=\"fa fa-file-text-o me-2\" title=\"Selected expenses\"/>"
-msgstr "<i class=\"fa fa-file-text-o me-2\" title=\"Despesas selecionadas\"/>"
+msgid "<i class=\"oi me-2\" data-icon=\"description\" title=\"Selected expenses\"/>"
+msgstr "<i class=\"oi me-2\" data-icon=\"description\" title=\"Despesas selecionadas\"/>"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
-msgid "<i class=\"fa fa-search\" role=\"img\" aria-label=\"Scan\"/>"
-msgstr "<i class=\"fa fa-search\" role=\"img\" aria-label=\"Digitalização\"/>"
+msgid "<i class=\"oi\" data-icon=\"search\" role=\"img\" aria-label=\"Scan\"/>"
+msgstr "<i class=\"oi\" data-icon=\"search\" role=\"img\" aria-label=\"Digitalização\"/>"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.hr_expense_view_form_scan
@@ -3988,15 +3988,21 @@ msgstr "Abre uma página pública do GitHub onde escreve aos autores. O seu serv
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "<i class=\"fa fa-bug me-1\" aria-hidden=\"true\"/>Report a bug"
-msgstr "<i class=\"fa fa-bug me-1\" aria-hidden=\"true\"/>Comunicar um erro"
+msgid "<i class=\"oi me-1\" data-icon=\"bug_report\" aria-hidden=\"true\"/>Report a bug"
+msgstr "<i class=\"oi me-1\" data-icon=\"bug_report\" aria-hidden=\"true\"/>Comunicar um erro"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "<i class=\"fa fa-lightbulb-o me-1\" aria-hidden=\"true\"/>Suggest an improvement"
-msgstr "<i class=\"fa fa-lightbulb-o me-1\" aria-hidden=\"true\"/>Sugerir uma melhoria"
+msgid "<i class=\"oi me-1\" data-icon=\"lightbulb\" aria-hidden=\"true\"/>Suggest an improvement"
+msgstr "<i class=\"oi me-1\" data-icon=\"lightbulb\" aria-hidden=\"true\"/>Sugerir uma melhoria"
 
 #. module: expense_scan
 #: model_terms:ir.ui.view,arch_db:expense_scan.res_config_settings_view_form_scan
-msgid "<i class=\"fa fa-wrench me-1\" aria-hidden=\"true\"/>Ask for a custom adaptation"
-msgstr "<i class=\"fa fa-wrench me-1\" aria-hidden=\"true\"/>Pedir uma adaptação à medida"
+msgid "<i class=\"oi me-1\" data-icon=\"build\" aria-hidden=\"true\"/>Ask for a custom adaptation"
+msgstr "<i class=\"oi me-1\" data-icon=\"build\" aria-hidden=\"true\"/>Pedir uma adaptação à medida"
+
+#. module: expense_scan
+#. odoo-python
+#: code:addons/expense_scan/models/hr_expense.py:0
+msgid "Untitled Expense %s"
+msgstr "Despesa sem título %s"

@@ -133,7 +133,7 @@ class ExpenseScanSirene(models.Model):
         # The table was changed outside the ORM: the cache is invalidated.
         self.env.invalidate_all()
         parameters = self.env['ir.config_parameter'].sudo()
-        parameters.set_param('expense_scan.sirene_rows', str(kept))
-        parameters.set_param('expense_scan.sirene_imported', fields.Datetime.to_string(fields.Datetime.now()))
+        parameters.set_str('expense_scan.sirene_rows', kept)
+        parameters.set_str('expense_scan.sirene_imported', fields.Datetime.to_string(fields.Datetime.now()))
         _logger.info("Sirene database: %s establishments kept out of %s read", kept, read)
         return kept

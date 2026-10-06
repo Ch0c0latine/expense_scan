@@ -142,7 +142,7 @@ class ProductTemplate(models.Model):
                 continue
             try:
                 with file_open('expense_scan/static/img/categories/%s.svg' % key, 'rb') as icon:
-                    template.image_1920 = base64.b64encode(icon.read())
+                    template.image_1920 = base64.b64encode(icon.read()).decode()
                 seeded += 1
             except OSError:
                 _logger.warning("Category icon not found: %s", key)

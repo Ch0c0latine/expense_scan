@@ -1,5 +1,24 @@
 # Changelog
 
+## 20.0.3.0.1 — 2026-10-06
+
+Port of 19.0.3.0.1 to Odoo 20 (branch `20.0`).
+
+- Access rights and the multi-company rules are in `security/ir.access.csv` (Odoo 20 replaced `ir.model.access` and
+  `ir.rule` by `ir.access`).
+- Binary fields hold a `BinaryValue`: the module reads them through `binary_bytes` (`models/odoo_compat.py`).
+- Odoo 20 makes the journal entry at the approval, one per employee: an expense the module may hold back
+  (re-invoiced on a project) gets an entry of its own, so that posting, refusing or taking back an approval leaves
+  the others alone; "Unapprove" deletes the draft entry.
+- Re-invoice policy: `reinvoice_policy` (was `expense_policy`); the delivered quantity of the module's line is set
+  even though Odoo now computes it from analytic lines for such a product.
+- Front end moved to Owl 3: `useProps`, signals, `this.` in templates, `t-call-slot`, the chatter of `web_portal_project`,
+  icons from the Material Symbols set (`oi` / `data-icon`) in place of Font Awesome.
+- Removed: the `start_month` / `end_month` attributes of the date filter (no longer supported), the manifest
+  `description` (Odoo 20 translates it; the store page is `static/description/index.html`).
+- 575 tests pass on Odoo 20; the form, the upload, the chatter attachment, the retouch and the selection bar were
+  checked in a browser.
+
 ## 19.0.3.0.1 — 2026-10-05
 
 Contact address of T.T.C. SAS in the manifest (`support`) and on the store page.

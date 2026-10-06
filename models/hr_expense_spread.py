@@ -85,7 +85,7 @@ class HrExpense(models.Model):
     def _expense_scan_working_days(self, employee, start, end):
         """Working days of the employee's schedule, without public holidays and time off."""
         calendar = employee.resource_calendar_id or employee.company_id.resource_calendar_id
-        attendances = calendar.attendance_ids.filtered(lambda a: not a.display_type) if calendar else False
+        attendances = calendar.attendance_ids.filtered(lambda a: not a.display_type if 'display_type' in a._fields else True) if calendar else False
         weekdays = {int(a.dayofweek) for a in attendances} if attendances else {0, 1, 2, 3, 4}
         days = set()
         day = start
@@ -101,7 +101,8 @@ class HrExpense(models.Model):
             ('date_from', '<=', end + timedelta(days=1)), ('date_to', '>=', start - timedelta(days=1)),
         ])
         # Stored in UTC: a holiday of Paris starts at 22:00 the day before.
-        tz = pytz.timezone((calendar and calendar.tz) or employee.tz or 'UTC')
+        tz = pytz.timezone((calendar and 'tz' in calendar._fields and calendar.tz) or employee.tz
+                           or employee.company_id.tz or 'UTC')
         for holiday in holidays:
             day = pytz.utc.localize(holiday.date_from).astimezone(tz).date()
             last = pytz.utc.localize(holiday.date_to).astimezone(tz).date()

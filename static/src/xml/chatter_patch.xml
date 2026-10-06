@@ -18,32 +18,32 @@
     -->
     <t t-name="expense_scan.ChatterSlim" t-inherit="mail.Chatter" t-inherit-mode="extension">
         <xpath expr="//button[hasclass('o-mail-Chatter-sendMessage')]" position="attributes">
-            <attribute name="t-if">props.threadModel !== 'hr.expense'</attribute>
+            <attribute name="t-if">this.threadModel() !== 'hr.expense'</attribute>
         </xpath>
         <xpath expr="//button[hasclass('o-mail-Chatter-logNote')]" position="attributes">
-            <attribute name="t-if">props.threadModel !== 'hr.expense'</attribute>
+            <attribute name="t-if">this.threadModel() !== 'hr.expense'</attribute>
         </xpath>
         <!-- This button already has a condition: it is extended, not
              replaced. -->
         <xpath expr="//button[hasclass('o-mail-Chatter-activity')]" position="attributes">
-            <attribute name="t-if">props.has_activities and props.threadModel !== 'hr.expense'</attribute>
+            <attribute name="t-if">this.webChatterProps.has_activities and this.threadModel() !== 'hr.expense'</attribute>
         </xpath>
         <!-- The history stays folded, one click away. It is rendered by a
              component in a `t-else`, which takes no condition: the container
              gets a class, and the stylesheet hides the history. -->
         <xpath expr="//span[hasclass('o-mail-Chatter-topbarGrow')]" position="before">
-            <button t-if="props.threadModel === 'hr.expense'"
-                    class="o-mail-Chatter-expenseScanHistory btn btn-link text-action text-nowrap px-1"
-                    t-att-class="{ 'my-2': !props.compactHeight }"
-                    t-att-aria-expanded="state.expenseScanHistory ? 'true' : 'false'"
-                    t-on-click="() => state.expenseScanHistory = !state.expenseScanHistory">
-                <i class="fa fa-fw" t-att-class="state.expenseScanHistory ? 'fa-caret-down' : 'fa-caret-right'"
+            <button t-if="this.threadModel() === 'hr.expense'"
+                    class="o-mail-Chatter-expenseScanHistory btn btn-link text-action text-nowrap px-1 my-2"
+                    
+                    t-att-aria-expanded="this.state.expenseScanHistory ? 'true' : 'false'"
+                    t-on-click="() => this.state.expenseScanHistory = !this.state.expenseScanHistory">
+                <i class="oi oi-fw" t-att-data-icon="this.state.expenseScanHistory ? 'arrow_drop_down' : 'arrow_right'"
                    aria-hidden="true"/>
                 History
             </button>
         </xpath>
         <xpath expr="//div[hasclass('o-mail-Chatter-content')]" position="attributes">
-            <attribute name="t-att-class">props.threadModel === 'hr.expense' and !state.expenseScanHistory ? 'o_expense_scan_slim' : ''</attribute>
+            <attribute name="t-att-class">this.threadModel() === 'hr.expense' and !this.state.expenseScanHistory ? 'o_expense_scan_slim' : ''</attribute>
         </xpath>
     </t>
 

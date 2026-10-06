@@ -47,9 +47,9 @@ class VatAuditCase(common.TransactionCase):
         expense.action_submit()
         expense._do_approve()
         if expense.payment_mode == 'company_account':
-            expense.action_post()
+            expense._expense_scan_post_entries()
         else:
-            expense._post_without_wizard()
+            expense._expense_scan_post_entries()
         return expense
 
     def pay(self, expense):

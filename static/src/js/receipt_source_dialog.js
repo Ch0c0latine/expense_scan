@@ -10,7 +10,7 @@
  * user action.
  */
 import { _t } from "@web/core/l10n/translation";
-import { Component } from "@odoo/owl";
+import { Component, t, useProps } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 
 /** File input settings for each source. */
@@ -42,10 +42,10 @@ export function configureReceiptInput(input, source) {
 export class ReceiptSourceDialog extends Component {
     static template = "expense_scan.ReceiptSourceDialog";
     static components = { Dialog };
-    static props = {
-        choose: Function,
-        close: Function,
-    };
+    props = useProps({
+        choose: t.function(),
+        close: t.function(),
+    });
 
     get title() {
         return _t("Add a receipt");

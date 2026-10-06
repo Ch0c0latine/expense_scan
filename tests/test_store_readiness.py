@@ -34,7 +34,7 @@ class NativeRecords(common.TransactionCase):
     def set_options(self, **values):
         params = self.env['ir.config_parameter'].sudo()
         for option, name in native_tweaks.PARAMETERS.items():
-            params.set_param(name, '1' if values.get(option) else False)
+            params.set_bool(name, bool(values.get(option)))
         native_tweaks.apply(self.env)
 
 
@@ -100,7 +100,7 @@ class TestNativeTweaks(NativeRecords):
                          native_tweaks.ORIGINAL_ICON)
         params = self.env['ir.config_parameter'].sudo()
         for name in native_tweaks.PARAMETERS.values():
-            self.assertFalse(params.get_param(name))
+            self.assertFalse(params.get_bool(name))
 
     def test_an_upgrade_keeps_what_the_database_had(self):
         self.set_options()

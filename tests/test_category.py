@@ -7,7 +7,10 @@ The tests run on a database that already holds categories and a history:
 the words and merchants used here are made up, to avoid any clash with real
 data.
 """
+import base64
+
 from odoo.tests import common, tagged
+from odoo.addons.expense_scan.models.odoo_compat import binary_bytes
 
 from ..ocr import lexicon, parser
 from .tax_setup import ensure_fiscal_country
@@ -773,15 +776,17 @@ class TestCategoryIcons(common.TransactionCase):
         Template = self.env['product.template']
         bare = Template.create({'name': "Location de voiture zz", 'can_be_expensed': True})
         own = Template.create({'name': "Hôtel zz", 'can_be_expensed': True,
-                               'image_1920': bare_png()})
+                               'image_1920': base64.b64encode(bare_png()).decode()})
+        before = binary_bytes(own.image_1920)
         Template._expense_scan_seed_icons()
         self.assertTrue(bare.image_1920)
-        self.assertEqual(own.image_1920, bare_png())
+        self.assertEqual(binary_bytes(own.image_1920), before)
 
 
 def bare_png():
-    """Minimal PNG (1 px) used as an image already in place."""
-    import base64
-    return base64.b64encode(
-        b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89'
-        b'\x00\x00\x00\rIDATx\x9cc\xf8\xcf\xc0\x00\x00\x03\x01\x01\x00\xc9\xfe\x92\xef\x00\x00\x00\x00IEND\xaeB`\x82')
+    """A small valid PNG, used as an image already in place."""
+    import io
+    from PIL import Image
+    buffer = io.BytesIO()
+    Image.new('RGB', (4, 4), (200, 30, 30)).save(buffer, 'PNG')
+    return buffer.getvalue()

@@ -1,0 +1,16 @@
+id,name,model_id,group_id/id,operation,domain
+access_expense_scan_sirene_system,expense.scan.sirene.system,expense.scan.sirene,base.group_system,crud,
+access_expense_scan_export_template_user,expense.scan.export.template.user,expense.scan.export.template,base.group_user,r,
+access_expense_scan_export_template_manager,expense.scan.export.template.manager,expense.scan.export.template,hr_expense.group_hr_expense_manager,crud,
+access_expense_scan_export_column_user,expense.scan.export.column.user,expense.scan.export.column,base.group_user,r,
+access_expense_scan_export_column_manager,expense.scan.export.column.manager,expense.scan.export.column,hr_expense.group_hr_expense_manager,crud,
+access_expense_scan_sheet_wizard_user,expense.scan.sheet.wizard.user,expense.scan.sheet.wizard,base.group_user,crud,
+access_expense_scan_policy_user,expense.scan.policy.user,expense.scan.policy,base.group_user,r,
+access_expense_scan_policy_manager,expense.scan.policy.manager,expense.scan.policy,hr_expense.group_hr_expense_manager,crud,
+access_expense_scan_policy_rule_user,expense.scan.policy.rule.user,expense.scan.policy.rule,base.group_user,r,
+access_expense_scan_policy_rule_manager,expense.scan.policy.rule.manager,expense.scan.policy.rule,hr_expense.group_hr_expense_manager,crud,
+access_expense_scan_vat_wizard_manager,expense.scan.vat.wizard.manager,expense.scan.vat.wizard,account.group_account_manager,crud,
+expense_scan_policy_company_rule,Expense rules: multi-company,expense.scan.policy,,crud,"['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]"
+expense_scan_policy_rule_company_rule,Expense rule lines: multi-company,expense.scan.policy.rule,,crud,"['|', ('policy_id.company_id', '=', False), ('policy_id.company_id', 'in', company_ids)]"
+expense_scan_export_template_company_rule,Excel export templates: multi-company,expense.scan.export.template,,crud,"['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]"
+expense_scan_export_column_company_rule,Excel export columns: multi-company,expense.scan.export.column,,crud,"['|', ('template_id.company_id', '=', False), ('template_id.company_id', 'in', company_ids)]"

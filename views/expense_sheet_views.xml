@@ -27,7 +27,7 @@
             <form>
                 <header>
                     <button name="action_expense_scan_generate_file" type="object"
-                            string="Blank workbook" icon="fa-file-excel-o"
+                            string="Blank workbook" icon="table_chart"
                             confirm="Replace the current workbook with a blank one, built from the mappings?"/>
                 </header>
                 <sheet>
@@ -105,7 +105,7 @@
                 <field name="expense_ids" invisible="1"/>
                 <field name="available_project_ids" invisible="1"/>
                 <div class="alert alert-info fs-5 fw-bold mb-2" role="status">
-                    <i class="fa fa-file-text-o me-2" title="Selected expenses"/>
+                    <i class="oi me-2" data-icon="description" title="Selected expenses"/>
                     <field name="selected_summary" readonly="1" class="d-inline"/>
                 </div>
                 <group invisible="not period">

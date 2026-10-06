@@ -18,7 +18,7 @@ from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo import tools
 from odoo.modules import module as odoo_module
-from odoo.service.model import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY
+from .odoo_compat import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY, binary_bytes
 from odoo.tools import email_normalize, format_date, formatLang
 
 from ..ocr import engines, parser, preprocess
@@ -96,6 +96,10 @@ class HrExpense(models.Model):
     # printed time rather than the order of entry. Without a known time
     # (manual entry), the expense comes after those of the day.
     _order = 'date desc, scan_datetime desc nulls last, id desc'
+
+    def _get_untitled_expense_name(self, *args):
+        """Name of an expense without a title (Odoo no longer offers this method since version 20)."""
+        return _("Untitled Expense %s", *args)
 
     scan_state = fields.Selection(
         selection=[
@@ -914,8 +918,8 @@ class HrExpense(models.Model):
         """
         source = self._expense_scan_retouch_source()
         if not self._expense_scan_is_pdf(source):
-            return source.raw, source.mimetype or 'image/jpeg'
-        data = preprocess.pdf_first_page_to_image_bytes(source.raw)
+            return binary_bytes(source.raw), source.mimetype or 'image/jpeg'
+        data = preprocess.pdf_first_page_to_image_bytes(binary_bytes(source.raw))
         if not data:
             raise UserError(_(
                 "The PDF could not be converted. Install \"pdf2image\" and the "
@@ -925,7 +929,7 @@ class HrExpense(models.Model):
     def _expense_scan_multipage_pdf(self, attachment):
         """Tell whether the attachment is a PDF of more than one page."""
         return bool(attachment) and self._expense_scan_is_pdf(attachment) \
-            and preprocess.pdf_page_count(attachment.raw) > 1
+            and preprocess.pdf_page_count(binary_bytes(attachment.raw)) > 1
 
     def _expense_scan_check_retouchable(self, source):
         """Refuse the retouch of a PDF of several pages.
@@ -983,7 +987,7 @@ class HrExpense(models.Model):
         if key in _PDF_PREVIEWS:
             _PDF_PREVIEWS.move_to_end(key)
             return _PDF_PREVIEWS[key]
-        data = preprocess.pdf_first_page_to_image_bytes(attachment.raw, dpi=PDF_PREVIEW_DPI)
+        data = preprocess.pdf_first_page_to_image_bytes(binary_bytes(attachment.raw), dpi=PDF_PREVIEW_DPI)
         if not data:
             return False
         url = 'data:image/png;base64,%s' % base64.b64encode(data).decode()
@@ -1458,7 +1462,7 @@ class HrExpense(models.Model):
                 "The receipt is too large (%(size)d MB, limit %(max)d MB).",
                 size=attachment.file_size // (1024 * 1024),
                 max=preprocess.MAX_FILE_BYTES // (1024 * 1024)))
-        data = attachment.raw
+        data = binary_bytes(attachment.raw)
         if not data:
             raise UserError(_("The receipt is empty."))
         if self._expense_scan_is_pdf(attachment):
@@ -1586,7 +1590,7 @@ class HrExpense(models.Model):
         scan, not the preview.
         """
         self.ensure_one()
-        data = attachment.raw
+        data = binary_bytes(attachment.raw)
         count = preprocess.pdf_page_count(data)
         if count <= 1:
             return words
@@ -2040,7 +2044,7 @@ class HrExpense(models.Model):
             return False
         country = (company.account_fiscal_country_id or company.country_id).code
         origin = parser.receipt_country(result.value('country_clues') or [],
-                                        own_numbers=[company.vat, company.company_registry])
+                                        own_numbers=[company.vat, company.company_registry if 'company_registry' in company._fields else False])
         if origin and country and origin != country:
             return label or _("VAT")
         domestic = DOMESTIC_TAX_LABELS.get(country)

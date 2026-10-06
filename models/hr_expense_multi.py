@@ -15,7 +15,7 @@ import logging
 import re
 
 from odoo import _, api, fields, models
-from odoo.service.model import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY
+from .odoo_compat import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY
 from odoo.tools import format_date
 
 _logger = logging.getLogger(__name__)
@@ -109,9 +109,9 @@ class HrExpense(models.Model):
             expense.write(values)
         return expense
 
-    def _message_post_after_hook(self, message, msg_vals):
+    def _message_post_after_hook(self, message, *args, **kwargs):
         """Scan the receipts of an expense received by email."""
-        result = super()._message_post_after_hook(message, msg_vals)
+        result = super()._message_post_after_hook(message, *args, **kwargs)
         for expense in self:
             if not expense.expense_scan_from_mail or expense.scan_state != 'none':
                 continue

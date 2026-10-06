@@ -46,15 +46,15 @@ const expenseScanUpload = () => ({
      * @override
      */
     uploadDocument() {
-        if (!this.env.isSmall) {
+        if (!this.uiService.isSmall) {
             return super.uploadDocument();
         }
         this.expenseScanDialog.add(ReceiptSourceDialog, {
             choose: (source) => {
-                configureReceiptInput(this.fileInput.el, source);
+                configureReceiptInput(this.fileInput(), source);
                 // Must run within the user's gesture, otherwise the browser
                 // refuses to open the picker.
-                this.fileInput.el.click();
+                this.fileInput().click();
             },
         });
     },
@@ -74,8 +74,8 @@ const expenseScanUpload = () => ({
         const createdExpenseIds = await this.orm.call(
             "hr.expense",
             "create_expense_from_attachments",
-            [attachments.map((attachment) => attachment.id), this.env.config.viewType],
-            { context: { ...this.props.context, expense_scan_async: true } }
+            [attachments.map((attachment) => attachment.id), this.viewType],
+            { context: { ...this.context, expense_scan_async: true } }
         );
         this.createdExpenseIds = [...this.createdExpenseIds, ...createdExpenseIds];
     },
@@ -92,7 +92,7 @@ const expenseScanUpload = () => ({
         // A single receipt is scanned in its form, which shows the steps: the
         // notification only mentions the upload.
         const closeNotification = this.notification.add(
-            this.fileInput.el.files.length === 1
+            this.fileInput().files.length === 1
                 ? _t("Uploading the receipt...")
                 : _t("Reading the receipts..."),
             { type: "info", sticky: true }
@@ -102,7 +102,7 @@ const expenseScanUpload = () => ({
         const alreadyCreated = this.createdExpenseIds.length;
         this.expenseScanInFlight++;
         try {
-            await this._onChangeFileInput([...this.fileInput.el.files]);
+            await this._onChangeFileInput([...this.fileInput().files]);
             const created = this.createdExpenseIds.slice(alreadyCreated);
             // Only upload in progress and a single receipt: open its form.
             const alone = this.expenseScanInFlight === 1;
@@ -118,7 +118,7 @@ const expenseScanUpload = () => ({
                     res_id: created[0],
                     views: [[false, "form"]],
                     view_mode: "form",
-                    context: this.props.context,
+                    context: this.context,
                 });
                 return;
             }
@@ -205,11 +205,11 @@ const expenseScanUpload = () => ({
                 res_model: "hr.expense",
                 type: "ir.actions.act_window",
                 views: [
-                    [false, this.env.config.viewType],
+                    [false, this.viewType],
                     [false, "form"],
                 ],
                 domain: domain,
-                context: this.props.context,
+                context: this.context,
             },
             options
         );

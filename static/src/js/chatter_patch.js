@@ -10,7 +10,7 @@
  * uploaded, the receipt is scanned like any other. The fields already
  * entered on the form are passed to the server: the scan does not fill them.
  */
-import { Chatter } from "@mail/chatter/web_portal/chatter";
+import { Chatter } from "@mail/chatter/web_portal_project/chatter";
 // Loaded before this patch: it redefines onClickAttachFile and onUploaded
 // without calling the previous version.
 import "@mail/chatter/web/chatter_patch";
@@ -48,7 +48,7 @@ patch(Chatter.prototype, {
     },
 
     async onClickAttachFile(ev) {
-        const record = this.props.record;
+        const record = this.webChatterProps.record;
         if (!this.state.thread.id && record?.resModel === "hr.expense") {
             // Fields changed by the user since the form opened, noted
             // before the provisional values are set.
@@ -75,21 +75,21 @@ patch(Chatter.prototype, {
     // links to a missing attachment.
     async unlinkAttachment(attachment) {
         await super.unlinkAttachment(...arguments);
-        if (this.props.record?.resModel === "hr.expense"
-                && !this.props.hasParentReloadOnAttachmentsChanged) {
+        if (this.webChatterProps.record?.resModel === "hr.expense"
+                && !this.webChatterProps.hasParentReloadOnAttachmentsChanged) {
             await this.reloadParentView();
         }
     },
 
-    onUploaded(data, { thread } = {}) {
+    onUploaded({ thread } = {}) {
         return async (...args) => {
             // The upload button is rendered with the thread of the new form,
             // without an id; the form has just been saved, the file goes to
             // the thread of the created expense.
             const current = this.state.thread;
             const target = !thread?.id && current?.id ? current : thread;
-            await super.onUploaded(data, { thread: target })(...args);
-            const record = this.props.record;
+            await super.onUploaded({ thread: target })(...args);
+            const record = this.webChatterProps.record;
             if (record?.resModel !== "hr.expense" || !record.resId) {
                 return;
             }
@@ -102,7 +102,7 @@ patch(Chatter.prototype, {
                     "hr.expense", "expense_scan_receipt_attached", [[record.resId]]);
                 if (scanned) {
                     await record.model.load();
-                } else if (!this.props.hasParentReloadOnAttachmentsChanged) {
+                } else if (!this.webChatterProps.hasParentReloadOnAttachmentsChanged) {
                     await this.reloadParentView();
                 }
                 return;

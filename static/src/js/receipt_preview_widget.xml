@@ -4,27 +4,27 @@
 <templates xml:space="preserve">
 
     <t t-name="expense_scan.ReceiptPreview">
-        <div t-if="visible" class="o_expense_scan_preview"
-             t-att-class="{ 'o_expense_scan_preview_expanded': state.expanded }">
-            <img t-if="imageUrl" class="o_expense_scan_preview_img"
-                 t-att-src="imageUrl"
-                 t-att-alt="attachment.name"
-                 t-on-click="onOpenViewer"/>
-            <i t-else="" class="fa fa-file-pdf-o fa-3x text-muted my-4" role="img"
-               t-att-aria-label="attachment.name" t-on-click="onOpenViewer"/>
+        <div t-if="this.visible" class="o_expense_scan_preview"
+             t-att-class="{ 'o_expense_scan_preview_expanded': this.state.expanded }">
+            <img t-if="this.imageUrl" class="o_expense_scan_preview_img"
+                 t-att-src="this.imageUrl"
+                 t-att-alt="this.attachment.name"
+                 t-on-click="this.onOpenViewer"/>
+            <i t-else="" class="oi oi-3x text-muted my-4" data-icon="picture_as_pdf" role="img"
+               t-att-aria-label="this.attachment.name" t-on-click="this.onOpenViewer"/>
             <div class="o_expense_scan_preview_actions">
                 <button type="button" class="btn btn-sm btn-light"
-                        t-on-click="onToggle" t-att-title="toggleLabel">
-                    <i class="fa" t-att-class="state.expanded ? 'fa-compress' : 'fa-expand'"
-                       role="img" t-att-aria-label="toggleLabel"/>
+                        t-on-click="this.onToggle" t-att-title="this.toggleLabel">
+                    <i class="oi" t-att-data-icon="this.state.expanded ? 'close_fullscreen' : 'fullscreen'"
+                       role="img" t-att-aria-label="this.toggleLabel"/>
                 </button>
-                <button t-if="canRetouch" type="button" class="btn btn-sm btn-light"
-                        t-on-click="onRetouch" title="Retouch">
-                    <i class="fa fa-crop" role="img" aria-label="Retouch"/>
+                <button t-if="this.canRetouch" type="button" class="btn btn-sm btn-light"
+                        t-on-click="this.onRetouch" title="Retouch">
+                    <i class="oi" data-icon="crop" role="img" aria-label="Retouch"/>
                 </button>
                 <button type="button" class="btn btn-sm btn-light"
-                        t-on-click="onOpenViewer" title="Open full screen">
-                    <i class="fa fa-search-plus" role="img" aria-label="Open full screen"/>
+                        t-on-click="this.onOpenViewer" title="Open full screen">
+                    <i class="oi" data-icon="zoom_in" role="img" aria-label="Open full screen"/>
                 </button>
             </div>
         </div>

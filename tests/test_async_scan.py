@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import common, tagged
+from odoo.addons.expense_scan.models.odoo_compat import binary_bytes
 
 from ..ocr import parser, preprocess
 from .test_parser import words_from_text
@@ -181,14 +182,14 @@ class TestRetouch(common.TransactionCase):
         """Without a cropped image, the retouch becomes a new displayed attachment."""
         expense = self.expense_with_attachment()
         original = expense.message_main_attachment_id
-        photo = original.raw
+        photo = binary_bytes(original.raw)
         retouched = png(color=(10, 200, 10))
         expense.action_expense_scan_retouch(base64.b64encode(retouched).decode())
         self.assertNotEqual(expense.message_main_attachment_id, original)
-        self.assertEqual(expense.message_main_attachment_id.raw, retouched)
+        self.assertEqual(binary_bytes(expense.message_main_attachment_id.raw), retouched)
         self.assertEqual(expense.scan_cropped_attachment_id, expense.message_main_attachment_id)
         self.assertEqual(expense.scan_original_attachment_id, original)
-        self.assertEqual(original.raw, photo)
+        self.assertEqual(binary_bytes(original.raw), photo)
         self.assertTrue(expense.expense_scan_manual_retouch)
 
     def test_a_second_retouch_replaces_the_first_in_place(self):
@@ -198,7 +199,7 @@ class TestRetouch(common.TransactionCase):
         again = png(color=(10, 10, 200))
         expense.action_expense_scan_retouch(base64.b64encode(again).decode())
         self.assertEqual(expense.message_main_attachment_id, shown)
-        self.assertEqual(shown.raw, again)
+        self.assertEqual(binary_bytes(shown.raw), again)
 
     def test_the_analysis_reads_a_retouched_image_as_it_is(self):
         """No automatic crop, straightening or rotation after a retouch."""

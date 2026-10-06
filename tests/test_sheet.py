@@ -8,6 +8,7 @@ from datetime import date
 
 from odoo.exceptions import UserError
 from odoo.tests import common, tagged
+from odoo.addons.expense_scan.models.odoo_compat import binary_bytes
 
 from .tax_setup import ensure_fiscal_country
 
@@ -136,7 +137,7 @@ class TestExpenseSheet(common.TransactionCase):
         output = io.BytesIO()
         book.save(output)
         template = self.env['expense.scan.export.template'].create({
-            'name': "Essai", 'file': base64.b64encode(output.getvalue()),
+            'name': "Essai", 'file': base64.b64encode(output.getvalue()).decode(),
             'first_row': 8, 'last_row': 10,
             'column_ids': [
                 (0, 0, {'cell': 'A', 'value': 'n'}),
@@ -176,7 +177,7 @@ class TestExpenseSheet(common.TransactionCase):
         template = self.env.ref('expense_scan.export_template_basic')
         template.action_expense_scan_generate_file()
         self.assertTrue(template.filename.endswith(".xlsx"))
-        blank = openpyxl.load_workbook(io.BytesIO(base64.b64decode(template.file))).active
+        blank = openpyxl.load_workbook(io.BytesIO(binary_bytes(template.file))).active
         self.assertEqual(blank['K7'].value, "Subtotal incl. tax")
         self.assertEqual(blank['K10'].value, "=SUM(K8:K9)")
         self.assertEqual(blank['A3'].value, "Employee")

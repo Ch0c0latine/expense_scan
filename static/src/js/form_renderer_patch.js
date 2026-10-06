@@ -13,7 +13,7 @@
  */
 import { patch } from "@web/core/utils/patch";
 import { session } from "@web/session";
-import { SIZES } from "@web/core/ui/ui_service";
+import { SIZES } from "@web/core/ui/ui_utils";
 import { FormRenderer } from "@web/views/form/form_renderer";
 
 patch(FormRenderer.prototype, {

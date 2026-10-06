@@ -4,18 +4,18 @@
 <templates xml:space="preserve">
 
     <t t-name="expense_scan.ScanProgress">
-        <div t-if="state.active" class="alert alert-info o_expense_scan_progress mb-2"
+        <div t-if="this.state.active" class="alert alert-info o_expense_scan_progress mb-2"
              role="status" aria-live="polite">
             <div class="fw-bold mb-1">
-                <i class="fa fa-circle-o-notch fa-spin me-2" role="img" aria-hidden="true"/>
+                <i class="oi oi-spin me-2" data-icon="progress_activity" role="img" aria-hidden="true"/>
                 Scanning the receipt — you can already type the description.
             </div>
             <ul class="list-unstyled mb-0 small">
-                <li t-foreach="steps" t-as="step" t-key="step.key"
+                <li t-foreach="this.steps" t-as="step" t-key="step.key"
                     t-att-class="step.done ? 'text-body' : (step.current ? 'fw-bold' : 'text-muted')">
-                    <i class="fa fa-fw me-1" role="img" aria-hidden="true"
-                       t-att-class="step.done ? 'fa-check text-success'
-                                    : (step.current ? 'fa-spinner fa-pulse' : 'fa-circle-thin')"/>
+                    <i class="oi oi-fw me-1" role="img" aria-hidden="true"
+                       t-att-data-icon="step.done ? 'check' : (step.current ? 'progress_activity' : 'radio_button_unchecked')"
+                       t-att-class="{ 'text-success': step.done, 'oi-spin': step.current }"/>
                     <t t-esc="step.label"/>
                 </li>
             </ul>

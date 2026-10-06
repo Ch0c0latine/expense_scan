@@ -15,15 +15,15 @@
         accepted, since that is where a receipt received by e-mail gets
         uploaded.
     -->
-    <t t-name="expense_scan.ListViewAccept" t-inherit="hr_expense.ListView" t-inherit-mode="extension">
+    <t t-name="expense_scan.ListViewAccept" t-inherit="hr_expense.ListButtons" t-inherit-mode="extension">
         <xpath expr="//input[@name='ufile']" position="attributes">
-            <attribute name="t-att-accept">env.isSmall ? 'image/*' : 'image/*,application/pdf'</attribute>
+            <attribute name="t-att-accept">this.uiService.isSmall ? 'image/*' : 'image/*,application/pdf'</attribute>
         </xpath>
     </t>
 
-    <t t-name="expense_scan.KanbanViewAccept" t-inherit="hr_expense.KanbanView" t-inherit-mode="extension">
+    <t t-name="expense_scan.KanbanViewAccept" t-inherit="hr_expense.KanbanView.Buttons" t-inherit-mode="extension">
         <xpath expr="//input[@name='ufile']" position="attributes">
-            <attribute name="t-att-accept">env.isSmall ? 'image/*' : 'image/*,application/pdf'</attribute>
+            <attribute name="t-att-accept">this.uiService.isSmall ? 'image/*' : 'image/*,application/pdf'</attribute>
         </xpath>
     </t>
 

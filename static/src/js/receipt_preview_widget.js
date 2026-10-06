@@ -10,7 +10,8 @@
  * A phone browser does not display a PDF inside a page: the strip shows its
  * first page, rendered by the server.
  */
-import { Component, onWillDestroy, useEffect, useState } from "@odoo/owl";
+import { Component, onWillDestroy, proxy, useProps } from "@odoo/owl";
+import { useLayoutEffect } from "@web/owl2/utils";
 import { _t } from "@web/core/l10n/translation";
 
 import { browser } from "@web/core/browser/browser";
@@ -18,7 +19,7 @@ import { FileModel } from "@web/core/file_viewer/file_model";
 import { useFileViewer } from "@web/core/file_viewer/file_viewer_hook";
 import { registry } from "@web/core/registry";
 import { session } from "@web/session";
-import { SIZES } from "@web/core/ui/ui_service";
+import { SIZES } from "@web/core/ui/ui_utils";
 import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 import { standardWidgetProps } from "@web/views/widgets/standard_widget_props";
@@ -27,13 +28,13 @@ import { hasReceipt, openRetouchDialog } from "@expense_scan/js/retouch_dialog";
 
 export class ExpenseScanReceipt extends Component {
     static template = "expense_scan.ReceiptPreview";
-    static props = { ...standardWidgetProps };
+    props = useProps({ ...standardWidgetProps });
 
     setup() {
         this.ui = useService("ui");
         this.orm = useService("orm");
         this.fileViewer = useFileViewer();
-        this.state = useState({ size: this.ui.size, expanded: false, pdfUrl: null });
+        this.state = proxy({ size: this.ui.size, expanded: false, pdfUrl: null });
 
         this.onResize = useDebounced(() => {
             this.state.size = this.ui.size;
@@ -41,7 +42,7 @@ export class ExpenseScanReceipt extends Component {
         browser.addEventListener("resize", this.onResize);
         onWillDestroy(() => browser.removeEventListener("resize", this.onResize));
 
-        useEffect(
+        useLayoutEffect(
             (visible, isPdf) => {
                 this.state.pdfUrl = null;
                 if (visible && isPdf) {

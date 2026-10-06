@@ -58,11 +58,12 @@ class TestSpread(common.TransactionCase):
     def test_a_holiday_stored_in_utc_removes_its_own_day(self):
         """1 May in Paris starts at 22:00 UTC on 30 April: 30 April stays a working day."""
         calendar = self.employee.resource_calendar_id or self.employee.company_id.resource_calendar_id
-        calendar.tz = 'Europe/Paris'
+        if 'tz' in calendar._fields:
+            calendar.tz = 'Europe/Paris'
+        self.employee.tz = 'Europe/Paris'
         self.env['resource.calendar.leaves'].create({
             'name': "Férié test", 'company_id': self.employee.company_id.id, 'calendar_id': False,
-            'date_from': datetime(2031, 4, 30, 22, 0), 'date_to': datetime(2031, 5, 1, 21, 59, 59),
-            'time_type': 'leave'})
+            'date_from': datetime(2031, 4, 30, 22, 0), 'date_to': datetime(2031, 5, 1, 21, 59, 59)})
         first = self.expense(date(2031, 4, 30), 3)  # Wednesday
         spread = first.action_expense_scan_spread_days()
         days = sorted(self.env['hr.expense'].search(spread['domain']).mapped('date'))
@@ -73,7 +74,7 @@ class TestSpread(common.TransactionCase):
         self.env['resource.calendar.leaves'].create({
             'name': "Fermeture autre horaire", 'company_id': self.employee.company_id.id,
             'calendar_id': other.id, 'date_from': datetime(2031, 3, 3, 23, 0),
-            'date_to': datetime(2031, 3, 4, 22, 59, 59), 'time_type': 'leave'})
+            'date_to': datetime(2031, 3, 4, 22, 59, 59)})
         first = self.expense(date(2031, 3, 3), 5)
         spread = first.action_expense_scan_spread_days()
         days = sorted(self.env['hr.expense'].search(spread['domain']).mapped('date'))

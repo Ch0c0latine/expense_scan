@@ -15,7 +15,7 @@
  * whole image.
  */
 import { _t } from "@web/core/l10n/translation";
-import { Component, onWillUnmount, onMounted, useRef, useState } from "@odoo/owl";
+import { Component, onWillUnmount, onMounted, proxy, signal, t, useProps } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 import { browser } from "@web/core/browser/browser";
 import { useService } from "@web/core/utils/hooks";
@@ -76,16 +76,16 @@ export function openRetouchDialog(env, record) {
 export class RetouchDialog extends Component {
     static template = "expense_scan.RetouchDialog";
     static components = { Dialog };
-    static props = {
-        resId: Number,
-        apply: Function,
-        close: Function,
-    };
+    props = useProps({
+        resId: t.number(),
+        apply: t.function(),
+        close: t.function(),
+    });
+    canvasRef = signal.ref();
+    containerRef = signal.ref();
 
     setup() {
-        this.canvasRef = useRef("canvas");
-        this.containerRef = useRef("container");
-        this.state = useState({
+        this.state = proxy({
             quarter: 0,
             fine: 0,
             crop: null,
@@ -159,7 +159,7 @@ export class RetouchDialog extends Component {
         if (!this.image) {
             return;
         }
-        const container = this.containerRef.el;
+        const container = this.containerRef();
         const maxWidth = container ? container.clientWidth : 480;
         // Margin for the bounding rectangle, larger than the rotated image.
         const width = Math.max(240, maxWidth) * 0.86;
@@ -180,7 +180,7 @@ export class RetouchDialog extends Component {
     setParams(params) {
         this.state.quarter = normalizeQuarter(params?.quarter || 0);
         this.state.fine = Math.min(Math.max(params?.fine || 0, -FINE_RANGE), FINE_RANGE);
-        const canvas = this.canvasRef.el;
+        const canvas = this.canvasRef();
         if (!canvas || !this.image) {
             return;
         }
@@ -195,7 +195,7 @@ export class RetouchDialog extends Component {
 
     /** Current settings, in the ``setParams`` format. */
     currentParams() {
-        const canvas = this.canvasRef.el;
+        const canvas = this.canvasRef();
         const crop = this.state.crop;
         if (!canvas || !crop || !canvas.width || !canvas.height) {
             return null;
@@ -230,7 +230,7 @@ export class RetouchDialog extends Component {
 
     /** Reset the frame to the whole image. */
     resetCrop() {
-        const canvas = this.canvasRef.el;
+        const canvas = this.canvasRef();
         if (!canvas || !this.image) {
             return;
         }
@@ -240,7 +240,7 @@ export class RetouchDialog extends Component {
     }
 
     sizeCanvas() {
-        const canvas = this.canvasRef.el;
+        const canvas = this.canvasRef();
         const bounds = this.rotatedBounds(
             this.image.naturalWidth * this.scale, this.image.naturalHeight * this.scale);
         canvas.width = Math.round(bounds.width);
@@ -249,7 +249,7 @@ export class RetouchDialog extends Component {
 
     /** Draw the rotated image and the frame. */
     draw() {
-        const canvas = this.canvasRef.el;
+        const canvas = this.canvasRef();
         if (!canvas || !this.image) {
             return;
         }
@@ -332,7 +332,7 @@ export class RetouchDialog extends Component {
 
     /** Pointer position in canvas pixels. */
     canvasPoint(event) {
-        const canvas = this.canvasRef.el;
+        const canvas = this.canvasRef();
         const rect = canvas.getBoundingClientRect();
         return {
             x: ((event.clientX - rect.left) / rect.width) * canvas.width,
@@ -370,7 +370,7 @@ export class RetouchDialog extends Component {
             return;
         }
         this.state.dragging = true;
-        this.canvasRef.el.setPointerCapture(event.pointerId);
+        this.canvasRef().setPointerCapture(event.pointerId);
         event.preventDefault();
     }
 
@@ -378,7 +378,7 @@ export class RetouchDialog extends Component {
         if (!this.drag) {
             return;
         }
-        const canvas = this.canvasRef.el;
+        const canvas = this.canvasRef();
         const point = this.canvasPoint(event);
         const crop = this.state.crop;
         const clamp = (value, max) => Math.min(Math.max(value, 0), max);
@@ -412,7 +412,7 @@ export class RetouchDialog extends Component {
     onPointerUp(event) {
         this.drag = null;
         this.state.dragging = false;
-        const canvas = this.canvasRef.el;
+        const canvas = this.canvasRef();
         if (canvas && canvas.hasPointerCapture(event.pointerId)) {
             canvas.releasePointerCapture(event.pointerId);
         }
@@ -453,7 +453,7 @@ export class RetouchDialog extends Component {
         const ih = this.image.naturalHeight;
         const bounds = this.rotatedBounds(iw, ih);
         // From preview coordinates to full resolution.
-        const ratio = bounds.width / this.canvasRef.el.width;
+        const ratio = bounds.width / this.canvasRef().width;
         const crop = this.state.crop;
         const cropX = crop.x0 * ratio;
         const cropY = crop.y0 * ratio;

@@ -31,13 +31,13 @@ class TestAccountingFields(common.TransactionCase):
     def test_a_manager_sees_what_odoo_shows(self):
         arch = self.form(self.user('manager_analytic', 'hr_expense.group_hr_expense_manager',
                                    'analytic.group_analytic_accounting',
-                                   'account.group_account_readonly'))
+                                   'account.group_account_invoice'))
         self.assertIn('name="analytic_distribution"', arch)
         self.assertIn('name="account_id"', arch)
 
     def test_an_employee_does_not_see_them(self):
         user = self.user('employee', 'analytic.group_analytic_accounting',
-                         'account.group_account_readonly')
+                         'account.group_account_invoice')
         expense = self.env['hr.expense'].with_user(user).new({})
         self.assertFalse(expense.expense_scan_expense_manager)
         manager = self.user('manager_flag', 'hr_expense.group_hr_expense_manager')

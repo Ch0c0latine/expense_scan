@@ -10,7 +10,7 @@
  * not replaced, neither on screen nor in the database.
  */
 import { _t } from "@web/core/l10n/translation";
-import { Component, onMounted, onWillUnmount, useState } from "@odoo/owl";
+import { Component, onMounted, onWillUnmount, proxy, useProps } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { getFieldsSpec } from "@web/model/relational_model/utils";
@@ -32,13 +32,13 @@ const STEPS = [
 
 export class ScanProgress extends Component {
     static template = "expense_scan.ScanProgress";
-    static props = { ...standardWidgetProps };
+    props = useProps({ ...standardWidgetProps });
 
     setup() {
         this.orm = useService("orm");
         this.bus = useService("bus_service");
         this.notification = useService("notification");
-        this.state = useState({ active: false, done: 0 });
+        this.state = proxy({ active: false, done: 0 });
         this.onProgress = this.onProgress.bind(this);
 
         onMounted(() => {

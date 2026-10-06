@@ -10,7 +10,7 @@
  */
 import { AttachmentView } from "@mail/core/common/attachment_view";
 import { patch } from "@web/core/utils/patch";
-import { useEffect } from "@odoo/owl";
+import { useOnChange } from "@odoo/owl";
 
 import { hasReceipt, openRetouchDialog } from "@expense_scan/js/retouch_dialog";
 
@@ -56,12 +56,13 @@ function hideExpenseScanPdfTools(rootElement) {
 patch(AttachmentView.prototype, {
     setup() {
         super.setup();
-        if (this.props.threadModel !== "hr.expense") {
-            return;
-        }
-        useEffect(
-            (el) => el && hideExpenseScanPdfTools(el),
-            () => [this.iframeViewerPdfRef.el]
+        useOnChange(
+            () => [this.iframeViewerPdfRef()],
+            (el) => {
+                if (el && this.thread()?.model === "hr.expense") {
+                    hideExpenseScanPdfTools(el);
+                }
+            }
         );
     },
 
@@ -71,7 +72,7 @@ patch(AttachmentView.prototype, {
      */
     get expenseScanRecord() {
         const root = this.env.model?.root;
-        if (this.props.threadModel !== "hr.expense" || root?.resId !== this.props.threadId) {
+        if (this.thread()?.model !== "hr.expense" || root?.resId !== this.thread().id) {
             return null;
         }
         return root;

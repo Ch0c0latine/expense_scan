@@ -45,7 +45,7 @@ class TestSyncBatch(common.TransactionCase):
             'invoice_policy': 'delivery'})
         cls.expense_product = cls.env['product.product'].create({
             'name': "Depenses groupees", 'type': 'service', 'list_price': 1.0,
-            'can_be_expensed': True, 'expense_policy': 'cost', 'invoice_policy': 'order'})
+            'can_be_expensed': True, 'reinvoice_policy': 'cost', 'invoice_policy': 'order'})
         cls.partner = cls.env['res.partner'].create({'name': "Client Groupe"})
 
     # ------------------------------------------------------------------

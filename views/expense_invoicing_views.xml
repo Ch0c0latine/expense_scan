@@ -74,12 +74,6 @@
                 <xpath expr="//filter[@name='my_team_expenses']" position="replace"/>
                 <xpath expr="//filter[@name='by_company']" position="replace"/>
                 <xpath expr="//filter[@name='by_employee']" position="replace"/>
-                <!-- The months are the two filters above: the expense date no
-                     longer lists them. -->
-                <xpath expr="//filter[@name='date']" position="attributes">
-                    <attribute name="start_month">0</attribute>
-                    <attribute name="end_month">-1</attribute>
-                </xpath>
             </field>
         </record>
     </data>
@@ -146,7 +140,7 @@
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button class="oe_stat_button" type="object" name="action_expense_scan_open_expenses"
-                        icon="fa-money" groups="hr_expense.group_hr_expense_user"
+                        icon="payments" groups="hr_expense.group_hr_expense_user"
                         invisible="not expense_scan_count and not expense_scan_budget">
                     <div class="o_field_widget o_stat_info">
                         <span class="o_stat_value">

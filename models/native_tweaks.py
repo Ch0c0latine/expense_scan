@@ -33,7 +33,7 @@ MODULE_ICON = 'expense_scan,static/description/icon.png'
 
 
 def _enabled(env, option):
-    return bool(env['ir.config_parameter'].sudo().get_param(PARAMETERS[option]))
+    return env['ir.config_parameter'].sudo().get_bool(PARAMETERS[option])
 
 
 def _set_context_key(action, wanted):
@@ -97,5 +97,5 @@ def keep_current_behaviour(env):
     """
     params = env['ir.config_parameter'].sudo()
     for name in PARAMETERS.values():
-        params.set_param(name, '1')
+        params.set_bool(name, True)
     apply(env)

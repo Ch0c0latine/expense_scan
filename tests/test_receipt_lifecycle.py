@@ -14,6 +14,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from odoo.tests import common, tagged
+from odoo.addons.expense_scan.models.odoo_compat import binary_bytes
 
 from ..ocr import preprocess
 from .test_sheet import png
@@ -229,9 +230,9 @@ class TestReceiptLifecycle(common.TransactionCase):
 
     def test_a_retouch_never_overwrites_the_new_receipt(self):
         expense, original, new = self.stale()
-        photo = new.raw
+        photo = binary_bytes(new.raw)
         self.retouch(expense, color=(0, 0, 0))
-        self.assertEqual(new.raw, photo)
+        self.assertEqual(binary_bytes(new.raw), photo)
         self.assertEqual(expense.scan_original_attachment_id, new)
         self.assertNotEqual(expense.message_main_attachment_id, new)
         self.assertFalse(original.exists())

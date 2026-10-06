@@ -330,7 +330,8 @@ class TestLanguages(common.TransactionCase):
         template = polib.pofile(buffer.getvalue().decode('utf-8'))
         wanted = {(entry.msgctxt, entry.msgid) for entry in template
                   # What the demo data of the module says is not a screen text.
-                  if not all(o[0].startswith('model:expense.scan.policy') for o in entry.occurrences)}
+                  if not all(o[0].startswith(('model:expense.scan.policy', 'model:ir.module.module'))
+                             for o in entry.occurrences)}
         for path in sorted(glob.glob(os.path.join(MODULE_DIR, 'i18n', '*.po'))):
             catalogue = polib.pofile(path)
             translated = {(entry.msgctxt, entry.msgid) for entry in catalogue

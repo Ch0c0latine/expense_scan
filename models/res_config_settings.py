@@ -122,7 +122,7 @@ class ResConfigSettings(models.TransientModel):
         The page opens in the browser of the user, who reads, completes and sends it. No receipt, name or
         amount is added: only the versions, the language and whether the Sales app is installed.
         """
-        repo = self.env['ir.config_parameter'].sudo().get_param(
+        repo = self.env['ir.config_parameter'].sudo().get_str(
             'expense_scan.support_repo', 'TTC-Technologies/expense_scan')
         titles = {'bug': "[Bug] ", 'idea': "[Idea] ", 'custom': "[Custom work] "}
         labels = {'bug': "bug", 'idea': "enhancement", 'custom': "custom work"}

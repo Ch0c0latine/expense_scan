@@ -15,14 +15,14 @@
     -->
     <t t-name="expense_scan.StatusBarButtonsWide"
        t-inherit="web.StatusBarButtons" t-inherit-mode="extension">
-        <xpath expr="//t[@t-if='env.isSmall']" position="replace">
-            <t t-if="env.isSmall">
+        <xpath expr="//t[@t-if='this.uiService.isSmall']" position="replace">
+            <t t-if="this.uiService.isSmall">
                 <t t-set="shownSlots"
-                   t-value="visibleSlotNames.slice(0, expenseScanMaxSlots)"/>
+                   t-value="this.visibleSlotNames.slice(0, this.expenseScanMaxSlots)"/>
                 <t t-set="otherSlots"
-                   t-value="visibleSlotNames.slice(expenseScanMaxSlots)"/>
+                   t-value="this.visibleSlotNames.slice(this.expenseScanMaxSlots)"/>
                 <t t-foreach="shownSlots" t-as="slot" t-key="slot">
-                    <t t-slot="{{ slot }}"/>
+                    <t t-call-slot="{{ slot }}"/>
                 </t>
                 <Dropdown t-if="otherSlots.length">
                     <button class="btn btn-secondary" title="More">
@@ -31,7 +31,7 @@
                     <t t-set-slot="content">
                         <t t-foreach="otherSlots" t-as="slot" t-key="slot">
                             <DropdownItem class="'o-dropdown-item-unstyled-button'">
-                                <t t-slot="{{ slot }}"/>
+                                <t t-call-slot="{{ slot }}"/>
                             </DropdownItem>
                         </t>
                     </t>

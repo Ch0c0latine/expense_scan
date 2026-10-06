@@ -13,7 +13,7 @@
  * in a dialog. Expenses that cannot take it (no project at their date,
  * already invoiced...) are left as they are and listed.
  */
-import { Component } from "@odoo/owl";
+import { Component, t, useProps } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { Dialog } from "@web/core/dialog/dialog";
 import { registry } from "@web/core/registry";
@@ -26,7 +26,7 @@ const NEXT = { todo: "project", project: "none", none: "project" };
 export class ExpenseScanReinvoiceChoice extends Component {
     static template = "expense_scan.ReinvoiceChoice";
     static components = { Dialog };
-    static props = { count: Number, choose: Function, close: Function };
+    props = useProps({ count: t.number(), choose: t.function(), close: t.function() });
 
     pick(mode) {
         this.props.choose(mode);
@@ -36,7 +36,7 @@ export class ExpenseScanReinvoiceChoice extends Component {
 
 export class ExpenseScanReinvoice extends Component {
     static template = "expense_scan.ReinvoiceToggle";
-    static props = { ...standardFieldProps };
+    props = useProps({ ...standardFieldProps });
 
     setup() {
         this.orm = useService("orm");

@@ -4,70 +4,70 @@
 <templates xml:space="preserve">
 
     <t t-name="expense_scan.RetouchDialog">
-        <Dialog title="title" size="'md'" footer="false">
-            <div class="o_expense_scan_retouch" t-ref="container">
-                <div t-if="state.error" class="alert alert-danger py-1 px-2 small mb-2">
-                    <t t-esc="state.error"/>
+        <Dialog title="this.title" size="'md'" footer="false">
+            <div class="o_expense_scan_retouch" t-ref="this.containerRef">
+                <div t-if="this.state.error" class="alert alert-danger py-1 px-2 small mb-2">
+                    <t t-esc="this.state.error"/>
                 </div>
-                <div t-if="!state.loaded and !state.error" class="text-center text-muted py-5">
-                    <i class="fa fa-circle-o-notch fa-spin fa-2x" role="img" aria-hidden="true"/>
+                <div t-if="!this.state.loaded and !this.state.error" class="text-center text-muted py-5">
+                    <i class="oi oi-spin oi-2x" data-icon="progress_activity" role="img" aria-hidden="true"/>
                 </div>
                 <!-- Always in the DOM, so that it can be sized as soon as the
                      image loads. -->
-                <div class="o_expense_scan_retouch_stage" t-att-class="{ 'd-none': !state.loaded }"
-                     t-att-style="state.stageHeight ? 'height: ' + state.stageHeight + 'px' : ''">
-                    <canvas t-ref="canvas"
+                <div class="o_expense_scan_retouch_stage" t-att-class="{ 'd-none': !this.state.loaded }"
+                     t-att-style="this.state.stageHeight ? 'height: ' + this.state.stageHeight + 'px' : ''">
+                    <canvas t-ref="this.canvasRef"
                             class="o_expense_scan_retouch_canvas"
-                            t-att-class="{ 'o_expense_scan_retouch_dragging': state.dragging }"
-                            t-on-pointerdown="onPointerDown"
-                            t-on-pointermove="onPointerMove"
-                            t-on-pointerup="onPointerUp"
-                            t-on-pointercancel="onPointerUp"/>
+                            t-att-class="{ 'o_expense_scan_retouch_dragging': this.state.dragging }"
+                            t-on-pointerdown="this.onPointerDown"
+                            t-on-pointermove="this.onPointerMove"
+                            t-on-pointerup="this.onPointerUp"
+                            t-on-pointercancel="this.onPointerUp"/>
                 </div>
 
-                <div t-if="state.loaded" class="mt-3">
+                <div t-if="this.state.loaded" class="mt-3">
                     <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
                         <button type="button" class="btn btn-outline-secondary btn-sm"
                                 title="Rotate left" t-on-click="() => this.turn(-1)">
-                            <i class="fa fa-rotate-left" role="img" aria-label="Rotate left"/>
+                            <i class="oi oi-flip-horizontal" data-icon="rotate_right" role="img" aria-label="Rotate left"/>
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm"
                                 title="Rotate right" t-on-click="() => this.turn(1)">
-                            <i class="fa fa-rotate-right" role="img" aria-label="Rotate right"/>
+                            <i class="oi" data-icon="rotate_right" role="img" aria-label="Rotate right"/>
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm"
                                 title="Reset: uploaded image, untouched"
-                                t-on-click="() => this.reset()" t-att-disabled="state.auto or state.busy">
-                            <i class="fa fa-history" role="img" aria-label="Reset"/>
+                                t-on-click="() => this.reset()" t-att-disabled="this.state.auto or this.state.busy">
+                            <i class="oi" data-icon="history" role="img" aria-label="Reset"/>
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm"
                                 title="Automatic retouch (can be changed before applying)"
-                                t-on-click="() => this.autoRetouch()" t-att-disabled="state.auto or state.busy">
-                            <i class="fa" t-att-class="state.auto ? 'fa-circle-o-notch fa-spin' : 'fa-magic'"
+                                t-on-click="() => this.autoRetouch()" t-att-disabled="this.state.auto or this.state.busy">
+                            <i class="oi" t-att-class="{ 'oi-spin': this.state.auto }" t-att-data-icon="this.state.auto ? 'progress_activity' : 'crop_rotate'"
                                role="img" aria-label="Automatic retouch"/>
                         </button>
                     </div>
                     <div class="d-flex align-items-center gap-2 px-2">
                         <button type="button" class="btn btn-outline-secondary btn-sm"
                                 title="Set the fine rotation back to 0°" t-on-click="() => this.resetFine()"
-                                t-att-disabled="!state.fine">0°</button>
+                                t-att-disabled="!this.state.fine">0°</button>
                         <input type="range" class="form-range flex-grow-1"
-                               t-att-min="-fineRange" t-att-max="fineRange" step="0.5"
-                               t-att-value="state.fine" t-on-input="onFineInput"
+                               t-att-min="-this.fineRange" t-att-max="this.fineRange" step="0.5"
+                               t-att-value="this.state.fine" t-on-input="this.onFineInput"
                                aria-label="Fine rotation"/>
                         <span class="text-muted small o_expense_scan_retouch_angle"
-                              t-esc="angleText"/>
+                              t-esc="this.angleText"/>
                     </div>
                 </div>
 
                 <div class="d-flex justify-content-end gap-2 mt-3">
                     <button type="button" class="btn btn-secondary" t-on-click="() => this.props.close()"
-                            t-att-disabled="state.busy">
+                            t-att-disabled="this.state.busy">
                         Cancel
                     </button>
-                    <button type="button" class="btn btn-primary" t-on-click="onApply"
-                            t-att-disabled="!state.loaded or state.busy or state.auto">
-                        <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-1"
+                    <button type="button" class="btn btn-primary" t-on-click="this.onApply"
+                            t-att-disabled="!this.state.loaded or this.state.busy or this.state.auto">
+                        <i t-if="this.state.busy" class="oi oi-spin me-1" data-icon="progress_activity"
                            role="img" aria-hidden="true"/>
                         Apply
                     </button>

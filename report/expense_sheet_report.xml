@@ -21,7 +21,6 @@
         <field name="model">hr.expense</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">expense_scan.report_expense_sheet</field>
-        <field name="report_file">expense_scan.report_expense_sheet</field>
         <field name="paperformat_id" ref="paperformat_expense_sheet"/>
     </record>
 

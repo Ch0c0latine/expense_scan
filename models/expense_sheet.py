@@ -23,6 +23,7 @@ from odoo.exceptions import UserError
 from odoo.tools import format_date, formatLang
 
 from ..ocr import preprocess
+from .odoo_compat import binary_bytes
 
 _logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ class ExpenseScanExportTemplate(models.Model):
         for template in self:
             content = template._expense_scan_blank_workbook()
             template.write({
-                'file': base64.b64encode(content),
+                'file': base64.b64encode(content).decode(),
                 'filename': "%s.xlsx" % re.sub(r'[\\/:*?"<>|]+', '-', template.name),
             })
         return True
@@ -458,7 +459,7 @@ class ExpenseScanSheet(models.AbstractModel):
 
         lines = self._lines(expenses)
         header = self._header(expenses, lines)
-        book = openpyxl.load_workbook(io.BytesIO(base64.b64decode(template.file)))
+        book = openpyxl.load_workbook(io.BytesIO(binary_bytes(template.file)))
         sheet = book[template.sheet_name] if template.sheet_name else book.worksheets[0]
 
         first, last = template.first_row, template.last_row
@@ -596,7 +597,7 @@ class ExpenseScanSheet(models.AbstractModel):
 
     @api.model
     def _attachment_pages(self, attachment, label, PdfFileReader):
-        raw = attachment.raw or b''
+        raw = binary_bytes(attachment.raw)
         mimetype = attachment.mimetype or ''
         try:
             if mimetype.startswith('image/'):
@@ -925,7 +926,7 @@ class ExpenseScanSheetWizard(models.TransientModel):
         else:
             name = "%s.zip" % self.env['expense.scan.sheet']._file_stem(expenses, _("Expense sheets"))
             content = self.env['expense.scan.sheet']._zip(files)
-        self.write({'result_file': base64.b64encode(content), 'result_name': name})
+        self.write({'result_file': base64.b64encode(content).decode(), 'result_name': name})
         # The client downloads the file, then closes the dialog. A plain link
         # would leave it open, and a new tab would be blocked.
         return {

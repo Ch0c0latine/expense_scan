@@ -42,7 +42,7 @@ class TestInvoicing(common.TransactionCase):
             'invoice_policy': 'delivery'})
         cls.expense_product = cls.env['product.product'].create({
             'name': "Depenses facturables", 'type': 'service', 'list_price': 1.0,
-            'can_be_expensed': True, 'expense_policy': 'cost', 'invoice_policy': 'order'})
+            'can_be_expensed': True, 'reinvoice_policy': 'cost', 'invoice_policy': 'order'})
         cls.partner = cls.env['res.partner'].create({'name': "Client Facturable"})
         cls.project = cls.env['project.project'].create({'name': "Mission facturable"})
         cls.order = cls.env['sale.order'].create({
@@ -161,7 +161,7 @@ class TestInvoicing(common.TransactionCase):
     def test_posted_by_hand_before_the_invoice_still_counts(self):
         first = self.expense(100.0)
         self.approve(first)
-        first.sudo()._post_without_wizard()
+        first.sudo()._expense_scan_post_entries()
         self.assertIn(first.state, ('posted', 'in_payment', 'paid'))
         self.assertEqual(self.line.qty_delivered, 100.0)
         invoice = self.order._create_invoices()
@@ -480,7 +480,7 @@ class TestInvoicing(common.TransactionCase):
         self.assertEqual(len(added), 1)
         self.assertEqual(added.tax_ids, tax, "the order's own VAT applies as on any line")
         self.assertEqual(added.product_uom_qty, 70.0)
-        if added.qty_delivered_method == 'manual':
+        if self.env['hr.expense']._expense_scan_sets_delivered(added):
             self.assertEqual(added.qty_delivered, 70.0, "ready to invoice at once")
 
     def test_a_credit_note_for_the_whole_invoice_gives_the_expenses_back(self):

@@ -66,7 +66,7 @@
             </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_expense_scan_open_vat_moves" type="object"
-                        class="oe_stat_button" icon="fa-balance-scale"
+                        class="oe_stat_button" icon="balance"
                         invisible="not expense_scan_vat_move_count"
                         groups="account.group_account_invoice">
                     <field name="expense_scan_vat_move_count" widget="statinfo" string="VAT corrections"/>
