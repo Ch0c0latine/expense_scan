@@ -213,7 +213,7 @@ class TestExpenseSheet(common.TransactionCase):
         flat = self.expense("Forfait", 3, product=self.flat)
         self.attach(flat, png(), "inutile.png", 'image/png')
         content = self.Sheet._receipts_pdf(self.Sheet._lines(first | second | flat))
-        self.assertEqual(PdfFileReader(io.BytesIO(content), strict=False).getNumPages(), 3)
+        self.assertEqual(len(PdfFileReader(io.BytesIO(content), strict=False).pages), 3)
 
     def test_summary_renders(self):
         expense = self.expense("Récap", 4, total=20.0)
