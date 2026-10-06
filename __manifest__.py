@@ -3,9 +3,9 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0).
 {
     'name': "Expense Receipt Scanner",
-    'version': '20.0.3.0.1',
-    'summary': "A local AI reads photographed receipts and fills in the expense: crop, straighten, "
-               "OCR and parsing run on your own server. No API, no fee per scan.",
+    'version': '20.0.3.1.0',
+    'summary': "Expense receipt scanner with local OCR: photograph a receipt and an AI on your own server fills in "
+               "the expense (merchant, date, total, VAT, category). No API key, no fee per scan.",
     'author': "T.T.C. SAS",
     'support': "ttc@green-engine.eu",
     'category': 'Human Resources/Expenses',

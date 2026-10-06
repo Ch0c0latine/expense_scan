@@ -1,5 +1,16 @@
 # Changelog
 
+## 20.0.3.1.0 — 2026-10-06
+
+Port of 19.0.3.1.0 to Odoo 20, merged with the 20.0.3.0.1 port below: the same receipts PDF fix, the new summary and
+the picture of the crumpled ticket.
+
+## 19.0.3.1.0 — 2026-10-06
+
+- Receipts PDF of the expense sheet: the PDF library is called with the names shared by PyPDF2 2 and pypdf, so that
+  a server running pypdf 3 or later no longer replaces every PDF receipt by the "unreadable" page.
+- Summary of the app rewritten with the words people search for (receipt, OCR, expense, scanner).
+- Store page: the picture of the crumpled ticket shows the photo and the expense side by side.
 ## 20.0.3.0.1 — 2026-10-06
 
 Port of 19.0.3.0.1 to Odoo 20 (branch `20.0`).
