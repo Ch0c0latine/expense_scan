@@ -586,7 +586,7 @@ class ExpenseScanSheet(models.AbstractModel):
         for line in lines:
             for label, attachment in line['receipts']:
                 for page in self._attachment_pages(attachment, label, PdfFileReader):
-                    writer.addPage(page)
+                    writer.add_page(page)
                     pages += 1
         if not pages:
             return b''
@@ -601,23 +601,23 @@ class ExpenseScanSheet(models.AbstractModel):
         try:
             if mimetype.startswith('image/'):
                 stream = io.BytesIO(self._image_page(raw, label))
-                return [PdfFileReader(stream, strict=False).getPage(0)]
+                return [PdfFileReader(stream, strict=False).pages[0]]
             reader = PdfFileReader(io.BytesIO(raw), strict=False)
-            count = reader.getNumPages()
+            count = len(reader.pages)
             pages = []
             for index in range(count):
-                page = reader.getPage(index)
-                width = float(abs(page.mediaBox.getWidth()))
-                height = float(abs(page.mediaBox.getHeight()))
+                page = reader.pages[index]
+                width = float(abs(page.mediabox.width))
+                height = float(abs(page.mediabox.height))
                 text = label if count == 1 else "%s (%s/%s)" % (label, index + 1, count)
                 stamp = PdfFileReader(io.BytesIO(self._stamp(text, width, height)), strict=False)
-                page.mergePage(stamp.getPage(0))
+                page.merge_page(stamp.pages[0])
                 pages.append(page)
             return pages
         except Exception:  # noqa: BLE001 - unreadable receipt
             _logger.warning("Unreadable receipt: %s", attachment.name, exc_info=True)
             stream = io.BytesIO(self._unreadable_page(attachment.name, label))
-            return [PdfFileReader(stream, strict=False).getPage(0)]
+            return [PdfFileReader(stream, strict=False).pages[0]]
 
     @api.model
     def _image_page(self, raw, label):
