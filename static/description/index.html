@@ -192,16 +192,17 @@ sudo apt install poppler-utils</pre>
                 Machine: AMD Ryzen 7 7800X3D (8 cores), Odoo 19 and PostgreSQL on the same computer.</p>
             <table class="table table-sm">
                 <thead><tr><th>OCR threads</th><th class="text-end">Median</th><th class="text-end">Slowest 10 %</th>
-                    <th class="text-end">CPU time per receipt</th><th class="text-end">Odoo process memory</th></tr></thead>
+                    <th class="text-end">Odoo process memory</th></tr></thead>
                 <tbody>
-                    <tr><td>1</td><td class="text-end">2.5 s</td><td class="text-end">4.9 s</td><td class="text-end">3.3 s</td><td class="text-end">510 MB</td></tr>
-                    <tr><td>2</td><td class="text-end">2.2 s</td><td class="text-end">4.3 s</td><td class="text-end">5.2 s</td><td class="text-end">750 MB</td></tr>
-                    <tr><td>4 (default)</td><td class="text-end">1.5 s</td><td class="text-end">2.9 s</td><td class="text-end">6.5 s</td><td class="text-end">1,040 MB</td></tr>
+                    <tr><td>1</td><td class="text-end">2.5 s</td><td class="text-end">4.9 s</td><td class="text-end">510 MB</td></tr>
+                    <tr><td>2</td><td class="text-end">2.2 s</td><td class="text-end">4.3 s</td><td class="text-end">750 MB</td></tr>
+                    <tr><td>4 (default)</td><td class="text-end">1.5 s</td><td class="text-end">2.9 s</td><td class="text-end">1,040 MB</td></tr>
                 </tbody>
             </table>
             <ul>
-                <li>More threads shorten the wait for the person and spend more CPU: on a busy server, set one or two
-                    threads in the settings.</li>
+                <li>More threads shorten the wait for the person: the work is shared between the cores of the server. They also
+                    keep more cores busy at the same moment, so on a busy server set one or two threads in the
+                    settings.</li>
                 <li>Memory is that of the whole Odoo process after the 120 scans of the test, which started at
                     180 MB. The OCR engine itself adds about 160 MB once loaded.</li>
                 <li>The first scan after a restart adds one to three seconds (the models load). The button
