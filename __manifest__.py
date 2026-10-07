@@ -10,7 +10,7 @@
     'support': "ttc@green-engine.eu",
     'category': 'Human Resources/Expenses',
     'license': 'LGPL-3',
-    'images': ['static/description/banner.png'],
+    'images': ['static/description/banner.gif'],
     'depends': ['hr_expense', 'project'],
     # Tesseract, the fallback engine, stays optional.
     'external_dependencies': {
